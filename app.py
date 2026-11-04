@@ -1,33 +1,132 @@
 """SOW IA — application web Streamlit."""
+import os
 import uuid
 import streamlit as st
 
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
 from storage import (
-    add_memory,
-    clear_history,
-    delete_memory,
-    get_history,
-    get_memories,
-    save_message,
+    add_memory as local_add_memory,
+    clear_history as local_clear_history,
+    delete_memory as local_delete_memory,
+    get_history as local_get_history,
+    get_memories as local_get_memories,
+    save_message as local_save_message,
 )
 from documents import extract_pdf_text
 from websearch import search_web
+from supabase_auth import (
+    authenticated_user,
+    complete_github_login,
+    configuration_ready,
+    create_user_client,
+    github_authorization_url,
+    sign_out,
+)
+import cloud_storage
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
     "<style>.stApp{background:radial-gradient(ellipse at top right,#172554 0,#080d1b 48%,#050914 100%);color:#f8fafc}section[data-testid='stSidebar']{background:#0b1224}.hero{padding:1.5rem 1.8rem;border:1px solid #26385b;border-radius:18px;background:linear-gradient(120deg,#111d3b,#171331)}.hero h1{font-size:2.5rem;margin:0;color:#eaf2ff}.hero p{color:#b9c8e8;margin:.4rem 0 0}</style>",
     unsafe_allow_html=True,
 )
+
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 if "pdf_text" not in st.session_state:
     st.session_state.pdf_text = ""
 
+# A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
+auth_required = os.getenv("SOWIA_REQUIRE_AUTH", "false").strip().lower() in {"1", "true", "yes"}
+supabase_enabled = configuration_ready()
+if auth_required and not supabase_enabled:
+    st.error("SOW IA est en mode protégé, mais Supabase n'est pas encore configuré. L'accès est fermé jusqu'à la configuration de l'authentification.")
+    st.stop()
+
+cloud_mode = supabase_enabled
+current_user = None
+supabase_client = None
+if cloud_mode:
+    try:
+        if "sowia_supabase_client" not in st.session_state:
+            # Keep this PKCE client in this browser session; never use a global cache.
+            st.session_state.sowia_supabase_client = create_user_client()
+        supabase_client = st.session_state.sowia_supabase_client
+
+        authorization_code = st.query_params.get("code")
+        if authorization_code:
+            complete_github_login(supabase_client, authorization_code)
+            st.query_params.clear()
+            st.rerun()
+
+        current_user = authenticated_user(supabase_client)
+    except Exception as exc:
+        st.error("La connexion sécurisée n'a pas pu être vérifiée. Réessayez ou vérifiez les réglages Supabase.")
+        st.caption(str(exc))
+        if st.button("Réinitialiser la connexion"):
+            st.session_state.pop("sowia_supabase_client", None)
+            st.rerun()
+        st.stop()
+
+    if current_user is None:
+        st.markdown(
+            '<div class="hero"><h1>SOW IA</h1><p>Votre espace personnel sécurisé.</p></div>',
+            unsafe_allow_html=True,
+        )
+        st.subheader("Connexion à SOW IA")
+        st.write("Connectez-vous avec votre compte GitHub pour accéder à votre mémoire et à votre historique privés.")
+        try:
+            redirect_to = os.getenv("SOWIA_PUBLIC_URL", "").strip()
+            login_url = github_authorization_url(supabase_client, redirect_to)
+            st.link_button("Continuer avec GitHub", login_url, type="primary")
+        except Exception as exc:
+            st.warning("La connexion GitHub attend encore la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
+            st.caption(str(exc))
+        st.stop()
+
+def get_app_history(limit=30):
+    if cloud_mode:
+        return cloud_storage.get_history(supabase_client, current_user, st.session_state.session_id, limit)
+    return local_get_history(st.session_state.session_id, limit)
+
+def save_app_message(role, content):
+    if cloud_mode:
+        return cloud_storage.save_message(supabase_client, current_user, st.session_state.session_id, role, content)
+    return local_save_message(st.session_state.session_id, role, content)
+
+def clear_app_history():
+    if cloud_mode:
+        return cloud_storage.clear_history(supabase_client, current_user, st.session_state.session_id)
+    return local_clear_history(st.session_state.session_id)
+
+def get_app_memories():
+    if cloud_mode:
+        return cloud_storage.list_memories(supabase_client, current_user)
+    return local_get_memories()
+
+def add_app_memory(content):
+    if cloud_mode:
+        return cloud_storage.add_memory(supabase_client, current_user, content)
+    return local_add_memory(content)
+
+def delete_app_memory(memory_id):
+    if cloud_mode:
+        return cloud_storage.delete_memory(supabase_client, current_user, memory_id)
+    return local_delete_memory(memory_id)
+
 with st.sidebar:
     st.markdown("## 🧠 SOW IA")
     st.caption("Intelligence artificielle")
+    if cloud_mode:
+        st.success("Espace personnel sécurisé")
+        st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
+        if st.button("Se déconnecter", use_container_width=True):
+            sign_out(supabase_client)
+            st.session_state.pop("sowia_supabase_client", None)
+            st.session_state.session_id = str(uuid.uuid4())
+            st.rerun()
+    else:
+        st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
     page = st.radio(
         "Navigation",
         [
@@ -62,40 +161,43 @@ if page == "Accueil":
 elif page == "Assistant IA":
     st.subheader("💬 Mon Assistant IA")
     if not API_KEY:
-        st.warning("Pour activer les réponses IA, ajoutez votre clé API dans .env. Ne la partagez jamais sur GitHub.")
-    memories = get_memories()
+        st.warning("Pour activer les réponses IA, ajoutez votre clé API dans les secrets de l'hébergement. Ne la partagez jamais sur GitHub.")
+    memories = get_app_memories()
     if memories:
         st.caption(f"{len(memories)} note(s) mémoire seront disponibles à l'assistant.")
-    for item in get_history(st.session_state.session_id):
+    for item in get_app_history():
         with st.chat_message(item["role"]):
             st.markdown(item["content"])
     prompt = st.chat_input("Écrivez votre message...")
     if prompt:
-        save_message(st.session_state.session_id, "user", prompt)
+        save_app_message("user", prompt)
         with st.chat_message("user"):
             st.markdown(prompt)
         with st.chat_message("assistant"):
             try:
                 reply = answer(
-                    get_history(st.session_state.session_id),
+                    get_app_history(),
                     memories=[item["content"] for item in memories],
                 )
                 st.markdown(reply)
-                save_message(st.session_state.session_id, "assistant", reply)
+                save_app_message("assistant", reply)
             except Exception as exc:
                 st.error(str(exc))
     if st.button("Effacer cette conversation"):
-        clear_history(st.session_state.session_id)
+        clear_app_history()
         st.rerun()
 
 elif page == "Ma mémoire":
     st.subheader("🧠 Ma mémoire")
     st.write("Ajoutez les informations que SOW IA pourra réutiliser dans ses prochaines réponses.")
-    st.info(
-        "Cette mémoire est stockée dans la base SQLite de cette installation. "
-        "Avant toute ouverture à plusieurs utilisateurs, une connexion et une séparation "
-        "des espaces personnels devront être mises en place. N'y enregistrez pas de données sensibles."
-    )
+    if cloud_mode:
+        st.success("Vos notes sont enregistrées dans votre espace personnel Supabase.")
+    else:
+        st.info(
+            "Cette mémoire est stockée dans la base SQLite de cette installation. "
+            "Elle convient au développement local, pas à une utilisation publique multi-utilisateur. "
+            "N'y enregistrez pas de données sensibles."
+        )
     with st.form("add_memory_form", clear_on_submit=True):
         note = st.text_area(
             "Information à mémoriser",
@@ -105,21 +207,20 @@ elif page == "Ma mémoire":
         submitted = st.form_submit_button("Enregistrer dans ma mémoire")
         if submitted:
             try:
-                add_memory(note)
+                add_app_memory(note)
                 st.success("Note ajoutée à la mémoire.")
                 st.rerun()
-            except ValueError as exc:
+            except (ValueError, PermissionError) as exc:
                 st.error(str(exc))
-
     st.markdown("#### Informations mémorisées")
-    memories = get_memories()
+    memories = get_app_memories()
     if not memories:
         st.caption("Aucune note enregistrée pour le moment.")
     for item in memories:
         with st.container(border=True):
             st.write(item["content"])
             if st.button("Supprimer cette note", key=f"delete_memory_{item['id']}"):
-                delete_memory(item["id"])
+                delete_app_memory(item["id"])
                 st.rerun()
 
 elif page == "Recherche Web":
@@ -156,7 +257,7 @@ elif page == "Mes documents":
 
 elif page == "Historique":
     st.subheader("🕘 Historique")
-    items = get_history(st.session_state.session_id, 100)
+    items = get_app_history(100)
     if not items:
         st.caption("Aucun message dans cette session.")
     for item in items:
@@ -172,11 +273,12 @@ elif page == "Paramètres":
     st.subheader("⚙️ Paramètres")
     st.write("Modèle configuré :", MODEL)
     st.write("Clé API :", "Configurée" if API_KEY else "Non configurée")
+    st.write("Stockage :", "Supabase privé" if cloud_mode else "SQLite local")
 
 elif page == "Aide":
     st.subheader("❓ Aide")
     st.markdown(
-        "1. Configurez vos clés dans le fichier .env.\n"
-        "2. Lancez streamlit run app.py.\n"
-        "3. Ouvrez l'adresse locale affichée dans le terminal."
+        "1. En local, configurez vos clés dans le fichier .env.\n"
+        "2. Pour un site public, activez SOWIA_REQUIRE_AUTH et configurez Supabase.\n"
+        "3. Lancez streamlit run app.py pour le développement local."
     )
