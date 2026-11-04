@@ -27,7 +27,31 @@ import cloud_storage
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
-    "<style>.stApp{background:radial-gradient(ellipse at top right,#172554 0,#080d1b 48%,#050914 100%);color:#f8fafc}section[data-testid='stSidebar']{background:#0b1224}.hero{padding:1.5rem 1.8rem;border:1px solid #26385b;border-radius:18px;background:linear-gradient(120deg,#111d3b,#171331)}.hero h1{font-size:2.5rem;margin:0;color:#eaf2ff}.hero p{color:#b9c8e8;margin:.4rem 0 0}</style>",
+    """<style>
+    .stApp{background:radial-gradient(ellipse at top right,#172554 0,#080d1b 48%,#050914 100%);color:#f8fafc}
+    section[data-testid='stSidebar']{background:#0b1224}
+    .hero{padding:1.5rem 1.8rem;border:1px solid #26385b;border-radius:18px;background:linear-gradient(120deg,#111d3b,#171331)}
+    .hero h1{font-size:2.5rem;margin:0;color:#eaf2ff}
+    .hero p{color:#b9c8e8;margin:.4rem 0 0}
+    div[data-testid="stChatInput"] textarea,
+    div[data-testid="stTextArea"] textarea,
+    div[data-testid="stTextInput"] input,
+    textarea,
+    input {
+        color:#ffffff !important;
+        -webkit-text-fill-color:#ffffff !important;
+        caret-color:#ffffff !important;
+        background-color:#111827 !important;
+        opacity:1 !important;
+    }
+    div[data-testid="stChatInput"] textarea::placeholder,
+    textarea::placeholder,
+    input::placeholder {
+        color:#cbd5e1 !important;
+        -webkit-text-fill-color:#cbd5e1 !important;
+        opacity:1 !important;
+    }
+    </style>""",
     unsafe_allow_html=True,
 )
 
