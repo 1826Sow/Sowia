@@ -1,13 +1,54 @@
-"""LLM assistant adapter using the OpenAI API."""
-from openai import OpenAI, AuthenticationError
+"""LLM assistant adapter with a transparent no-credit fallback."""
+from openai import OpenAI, AuthenticationError, RateLimitError
 from config import API_KEY, BASE_URL, MODEL, SYSTEM_PROMPT
+
+
+def _offline_reply(messages):
+    """Return honest, limited help when the paid API is unavailable."""
+    prompt = ""
+    for item in reversed(messages or []):
+        if item.get("role") == "user":
+            prompt = str(item.get("content", "")).strip()
+            break
+
+    lowered = prompt.lower()
+    if any(word in lowered for word in ("429", "crédit", "credits", "quota", "facturation")):
+        return (
+            "SOW IA fonctionne en mode de secours : le quota OpenAI est épuisé "
+            "(erreur 429). Aucune réponse générative OpenAI ne peut être produite "
+            "tant que le quota n'est pas rétabli. Vous pouvez continuer à utiliser "
+            "les fonctions locales de l'application, notamment l'historique, la "
+            "mémoire et l'importation de PDF. Je peux aussi vous guider dans les "
+            "réglages, étape par étape, sans vous demander de communiquer votre clé API."
+        )
+    if any(word in lowered for word in ("pdf", "document", "fichier")):
+        return (
+            "Le service IA est temporairement indisponible faute de quota. "
+            "Vous pouvez néanmoins ouvrir « Analyse PDF » pour importer un PDF "
+            "et extraire son texte. La création/exportation de PDF n'est pas encore "
+            "activée dans cette version de SOW IA."
+        )
+    if any(word in lowered for word in ("mémoire", "memoire", "historique", "sauvegarder")):
+        return (
+            "Même sans crédits OpenAI, les fonctions locales de mémoire et "
+            "d'historique de SOW IA restent accessibles dans leurs rubriques, "
+            "sous réserve que le stockage de l'application soit disponible."
+        )
+    return (
+        "Le mode de secours de SOW IA est actif. Le quota du service OpenAI est "
+        "épuisé : je ne peux donc pas générer une véritable réponse IA pour le moment. "
+        "Les rubriques locales de l'application restent utilisables. Vous pouvez "
+        "me demander de l'aide sur les réglages, la mémoire, l'historique ou les "
+        "documents ; je vous indiquerai ce qui fonctionne sans crédits."
+    )
 
 
 def answer(messages, memories=None):
     if not API_KEY:
         raise RuntimeError(
             "La clé OPENAI_API_KEY est absente. Dans Streamlit, ouvrez "
-            "Paramètres > Secrets et vérifiez le nom exact OPENAI_API_KEY."
+            "Paramètres > Secrets et vérifiez le nom exact OPENAI_API_KEY. "
+            "Ne partagez jamais votre clé API."
         )
 
     system_prompt = SYSTEM_PROMPT
@@ -35,5 +76,7 @@ def answer(messages, memories=None):
             "supplémentaire. Vérifiez aussi que OPENAI_BASE_URL n'est pas renseigné "
             "si vous utilisez l'API officielle OpenAI. Ne communiquez jamais votre clé."
         ) from exc
+    except RateLimitError:
+        return _offline_reply(messages)
 
     return response.choices[0].message.content or ""
