@@ -308,8 +308,37 @@ elif page == "Analyse PDF":
 
 elif page == "Créer un PDF":
     st.subheader("🪄 Créer un PDF")
-    st.info("L'éditeur et l'export PDF seront ajoutés dans une prochaine étape.")
+    st.write("Rédigez un document et téléchargez-le au format PDF. Cette fonction ne consomme aucun crédit OpenAI.")
+    pdf_title = st.text_input("Titre du document", value="Mon document")
+    pdf_body = st.text_area("Contenu du document", height=300, placeholder="Écrivez ou collez votre texte ici...")
+    if st.button("Créer le PDF", type="primary", disabled=not pdf_body.strip()):
+        try:
+            from io import BytesIO
+            from xml.sax.saxutils import escape
+            from reportlab.lib import colors
+            from reportlab.lib.enums import TA_LEFT
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import cm
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 
+            buffer = BytesIO()
+            document = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2 * cm, leftMargin=2 * cm, topMargin=2 * cm, bottomMargin=2 * cm, title=pdf_title.strip() or "Mon document")
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle("SowiaTitle", parent=styles["Title"], textColor=colors.HexColor("#17365D"), alignment=TA_LEFT, spaceAfter=18)
+            body_style = ParagraphStyle("SowiaBody", parent=styles["BodyText"], leading=16, spaceAfter=10)
+            story = [Paragraph(escape(pdf_title.strip() or "Mon document"), title_style)]
+            for paragraph in pdf_body.splitlines():
+                if paragraph.strip():
+                    story.append(Paragraph(escape(paragraph), body_style))
+                else:
+                    story.append(Spacer(1, 8))
+            document.build(story)
+            st.success("Votre PDF est prêt.")
+            st.download_button("Télécharger mon PDF", data=buffer.getvalue(), file_name="document_sow_ia.pdf", mime="application/pdf", type="primary")
+        except Exception as exc:
+            st.error("La création du PDF a échoué. Vérifiez que les dépendances sont installées.")
+            st.caption(str(exc))
 elif page == "Mes documents":
     st.subheader("📁 Mes documents")
     st.info("Espace documentaire à connecter à un stockage sécurisé.")
