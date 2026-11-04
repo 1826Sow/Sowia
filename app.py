@@ -1,7 +1,7 @@
 """SOW IA — application web Streamlit."""
-import os
 import uuid
 import streamlit as st
+from settings import get_setting
 
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
@@ -37,7 +37,7 @@ if "pdf_text" not in st.session_state:
     st.session_state.pdf_text = ""
 
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
-auth_required = os.getenv("SOWIA_REQUIRE_AUTH", "false").strip().lower() in {"1", "true", "yes"}
+auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "false")).strip().lower() in {"1", "true", "yes"}
 supabase_enabled = configuration_ready()
 if auth_required and not supabase_enabled:
     st.error("SOW IA est en mode protégé, mais Supabase n'est pas encore configuré. L'accès est fermé jusqu'à la configuration de l'authentification.")
@@ -76,7 +76,7 @@ if cloud_mode:
         st.subheader("Connexion à SOW IA")
         st.write("Connectez-vous avec votre compte GitHub pour accéder à votre mémoire et à votre historique privés.")
         try:
-            redirect_to = os.getenv("SOWIA_PUBLIC_URL", "").strip()
+            redirect_to = str(get_setting("SOWIA_PUBLIC_URL", "")).strip()
             login_url = github_authorization_url(supabase_client, redirect_to)
             st.link_button("Continuer avec GitHub", login_url, type="primary")
         except Exception as exc:
