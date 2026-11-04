@@ -33,6 +33,17 @@ st.markdown(
     .hero{padding:1.5rem 1.8rem;border:1px solid #26385b;border-radius:18px;background:linear-gradient(120deg,#111d3b,#171331)}
     .hero h1{font-size:2.5rem;margin:0;color:#eaf2ff}
     .hero p{color:#b9c8e8;margin:.4rem 0 0}
+    /* Zone de saisie du chat : fond sombre, texte visible et bordure neutre. */
+    div[data-testid="stChatInput"] {
+        background-color:#111827 !important;
+        border:1px solid #64748b !important;
+        border-radius:12px !important;
+        box-shadow:none !important;
+    }
+    div[data-testid="stChatInput"]:focus-within {
+        border-color:#60a5fa !important;
+        box-shadow:0 0 0 1px #60a5fa !important;
+    }
     div[data-testid="stChatInput"] textarea,
     div[data-testid="stTextArea"] textarea,
     div[data-testid="stTextInput"] input,
@@ -43,8 +54,11 @@ st.markdown(
         caret-color:#ffffff !important;
         background-color:#111827 !important;
         opacity:1 !important;
+        border-color:#64748b !important;
     }
     div[data-testid="stChatInput"] textarea::placeholder,
+    div[data-testid="stTextArea"] textarea::placeholder,
+    div[data-testid="stTextInput"] input::placeholder,
     textarea::placeholder,
     input::placeholder {
         color:#cbd5e1 !important;
