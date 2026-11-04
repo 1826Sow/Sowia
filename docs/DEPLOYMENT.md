@@ -6,7 +6,7 @@ Le dépôt est préparé pour un déploiement Streamlit avec Supabase Auth (conn
 
 Option retenue pour le premier déploiement : **Streamlit Community Cloud** (connexion au dépôt GitHub, déploiement de `app.py`). Il faudra choisir le dépôt `1826Sow/Sowia`, la branche `main` et le fichier `app.py`. L'adresse HTTPS sera fournie par la plateforme après le déploiement.
 
-Ne pas publier l'application actuelle à plusieurs utilisateurs avant l'intégration complète de l'authentification et du stockage cloud.
+Le parcours de connexion et les accès à la mémoire/historique cloud sont maintenant raccordés dans l'interface. Pour tout hébergement public, définir impérativement `SOWIA_REQUIRE_AUTH=true` afin de fermer l'accès tant que Supabase n'est pas configuré. Ne pas ouvrir au public avant les essais réels OAuth et RLS.
 
 ## 2. Base de données et authentification
 
@@ -37,12 +37,14 @@ Modèle de secrets (à saisir dans l'interface de l'hébergeur, pas dans Git) :
 SUPABASE_URL = "https://<project-ref>.supabase.co"
 SUPABASE_ANON_KEY = "<clé-publishable-ou-anon>"
 SOWIA_PUBLIC_URL = "https://<adresse-deploiement>"
+SOWIA_REQUIRE_AUTH = "true"
+OPENAI_API_KEY = "<clé-API-privée>"
 ```
 
 Le Client ID et le Client Secret GitHub sont enregistrés uniquement dans les paramètres du fournisseur GitHub de Supabase, jamais dans les secrets de l'application si Supabase gère le callback OAuth.
 
 ## 5. État de préparation
 
-Cette étape ajoute les fondations OAuth et le schéma RLS, mais ne signifie pas que le bouton de connexion est déjà intégré à toutes les pages de l'application. Le parcours complet doit encore être intégré à l'interface, testé sur l'URL HTTPS réelle, et l'historique/mémoire SQLite existants ne doivent pas être importés automatiquement. Ils restent inchangés jusqu'à une migration contrôlée.
+Le bouton de connexion GitHub, le callback PKCE et les appels de mémoire/historique cloud sont raccordés à l'interface. Ils restent à valider sur une URL HTTPS réelle avec un projet Supabase configuré. L'historique et la mémoire SQLite existants ne sont jamais importés automatiquement : ils restent inchangés jusqu'à une migration contrôlée. Les clés OpenAI/Tavily, si utilisées, doivent être ajoutées uniquement aux secrets de l'hébergeur.
 
 Aucune clé, aucun mot de passe et aucun secret n'est requis dans ce dépôt.
