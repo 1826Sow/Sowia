@@ -37,7 +37,11 @@ def github_authorization_url(client, redirect_to):
             "options": {"redirect_to": redirect_to},
         }
     )
-    url = getattr(getattr(response, "data", None), "url", None)
+    # supabase-py returns an OAuthResponse whose URL is exposed as .url.
+    url = getattr(response, "url", None)
+    if not url:
+        # Keep compatibility with response wrappers exposing a nested data object.
+        url = getattr(getattr(response, "data", None), "url", None)
     if not url:
         raise RuntimeError("Supabase n'a pas retourné l'adresse de connexion.")
     return url
@@ -47,13 +51,14 @@ def complete_github_login(client, authorization_code):
     """Exchange the one-time PKCE code using the same session's client."""
     if not authorization_code:
         raise ValueError("Code de connexion manquant.")
-    return client.auth.exchange_code_for_session(
-        {"auth_code": authorization_code}
-    )
+    return client.auth.exchange_code_for_session(authorization_code)
 
 
 def authenticated_user(client):
-    """Ask Supabase Auth to validate the current session and return its user."""
+    """Validate an existing session and return its authenticated user, if any."""
+    session_response = client.auth.get_session()
+    if not getattr(session_response, "session", None):
+        return None
     response = client.auth.get_user()
     return getattr(response, "user", None)
 
