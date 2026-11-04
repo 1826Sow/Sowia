@@ -151,25 +151,33 @@ st.write("")
 
 if page == "Accueil":
     st.subheader("Bienvenue sur SOW IA")
-    cols = st.columns(4)
-    for col, icon, title, desc in zip(
-        cols,
-        ["💬", "🧠", "🌐", "📄"],
-        ["Assistant IA", "Ma mémoire", "Recherche Web", "Analyse PDF"],
-        ["Posez vos questions", "Retrouvez vos notes", "Trouvez des informations", "Extrayez l’essentiel"],
-    ):
-        with col:
-            st.markdown(f"### {icon} {title}")
-            st.caption(desc)
-            if st.button(
-                f"Ouvrir {title}",
-                key=f"open_{title}",
-                use_container_width=True,
-                on_click=go_to_page,
-                args=(title,),
-            ):
-                pass
-    st.info("Choisissez une fonction dans le menu à gauche pour commencer.")
+    st.write("Accédez directement à vos outils :")
+    shortcuts = [
+        ("💬", "Assistant IA", "Posez vos questions"),
+        ("🧠", "Ma mémoire", "Enregistrez vos informations utiles"),
+        ("🌐", "Recherche Web", "Recherchez des informations en ligne"),
+        ("📄", "Analyse PDF", "Importez et analysez un PDF"),
+        ("🪄", "Créer un PDF", "Préparez vos futurs documents PDF"),
+        ("📁", "Mes documents", "Retrouvez votre espace documentaire"),
+        ("🕘", "Historique", "Consultez vos conversations"),
+        ("👑", "Abonnement", "Découvrez l’espace Premium"),
+        ("⚙️", "Paramètres", "Vérifiez votre configuration"),
+        ("❓", "Aide", "Consultez les indications d’utilisation"),
+    ]
+    for start in range(0, len(shortcuts), 3):
+        cols = st.columns(3)
+        for col, (icon, title, desc) in zip(cols, shortcuts[start:start + 3]):
+            with col:
+                with st.container(border=True):
+                    st.markdown(f"### {icon} {title}")
+                    st.caption(desc)
+                    st.button(
+                        f"Ouvrir {title}",
+                        key=f"open_{title}",
+                        use_container_width=True,
+                        on_click=go_to_page,
+                        args=(title,),
+                    )
 
 elif page == "Assistant IA":
     st.subheader("💬 Mon Assistant IA")
