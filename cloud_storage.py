@@ -57,6 +57,16 @@ def get_history(client, user, session_id, limit=30):
     )
 
 
+def clear_history(client, user, session_id):
+    return (
+        client.table("sowia_messages")
+        .delete()
+        .eq("user_id", _user_id(user))
+        .eq("session_id", str(session_id))
+        .execute()
+    )
+
+
 def save_message(client, user, session_id, role, content):
     if role not in {"user", "assistant"}:
         raise ValueError("Rôle de message invalide.")
