@@ -28,43 +28,20 @@ import cloud_storage
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
     """<style>
-    .stApp{background:radial-gradient(ellipse at top right,#172554 0,#080d1b 48%,#050914 100%);color:#f8fafc}
-    section[data-testid='stSidebar']{background:#0b1224}
-    .hero{padding:1.5rem 1.8rem;border:1px solid #26385b;border-radius:18px;background:linear-gradient(120deg,#111d3b,#171331)}
-    .hero h1{font-size:2.5rem;margin:0;color:#eaf2ff}
-    .hero p{color:#b9c8e8;margin:.4rem 0 0}
-    /* Zone de saisie du chat : fond sombre, texte visible et bordure neutre. */
-    div[data-testid="stChatInput"] {
-        background-color:#111827 !important;
-        border:1px solid #64748b !important;
-        border-radius:12px !important;
-        box-shadow:none !important;
-    }
-    div[data-testid="stChatInput"]:focus-within {
-        border-color:#60a5fa !important;
-        box-shadow:0 0 0 1px #60a5fa !important;
-    }
-    div[data-testid="stChatInput"] textarea,
-    div[data-testid="stTextArea"] textarea,
-    div[data-testid="stTextInput"] input,
-    textarea,
-    input {
-        color:#ffffff !important;
-        -webkit-text-fill-color:#ffffff !important;
-        caret-color:#ffffff !important;
-        background-color:#111827 !important;
-        opacity:1 !important;
-        border-color:#64748b !important;
-    }
-    div[data-testid="stChatInput"] textarea::placeholder,
-    div[data-testid="stTextArea"] textarea::placeholder,
-    div[data-testid="stTextInput"] input::placeholder,
-    textarea::placeholder,
-    input::placeholder {
-        color:#cbd5e1 !important;
-        -webkit-text-fill-color:#cbd5e1 !important;
-        opacity:1 !important;
-    }
+    .stApp { background: linear-gradient(180deg, #f7faff 0%, #eef4fb 100%) !important; color: #172033 !important; }
+    [data-testid="stAppViewContainer"], [data-testid="stMain"] { background: transparent !important; color: #172033 !important; }
+    section[data-testid="stSidebar"] { background: #e8eff8 !important; border-right: 1px solid #d5dfed !important; }
+    section[data-testid="stSidebar"] * { color: #24344d !important; }
+    .hero { padding: 1.5rem 1.8rem; border: 1px solid #d6e3f3; border-radius: 18px; background: linear-gradient(120deg, #ffffff, #e8f2ff); box-shadow: 0 8px 24px rgba(37,75,125,.08); }
+    .hero h1 { font-size: 2.5rem; margin: 0; color: #17365d !important; }
+    .hero p { color: #526782 !important; margin: .4rem 0 0; }
+    [data-testid="stChatMessage"] { background: #ffffff !important; border: 1px solid #dce6f2 !important; border-radius: 16px !important; padding: 1rem !important; box-shadow: 0 3px 12px rgba(32,64,105,.05); color: #172033 !important; }
+    [data-testid="stChatMessage"] [data-testid="stMarkdownContainer"], [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] li { color: #172033 !important; }
+    div[data-testid="stChatInput"] { background: #ffffff !important; border: 1px solid #b9cbe0 !important; border-radius: 14px !important; box-shadow: 0 4px 14px rgba(32,64,105,.07) !important; }
+    div[data-testid="stChatInput"]:focus-within { border-color: #4f83c2 !important; box-shadow: 0 0 0 2px rgba(79,131,194,.18) !important; }
+    div[data-testid="stChatInput"] textarea, div[data-testid="stTextArea"] textarea, div[data-testid="stTextInput"] input, textarea, input { color: #172033 !important; -webkit-text-fill-color: #172033 !important; caret-color: #17365d !important; background-color: #ffffff !important; opacity: 1 !important; border-color: #b9cbe0 !important; }
+    div[data-testid="stChatInput"] textarea::placeholder, div[data-testid="stTextArea"] textarea::placeholder, div[data-testid="stTextInput"] input::placeholder, textarea::placeholder, input::placeholder { color: #718198 !important; -webkit-text-fill-color: #718198 !important; opacity: 1 !important; }
+    [data-testid="stMarkdownContainer"], .stMarkdown, p, label { color: #24344d; }
     </style>""",
     unsafe_allow_html=True,
 )
