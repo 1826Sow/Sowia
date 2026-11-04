@@ -218,7 +218,14 @@ elif page == "Assistant IA":
                 st.markdown(reply)
                 save_app_message("assistant", reply)
             except Exception as exc:
-                st.error(str(exc))
+                error_text = str(exc)
+                if "429" in error_text or "insufficient_quota" in error_text or "quota" in error_text.lower():
+                    st.warning("Le service IA est temporairement indisponible : le crédit API OpenAI est épuisé ou le quota est atteint. Vous pouvez continuer à créer et télécharger des PDF sans utiliser l'IA.")
+                elif "401" in error_text or "invalid_api_key" in error_text:
+                    st.error("La clé API OpenAI n'est pas reconnue. Vérifiez le secret OPENAI_API_KEY dans les paramètres Streamlit.")
+                else:
+                    st.error("Une erreur est survenue pendant la réponse de l'assistant.")
+                    st.caption(error_text)
     if st.button("Effacer cette conversation"):
         clear_app_history()
         st.rerun()
