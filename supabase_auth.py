@@ -4,17 +4,17 @@ Create and retain one client per Streamlit browser session. Never cache a
 user-authenticated client globally: it contains authentication state and PKCE
 verification material.
 """
-import os
+from settings import get_setting
 
 
 def configuration_ready():
-    return bool(os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_ANON_KEY"))
+    return bool(get_setting("SUPABASE_URL") and get_setting("SUPABASE_ANON_KEY"))
 
 
 def create_user_client():
     """Create a per-session PKCE client; service-role keys are never accepted."""
-    url = os.getenv("SUPABASE_URL", "").strip()
-    key = os.getenv("SUPABASE_ANON_KEY", "").strip()
+    url = str(get_setting("SUPABASE_URL", "")).strip()
+    key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
     if not url or not key:
         raise RuntimeError(
             "Supabase n'est pas configuré. Renseignez SUPABASE_URL et "
