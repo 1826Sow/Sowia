@@ -114,6 +114,10 @@ def delete_app_memory(memory_id):
         return cloud_storage.delete_memory(supabase_client, current_user, memory_id)
     return local_delete_memory(memory_id)
 
+def go_to_page(page_name):
+    st.session_state.page_nav = page_name
+
+
 with st.sidebar:
     st.markdown("## 🧠 SOW IA")
     st.caption("Intelligence artificielle")
@@ -134,6 +138,7 @@ with st.sidebar:
             "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
             "Abonnement", "Paramètres", "Aide",
         ],
+        key="page_nav",
     )
     st.divider()
     st.caption("Version en développement — fonctions activées selon configuration.")
@@ -156,6 +161,14 @@ if page == "Accueil":
         with col:
             st.markdown(f"### {icon} {title}")
             st.caption(desc)
+            if st.button(
+                f"Ouvrir {title}",
+                key=f"open_{title}",
+                use_container_width=True,
+                on_click=go_to_page,
+                args=(title,),
+            ):
+                pass
     st.info("Choisissez une fonction dans le menu à gauche pour commencer.")
 
 elif page == "Assistant IA":
