@@ -1,7 +1,8 @@
 """Supabase GitHub OAuth helpers for SOW IA.
 
-A client instance must be created and retained inside the current Streamlit
-session. Never cache this client globally: it contains user authentication state.
+Create and retain one client per Streamlit browser session. Never cache a
+user-authenticated client globally: it contains authentication state and PKCE
+verification material.
 """
 import os
 
@@ -11,7 +12,7 @@ def configuration_ready():
 
 
 def create_user_client():
-    """Create a per-session Supabase client; no service-role key is accepted."""
+    """Create a per-session PKCE client; service-role keys are never accepted."""
     url = os.getenv("SUPABASE_URL", "").strip()
     key = os.getenv("SUPABASE_ANON_KEY", "").strip()
     if not url or not key:
@@ -22,7 +23,8 @@ def create_user_client():
     if not url.startswith("https://"):
         raise RuntimeError("SUPABASE_URL doit utiliser HTTPS.")
     from supabase import create_client
-    return create_client(url, key)
+    from supabase.client import ClientOptions
+    return create_client(url, key, options=ClientOptions(flow_type="pkce"))
 
 
 def github_authorization_url(client, redirect_to):
