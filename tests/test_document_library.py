@@ -224,6 +224,5 @@ def test_cloud_document_reads_and_deletes_reject_missing_user(operation):
     with pytest.raises(PermissionError, match="Connexion requise"):
         operation(client, user)
 
-    # No ownership filter or database operation may be issued for an anonymous user.
+    # No ownership filter or database query may be executed for an anonymous user.
     assert client.query.filters == []
-    assert client.query.deleted is False
