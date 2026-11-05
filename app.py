@@ -236,18 +236,20 @@ elif page == "Assistant IA":
 
 elif page == "Ma mémoire":
     st.subheader("🧠 Ma mémoire")
-    st.write("Ajoutez les informations que SOW IA pourra réutiliser dans ses prochaines réponses.")
+    st.write("Enregistrez et retrouvez les informations que SOW IA pourra réutiliser.")
     if cloud_mode:
         st.success("Vos notes sont enregistrées dans votre espace personnel Supabase.")
     else:
         st.info(
-            "Cette mémoire est stockée dans la base SQLite de cette installation. "
-            "Elle convient au développement local, pas à une utilisation publique multi-utilisateur. "
+            "Mémoire SQLite locale : adaptée au développement, pas à un usage public multi-utilisateur. "
             "N'y enregistrez pas de données sensibles."
         )
+
+    memories = get_app_memories()
+    st.metric("Informations enregistrées", len(memories))
     with st.form("add_memory_form", clear_on_submit=True):
         note = st.text_area(
-            "Information à mémoriser",
+            "Nouvelle information à mémoriser",
             placeholder="Ex. : Je préfère recevoir les explications en français et étape par étape.",
             max_chars=1000,
         )
@@ -255,17 +257,38 @@ elif page == "Ma mémoire":
         if submitted:
             try:
                 add_app_memory(note)
-                st.success("Note ajoutée à la mémoire.")
+                st.success("Information ajoutée.")
                 st.rerun()
             except (ValueError, PermissionError) as exc:
                 st.error(str(exc))
-    st.markdown("#### Informations mémorisées")
-    memories = get_app_memories()
-    if not memories:
-        st.caption("Aucune note enregistrée pour le moment.")
-    for item in memories:
+
+    st.markdown("#### Retrouver mes informations")
+    memory_filter = st.text_input(
+        "Rechercher un mot ou une expression",
+        placeholder="Ex. : français, projet, préférence…",
+        key="memory_filter",
+    ).strip().casefold()
+    visible_memories = [
+        item for item in memories
+        if memory_filter in item["content"].casefold()
+    ]
+    st.caption(f"{len(visible_memories)} information(s) affichée(s) sur {len(memories)}.")
+    if memories:
+        export_text = "\n\n".join(
+            f"[{item.get('created_at', '')}]\n{item['content']}" for item in memories
+        )
+        st.download_button(
+            "Exporter toute ma mémoire (.txt)",
+            data=export_text,
+            file_name="sowia_ma_memoire.txt",
+            mime="text/plain",
+        )
+    if not visible_memories:
+        st.caption("Aucune information ne correspond à cette recherche.")
+    for item in visible_memories:
         with st.container(border=True):
             st.write(item["content"])
+            st.caption(f"Enregistrée le : {item.get('created_at', 'date inconnue')}")
             if st.button("Supprimer cette note", key=f"delete_memory_{item['id']}"):
                 delete_app_memory(item["id"])
                 st.rerun()
