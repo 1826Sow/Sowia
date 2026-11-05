@@ -6,7 +6,8 @@ create table if not exists public.sowia_documents (
     filename text not null check (char_length(filename) between 1 and 255),
     extracted_text text not null check (char_length(extracted_text) between 1 and 100000),
     text_length integer not null check (text_length between 1 and 100000),
-    created_at timestamptz not null default now()
+    created_at timestamptz not null default now(),
+    category text not null default 'Autres' check (category in ('Finances', 'Administratif', 'Travail', 'Études', 'Santé', 'Autres'))
 );
 
 create index if not exists sowia_documents_user_created_idx
@@ -29,5 +30,11 @@ create policy "Users can delete their own SOW IA documents"
     on public.sowia_documents for delete to authenticated
     using ((select auth.uid()) = user_id);
 
-grant select, insert, delete on public.sowia_documents to authenticated;
+drop policy if exists "Users can update their own SOW IA document categories" on public.sowia_documents;
+create policy "Users can update their own SOW IA document categories"
+    on public.sowia_documents for update to authenticated
+    using ((select auth.uid()) = user_id)
+    with check ((select auth.uid()) = user_id);
+
+grant select, insert, update, delete on public.sowia_documents to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
