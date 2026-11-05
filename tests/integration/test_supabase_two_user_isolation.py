@@ -1,15 +1,15 @@
 """Opt-in live RLS test using two dedicated Supabase test accounts.
 
-Set SOWIA_TEST_SUPABASE_URL, SOWIA_TEST_SUPABASE_ANON_KEY,
-SOWIA_TEST_USER_A_EMAIL, SOWIA_TEST_USER_A_PASSWORD,
-SOWIA_TEST_USER_B_EMAIL and SOWIA_TEST_USER_B_PASSWORD.
-Never use production accounts or credentials.
+Uses the Supabase HTTPS Auth and REST endpoints directly. This avoids importing
+the SDK package, whose supabase_auth dependency name collides with this
+repository's local supabase_auth.py module.
 """
 import os
 import uuid
+from urllib.parse import quote
 
 import pytest
-from supabase import create_client
+import requests
 
 
 _REQUIRED = (
@@ -27,89 +27,120 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _signed_in_client(url, anon_key, email, password):
-    client = create_client(url, anon_key)
-    response = client.auth.sign_in_with_password(
-        {"email": email, "password": password}
-    )
-    user = getattr(response, "user", None)
-    assert user is not None and user.id, "Supabase test account did not authenticate"
-    return client, user.id
+class SupabaseTestSession:
+    def __init__(self, url, anon_key, email, password):
+        self.url = url.rstrip("/")
+        self.anon_key = anon_key
+        self.http = requests.Session()
+        response = self.http.post(
+            f"{self.url}/auth/v1/token",
+            params={"grant_type": "password"},
+            headers={"apikey": anon_key, "Content-Type": "application/json"},
+            json={"email": email, "password": password},
+            timeout=20,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        self.user_id = payload["user"]["id"]
+        self.access_token = payload["access_token"]
+        self.headers = {
+            "apikey": anon_key,
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json",
+        }
+
+    def table(self, method, params=None, payload=None, prefer=None):
+        headers = dict(self.headers)
+        if prefer:
+            headers["Prefer"] = prefer
+        response = self.http.request(
+            method,
+            f"{self.url}/rest/v1/sowia_documents",
+            headers=headers,
+            params=params,
+            json=payload,
+            timeout=20,
+        )
+        response.raise_for_status()
+        return response.json() if response.content else []
 
 
 def test_documents_are_isolated_between_two_authenticated_users():
     url = os.environ["SOWIA_TEST_SUPABASE_URL"]
     anon_key = os.environ["SOWIA_TEST_SUPABASE_ANON_KEY"]
-    client_a, user_a_id = _signed_in_client(
+    account_a = SupabaseTestSession(
         url, anon_key,
         os.environ["SOWIA_TEST_USER_A_EMAIL"],
         os.environ["SOWIA_TEST_USER_A_PASSWORD"],
     )
-    client_b, user_b_id = _signed_in_client(
+    account_b = SupabaseTestSession(
         url, anon_key,
         os.environ["SOWIA_TEST_USER_B_EMAIL"],
         os.environ["SOWIA_TEST_USER_B_PASSWORD"],
     )
-    assert user_a_id != user_b_id, "The two test accounts must be different"
+    assert account_a.user_id != account_b.user_id
 
     marker = "sowia-rls-test-" + uuid.uuid4().hex
     document_id = None
     try:
-        inserted = client_a.table("sowia_documents").insert({
-            "user_id": user_a_id,
-            "title": marker,
-            "filename": marker + ".txt",
-            "extracted_text": "Private RLS isolation test",
-            "text_length": len("Private RLS isolation test"),
-            "category": "Autres",
-            "folder": "Général",
-        }).execute()
-        assert inserted.data, "Account A could not create its isolated test row"
-        document_id = inserted.data[0]["id"]
-
-        visible_to_a = (
-            client_a.table("sowia_documents")
-            .select("id, title")
-            .eq("id", document_id)
-            .execute()
-            .data
+        inserted = account_a.table(
+            "POST",
+            params={"select": "id"},
+            payload={
+                "user_id": account_a.user_id,
+                "title": marker,
+                "filename": marker + ".txt",
+                "extracted_text": "Private RLS isolation test",
+                "text_length": len("Private RLS isolation test"),
+                "category": "Autres",
+                "folder": "Général",
+            },
+            prefer="return=representation",
         )
-        visible_to_b = (
-            client_b.table("sowia_documents")
-            .select("id, title")
-            .eq("id", document_id)
-            .execute()
-            .data
+        assert inserted, "Account A could not create its isolated test row"
+        document_id = inserted[0]["id"]
+        row_filter = f"eq.{document_id}"
+
+        visible_to_a = account_a.table(
+            "GET", params={"id": row_filter, "select": "id,title"}
+        )
+        visible_to_b = account_b.table(
+            "GET", params={"id": row_filter, "select": "id,title"}
         )
         assert any(row["id"] == document_id for row in visible_to_a)
         assert not any(row["id"] == document_id for row in visible_to_b)
 
-        # A user must not be able to create a row owned by another account.
-        with pytest.raises(Exception):
-            client_b.table("sowia_documents").insert({
-                "user_id": user_a_id,
+        # B cannot create a row pretending to belong to A.
+        response = account_b.http.post(
+            f"{url.rstrip('/')}/rest/v1/sowia_documents",
+            headers={**account_b.headers, "Prefer": "return=representation"},
+            json={
+                "user_id": account_a.user_id,
                 "title": marker + "-forged",
                 "filename": marker + "-forged.txt",
                 "extracted_text": "Must be rejected by RLS",
                 "text_length": len("Must be rejected by RLS"),
                 "category": "Autres",
                 "folder": "Général",
-            }).execute()
+            },
+            timeout=20,
+        )
+        assert response.status_code in (401, 403), (
+            "RLS should reject an insert owned by another user; "
+            f"received HTTP {response.status_code}"
+        )
 
-        # Even if B knows the row id, RLS must prevent mutation or deletion.
-        client_b.table("sowia_documents").update(
-            {"title": marker + "-tampered"}
-        ).eq("id", document_id).execute()
-        client_b.table("sowia_documents").delete().eq(
-            "id", document_id
-        ).execute()
+        # B's update/delete requests must not affect A's row.
+        account_b.table(
+            "PATCH",
+            params={"id": row_filter},
+            payload={"title": marker + "-tampered"},
+            prefer="return=representation",
+        )
+        account_b.table("DELETE", params={"id": row_filter})
 
-        still_owned_by_a = (
-            client_a.table("sowia_documents")
-            .select("id, title")
-            .eq("id", document_id)
-            .execute()
-            .data
+        still_owned_by_a = account_a.table(
+            "GET", params={"id": row_filter, "select": "id,title"}
         )
         assert any(
             row["id"] == document_id and row["title"] == marker
@@ -117,6 +148,10 @@ def test_documents_are_isolated_between_two_authenticated_users():
         )
     finally:
         if document_id is not None:
-            client_a.table("sowia_documents").delete().eq(
-                "id", document_id
-            ).eq("user_id", user_a_id).execute()
+            account_a.table(
+                "DELETE",
+                params={
+                    "id": f"eq.{document_id}",
+                    "user_id": f"eq.{account_a.user_id}",
+                },
+            )
