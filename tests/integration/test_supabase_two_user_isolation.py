@@ -166,7 +166,7 @@ def test_documents_are_isolated_between_two_authenticated_users():
 
 
 @pytest.mark.parametrize(
-    ("table_name", "payload_factory", "tamper_payload_factory", "value_column", "expected_value", "select_columns"),
+    ("table_name", "payload_factory", "tamper_payload_factory", "value_column", "expected_value_factory", "select_columns"),
     [
         (
             "sowia_memory_items",
@@ -176,7 +176,7 @@ def test_documents_are_isolated_between_two_authenticated_users():
             },
             lambda marker: {"content": marker + "-tampered"},
             "content",
-            None,
+            lambda marker: marker,
             "id,content",
         ),
         (
@@ -189,7 +189,7 @@ def test_documents_are_isolated_between_two_authenticated_users():
             },
             lambda marker: {"content": "Tampered conversation content"},
             "content",
-            "Private conversation RLS test",
+            lambda marker: "Private conversation RLS test",
             "id,session_id,content",
         ),
         (
@@ -200,16 +200,16 @@ def test_documents_are_isolated_between_two_authenticated_users():
             },
             lambda marker: {"report": {"integration_test": marker + "-tampered"}},
             "report",
-            None,
+            lambda marker: {"integration_test": marker},
             "id,report",
         ),
     ],
 )
 def test_private_data_tables_are_isolated_between_two_users(
     table_name, payload_factory, tamper_payload_factory,
-    value_column, expected_value, select_columns
+    value_column, expected_value_factory, select_columns
 ):
-    """Check SELECT/INSERT/DELETE RLS on memory, messages and comparison history."""
+    """Check SELECT/INSERT/UPDATE/DELETE RLS on private user data tables."""
     url = os.environ["SOWIA_TEST_SUPABASE_URL"]
     anon_key = os.environ["SOWIA_TEST_SUPABASE_ANON_KEY"]
     account_a = SupabaseTestSession(
@@ -278,9 +278,7 @@ def test_private_data_tables_are_isolated_between_two_users(
         assert any(
             row["id"] == row_id
             and (
-                row.get(value_column) == expected_value
-                if expected_value is not None
-                else row.get(value_column) == {"integration_test": marker}
+                row.get(value_column) == expected_value_factory(marker)
             )
             for row in still_visible_to_a
         ), f"Account B changed A's private row in {table_name}"
