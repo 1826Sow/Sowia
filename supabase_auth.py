@@ -4,6 +4,8 @@ Create and retain one client per Streamlit browser session. Never cache a
 user-authenticated client globally: it contains authentication state and PKCE
 verification material.
 """
+from urllib.parse import urlsplit
+
 from settings import get_setting
 
 
@@ -20,21 +22,36 @@ def create_user_client():
             "Supabase n'est pas configuré. Renseignez SUPABASE_URL et "
             "SUPABASE_ANON_KEY dans les secrets de l'hébergeur."
         )
-    if not url.startswith("https://"):
-        raise RuntimeError("SUPABASE_URL doit utiliser HTTPS.")
+    parsed_url = urlsplit(url)
+    if parsed_url.scheme.lower() != "https" or not parsed_url.hostname:
+        raise RuntimeError("SUPABASE_URL doit être une adresse HTTPS valide.")
     from supabase import create_client
     from supabase.client import ClientOptions
     return create_client(url, key, options=ClientOptions(flow_type="pkce"))
 
 
 def github_authorization_url(client, redirect_to):
-    """Start GitHub OAuth via Supabase; redirect_to must be allow-listed."""
-    if not redirect_to or not redirect_to.startswith("https://"):
-        raise ValueError("L'adresse de retour publique HTTPS n'est pas configurée.")
+    """Start GitHub OAuth; Supabase must allow-list this HTTPS redirect URL."""
+    redirect = str(redirect_to or "").strip()
+    try:
+        parsed_redirect = urlsplit(redirect)
+        valid_redirect = (
+            parsed_redirect.scheme.lower() == "https"
+            and bool(parsed_redirect.hostname)
+            and parsed_redirect.username is None
+            and parsed_redirect.password is None
+            and not parsed_redirect.fragment
+        )
+    except ValueError:
+        valid_redirect = False
+    if not valid_redirect:
+        raise ValueError(
+            "L'adresse de retour doit être une URL HTTPS valide, sans identifiants ni fragment."
+        )
     response = client.auth.sign_in_with_oauth(
         {
             "provider": "github",
-            "options": {"redirect_to": redirect_to},
+            "options": {"redirect_to": redirect},
         }
     )
     # supabase-py returns an OAuthResponse whose URL is exposed as .url.

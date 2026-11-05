@@ -84,9 +84,32 @@ def test_create_user_client_rejects_non_https_url(monkeypatch, url):
         supabase_auth.create_user_client()
 
 
-def test_github_authorization_requires_https_redirect():
-    with pytest.raises(ValueError, match="HTTPS"):
-        supabase_auth.github_authorization_url(object(), "http://localhost/callback")
+@pytest.mark.parametrize(
+    "redirect",
+    [
+        "",
+        "http://localhost/callback",
+        "https://",
+        "https:///callback",
+        "https://user:password@example.com/callback",
+        "https://example.com/callback#fragment",
+    ],
+)
+def test_github_authorization_rejects_invalid_redirect_urls(redirect):
+    with pytest.raises(ValueError, match="URL HTTPS valide"):
+        supabase_auth.github_authorization_url(object(), redirect)
+
+
+def test_github_authorization_trims_valid_redirect_url():
+    class FakeAuth:
+        def sign_in_with_oauth(self, options):
+            assert options["options"]["redirect_to"] == "https://sowia.example/callback"
+            return SimpleNamespace(url="https://github.com/login/oauth/authorize")
+
+    client = SimpleNamespace(auth=FakeAuth())
+    assert supabase_auth.github_authorization_url(
+        client, "  https://sowia.example/callback  "
+    ) == "https://github.com/login/oauth/authorize"
 
 
 def test_github_authorization_returns_provider_url():
