@@ -77,7 +77,12 @@ def extract_pdf_pages(uploaded_file, max_chars=100000):
     pages = []
     total = 0
     for number, page in enumerate(reader.pages, start=1):
-        page_text = (page.extract_text() or "").strip()
+        try:
+            page_text = (page.extract_text() or "").strip()
+        except Exception as exc:
+            raise ValueError(
+                f"Impossible d'extraire le texte de la page {number} : PDF endommagé."
+            ) from exc
         if not page_text:
             continue
         remaining = max_chars - total
