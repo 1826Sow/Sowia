@@ -420,3 +420,42 @@ def test_cloud_trash_operations_reject_missing_user_before_query(operation):
     assert client.query.filters == []
     assert client.query.deleted is False
     assert client.query.updated is None
+
+
+class _NoTableClient:
+    def __init__(self):
+        self.calls = 0
+
+    def table(self, _name):
+        self.calls += 1
+        raise AssertionError("La base ne doit pas être interrogée sans utilisateur.")
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda client, user: document_library.save_cloud(client, user, "Titre", "f.pdf", "texte"),
+        lambda client, user: document_library.list_cloud(client, user),
+        lambda client, user: document_library.get_cloud(client, user, 1),
+        lambda client, user: document_library.update_cloud_folder(client, user, 1, "Archives"),
+        lambda client, user: document_library.update_cloud_category(client, user, 1, "Finances"),
+        lambda client, user: document_library.trash_cloud(client, user, 1),
+        lambda client, user: document_library.delete_cloud(client, user, 1),
+        lambda client, user: document_library.list_trashed_cloud(client, user),
+        lambda client, user: document_library.restore_cloud(client, user, 1),
+        lambda client, user: document_library.permanently_delete_cloud(client, user, 1),
+        lambda client, user: document_library.search_cloud(client, user, "texte"),
+    ],
+    ids=[
+        "save", "list", "get", "update-folder", "update-category", "trash",
+        "delete", "list-trash", "restore", "permanent-delete", "search",
+    ],
+)
+def test_every_cloud_document_operation_checks_user_before_client_access(operation):
+    client = _NoTableClient()
+    user = type("User", (), {"id": None})()
+
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        operation(client, user)
+
+    assert client.calls == 0
