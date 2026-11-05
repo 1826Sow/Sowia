@@ -25,6 +25,11 @@ def save_local(report):
     payload = _serialize(report)
     created_at = str(report.get("created_at") or datetime.now(timezone.utc).isoformat())
     with _connect() as conn:
+        conn.execute("""CREATE TABLE IF NOT EXISTS comparison_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            payload TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )""")
         cursor = conn.execute(
             "INSERT INTO comparison_history(payload, created_at) VALUES(?, ?)",
             (payload, created_at),
