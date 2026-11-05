@@ -62,6 +62,8 @@ def _local_connect():
         conn.execute("ALTER TABLE documents ADD COLUMN category TEXT NOT NULL DEFAULT 'Autres'")
     if "folder" not in columns:
         conn.execute("ALTER TABLE documents ADD COLUMN folder TEXT NOT NULL DEFAULT 'Général'")
+    if "deleted_at" not in columns:
+        conn.execute("ALTER TABLE documents ADD COLUMN deleted_at TEXT")
     return conn
 
 
@@ -80,7 +82,7 @@ def save_local(title, filename, extracted_text, category="Autres", folder=DEFAUL
 def list_local(limit=100):
     with _local_connect() as conn:
         rows = conn.execute(
-            "SELECT id, title, filename, length(extracted_text), created_at, category, folder FROM documents ORDER BY id DESC LIMIT ?",
+            "SELECT id, title, filename, length(extracted_text), created_at, category, folder FROM documents WHERE deleted_at IS NULL ORDER BY id DESC LIMIT ?",
             (min(max(int(limit), 1), 100),),
         ).fetchall()
     return [{"id": r[0], "title": r[1], "filename": r[2], "text_length": r[3], "created_at": r[4], "category": r[5], "folder": r[6]} for r in rows]
@@ -106,12 +108,57 @@ def get_local(document_id):
     document_id = _document_id(document_id)
     with _local_connect() as conn:
         row = conn.execute(
-            "SELECT id, title, filename, extracted_text, created_at, category, folder FROM documents WHERE id=?",
+            "SELECT id, title, filename, extracted_text, created_at, category, folder FROM documents WHERE id=? AND deleted_at IS NULL",
             (document_id,),
         ).fetchone()
     if not row:
         return None
     return {"id": row[0], "title": row[1], "filename": row[2], "extracted_text": row[3], "created_at": row[4], "category": row[5], "folder": row[6]}
+
+
+def trash_local(document_id):
+    """Move an active document to the recoverable trash."""
+    document_id = _document_id(document_id)
+    with _local_connect() as conn:
+        cursor = conn.execute(
+            "UPDATE documents SET deleted_at=? WHERE id=? AND deleted_at IS NULL",
+            (datetime.now(timezone.utc).isoformat(), document_id),
+        )
+        return cursor.rowcount > 0
+
+
+def list_trashed_local(limit=100):
+    with _local_connect() as conn:
+        rows = conn.execute(
+            """SELECT id, title, filename, length(extracted_text), created_at, category, folder, deleted_at
+               FROM documents WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT ?""",
+            (min(max(int(limit), 1), 100),),
+        ).fetchall()
+    return [
+        {"id": r[0], "title": r[1], "filename": r[2], "text_length": r[3],
+         "created_at": r[4], "category": r[5], "folder": r[6], "deleted_at": r[7]}
+        for r in rows
+    ]
+
+
+def restore_local(document_id):
+    document_id = _document_id(document_id)
+    with _local_connect() as conn:
+        cursor = conn.execute(
+            "UPDATE documents SET deleted_at=NULL WHERE id=? AND deleted_at IS NOT NULL",
+            (document_id,),
+        )
+        return cursor.rowcount > 0
+
+
+def permanently_delete_local(document_id):
+    document_id = _document_id(document_id)
+    with _local_connect() as conn:
+        cursor = conn.execute(
+            "DELETE FROM documents WHERE id=? AND deleted_at IS NOT NULL",
+            (document_id,),
+        )
+        return cursor.rowcount > 0
 
 
 def delete_local(document_id):
@@ -218,6 +265,36 @@ def update_cloud_category(client, user, document_id, category):
         .eq("user_id", _user_id(user)).eq("id", document_id).execute())
 
 
+def trash_cloud(client, user, document_id):
+    document_id = _document_id(document_id)
+    return (client.table("sowia_documents").update({
+        "deleted_at": datetime.now(timezone.utc).isoformat()
+    }).eq("user_id", _user_id(user)).eq("id", document_id)
+        .is_("deleted_at", "null").execute())
+
+
+def list_trashed_cloud(client, user, limit=100):
+    return (client.table("sowia_documents")
+        .select("id, title, filename, text_length, created_at, category, folder, deleted_at")
+        .eq("user_id", _user_id(user)).not_.is_("deleted_at", "null")
+        .order("deleted_at", desc=True)
+        .limit(min(max(int(limit), 1), 100)).execute().data)
+
+
+def restore_cloud(client, user, document_id):
+    document_id = _document_id(document_id)
+    return (client.table("sowia_documents").update({"deleted_at": None})
+        .eq("user_id", _user_id(user)).eq("id", document_id)
+        .not_.is_("deleted_at", "null").execute())
+
+
+def permanently_delete_cloud(client, user, document_id):
+    document_id = _document_id(document_id)
+    return (client.table("sowia_documents").delete()
+        .eq("user_id", _user_id(user)).eq("id", document_id)
+        .not_.is_("deleted_at", "null").execute())
+
+
 def delete_cloud(client, user, document_id):
     document_id = _document_id(document_id)
     return (client.table("sowia_documents").delete()
@@ -304,7 +381,7 @@ def search_local(query, limit=30):
     with _local_connect() as conn:
         rows = conn.execute(
             """SELECT id, title, filename, extracted_text, created_at
-               FROM documents ORDER BY id DESC LIMIT 100"""
+               FROM documents WHERE deleted_at IS NULL ORDER BY id DESC LIMIT 100"""
         ).fetchall()
     results = []
     for row in rows:
@@ -329,6 +406,7 @@ def search_cloud(client, user, query, limit=30):
         client.table("sowia_documents")
         .select("id, title, filename, extracted_text, created_at")
         .eq("user_id", _user_id(user))
+        .is_("deleted_at", "null")
         .order("created_at", desc=True)
         .limit(100)
         .execute()
