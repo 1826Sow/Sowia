@@ -22,6 +22,7 @@ from supabase_auth import (
     authenticated_user,
     complete_github_login,
     configuration_ready,
+    clear_private_session_state,
     create_user_client,
     github_authorization_url,
     sign_out,
@@ -154,10 +155,15 @@ with st.sidebar:
         st.success("Espace personnel sécurisé")
         st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
         if st.button("Se déconnecter", use_container_width=True):
-            sign_out(supabase_client)
-            st.session_state.pop("sowia_supabase_client", None)
-            st.session_state.session_id = str(uuid.uuid4())
-            st.rerun()
+            try:
+                sign_out(supabase_client)
+            finally:
+                # Purge all account- and document-specific state before another
+                # account can use this browser session. Keep only navigation.
+                clear_private_session_state(st.session_state)
+                st.session_state["page_nav"] = "Accueil"
+                st.session_state["session_id"] = str(uuid.uuid4())
+                st.rerun()
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
     page = st.radio(
