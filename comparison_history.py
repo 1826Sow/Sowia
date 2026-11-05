@@ -73,7 +73,6 @@ def save_cloud(client, user, report):
     return client.table("sowia_comparison_history").insert({
         "user_id": _user_id(user),
         "report": json.loads(payload),
-        "created_at": str(report.get("created_at") or datetime.now(timezone.utc).isoformat()),
     }).execute().data
 
 
