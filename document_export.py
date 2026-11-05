@@ -1,7 +1,11 @@
-"""Build ZIP archives from already user-scoped SOW IA documents."""
+"""Bounded, injection-safe ZIP exports for the private document library."""
 from io import BytesIO
 import re
 import zipfile
+
+MAX_EXPORT_DOCUMENTS = 20
+MAX_DOCUMENT_CHARS = 100_000
+MAX_TOTAL_CHARS = 2_000_000
 
 
 def _archive_name(filename):
@@ -11,19 +15,50 @@ def _archive_name(filename):
     return stem or "document"
 
 
-def build_documents_zip(documents, max_documents=20):
-    """Return a ZIP containing TXT exports; callers must pass user-scoped records."""
+def _metadata_value(value, fallback, limit):
+    """Keep metadata on one line and remove non-printing control characters."""
+    cleaned = " ".join(str(value or fallback).split())
+    cleaned = "".join(char for char in cleaned if char.isprintable())
+    return cleaned[:limit] or fallback
+
+
+def build_documents_zip(
+    documents,
+    max_documents=MAX_EXPORT_DOCUMENTS,
+    max_total_chars=MAX_TOTAL_CHARS,
+):
+    """Return a bounded ZIP of TXT exports; records must already be user-scoped."""
+    if isinstance(max_documents, bool) or not isinstance(max_documents, int):
+        raise ValueError("Limite de documents invalide.")
+    if max_documents < 1 or max_documents > MAX_EXPORT_DOCUMENTS:
+        raise ValueError("La limite d'export doit être comprise entre 1 et 20.")
+    if isinstance(max_total_chars, bool) or not isinstance(max_total_chars, int):
+        raise ValueError("Limite de taille invalide.")
+    if max_total_chars < 1 or max_total_chars > MAX_TOTAL_CHARS:
+        raise ValueError("La limite totale d'export est invalide.")
+
     items = list(documents or [])
     if not items:
         raise ValueError("Aucun document à exporter.")
     if len(items) > max_documents:
         raise ValueError("Trop de documents sélectionnés pour une seule archive.")
+
     output = BytesIO()
     used_names = set()
+    total_chars = 0
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for index, item in enumerate(items, start=1):
-            if not isinstance(item, dict) or not str(item.get("extracted_text") or "").strip():
+        for item in items:
+            if not isinstance(item, dict):
                 continue
+            text = str(item.get("extracted_text") or "").strip()
+            if not text:
+                continue
+            if len(text) > MAX_DOCUMENT_CHARS:
+                raise ValueError("Un document dépasse la limite de 100 000 caractères.")
+            total_chars += len(text)
+            if total_chars > max_total_chars:
+                raise ValueError("L'archive dépasse la taille totale autorisée.")
+
             base = _archive_name(item.get("filename") or item.get("title"))
             candidate = f"{base}.txt"
             suffix = 2
@@ -32,14 +67,15 @@ def build_documents_zip(documents, max_documents=20):
                 suffix += 1
             used_names.add(candidate.casefold())
             metadata = [
-                f"Titre : {str(item.get('title') or 'Sans titre')[:160]}",
-                f"Catégorie : {str(item.get('category') or 'Autres')[:60]}",
-                f"Dossier : {str(item.get('folder') or 'Général')[:60]}",
-                f"Date : {str(item.get('created_at') or 'Non renseignée')[:80]}",
+                f"Titre : {_metadata_value(item.get('title'), 'Sans titre', 160)}",
+                f"Catégorie : {_metadata_value(item.get('category'), 'Autres', 60)}",
+                f"Dossier : {_metadata_value(item.get('folder'), 'Général', 60)}",
+                f"Date : {_metadata_value(item.get('created_at'), 'Non renseignée', 80)}",
                 "",
-                str(item["extracted_text"]),
+                text,
             ]
             archive.writestr(candidate, "\n".join(metadata))
+
     if not used_names:
         raise ValueError("Aucun texte exploitable à exporter.")
     return output.getvalue()
