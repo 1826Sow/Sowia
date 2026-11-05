@@ -71,6 +71,10 @@ class _FakeQuery:
         self.filters.append((field, "is", value))
         return self
 
+    def not_is(self, field, value):
+        self.filters.append((field, "not_is", value))
+        return self
+
     def order(self, *_args, **_kwargs):
         return self
 
@@ -120,6 +124,8 @@ class _CrudQuery:
         self.filters = []
         self.inserted = None
         self.deleted = False
+        self.updated = None
+        self.not_ = self
 
     def insert(self, payload):
         self.inserted = payload
@@ -138,6 +144,10 @@ class _CrudQuery:
 
     def is_(self, field, value):
         self.filters.append((field, "is", value))
+        return self
+
+    def not_is(self, field, value):
+        self.filters.append((field, "not_is", value))
         return self
 
     def order(self, *_args, **_kwargs):
@@ -346,3 +356,60 @@ def test_cloud_mutations_reject_missing_user_before_query(operation):
         operation(client, user)
 
     assert client.query.filters == []
+
+
+
+def test_cloud_trash_listing_is_scoped_and_only_returns_deleted_rows():
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient([{"id": 9, "title": "Supprimé"}])
+
+    result = document_library.list_trashed_cloud(client, user)
+
+    assert result[0]["id"] == 9
+    assert ("user_id", "owner-42") in client.query.filters
+    assert ("deleted_at", "not_is", "null") in client.query.filters
+
+
+def test_cloud_restore_only_clears_deleted_at_for_the_owner():
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient()
+
+    document_library.restore_cloud(client, user, 9)
+
+    assert client.query.updated == {"deleted_at": None}
+    assert ("user_id", "owner-42") in client.query.filters
+    assert ("id", 9) in client.query.filters
+    assert ("deleted_at", "not_is", "null") in client.query.filters
+
+
+def test_cloud_permanent_delete_only_deletes_trashed_documents_for_the_owner():
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient()
+
+    document_library.permanently_delete_cloud(client, user, 9)
+
+    assert client.query.deleted is True
+    assert ("user_id", "owner-42") in client.query.filters
+    assert ("id", 9) in client.query.filters
+    assert ("deleted_at", "not_is", "null") in client.query.filters
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda client, user: document_library.list_trashed_cloud(client, user),
+        lambda client, user: document_library.restore_cloud(client, user, 9),
+        lambda client, user: document_library.permanently_delete_cloud(client, user, 9),
+    ],
+    ids=["list-trash", "restore", "permanent-delete"],
+)
+def test_cloud_trash_operations_reject_missing_user_before_query(operation):
+    user = type("User", (), {"id": None})()
+    client = _CrudClient()
+
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        operation(client, user)
+
+    assert client.query.filters == []
+    assert client.query.deleted is False
+    assert client.query.updated is None
