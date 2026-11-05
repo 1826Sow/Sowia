@@ -86,12 +86,12 @@ def select_relevant_memories(messages, memories, max_items=8):
     user_text = " ".join(
         str(item.get("content", ""))
         for item in (messages or [])[-6:]
-        if item.get("role") == "user"
+        if isinstance(item, dict) and item.get("role") == "user"
     )
     query_terms = normalize(user_text) - stop_words
     candidates = []
     for index, item in enumerate(memories or []):
-        content = str(item.get("content", "")).strip()
+        content = str(item.get("content", "") if isinstance(item, dict) else item).strip()
         if not content:
             continue
         terms = normalize(content) - stop_words
