@@ -546,7 +546,7 @@ elif page == "Mes documents":
             st.caption("Vérifiez votre connexion et réessayez. Aucun détail technique n’est affiché.")
 
     st.divider()
-    filter_text = st.text_input("Rechercher dans les titres et noms de fichiers", key="document_filter").strip().lower()
+    filter_text = st.text_input("Rechercher dans les titres et noms de fichiers", key="document_filter", placeholder="Recherche sans tenir compte des accents").strip()
     try:
         saved_documents = (
             document_library.list_cloud(supabase_client, current_user)
@@ -554,8 +554,19 @@ elif page == "Mes documents":
         )
         saved_documents = [
             item for item in saved_documents
-            if filter_text in (item.get("title", "") + " " + item.get("filename", "")).lower()
+            if document_library.matches_document_metadata(item, filter_text)
         ]
+        sort_choice = st.selectbox(
+            "Trier les documents",
+            ["Plus récents", "Plus anciens", "Titre A à Z", "Titre Z à A"],
+            key="document_sort_order",
+        )
+        if sort_choice == "Plus anciens":
+            saved_documents.sort(key=lambda item: item.get("created_at", ""))
+        elif sort_choice == "Titre A à Z":
+            saved_documents.sort(key=lambda item: document_library._normalize_search_text(item.get("title", ""))[0])
+        elif sort_choice == "Titre Z à A":
+            saved_documents.sort(key=lambda item: document_library._normalize_search_text(item.get("title", ""))[0], reverse=True)
         st.caption(f"{len(saved_documents)} document(s) trouvé(s).")
         if not saved_documents:
             st.info("Votre bibliothèque est vide. Ajoutez un PDF pour commencer.")
