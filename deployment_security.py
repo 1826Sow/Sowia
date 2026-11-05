@@ -3,8 +3,10 @@
 _TRUE_VALUES = {"1", "true", "yes"}
 
 
-def deployment_auth_required(value):
-    """Interpret the opt-in setting without treating arbitrary text as true."""
+def deployment_auth_required(value, public_url=""):
+    """Require auth for public deployments; allow opt-out only for local development."""
+    if str(public_url or "").strip():
+        return True
     return str(value).strip().lower() in _TRUE_VALUES
 
 

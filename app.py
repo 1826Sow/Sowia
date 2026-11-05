@@ -57,8 +57,13 @@ if "pdf_pages" not in st.session_state:
 
 from deployment_security import deployment_auth_required, validate_deployment_security
 
-# A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
-auth_required = deployment_auth_required(get_setting("SOWIA_REQUIRE_AUTH", "false"))
+# Authentication is on by default; a configured public URL always forces it.
+# Set SOWIA_REQUIRE_AUTH=false only for local development without a public URL.
+public_url = str(get_setting("SOWIA_PUBLIC_URL", "")).strip()
+auth_required = deployment_auth_required(
+    get_setting("SOWIA_REQUIRE_AUTH", "true"),
+    public_url,
+)
 supabase_enabled = configuration_ready()
 try:
     validate_deployment_security(auth_required, supabase_enabled)
