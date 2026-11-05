@@ -28,6 +28,14 @@ def _validate(title, filename, extracted_text):
 
 
 CATEGORIES = ("Finances", "Administratif", "Travail", "Études", "Santé", "Autres")
+DEFAULT_FOLDER = "Général"
+
+
+def _clean_folder(folder):
+    value = str(folder or DEFAULT_FOLDER).strip()
+    if not value or len(value) > 60 or any(ord(char) < 32 for char in value):
+        raise ValueError("Le nom du dossier doit contenir entre 1 et 60 caractères.")
+    return value
 
 
 def _clean_category(category):
@@ -46,7 +54,8 @@ def _local_connect():
         filename TEXT NOT NULL,
         extracted_text TEXT NOT NULL,
         created_at TEXT NOT NULL,
-        category TEXT NOT NULL DEFAULT 'Autres'
+        category TEXT NOT NULL DEFAULT 'Autres',
+        folder TEXT NOT NULL DEFAULT 'Général'
     )""")
     columns = {row[1] for row in conn.execute("PRAGMA table_info(documents)")}
     if "category" not in columns:
