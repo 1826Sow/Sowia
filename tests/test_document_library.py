@@ -226,3 +226,33 @@ def test_cloud_document_reads_and_deletes_reject_missing_user(operation):
 
     # No ownership filter or database query may be executed for an anonymous user.
     assert client.query.filters == []
+
+
+@pytest.mark.parametrize("invalid_id", [None, "", "abc", "1.5", 0, -1, 1.5, True])
+def test_document_id_rejects_invalid_values_before_database_access(invalid_id):
+    with pytest.raises(ValueError, match="Identifiant de document invalide"):
+        document_library._document_id(invalid_id)
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda client, user, value: document_library.get_cloud(client, user, value),
+        lambda client, user, value: document_library.delete_cloud(client, user, value),
+    ],
+    ids=["get", "delete"],
+)
+def test_cloud_document_operations_reject_invalid_ids_before_query(operation):
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient([{"id": 9, "title": "Document privé"}])
+
+    with pytest.raises(ValueError, match="Identifiant de document invalide"):
+        operation(client, user, "not-an-id")
+
+    assert client.query.filters == []
+    assert client.query.deleted is False
+
+
+def test_document_id_accepts_positive_integer_and_numeric_string():
+    assert document_library._document_id(12) == 12
+    assert document_library._document_id("12") == 12
