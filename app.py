@@ -429,6 +429,32 @@ elif page == "Mes documents":
             st.caption(str(exc))
 
     st.divider()
+    st.markdown("#### 🔎 Recherche dans le contenu de tous mes PDF")
+    st.caption("Recherche locale dans le texte extrait, sans utiliser de crédits IA.")
+    content_query = st.text_input(
+        "Mot ou expression à retrouver dans les documents",
+        max_chars=120,
+        key="document_content_query",
+    ).strip()
+    if content_query:
+        try:
+            matches = (
+                document_library.search_cloud(supabase_client, current_user, content_query)
+                if cloud_mode else document_library.search_local(content_query)
+            )
+            if matches:
+                st.success(f"{len(matches)} document(s) contiennent cette expression.")
+                for match in matches:
+                    st.markdown(f"**{match['title']}** — {match['filename']}")
+                    st.write(match["snippet"])
+                    st.caption(f"Document enregistré le : {match.get('created_at', 'date inconnue')}")
+            else:
+                st.info("Aucune occurrence trouvée dans le texte des documents enregistrés.")
+        except Exception as exc:
+            st.error("La recherche dans les documents n'a pas pu aboutir.")
+            st.caption(str(exc))
+
+    st.divider()
     filter_text = st.text_input("Rechercher dans les titres et noms de fichiers", key="document_filter").strip().lower()
     try:
         saved_documents = (
