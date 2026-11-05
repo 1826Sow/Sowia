@@ -32,4 +32,6 @@ Dans Supabase, vérifier que :
 - Les politiques de lecture, insertion, modification et suppression restent limitées à `auth.uid() = user_id`.
 - `sowia_comparison_history` existe avec RLS activé si l'historique persistant est utilisé.
 
+Pour automatiser ce contrôle sans modifier la base, ouvrir `verify_security.sql` dans **SQL Editor** après les migrations. Ce script est strictement en lecture seule : il retourne une ligne par vérification, avec le statut `OK`, `À CORRIGER` ou `TABLE ABSENTE`. Les vérifications de l'historique de comparaison sont nécessaires si cette fonction est activée.
+
 **Important :** ajouter `deleted_at` au schéma ne signifie pas que les migrations ont été exécutées sur le projet Supabase réel. L'application cloud ne doit être considérée comme prête pour la corbeille qu'après exécution et vérification de ces scripts sur le bon projet. Ne jamais publier une clé `service_role` dans Streamlit, le navigateur ou le dépôt GitHub.
