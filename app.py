@@ -154,10 +154,17 @@ with st.sidebar:
         st.success("Espace personnel sécurisé")
         st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
         if st.button("Se déconnecter", use_container_width=True):
-            sign_out(supabase_client)
-            st.session_state.pop("sowia_supabase_client", None)
-            st.session_state.session_id = str(uuid.uuid4())
-            st.rerun()
+            try:
+                sign_out(supabase_client)
+            finally:
+                # Purge all account- and document-specific state before another
+                # account can use this browser session. Keep only navigation.
+                for state_key in list(st.session_state.keys()):
+                    if state_key != "page_nav":
+                        st.session_state.pop(state_key, None)
+                st.session_state["page_nav"] = "Accueil"
+                st.session_state["session_id"] = str(uuid.uuid4())
+                st.rerun()
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
     page = st.radio(
