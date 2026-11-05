@@ -47,3 +47,64 @@ def test_search_match_keeps_correct_offset_after_accented_characters():
     assert result is not None
     assert result["page"] == 2
     assert "résumé final" in result["snippet"]
+
+
+
+class _FakeResponse:
+    def __init__(self, data):
+        self.data = data
+
+
+class _FakeQuery:
+    def __init__(self, data):
+        self.data = data
+        self.filters = []
+
+    def select(self, *_args):
+        return self
+
+    def eq(self, field, value):
+        self.filters.append((field, value))
+        return self
+
+    def order(self, *_args, **_kwargs):
+        return self
+
+    def limit(self, *_args):
+        return self
+
+    def execute(self):
+        return _FakeResponse(self.data)
+
+
+class _FakeClient:
+    def __init__(self, data):
+        self.query = _FakeQuery(data)
+
+    def table(self, name):
+        assert name == "sowia_documents"
+        return self.query
+
+
+def test_search_cloud_filters_to_authenticated_user():
+    user = type("User", (), {"id": "user-123"})()
+    client = _FakeClient([{
+        "id": 7,
+        "title": "Document privé",
+        "filename": "prive.pdf",
+        "extracted_text": "--- Page 2 ---\nMot confidentiel",
+        "created_at": "2026-11-05T00:00:00Z",
+    }])
+
+    results = document_library.search_cloud(client, user, "confidentiel")
+
+    assert [item["id"] for item in results] == [7]
+    assert ("user_id", "user-123") in client.query.filters
+
+
+def test_search_cloud_requires_authenticated_user():
+    client = _FakeClient([])
+    user = type("User", (), {"id": None})()
+
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        document_library.search_cloud(client, user, "document")
