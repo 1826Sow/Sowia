@@ -59,6 +59,7 @@ class _FakeQuery:
     def __init__(self, data):
         self.data = data
         self.filters = []
+        self._negated = False
 
     def select(self, *_args):
         return self
