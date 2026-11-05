@@ -1,4 +1,4 @@
-""""PDF extraction and offline analysis helpers."""
+"""PDF extraction and offline analysis helpers."""
 import re
 from collections import Counter
 
