@@ -26,9 +26,21 @@ def add_memory(client, user, content):
     cleaned = (content or "").strip()
     if not cleaned or len(cleaned) > 1000:
         raise ValueError("La note doit contenir entre 1 et 1 000 caractères.")
+    owner_id = _user_id(user)
+    existing = (
+        client.table("sowia_memory_items")
+        .select("id")
+        .eq("user_id", owner_id)
+        .eq("content", cleaned)
+        .limit(1)
+        .execute()
+        .data
+    )
+    if existing:
+        raise ValueError("Cette information est déjà enregistrée dans votre mémoire.")
     return (
         client.table("sowia_memory_items")
-        .insert({"user_id": _user_id(user), "content": cleaned})
+        .insert({"user_id": owner_id, "content": cleaned})
         .execute()
         .data
     )

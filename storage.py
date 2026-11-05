@@ -58,6 +58,12 @@ def add_memory(content):
     if len(cleaned) > 1000:
         raise ValueError("Une note mémoire ne peut pas dépasser 1 000 caractères.")
     with _connect() as conn:
+        existing = conn.execute(
+            "SELECT id FROM memory_items WHERE lower(trim(content)) = lower(trim(?)) LIMIT 1",
+            (cleaned,),
+        ).fetchone()
+        if existing:
+            raise ValueError("Cette information est déjà enregistrée dans votre mémoire.")
         count = conn.execute("SELECT COUNT(*) FROM memory_items").fetchone()[0]
         if count >= 100:
             raise ValueError("La mémoire contient déjà 100 notes. Supprimez-en une avant d'en ajouter.")
