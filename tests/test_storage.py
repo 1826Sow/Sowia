@@ -1,4 +1,8 @@
 """Tests for SOW IA conversation and memory storage."""
+import os
+import stat
+
+import pytest
 import storage
 
 
@@ -38,8 +42,33 @@ def test_memory_survives_between_sessions_and_can_be_deleted(tmp_path, monkeypat
 
 def test_memory_rejects_empty_and_oversized_notes(tmp_path, monkeypatch):
     monkeypatch.setattr(storage, "DB_PATH", tmp_path / "sowia-test.db")
-    import pytest
     with pytest.raises(ValueError, match="vide"):
         storage.add_memory("   ")
     with pytest.raises(ValueError, match="1 000"):
         storage.add_memory("x" * 1001)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file permissions only")
+def test_local_database_and_directory_permissions_are_private(tmp_path, monkeypatch):
+    db_path = tmp_path / "private" / "sowia-test.db"
+    monkeypatch.setattr(storage, "DB_PATH", db_path)
+
+    storage.save_message("session-1", "user", "Donnée privée")
+
+    assert stat.S_IMODE(db_path.parent.stat().st_mode) == 0o700
+    assert stat.S_IMODE(db_path.stat().st_mode) == 0o600
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file permissions only")
+def test_existing_database_permissions_are_restricted_again(tmp_path, monkeypatch):
+    db_path = tmp_path / "private" / "sowia-test.db"
+    db_path.parent.mkdir()
+    db_path.parent.chmod(0o777)
+    db_path.touch()
+    db_path.chmod(0o666)
+    monkeypatch.setattr(storage, "DB_PATH", db_path)
+
+    storage.save_message("session-1", "user", "Donnée privée")
+
+    assert stat.S_IMODE(db_path.parent.stat().st_mode) == 0o700
+    assert stat.S_IMODE(db_path.stat().st_mode) == 0o600

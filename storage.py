@@ -1,4 +1,5 @@
 """Local SQLite storage for conversations and user-managed memory."""
+import os
 import sqlite3
 from pathlib import Path
 from datetime import datetime, timezone
@@ -8,24 +9,32 @@ DB_PATH = Path("data/sowia.db")
 
 def _connect():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if os.name == "posix":
+        DB_PATH.parent.chmod(0o700)
     conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            role TEXT NOT NULL,
-            content TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        )"""
-    )
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS memory_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            content TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        )"""
-    )
-    return conn
+    try:
+        if os.name == "posix":
+            DB_PATH.chmod(0o600)
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )"""
+        )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS memory_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                content TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )"""
+        )
+        return conn
+    except Exception:
+        conn.close()
+        raise
 
 
 def save_message(session_id, role, content):
