@@ -78,3 +78,38 @@ def test_rejects_invalid_document_limits(limit):
 def test_rejects_invalid_total_size_limits(limit):
     with pytest.raises(ValueError):
         build_documents_zip([{"extracted_text": "x"}], max_total_chars=limit)
+
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "../../secret.pdf",
+        "C:\\Users\\Public\\document.pdf",
+        "/etc/passwd",
+        "../..\\private\\notes.pdf",
+        "<script>alert(1)</script>.pdf",
+    ],
+)
+def test_archive_names_never_contain_paths_or_unsafe_characters(filename):
+    docs = [{"filename": filename, "extracted_text": "Texte privé"}]
+    with zipfile.ZipFile(io.BytesIO(build_documents_zip(docs))) as archive:
+        names = archive.namelist()
+
+    assert len(names) == 1
+    assert "/" not in names[0]
+    assert chr(92) not in names[0]
+    assert ".." not in names[0]
+    assert names[0].endswith(".txt")
+
+
+def test_archive_names_are_unique_even_when_case_differs():
+    docs = [
+        {"filename": "Report.pdf", "extracted_text": "Premier"},
+        {"filename": "report.docx", "extracted_text": "Deuxième"},
+    ]
+    with zipfile.ZipFile(io.BytesIO(build_documents_zip(docs))) as archive:
+        names = archive.namelist()
+
+    assert names == ["Report.txt", "report_2.txt"]
+    assert len({name.casefold() for name in names}) == len(names)
