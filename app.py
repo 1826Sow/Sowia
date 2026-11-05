@@ -332,7 +332,14 @@ elif page == "Analyse PDF":
                 f"--- Page {item['page']} ---\n{item['text']}"
                 for item in st.session_state.pdf_pages
             )
-            st.success(f"Extraction terminée : {len(st.session_state.pdf_pages)} page(s) contenant du texte.")
+            if st.session_state.pdf_text.strip():
+                st.success(f"Extraction terminée : {len(st.session_state.pdf_pages)} page(s) contenant du texte.")
+            else:
+                st.warning(
+                    "Aucun texte n'a été détecté dans ce PDF. "
+                    "Il peut s'agir d'un document scanné ou composé d'images. "
+                    "La reconnaissance OCR n'est pas encore disponible dans SOW IA."
+                )
         except Exception:
             st.error("Le PDF n'a pas pu être analysé. Vérifiez qu'il s'agit d'un PDF lisible et non protégé.")
 
