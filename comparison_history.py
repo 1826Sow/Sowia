@@ -74,22 +74,25 @@ def delete_local(report_id):
 
 
 def save_cloud(client, user, report):
+    user_id = _user_id(user)
     payload = _serialize(report)
     return client.table("sowia_comparison_history").insert({
-        "user_id": _user_id(user),
+        "user_id": user_id,
         "report": json.loads(payload),
     }).execute().data
 
 
 def list_cloud(client, user, limit=50):
+    user_id = _user_id(user)
     return (client.table("sowia_comparison_history")
         .select("id, report, created_at")
-        .eq("user_id", _user_id(user))
+        .eq("user_id", user_id)
         .order("created_at", desc=True)
         .limit(min(max(int(limit), 1), 100)).execute().data)
 
 
 def get_cloud(client, user, report_id):
+    user_id = _user_id(user)
     if isinstance(report_id, bool) or not str(report_id).isdecimal() or int(report_id) <= 0:
         raise ValueError("Identifiant de rapport invalide.")
     rows = (client.table("sowia_comparison_history")
@@ -100,6 +103,7 @@ def get_cloud(client, user, report_id):
 
 
 def delete_cloud(client, user, report_id):
+    user_id = _user_id(user)
     if isinstance(report_id, bool) or not str(report_id).isdecimal() or int(report_id) <= 0:
         raise ValueError("Identifiant de rapport invalide.")
     return (client.table("sowia_comparison_history").delete()
