@@ -84,3 +84,74 @@ class ComparisonCloudAuthenticationTests(unittest.TestCase):
                 with self.assertRaisesRegex(PermissionError, "Connexion requise"):
                     operation()
         self.assertEqual(self.client.calls, 0)
+
+
+class _RecordingQuery:
+    def __init__(self):
+        self.calls = []
+        self.data = [{"id": 7, "report": {"comparison": {"document_count": 2}}}]
+
+    def _record(self, name, *args, **kwargs):
+        self.calls.append((name, args, kwargs))
+        return self
+
+    def select(self, *args, **kwargs):
+        return self._record("select", *args, **kwargs)
+
+    def eq(self, *args, **kwargs):
+        return self._record("eq", *args, **kwargs)
+
+    def order(self, *args, **kwargs):
+        return self._record("order", *args, **kwargs)
+
+    def limit(self, *args, **kwargs):
+        return self._record("limit", *args, **kwargs)
+
+    def insert(self, *args, **kwargs):
+        return self._record("insert", *args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        return self._record("delete", *args, **kwargs)
+
+    def execute(self):
+        self._record("execute")
+        return type("Response", (), {"data": self.data})()
+
+
+class _RecordingClient:
+    def __init__(self):
+        self.query = _RecordingQuery()
+
+    def table(self, name):
+        self.table_name = name
+        return self.query
+
+
+class ComparisonCloudOwnerIsolationTests(unittest.TestCase):
+    def setUp(self):
+        self.client = _RecordingClient()
+        self.user = type("User", (), {"id": "user-123"})()
+        self.report = {
+            "comparison": {"document_count": 2},
+            "possible_differences": [],
+        }
+
+    def test_save_cloud_stores_authenticated_owner_id(self):
+        comparison_history.save_cloud(self.client, self.user, self.report)
+        insert_call = next(call for call in self.client.query.calls if call[0] == "insert")
+        self.assertEqual(insert_call[1][0]["user_id"], "user-123")
+        self.assertEqual(self.client.table_name, "sowia_comparison_history")
+
+    def test_list_cloud_filters_by_authenticated_owner(self):
+        comparison_history.list_cloud(self.client, self.user)
+        self.assertIn(("eq", ("user_id", "user-123"), {}), self.client.query.calls)
+
+    def test_get_cloud_filters_by_owner_and_report_id(self):
+        comparison_history.get_cloud(self.client, self.user, 7)
+        self.assertIn(("eq", ("user_id", "user-123"), {}), self.client.query.calls)
+        self.assertIn(("eq", ("id", 7), {}), self.client.query.calls)
+
+    def test_delete_cloud_filters_by_owner_and_report_id(self):
+        comparison_history.delete_cloud(self.client, self.user, 7)
+        self.assertIn(("eq", ("user_id", "user-123"), {}), self.client.query.calls)
+        self.assertIn(("eq", ("id", 7), {}), self.client.query.calls)
