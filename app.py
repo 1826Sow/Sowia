@@ -791,6 +791,53 @@ elif page == "Mes documents":
         elif sort_choice == "Titre Z à A":
             saved_documents.sort(key=lambda item: document_library._normalize_search_text(item.get("title", ""))[0], reverse=True)
         st.caption(f"{len(saved_documents)} document(s) trouvé(s).")
+        st.markdown("#### 📦 Exporter plusieurs documents")
+        st.caption("Sélectionnez jusqu'à 20 documents dans la liste filtrée pour créer une seule archive ZIP.")
+        export_options = {
+            f"{item['title']} — {item['filename']} (#{item['id']})": item["id"]
+            for item in saved_documents
+        }
+        selected_export_labels = st.multiselect(
+            "Documents à inclure dans l'archive",
+            options=list(export_options.keys()),
+            max_selections=20,
+            key="document_bulk_export_selection",
+        )
+        selected_export_ids = [export_options[label] for label in selected_export_labels]
+        if st.button(
+            "Préparer l'archive ZIP",
+            disabled=not selected_export_ids,
+            key="prepare_document_zip_export",
+        ):
+            try:
+                export_documents = []
+                for selected_id in selected_export_ids:
+                    stored = (
+                        document_library.get_cloud(supabase_client, current_user, selected_id)
+                        if cloud_mode else document_library.get_local(selected_id)
+                    )
+                    if stored:
+                        export_documents.append(stored)
+                from document_export import build_documents_zip
+                st.session_state["document_zip_export"] = build_documents_zip(export_documents)
+                st.session_state["document_zip_export_ids"] = selected_export_ids
+                st.success(f"Archive prête : {len(export_documents)} document(s) inclus.")
+            except Exception:
+                st.session_state.pop("document_zip_export", None)
+                st.session_state.pop("document_zip_export_ids", None)
+                st.error("L'archive n'a pas pu être préparée. Vérifiez que les documents sélectionnés contiennent du texte.")
+        if (
+            selected_export_ids
+            and st.session_state.get("document_zip_export")
+            and st.session_state.get("document_zip_export_ids") == selected_export_ids
+        ):
+            st.download_button(
+                "Télécharger l'archive des documents (.zip)",
+                data=st.session_state["document_zip_export"],
+                file_name="sowia_documents_selection.zip",
+                mime="application/zip",
+                key="download_document_zip_export",
+            )
         if not saved_documents:
             st.info("Votre bibliothèque est vide. Ajoutez un PDF pour commencer.")
         for item in saved_documents:
