@@ -219,7 +219,7 @@ def list_cloud(client, user, limit=100):
         except Exception:
             rows = (client.table("sowia_documents")
                 .select("id, title, filename, text_length, created_at")
-                .eq("user_id", _user_id(user)).is_("deleted_at", "null")
+                .eq("user_id", user_id).is_("deleted_at", "null")
                 .order("created_at", desc=True)
                 .limit(min(max(int(limit), 1), 100)).execute().data)
             for item in rows:
@@ -428,6 +428,7 @@ def search_local(query, limit=30):
 
 def search_cloud(client, user, query, limit=30):
     """Search only the authenticated user's recent saved documents."""
+    user_id = _user_id(user)
     needle = (query or "").strip()
     if not needle or len(needle) > 120:
         raise ValueError("La recherche doit contenir entre 1 et 120 caractères.")
