@@ -105,43 +105,51 @@ def delete_cloud(client, user, document_id):
 
 
 
-def _make_snippet(text, query, radius=100):
+def _search_match(text, query, radius=100):
+    """Return an excerpt and the nearest preceding PDF page marker."""
+    import re
+
     source = str(text or "")
     needle = (query or "").strip()
-    if not needle:
-        return ""
     index = source.casefold().find(needle.casefold())
     if index < 0:
-        return ""
+        return None
     left = max(0, index - radius)
     right = min(len(source), index + len(needle) + radius)
     prefix = "…" if left else ""
     suffix = "…" if right < len(source) else ""
-    return prefix + source[left:right].replace("\\n", " ") + suffix
+    excerpt = prefix + source[left:right].replace("\n", " ") + suffix
+    page_markers = list(re.finditer(r"---\s*Page\s+(\d+)\s*---", source[:index], re.IGNORECASE))
+    page = int(page_markers[-1].group(1)) if page_markers else None
+    return {"snippet": excerpt, "page": page}
 
 
 def search_local(query, limit=30):
-    """Search saved document text locally and return short matching excerpts."""
+    """Search saved documents locally, including accented text, with page references."""
     needle = (query or "").strip()
     if not needle or len(needle) > 120:
         raise ValueError("La recherche doit contenir entre 1 et 120 caractères.")
     with _local_connect() as conn:
         rows = conn.execute(
             """SELECT id, title, filename, extracted_text, created_at
-               FROM documents
-               WHERE instr(lower(extracted_text), lower(?)) > 0
-               ORDER BY id DESC LIMIT ?""",
-            (needle, min(max(int(limit), 1), 30)),
+               FROM documents ORDER BY id DESC LIMIT 100"""
         ).fetchall()
-    return [
-        {"id": row[0], "title": row[1], "filename": row[2],
-         "snippet": _make_snippet(row[3], needle), "created_at": row[4]}
-        for row in rows
-    ]
+    results = []
+    for row in rows:
+        match = _search_match(row[3], needle)
+        if match:
+            results.append({
+                "id": row[0], "title": row[1], "filename": row[2],
+                "snippet": match["snippet"], "page": match["page"],
+                "created_at": row[4],
+            })
+        if len(results) >= min(max(int(limit), 1), 30):
+            break
+    return results
 
 
 def search_cloud(client, user, query, limit=30):
-    """Search only the authenticated user's saved document text."""
+    """Search only the authenticated user's recent saved documents."""
     needle = (query or "").strip()
     if not needle or len(needle) > 120:
         raise ValueError("La recherche doit contenir entre 1 et 120 caractères.")
@@ -149,18 +157,20 @@ def search_cloud(client, user, query, limit=30):
         client.table("sowia_documents")
         .select("id, title, filename, extracted_text, created_at")
         .eq("user_id", _user_id(user))
-        .ilike("extracted_text", f"%{needle}%")
         .order("created_at", desc=True)
-        .limit(min(max(int(limit), 1), 30))
+        .limit(100)
         .execute()
         .data
     )
     results = []
     for row in rows:
-        excerpt = _make_snippet(row.get("extracted_text", ""), needle)
-        results.append({
-            "id": row["id"], "title": row["title"],
-            "filename": row["filename"], "snippet": excerpt,
-            "created_at": row.get("created_at", ""),
-        })
+        match = _search_match(row.get("extracted_text", ""), needle)
+        if match:
+            results.append({
+                "id": row["id"], "title": row["title"],
+                "filename": row["filename"], "snippet": match["snippet"],
+                "page": match["page"], "created_at": row.get("created_at", ""),
+            })
+        if len(results) >= min(max(int(limit), 1), 30):
+            break
     return results
