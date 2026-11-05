@@ -25,8 +25,8 @@ def _offline_reply(messages):
         return (
             "Le service IA est temporairement indisponible faute de quota. "
             "Vous pouvez néanmoins ouvrir « Analyse PDF » pour importer un PDF "
-            "et extraire son texte. La création/exportation de PDF n'est pas encore "
-            "activée dans cette version de SOW IA."
+            "et extraire son texte. Vous pouvez aussi créer et télécharger un PDF "
+            "depuis la rubrique « Créer un PDF », sans consommer de crédit OpenAI."
         )
     if any(word in lowered for word in ("mémoire", "memoire", "historique", "sauvegarder")):
         return (
