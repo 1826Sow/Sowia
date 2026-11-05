@@ -28,4 +28,4 @@ create policy "Users can delete their own SOW IA comparison history"
     using ((select auth.uid()) = user_id);
 
 grant select, insert, delete on public.sowia_comparison_history to authenticated;
-grant usage, select on all sequences in schema public to authenticated;
+grant usage, select on sequence public.sowia_comparison_history_id_seq to authenticated;
