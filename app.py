@@ -83,9 +83,9 @@ if cloud_mode:
             st.rerun()
 
         current_user = authenticated_user(supabase_client)
-    except Exception as exc:
+    except Exception:
+        # Do not expose provider, token, or configuration details in the public UI.
         st.error("La connexion sécurisée n'a pas pu être vérifiée. Réessayez ou vérifiez les réglages Supabase.")
-        st.caption(str(exc))
         if st.button("Réinitialiser la connexion"):
             st.session_state.pop("sowia_supabase_client", None)
             st.rerun()
@@ -102,9 +102,9 @@ if cloud_mode:
             redirect_to = str(get_setting("SOWIA_PUBLIC_URL", "")).strip()
             login_url = github_authorization_url(supabase_client, redirect_to)
             st.link_button("Continuer avec GitHub", login_url, type="primary")
-        except Exception as exc:
+        except Exception:
+            # Keep OAuth configuration details out of the public-facing page.
             st.warning("La connexion GitHub attend encore la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
-            st.caption(str(exc))
         st.stop()
 
 def get_app_history(limit=30):
