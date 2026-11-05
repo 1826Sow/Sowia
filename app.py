@@ -272,8 +272,8 @@ elif page == "Ma mémoire":
                 add_app_memory(note)
                 st.success("Information ajoutée.")
                 st.rerun()
-            except (ValueError, PermissionError) as exc:
-                st.error(str(exc))
+            except (ValueError, PermissionError):
+                st.error("Impossible d'enregistrer cette information. Vérifiez le contenu et réessayez.")
 
     st.markdown("#### Retrouver mes informations")
     memory_filter = st.text_input(
