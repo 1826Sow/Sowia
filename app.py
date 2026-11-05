@@ -552,6 +552,55 @@ elif page == "Mes documents":
             document_library.list_cloud(supabase_client, current_user)
             if cloud_mode else document_library.list_local()
         )
+        st.markdown("#### 🔗 Comparer plusieurs documents")
+        st.caption("Comparez 2 à 5 documents enregistrés. L'analyse est locale, sans crédit IA.")
+        comparison_options = {
+            f"{item['title']} — {item['filename']} (#{item['id']})": item["id"]
+            for item in saved_documents
+        }
+        selected_comparisons = st.multiselect(
+            "Documents à comparer",
+            options=list(comparison_options.keys()),
+            max_selections=5,
+            key="document_comparison_selection",
+        )
+        if st.button("Comparer les documents", disabled=not 2 <= len(selected_comparisons) <= 5):
+            try:
+                selected_ids = [comparison_options[label] for label in selected_comparisons]
+                comparison_docs = []
+                for selected_id in selected_ids:
+                    stored = (
+                        document_library.get_cloud(supabase_client, current_user, selected_id)
+                        if cloud_mode else document_library.get_local(selected_id)
+                    )
+                    if stored:
+                        comparison_docs.append(stored)
+                from document_comparison import compare_documents
+                comparison = compare_documents(comparison_docs)
+                st.success(
+                    f"Comparaison terminée : {comparison['document_count']} documents · "
+                    f"similarité lexicale globale {comparison['similarity_percent']} %."
+                )
+                st.caption(
+                    f"{comparison['shared_term_count']} terme(s) commun(s) détecté(s). "
+                    "Cette mesure compare le vocabulaire, pas le sens juridique ou factuel."
+                )
+                if comparison["shared_terms"]:
+                    st.write("**Termes communs :** " + ", ".join(comparison["shared_terms"]))
+                else:
+                    st.info("Aucun terme commun significatif détecté.")
+                for detail in comparison["documents"]:
+                    st.markdown(f"**{detail['title']}** — {detail['term_count']} termes distincts")
+                    st.write(
+                        "Termes propres à ce document : "
+                        + (", ".join(detail["distinctive_terms"]) or "aucun terme distinctif détecté")
+                    )
+                st.info(
+                    "Analyse lexicale hors ligne : elle aide à repérer des thèmes communs et des différences de vocabulaire. "
+                    "Elle ne remplace pas une vérification humaine et ne déduit pas les contradictions."
+                )
+            except Exception:
+                st.error("La comparaison n'a pas pu aboutir. Vérifiez que les documents contiennent du texte lisible.")
         category_filter = st.selectbox(
             "Filtrer par catégorie",
             ["Toutes", "Finances", "Administratif", "Travail", "Études", "Santé", "Autres"],
