@@ -24,7 +24,7 @@ def test_client_fails_closed_when_not_configured(monkeypatch):
 def test_client_rejects_non_https_url(monkeypatch):
     monkeypatch.setattr(supabase_auth, "get_setting", lambda name, default="": {
         "SUPABASE_URL": "http://example.supabase.co",
-        "SUPABASE_ANON_KEY": "public-anon-key",
+        "SUPABASE_ANON_KEY": _jwt_with_role("anon"),
     }.get(name, default))
     with pytest.raises(RuntimeError, match="HTTPS"):
         supabase_auth.create_user_client()
