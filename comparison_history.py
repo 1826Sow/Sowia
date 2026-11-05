@@ -97,7 +97,7 @@ def get_cloud(client, user, report_id):
         raise ValueError("Identifiant de rapport invalide.")
     rows = (client.table("sowia_comparison_history")
         .select("id, report, created_at")
-        .eq("user_id", _user_id(user)).eq("id", int(report_id))
+        .eq("user_id", user_id).eq("id", int(report_id))
         .limit(1).execute().data)
     return rows[0] if rows else None
 
