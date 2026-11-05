@@ -106,11 +106,18 @@ def delete_cloud(client, user, document_id):
 
 
 def _normalize_search_text(value):
-    """Case- and accent-insensitive normalization that preserves character positions."""
+    """Normalize case and accents while retaining source offsets for each character."""
     import unicodedata
 
-    decomposed = unicodedata.normalize("NFD", str(value or "").casefold())
-    return "".join(char for char in decomposed if unicodedata.category(char) != "Mn")
+    normalized = []
+    offsets = []
+    for index, char in enumerate(str(value or "")):
+        folded = unicodedata.normalize("NFD", char.casefold())
+        for item in folded:
+            if unicodedata.category(item) != "Mn":
+                normalized.append(item)
+                offsets.append(index)
+    return "".join(normalized), offsets
 
 
 def _search_match(text, query, radius=100):
@@ -119,11 +126,17 @@ def _search_match(text, query, radius=100):
 
     source = str(text or "")
     needle = (query or "").strip()
-    index = _normalize_search_text(source).find(_normalize_search_text(needle))
-    if index < 0:
+    normalized_source, offsets = _normalize_search_text(source)
+    normalized_needle, _ = _normalize_search_text(needle)
+    if not normalized_needle:
         return None
+    match_index = normalized_source.find(normalized_needle)
+    if match_index < 0:
+        return None
+    index = offsets[match_index]
+    match_end = offsets[match_index + len(normalized_needle) - 1] + 1
     left = max(0, index - radius)
-    right = min(len(source), index + len(needle) + radius)
+    right = min(len(source), match_end + radius)
     prefix = "…" if left else ""
     suffix = "…" if right < len(source) else ""
     excerpt = prefix + source[left:right].replace("\n", " ") + suffix
