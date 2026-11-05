@@ -194,7 +194,7 @@ def save_cloud(client, user, title, filename, extracted_text, category="Autres")
     category = _clean_category(category)
     return client.table("sowia_documents").insert({
         "user_id": user_id, "title": title, "filename": filename,
-        "extracted_text": text, "text_length": len(text),
+        "extracted_text": text, "text_length": len(text), "category": category,
     }).execute().data
 
 
