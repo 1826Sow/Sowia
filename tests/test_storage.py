@@ -72,3 +72,23 @@ def test_existing_database_permissions_are_restricted_again(tmp_path, monkeypatc
 
     assert stat.S_IMODE(db_path.parent.stat().st_mode) == 0o700
     assert stat.S_IMODE(db_path.stat().st_mode) == 0o600
+
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file permissions only")
+def test_database_is_private_before_sqlite_opens_it(tmp_path, monkeypatch):
+    db_path = tmp_path / "private" / "sowia-test.db"
+    monkeypatch.setattr(storage, "DB_PATH", db_path)
+    real_connect = storage.sqlite3.connect
+    observed = {}
+
+    def check_permissions_before_connect(path, *args, **kwargs):
+        observed["directory_mode"] = stat.S_IMODE(db_path.parent.stat().st_mode)
+        observed["database_mode"] = stat.S_IMODE(db_path.stat().st_mode)
+        return real_connect(path, *args, **kwargs)
+
+    monkeypatch.setattr(storage.sqlite3, "connect", check_permissions_before_connect)
+
+    storage.save_message("session-1", "user", "Donnée privée")
+
+    assert observed == {"directory_mode": 0o700, "database_mode": 0o600}
