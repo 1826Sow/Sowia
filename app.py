@@ -4,7 +4,7 @@ import streamlit as st
 from settings import get_setting
 
 from config import APP_NAME, API_KEY, MODEL
-from assistant import answer
+from assistant import answer, select_relevant_memories
 from storage import (
     add_memory as local_add_memory,
     clear_history as local_clear_history,
@@ -215,9 +215,14 @@ elif page == "Assistant IA":
             st.markdown(prompt)
         with st.chat_message("assistant"):
             try:
+                relevant_memories = select_relevant_memories(
+                    get_app_history(),
+                    memories,
+                    max_items=8,
+                )
                 reply = answer(
                     get_app_history(),
-                    memories=[item["content"] for item in memories],
+                    memories=relevant_memories,
                 )
                 st.markdown(reply)
                 save_app_message("assistant", reply)
