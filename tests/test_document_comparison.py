@@ -1,6 +1,6 @@
 import unittest
 
-from document_comparison import compare_documents
+from document_comparison import compare_documents, find_possible_differences
 
 
 class DocumentComparisonTests(unittest.TestCase):
@@ -23,6 +23,20 @@ class DocumentComparisonTests(unittest.TestCase):
                 {"title": "A", "extracted_text": "texte utile"},
                 {"title": "B", "extracted_text": "  "},
             ])
+
+    def test_flags_different_numeric_values_on_shared_topic(self):
+        results = find_possible_differences([
+            {"title": "A", "extracted_text": "Le loyer mensuel est de 900 euros."},
+            {"title": "B", "extracted_text": "Le loyer mensuel est de 1200 euros."},
+        ])
+        self.assertTrue(any("valeurs numériques différentes" in item["reasons"] for item in results))
+
+    def test_flags_affirmative_and_negative_wording(self):
+        results = find_possible_differences([
+            {"title": "A", "extracted_text": "Le contrat autorise la résiliation immédiate."},
+            {"title": "B", "extracted_text": "Le contrat n'autorise pas la résiliation immédiate."},
+        ])
+        self.assertTrue(any("formulation affirmative/négative différente" in item["reasons"] for item in results))
 
 
 if __name__ == "__main__":
