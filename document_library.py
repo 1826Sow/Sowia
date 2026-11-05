@@ -194,7 +194,8 @@ def list_cloud(client, user, limit=100):
         try:
             rows = (client.table("sowia_documents")
                 .select("id, title, filename, text_length, created_at, category")
-                .eq("user_id", _user_id(user)).order("created_at", desc=True)
+                .eq("user_id", _user_id(user)).is_("deleted_at", "null")
+                .order("created_at", desc=True)
                 .limit(min(max(int(limit), 1), 100)).execute().data)
             for item in rows:
                 item["folder"] = DEFAULT_FOLDER
@@ -202,7 +203,8 @@ def list_cloud(client, user, limit=100):
         except Exception:
             rows = (client.table("sowia_documents")
                 .select("id, title, filename, text_length, created_at")
-                .eq("user_id", _user_id(user)).order("created_at", desc=True)
+                .eq("user_id", _user_id(user)).is_("deleted_at", "null")
+                .order("created_at", desc=True)
                 .limit(min(max(int(limit), 1), 100)).execute().data)
             for item in rows:
                 item["category"] = categorize_document(item)
