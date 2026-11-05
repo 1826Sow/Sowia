@@ -426,6 +426,12 @@ elif page == "Mes documents":
         st.warning("Mode local : la bibliothèque est stockée dans cette installation et n'est pas adaptée à plusieurs utilisateurs.")
 
     uploaded_pdf = st.file_uploader("Ajouter un document PDF", type=["pdf"], key="library_pdf")
+    if uploaded_pdf is not None:
+        st.caption(
+            f"Fichier sélectionné : {uploaded_pdf.name} · "
+            f"{uploaded_pdf.size:,} octets. "
+            "Seul le texte extrait sera conservé dans la bibliothèque, pas le PDF original."
+        )
     document_title = st.text_input(
         "Nom du document",
         value=(uploaded_pdf.name.rsplit(".", 1)[0][:160] if uploaded_pdf else ""),
