@@ -65,3 +65,28 @@ def test_rejects_invalid_page_limits(value):
 def test_rejects_invalid_extraction_character_limits(value):
     with pytest.raises(ValueError, match="Limite de caractères"):
         extract_pdf_pages(make_pdf(), max_chars=value)
+
+
+
+def make_encrypted_pdf():
+    output = BytesIO()
+    writer = PdfWriter()
+    writer.add_blank_page(width=300, height=300)
+    writer.encrypt("test-password")
+    writer.write(output)
+    output.seek(0)
+    return output
+
+
+def test_rejects_password_protected_pdf_without_prompting_for_password():
+    uploaded = make_encrypted_pdf()
+    with pytest.raises(ValueError, match="protégés par mot de passe"):
+        validate_pdf_upload(uploaded)
+    assert uploaded.tell() == 0
+
+
+def test_rejects_pdf_with_header_but_malformed_body():
+    malformed = BytesIO(b"%PDF-1.4\nthis is not a valid PDF structure")
+    with pytest.raises(ValueError, match="illisible ou endommagé"):
+        validate_pdf_upload(malformed)
+    assert malformed.tell() == 0
