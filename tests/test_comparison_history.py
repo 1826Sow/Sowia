@@ -52,3 +52,35 @@ class ComparisonHistoryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class _NoTableClient:
+    def __init__(self):
+        self.calls = 0
+
+    def table(self, _name):
+        self.calls += 1
+        raise AssertionError("La base ne doit pas être interrogée sans utilisateur.")
+
+
+class ComparisonCloudAuthenticationTests(unittest.TestCase):
+    def setUp(self):
+        self.client = _NoTableClient()
+        self.user = type("User", (), {"id": None})()
+        self.report = {
+            "comparison": {"document_count": 2},
+            "possible_differences": [],
+        }
+
+    def test_all_cloud_history_operations_require_user_before_client_access(self):
+        operations = [
+            lambda: comparison_history.save_cloud(self.client, self.user, self.report),
+            lambda: comparison_history.list_cloud(self.client, self.user),
+            lambda: comparison_history.get_cloud(self.client, self.user, 1),
+            lambda: comparison_history.delete_cloud(self.client, self.user, 1),
+        ]
+        for operation in operations:
+            with self.subTest(operation=operation):
+                with self.assertRaisesRegex(PermissionError, "Connexion requise"):
+                    operation()
+        self.assertEqual(self.client.calls, 0)
