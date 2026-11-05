@@ -216,20 +216,20 @@ def get_cloud(client, user, document_id):
         rows = (client.table("sowia_documents")
             .select("id, title, filename, extracted_text, created_at, category, folder")
             .eq("user_id", _user_id(user)).eq("id", document_id)
-            .limit(1).execute().data)
+            .is_("deleted_at", "null").limit(1).execute().data)
     except Exception:
         try:
             rows = (client.table("sowia_documents")
                 .select("id, title, filename, extracted_text, created_at, category")
                 .eq("user_id", _user_id(user)).eq("id", document_id)
-                .limit(1).execute().data)
+                .is_("deleted_at", "null").limit(1).execute().data)
             for item in rows:
                 item["folder"] = DEFAULT_FOLDER
         except Exception:
             rows = (client.table("sowia_documents")
                 .select("id, title, filename, extracted_text, created_at")
                 .eq("user_id", _user_id(user)).eq("id", document_id)
-                .limit(1).execute().data)
+                .is_("deleted_at", "null").limit(1).execute().data)
             for item in rows:
                 item["category"] = categorize_document(item)
                 item["folder"] = DEFAULT_FOLDER
@@ -256,14 +256,16 @@ def update_cloud_folder(client, user, document_id, folder):
     document_id = _document_id(document_id)
     folder = _clean_folder(folder)
     return (client.table("sowia_documents").update({"folder": folder})
-        .eq("user_id", _user_id(user)).eq("id", document_id).execute())
+        .eq("user_id", _user_id(user)).eq("id", document_id)
+        .is_("deleted_at", "null").execute())
 
 
 def update_cloud_category(client, user, document_id, category):
     document_id = _document_id(document_id)
     category = _clean_category(category)
     return (client.table("sowia_documents").update({"category": category})
-        .eq("user_id", _user_id(user)).eq("id", document_id).execute())
+        .eq("user_id", _user_id(user)).eq("id", document_id)
+        .is_("deleted_at", "null").execute())
 
 
 def trash_cloud(client, user, document_id):
