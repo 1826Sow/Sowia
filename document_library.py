@@ -51,7 +51,24 @@ def list_local(limit=100):
     return [{"id": r[0], "title": r[1], "filename": r[2], "text_length": r[3], "created_at": r[4]} for r in rows]
 
 
+
+def _document_id(value):
+    """Accept only positive integer document identifiers."""
+    if isinstance(value, bool):
+        raise ValueError("Identifiant de document invalide.")
+    if isinstance(value, int):
+        document_id = value
+    elif isinstance(value, str) and value.isdecimal():
+        document_id = int(value)
+    else:
+        raise ValueError("Identifiant de document invalide.")
+    if document_id <= 0:
+        raise ValueError("Identifiant de document invalide.")
+    return document_id
+
+
 def get_local(document_id):
+    document_id = _document_id(document_id)
     with _local_connect() as conn:
         row = conn.execute(
             "SELECT id, title, filename, extracted_text, created_at FROM documents WHERE id=?",
@@ -63,6 +80,7 @@ def get_local(document_id):
 
 
 def delete_local(document_id):
+    document_id = _document_id(document_id)
     with _local_connect() as conn:
         conn.execute("DELETE FROM documents WHERE id=?", (document_id,))
 
@@ -92,6 +110,7 @@ def list_cloud(client, user, limit=100):
 
 
 def get_cloud(client, user, document_id):
+    document_id = _document_id(document_id)
     rows = (client.table("sowia_documents")
         .select("id, title, filename, extracted_text, created_at")
         .eq("user_id", _user_id(user)).eq("id", document_id)
@@ -100,6 +119,7 @@ def get_cloud(client, user, document_id):
 
 
 def delete_cloud(client, user, document_id):
+    document_id = _document_id(document_id)
     return (client.table("sowia_documents").delete()
         .eq("user_id", _user_id(user)).eq("id", document_id).execute())
 
