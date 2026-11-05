@@ -1,4 +1,4 @@
-""Supabase GitHub OAuth helpers for SOW IA.
+"""Supabase GitHub OAuth helpers for SOW IA.
 
 Create and retain one client per Streamlit browser session. Never cache a
 user-authenticated client globally: it contains authentication state and PKCE
