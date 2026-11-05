@@ -50,9 +50,9 @@ def test_rejects_single_document_over_size_limit():
 
 
 def test_rejects_total_archive_over_size_limit():
-    docs = [{"extracted_text": "x" * 600_000} for _ in range(4)]
+    docs = [{"extracted_text": "x" * 100_000} for _ in range(16)]
     with pytest.raises(ValueError, match="taille totale"):
-        build_documents_zip(docs)
+        build_documents_zip(docs, max_total_chars=1_500_000)
 
 
 def test_metadata_newlines_cannot_inject_fake_entries():
