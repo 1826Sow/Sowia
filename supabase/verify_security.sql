@@ -11,7 +11,15 @@ with expected_columns(table_name, column_name) as (
         ('sowia_documents', 'deleted_at'),
         ('sowia_comparison_history', 'user_id'),
         ('sowia_comparison_history', 'report'),
-        ('sowia_comparison_history', 'created_at')
+        ('sowia_comparison_history', 'created_at'),
+        ('sowia_memory_items', 'user_id'),
+        ('sowia_memory_items', 'content'),
+        ('sowia_memory_items', 'created_at'),
+        ('sowia_messages', 'user_id'),
+        ('sowia_messages', 'session_id'),
+        ('sowia_messages', 'role'),
+        ('sowia_messages', 'content'),
+        ('sowia_messages', 'created_at')
 ),
 column_checks as (
     select
@@ -27,7 +35,11 @@ column_checks as (
     from expected_columns c
 ),
 expected_tables(table_name) as (
-    values ('sowia_documents'), ('sowia_comparison_history')
+    values
+        ('sowia_documents'),
+        ('sowia_comparison_history'),
+        ('sowia_memory_items'),
+        ('sowia_messages')
 ),
 table_checks as (
     select
@@ -57,7 +69,13 @@ expected_policies(table_name, command_name) as (
         ('sowia_documents', 'DELETE'),
         ('sowia_comparison_history', 'SELECT'),
         ('sowia_comparison_history', 'INSERT'),
-        ('sowia_comparison_history', 'DELETE')
+        ('sowia_comparison_history', 'DELETE'),
+        ('sowia_memory_items', 'SELECT'),
+        ('sowia_memory_items', 'INSERT'),
+        ('sowia_memory_items', 'DELETE'),
+        ('sowia_messages', 'SELECT'),
+        ('sowia_messages', 'INSERT'),
+        ('sowia_messages', 'DELETE')
 ),
 policy_checks as (
     select
