@@ -557,12 +557,25 @@ elif page == "Mes documents":
             ["Toutes", "Finances", "Administratif", "Travail", "Études", "Santé", "Autres"],
             key="document_category_filter",
         )
+        folder_options = ["Tous les dossiers"] + sorted({
+            str(item.get("folder") or document_library.DEFAULT_FOLDER)
+            for item in saved_documents
+        })
+        folder_filter = st.selectbox(
+            "Filtrer par dossier",
+            folder_options,
+            key="document_folder_filter",
+        )
         saved_documents = [
             item for item in saved_documents
             if document_library.matches_document_metadata(item, filter_text)
             and (
                 category_filter == "Toutes"
                 or (item.get("category") or document_library.categorize_document(item)) == category_filter
+            )
+            and (
+                folder_filter == "Tous les dossiers"
+                or (item.get("folder") or document_library.DEFAULT_FOLDER) == folder_filter
             )
         ]
         sort_choice = st.selectbox(
@@ -584,6 +597,23 @@ elif page == "Mes documents":
             with st.expander(f"📄 [{category}] {item['title']} — {item['filename']}"):
                 st.caption(f"Catégorie actuelle : {category} · {item.get('text_length', 0):,} caractères · {item.get('created_at', '')}")
                 document_id = item["id"]
+                current_folder = item.get("folder") or document_library.DEFAULT_FOLDER
+                chosen_folder = st.text_input(
+                    "Dossier virtuel",
+                    value=current_folder,
+                    max_chars=60,
+                    key=f"document_folder_{document_id}",
+                ).strip()
+                if chosen_folder != current_folder and st.button("Enregistrer le dossier", key=f"save_folder_{document_id}"):
+                    try:
+                        if cloud_mode:
+                            document_library.update_cloud_folder(supabase_client, current_user, document_id, chosen_folder)
+                        else:
+                            document_library.update_local_folder(document_id, chosen_folder)
+                        st.success("Dossier mis à jour.")
+                        st.rerun()
+                    except Exception:
+                        st.error("Le dossier doit contenir entre 1 et 60 caractères. En mode cloud, vérifiez que la migration SQL des dossiers a été exécutée.")
                 chosen_category = st.selectbox(
                     "Modifier la catégorie",
                     document_library.CATEGORIES,
