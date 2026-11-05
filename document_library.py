@@ -120,17 +120,24 @@ def save_cloud(client, user, title, filename, extracted_text, category="Autres")
     category = _clean_category(category)
     return client.table("sowia_documents").insert({
         "user_id": _user_id(user), "title": title, "filename": filename,
-        "extracted_text": text, "text_length": len(text), "category": category,
+        "extracted_text": text, "text_length": len(text),
     }).execute().data
 
 
 def list_cloud(client, user, limit=100):
-    return (client.table("sowia_documents")
-        .select("id, title, filename, text_length, created_at, category")
-        .eq("user_id", _user_id(user))
-        .order("created_at", desc=True)
-        .limit(min(max(int(limit), 1), 100))
-        .execute().data)
+    try:
+        return (client.table("sowia_documents")
+            .select("id, title, filename, text_length, created_at, category")
+            .eq("user_id", _user_id(user)).order("created_at", desc=True)
+            .limit(min(max(int(limit), 1), 100)).execute().data)
+    except Exception:
+        rows = (client.table("sowia_documents")
+            .select("id, title, filename, text_length, created_at")
+            .eq("user_id", _user_id(user)).order("created_at", desc=True)
+            .limit(min(max(int(limit), 1), 100)).execute().data)
+        for item in rows:
+            item["category"] = categorize_document(item)
+        return rows
 
 
 def get_cloud(client, user, document_id):
