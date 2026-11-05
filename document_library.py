@@ -161,6 +161,24 @@ def matches_document_metadata(document, query):
     normalized_metadata, _ = _normalize_search_text(metadata)
     return needle in normalized_metadata
 
+
+def categorize_document(document):
+    """Assign a simple category from the saved title and filename only."""
+    metadata = _normalize_search_text(
+        str(document.get("title", "")) + " " + str(document.get("filename", ""))
+    )[0]
+    rules = (
+        ("Finances", ("facture", "devis", "banque", "budget", "impot", "taxe", "paiement", "finance", "comptabilite")),
+        ("Administratif", ("administratif", "contrat", "attestation", "identite", "assurance", "formulaire", "dossier", "courrier")),
+        ("Travail", ("travail", "emploi", "cv", "recrutement", "mission", "projet", "professionnel", "entreprise")),
+        ("Études", ("cours", "etude", "etudes", "formation", "examen", "memoire", "recherche", "scolaire", "universite")),
+        ("Santé", ("sante", "medical", "medecin", "ordonnance", "analyse", "hopital", "patient")),
+    )
+    for category, keywords in rules:
+        if any(keyword in metadata for keyword in keywords):
+            return category
+    return "Autres"
+
 def _search_match(text, query, radius=100):
     """Return an excerpt and the nearest preceding PDF page marker."""
     import re
