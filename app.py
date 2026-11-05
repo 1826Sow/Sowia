@@ -407,7 +407,7 @@ elif page == "Créer un PDF":
             st.download_button("Télécharger mon PDF", data=buffer.getvalue(), file_name="document_sow_ia.pdf", mime="application/pdf", type="primary")
         except Exception as exc:
             st.error("La création du PDF a échoué. Vérifiez que les dépendances sont installées.")
-            st.caption(str(exc))
+            st.caption("Vérifiez la configuration de la bibliothèque et réessayez. Aucun détail technique n’est affiché.")
 elif page == "Mes documents":
     st.subheader("📁 Mes documents")
     st.write("Conservez le texte extrait de vos PDF, retrouvez-le et téléchargez-le à tout moment.")
@@ -463,7 +463,7 @@ elif page == "Mes documents":
                 st.info("Aucune occurrence trouvée dans le texte des documents enregistrés.")
         except Exception as exc:
             st.error("La recherche dans les documents n'a pas pu aboutir.")
-            st.caption(str(exc))
+            st.caption("Vérifiez votre connexion et réessayez. Aucun détail technique n’est affiché.")
 
     st.divider()
     filter_text = st.text_input("Rechercher dans les titres et noms de fichiers", key="document_filter").strip().lower()
@@ -492,7 +492,7 @@ elif page == "Mes documents":
                     st.download_button(
                         "Télécharger le texte (.txt)",
                         data=saved["extracted_text"],
-                        file_name=f"sowia_{item['filename'].rsplit('.', 1)[0]}.txt",
+                        file_name=document_library.safe_text_download_name(item["filename"]),
                         mime="text/plain",
                         key=f"download_document_{document_id}",
                     )
