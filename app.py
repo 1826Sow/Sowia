@@ -505,6 +505,116 @@ elif page == "Mes documents":
                             "Vérifiez le fichier et la configuration de la bibliothèque."
                         )
 
+    with st.expander("Importer plusieurs PDF en une seule fois", expanded=False):
+        st.write(
+            "Sélectionnez plusieurs fichiers, vérifiez leur extraction, puis "
+            "enregistrez ensemble les documents lisibles. Chaque PDF reste soumis "
+            "aux limites habituelles de 15 Mo et 500 pages."
+        )
+        batch_files = st.file_uploader(
+            "Choisir plusieurs PDF",
+            type=["pdf"],
+            accept_multiple_files=True,
+            key="library_batch_pdfs",
+        )
+        batch_items = []
+        batch_fingerprints = []
+        if batch_files:
+            for batch_file in batch_files:
+                raw = batch_file.getvalue()
+                fingerprint = hashlib.sha256(raw).hexdigest()
+                batch_fingerprints.append(fingerprint)
+                batch_items.append({
+                    "name": batch_file.name,
+                    "size": len(raw),
+                    "fingerprint": fingerprint,
+                    "data": raw,
+                })
+            st.caption(
+                f"{len(batch_items)} fichier(s) sélectionné(s) · "
+                f"{sum(item['size'] for item in batch_items):,} octets au total. "
+                "Seul le texte extrait sera enregistré, jamais les PDF originaux."
+            )
+            if st.button("Analyser et prévisualiser tous les PDF", key="analyze_pdf_batch"):
+                from io import BytesIO
+
+                analyzed = []
+                for item in batch_items:
+                    try:
+                        extracted = extract_pdf_text(BytesIO(item["data"]), max_chars=100000)
+                        analyzed.append({
+                            "name": item["name"],
+                            "size": item["size"],
+                            "fingerprint": item["fingerprint"],
+                            "text": extracted,
+                            "error": "" if extracted.strip() else "Aucun texte extractible (PDF scanné ou composé d’images).",
+                        })
+                    except Exception:
+                        analyzed.append({
+                            "name": item["name"],
+                            "size": item["size"],
+                            "fingerprint": item["fingerprint"],
+                            "text": "",
+                            "error": "PDF illisible, protégé ou dépassant les limites autorisées.",
+                        })
+                st.session_state["library_batch_preview"] = analyzed
+                st.session_state["library_batch_fingerprints"] = batch_fingerprints
+
+            batch_is_current = (
+                st.session_state.get("library_batch_fingerprints") == batch_fingerprints
+                and bool(batch_fingerprints)
+            )
+            if batch_is_current:
+                analyzed = st.session_state.get("library_batch_preview", [])
+                ready_items = [item for item in analyzed if item.get("text", "").strip() and not item.get("error")]
+                st.caption(f"{len(ready_items)} PDF lisible(s) sur {len(analyzed)}.")
+                for index, item in enumerate(analyzed):
+                    with st.container(border=True):
+                        st.markdown(f"**{item['name']}**")
+                        st.caption(f"{item['size']:,} octets")
+                        if item.get("error"):
+                            st.warning(item["error"])
+                        else:
+                            st.success(f"{len(item['text']):,} caractères extraits")
+                            st.text_area(
+                                "Aperçu du texte",
+                                value=item["text"][:2000],
+                                height=120,
+                                disabled=True,
+                                key=f"batch_pdf_preview_{item['fingerprint']}",
+                            )
+                            if len(item["text"]) > 2000:
+                                st.caption("Aperçu limité aux 2 000 premiers caractères.")
+                if ready_items and st.button(
+                    f"Confirmer l’enregistrement des {len(ready_items)} PDF lisibles",
+                    type="primary",
+                    key="save_pdf_batch",
+                ):
+                    saved_count = 0
+                    failed_names = []
+                    for item in ready_items:
+                        title = item["name"].rsplit(".", 1)[0][:160].strip() or "Document"
+                        try:
+                            if cloud_mode:
+                                document_library.save_cloud(
+                                    supabase_client, current_user, title, item["name"], item["text"]
+                                )
+                            else:
+                                document_library.save_local(title, item["name"], item["text"])
+                            saved_count += 1
+                        except Exception:
+                            failed_names.append(item["name"])
+                    st.session_state.pop("library_batch_preview", None)
+                    st.session_state.pop("library_batch_fingerprints", None)
+                    if saved_count:
+                        st.success(f"{saved_count} document(s) enregistré(s). Les PDF originaux ne sont pas stockés.")
+                    if failed_names:
+                        st.error("Échec de l’enregistrement : " + ", ".join(failed_names))
+                    st.rerun()
+        elif st.session_state.get("library_batch_preview"):
+            st.session_state.pop("library_batch_preview", None)
+            st.session_state.pop("library_batch_fingerprints", None)
+
     st.divider()
     st.markdown("#### 🔎 Recherche dans le contenu de tous mes PDF")
     st.caption("Recherche locale dans le texte extrait, sans utiliser de crédits IA.")
