@@ -90,3 +90,18 @@ def test_rejects_pdf_with_header_but_malformed_body():
     with pytest.raises(ValueError, match="illisible ou endommagé"):
         validate_pdf_upload(malformed)
     assert malformed.tell() == 0
+
+
+
+def test_page_extraction_failure_returns_safe_page_specific_error(monkeypatch):
+    class BrokenPage:
+        def extract_text(self):
+            raise RuntimeError("internal parser details")
+
+    class FakeReader:
+        pages = [BrokenPage()]
+
+    monkeypatch.setattr("documents.validate_pdf_upload", lambda _uploaded: FakeReader())
+
+    with pytest.raises(ValueError, match="page 1.*PDF endommagé"):
+        extract_pdf_pages(BytesIO(b"ignored"))
