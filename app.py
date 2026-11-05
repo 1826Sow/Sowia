@@ -562,7 +562,7 @@ elif page == "Mes documents":
             if document_library.matches_document_metadata(item, filter_text)
             and (
                 category_filter == "Toutes"
-                or document_library.categorize_document(item) == category_filter
+                or (item.get("category") or document_library.categorize_document(item)) == category_filter
             )
         ]
         sort_choice = st.selectbox(
@@ -580,10 +580,26 @@ elif page == "Mes documents":
         if not saved_documents:
             st.info("Votre bibliothèque est vide. Ajoutez un PDF pour commencer.")
         for item in saved_documents:
-            category = document_library.categorize_document(item)
+            category = item.get("category") or document_library.categorize_document(item)
             with st.expander(f"📄 [{category}] {item['title']} — {item['filename']}"):
-                st.caption(f"Catégorie : {category} · {item.get('text_length', 0):,} caractères · {item.get('created_at', '')}")
+                st.caption(f"Catégorie actuelle : {category} · {item.get('text_length', 0):,} caractères · {item.get('created_at', '')}")
                 document_id = item["id"]
+                chosen_category = st.selectbox(
+                    "Modifier la catégorie",
+                    document_library.CATEGORIES,
+                    index=document_library.CATEGORIES.index(category) if category in document_library.CATEGORIES else len(document_library.CATEGORIES) - 1,
+                    key=f"document_category_{document_id}",
+                )
+                if chosen_category != category and st.button("Enregistrer la catégorie", key=f"save_category_{document_id}"):
+                    try:
+                        if cloud_mode:
+                            document_library.update_cloud_category(supabase_client, current_user, document_id, chosen_category)
+                        else:
+                            document_library.update_local_category(document_id, chosen_category)
+                        st.success("Catégorie mise à jour.")
+                        st.rerun()
+                    except Exception:
+                        st.error("La catégorie n'a pas pu être enregistrée. En mode cloud, exécutez d'abord supabase/document_category_migration.sql dans Supabase SQL Editor.")
                 saved = (
                     document_library.get_cloud(supabase_client, current_user, document_id)
                     if cloud_mode else document_library.get_local(document_id)
