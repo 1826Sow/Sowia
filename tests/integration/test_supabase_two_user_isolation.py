@@ -49,13 +49,20 @@ class SupabaseTestSession:
             "Content-Type": "application/json",
         }
 
-    def table(self, method, params=None, payload=None, prefer=None):
+    def table(self, method, params=None, payload=None, prefer=None, table_name="sowia_documents"):
+        if table_name not in {
+            "sowia_documents",
+            "sowia_memory_items",
+            "sowia_messages",
+            "sowia_comparison_history",
+        }:
+            raise ValueError("Unsupported integration-test table")
         headers = dict(self.headers)
         if prefer:
             headers["Prefer"] = prefer
         response = self.http.request(
             method,
-            f"{self.url}/rest/v1/sowia_documents",
+            f"{self.url}/rest/v1/{table_name}",
             headers=headers,
             params=params,
             json=payload,
@@ -152,6 +159,117 @@ def test_documents_are_isolated_between_two_authenticated_users():
                 "DELETE",
                 params={
                     "id": f"eq.{document_id}",
+                    "user_id": f"eq.{account_a.user_id}",
+                },
+            )
+
+
+
+@pytest.mark.parametrize(
+    ("table_name", "payload_factory", "select_columns"),
+    [
+        (
+            "sowia_memory_items",
+            lambda owner, marker: {
+                "user_id": owner,
+                "content": marker,
+            },
+            "id,content",
+        ),
+        (
+            "sowia_messages",
+            lambda owner, marker: {
+                "user_id": owner,
+                "session_id": marker,
+                "role": "user",
+                "content": "Private conversation RLS test",
+            },
+            "id,session_id,content",
+        ),
+        (
+            "sowia_comparison_history",
+            lambda owner, marker: {
+                "user_id": owner,
+                "report": {"integration_test": marker},
+            },
+            "id,report",
+        ),
+    ],
+)
+def test_private_data_tables_are_isolated_between_two_users(
+    table_name, payload_factory, select_columns
+):
+    """Check SELECT/INSERT/DELETE RLS on memory, messages and comparison history."""
+    url = os.environ["SOWIA_TEST_SUPABASE_URL"]
+    anon_key = os.environ["SOWIA_TEST_SUPABASE_ANON_KEY"]
+    account_a = SupabaseTestSession(
+        url, anon_key,
+        os.environ["SOWIA_TEST_USER_A_EMAIL"],
+        os.environ["SOWIA_TEST_USER_A_PASSWORD"],
+    )
+    account_b = SupabaseTestSession(
+        url, anon_key,
+        os.environ["SOWIA_TEST_USER_B_EMAIL"],
+        os.environ["SOWIA_TEST_USER_B_PASSWORD"],
+    )
+    assert account_a.user_id != account_b.user_id
+
+    marker = "sowia-private-rls-" + uuid.uuid4().hex
+    row_id = None
+    try:
+        inserted = account_a.table(
+            "POST",
+            table_name=table_name,
+            params={"select": "id"},
+            payload=payload_factory(account_a.user_id, marker),
+            prefer="return=representation",
+        )
+        assert inserted, f"Account A could not create a test row in {table_name}"
+        row_id = inserted[0]["id"]
+        row_filter = f"eq.{row_id}"
+
+        visible_to_a = account_a.table(
+            "GET",
+            table_name=table_name,
+            params={"id": row_filter, "select": select_columns},
+        )
+        visible_to_b = account_b.table(
+            "GET",
+            table_name=table_name,
+            params={"id": row_filter, "select": select_columns},
+        )
+        assert any(row["id"] == row_id for row in visible_to_a)
+        assert not any(row["id"] == row_id for row in visible_to_b)
+
+        forged = account_b.http.post(
+            f"{url.rstrip('/')}/rest/v1/{table_name}",
+            headers={**account_b.headers, "Prefer": "return=representation"},
+            json=payload_factory(account_a.user_id, marker + "-forged"),
+            timeout=20,
+        )
+        assert forged.status_code in (401, 403), (
+            f"RLS should reject cross-owner INSERT into {table_name}; "
+            f"received HTTP {forged.status_code}"
+        )
+
+        account_b.table(
+            "DELETE",
+            table_name=table_name,
+            params={"id": row_filter},
+        )
+        still_visible_to_a = account_a.table(
+            "GET",
+            table_name=table_name,
+            params={"id": row_filter, "select": select_columns},
+        )
+        assert any(row["id"] == row_id for row in still_visible_to_a)
+    finally:
+        if row_id is not None:
+            account_a.table(
+                "DELETE",
+                table_name=table_name,
+                params={
+                    "id": f"eq.{row_id}",
                     "user_id": f"eq.{account_a.user_id}",
                 },
             )
