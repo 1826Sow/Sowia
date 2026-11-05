@@ -82,12 +82,19 @@ if cloud_mode:
                 uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
             )
     except Exception as exc:
-        st.error("La connexion sécurisée n'a pas pu être vérifiée. Réessayez ou vérifiez les réglages Supabase.")
-        st.caption(str(exc))
-        if st.button("Réinitialiser la connexion"):
-            st.session_state.pop("sowia_supabase_client", None)
-            st.rerun()
-        st.stop()
+        # Keep the application usable if the optional Supabase connection is
+        # unavailable. Never bypass authentication when the deployment
+        # explicitly requires it.
+        st.session_state.pop("sowia_supabase_client", None)
+        if auth_required:
+            st.error("La connexion sécurisée Supabase est indisponible. L'accès reste fermé car l'authentification est obligatoire.")
+            st.caption(str(exc))
+            st.stop()
+        st.warning("Supabase ne répond pas correctement : SOW IA continue en mode local temporaire. Les fonctions locales, dont la création de PDF, restent accessibles. Les données locales ne sont pas destinées à un usage partagé.")
+        st.caption(f"Détail technique : {exc}")
+        cloud_mode = False
+        current_user = None
+        supabase_client = None
 
     if current_user is None:
         st.markdown(
