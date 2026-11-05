@@ -125,6 +125,10 @@ class _CrudQuery:
         self.inserted = payload
         return self
 
+    def update(self, payload):
+        self.updated = payload
+        return self
+
     def select(self, *_args):
         return self
 
@@ -289,3 +293,56 @@ def test_safe_text_download_name_never_contains_path_or_unsafe_characters(untrus
 
 def test_safe_text_download_name_has_fallback_for_empty_stem():
     assert document_library.safe_text_download_name(".pdf") == "sowia_document.txt"
+
+
+
+def test_cloud_list_and_get_exclude_trashed_documents():
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient([{"id": 9, "title": "Actif"}])
+
+    document_library.list_cloud(client, user)
+    assert ("user_id", "owner-42") in client.query.filters
+    assert ("deleted_at", "is", "null") in client.query.filters
+
+    client = _CrudClient([{"id": 9, "title": "Actif", "extracted_text": "Texte"}])
+    document_library.get_cloud(client, user, 9)
+    assert ("deleted_at", "is", "null") in client.query.filters
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda client, user: document_library.update_cloud_category(client, user, 9, "Finances"),
+        lambda client, user: document_library.update_cloud_folder(client, user, 9, "Archives"),
+        lambda client, user: document_library.trash_cloud(client, user, 9),
+    ],
+    ids=["category", "folder", "trash"],
+)
+def test_cloud_mutations_are_owner_scoped_and_only_touch_active_documents(operation):
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient()
+
+    operation(client, user)
+
+    assert ("user_id", "owner-42") in client.query.filters
+    assert ("id", 9) in client.query.filters
+    assert ("deleted_at", "is", "null") in client.query.filters
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda client, user: document_library.update_cloud_category(client, user, 9, "Finances"),
+        lambda client, user: document_library.update_cloud_folder(client, user, 9, "Archives"),
+        lambda client, user: document_library.trash_cloud(client, user, 9),
+    ],
+    ids=["category", "folder", "trash"],
+)
+def test_cloud_mutations_reject_missing_user_before_query(operation):
+    user = type("User", (), {"id": None})()
+    client = _CrudClient()
+
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        operation(client, user)
+
+    assert client.query.filters == []
