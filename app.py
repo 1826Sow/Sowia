@@ -552,9 +552,18 @@ elif page == "Mes documents":
             document_library.list_cloud(supabase_client, current_user)
             if cloud_mode else document_library.list_local()
         )
+        category_filter = st.selectbox(
+            "Filtrer par catégorie",
+            ["Toutes", "Finances", "Administratif", "Travail", "Études", "Santé", "Autres"],
+            key="document_category_filter",
+        )
         saved_documents = [
             item for item in saved_documents
             if document_library.matches_document_metadata(item, filter_text)
+            and (
+                category_filter == "Toutes"
+                or document_library.categorize_document(item) == category_filter
+            )
         ]
         sort_choice = st.selectbox(
             "Trier les documents",
@@ -571,8 +580,9 @@ elif page == "Mes documents":
         if not saved_documents:
             st.info("Votre bibliothèque est vide. Ajoutez un PDF pour commencer.")
         for item in saved_documents:
-            with st.expander(f"📄 {item['title']} — {item['filename']}"):
-                st.caption(f"{item.get('text_length', 0):,} caractères · {item.get('created_at', '')}")
+            category = document_library.categorize_document(item)
+            with st.expander(f"📄 [{category}] {item['title']} — {item['filename']}"):
+                st.caption(f"Catégorie : {category} · {item.get('text_length', 0):,} caractères · {item.get('created_at', '')}")
                 document_id = item["id"]
                 saved = (
                     document_library.get_cloud(supabase_client, current_user, document_id)
