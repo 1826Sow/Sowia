@@ -45,6 +45,15 @@ def _connect():
                 created_at TEXT NOT NULL
             )"""
         )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS documents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                filename TEXT NOT NULL,
+                extracted_text TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )"""
+        )
         return conn
     except Exception:
         conn.close()
