@@ -4,15 +4,46 @@ from io import BytesIO
 import pytest
 from pypdf import PdfWriter
 
-from documents import extract_pdf_text
+from documents import extract_pdf_text, validate_pdf_upload
+
+
+def make_pdf(page_count=1):
+    output = BytesIO()
+    writer = PdfWriter()
+    for _ in range(page_count):
+        writer.add_blank_page(width=300, height=300)
+    writer.write(output)
+    output.seek(0)
+    return output
 
 
 def test_blank_pdf_reports_that_no_text_was_found():
-    output = BytesIO()
-    writer = PdfWriter()
-    writer.add_blank_page(width=300, height=300)
-    writer.write(output)
-    output.seek(0)
-
     with pytest.raises(ValueError, match="Aucun texte extractible"):
-        extract_pdf_text(output)
+        extract_pdf_text(make_pdf())
+
+
+def test_rejects_non_pdf_content():
+    with pytest.raises(ValueError, match="pas un PDF valide"):
+        validate_pdf_upload(BytesIO(b"not a pdf document"))
+
+
+def test_rejects_empty_file():
+    with pytest.raises(ValueError, match="vide"):
+        validate_pdf_upload(BytesIO(b""))
+
+
+def test_rejects_upload_over_size_limit():
+    with pytest.raises(ValueError, match="15 Mo"):
+        validate_pdf_upload(make_pdf(), max_bytes=10)
+
+
+def test_rejects_pdf_over_page_limit():
+    with pytest.raises(ValueError, match="maximum 2 pages"):
+        validate_pdf_upload(make_pdf(page_count=3), max_pages=2)
+
+
+def test_accepts_valid_pdf_and_rewinds_file():
+    uploaded = make_pdf()
+    reader = validate_pdf_upload(uploaded)
+    assert len(reader.pages) == 1
+    assert uploaded.tell() == 0
