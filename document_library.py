@@ -142,10 +142,18 @@ def list_cloud(client, user, limit=100):
 
 def get_cloud(client, user, document_id):
     document_id = _document_id(document_id)
-    rows = (client.table("sowia_documents")
-        .select("id, title, filename, extracted_text, created_at, category")
-        .eq("user_id", _user_id(user)).eq("id", document_id)
-        .limit(1).execute().data)
+    try:
+        rows = (client.table("sowia_documents")
+            .select("id, title, filename, extracted_text, created_at, category")
+            .eq("user_id", _user_id(user)).eq("id", document_id)
+            .limit(1).execute().data)
+    except Exception:
+        rows = (client.table("sowia_documents")
+            .select("id, title, filename, extracted_text, created_at")
+            .eq("user_id", _user_id(user)).eq("id", document_id)
+            .limit(1).execute().data)
+        for item in rows:
+            item["category"] = categorize_document(item)
     return rows[0] if rows else None
 
 
