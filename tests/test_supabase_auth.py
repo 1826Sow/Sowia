@@ -1,4 +1,6 @@
 """Tests for safe Supabase configuration handling."""
+import base64
+import json
 import sys
 import types
 
@@ -22,16 +24,56 @@ def test_client_fails_closed_when_not_configured(monkeypatch):
 def test_client_rejects_non_https_url(monkeypatch):
     monkeypatch.setattr(supabase_auth, "get_setting", lambda name, default="": {
         "SUPABASE_URL": "http://example.supabase.co",
-        "SUPABASE_ANON_KEY": "public-anon-key",
+        "SUPABASE_ANON_KEY": _jwt_with_role("anon"),
     }.get(name, default))
     with pytest.raises(RuntimeError, match="HTTPS"):
         supabase_auth.create_user_client()
 
 
+def _jwt_with_role(role):
+    payload = base64.urlsafe_b64encode(
+        json.dumps({"role": role}).encode()
+    ).decode().rstrip("=")
+    return f"header.{payload}.signature"
+
+
+def test_public_key_validation_accepts_publishable_and_anon_keys():
+    assert supabase_auth.is_public_supabase_key("sb_publishable_test-key")
+    assert supabase_auth.is_public_supabase_key(_jwt_with_role("anon"))
+
+
+def test_public_key_validation_rejects_secret_and_service_role_keys():
+    assert not supabase_auth.is_public_supabase_key("sb_secret_test-key")
+    assert not supabase_auth.is_public_supabase_key(_jwt_with_role("service_role"))
+    assert not supabase_auth.is_public_supabase_key("not-a-supabase-key")
+
+
+def test_client_rejects_privileged_key_before_client_creation(monkeypatch):
+    values = {
+        "SUPABASE_URL": "https://example.supabase.co",
+        "SUPABASE_ANON_KEY": _jwt_with_role("service_role"),
+    }
+    monkeypatch.setattr(supabase_auth, "get_setting", lambda name, default="": values.get(name, default))
+    with pytest.raises(RuntimeError, match="clés service_role"):
+        supabase_auth.create_user_client()
+
+
+def test_private_session_cleanup_preserves_only_navigation():
+    state = {
+        "page_nav": "Mes documents",
+        "session_id": "old-session",
+        "pdf_text": "private extracted text",
+        "latest_comparison_report": {"secret": "private"},
+        "document_zip_export": b"private archive",
+    }
+    supabase_auth.clear_private_session_state(state)
+    assert state == {"page_nav": "Mes documents"}
+
+
 def test_client_uses_pkce_and_anon_key(monkeypatch):
     values = {
         "SUPABASE_URL": "https://example.supabase.co",
-        "SUPABASE_ANON_KEY": "public-anon-key",
+        "SUPABASE_ANON_KEY": _jwt_with_role("anon"),
     }
     monkeypatch.setattr(supabase_auth, "get_setting", lambda name, default="": values.get(name, default))
     captured = {}
