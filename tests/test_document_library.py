@@ -108,3 +108,100 @@ def test_search_cloud_requires_authenticated_user():
 
     with pytest.raises(PermissionError, match="Connexion requise"):
         document_library.search_cloud(client, user, "document")
+
+
+class _CrudQuery:
+    def __init__(self, data=None):
+        self.data = data or []
+        self.filters = []
+        self.inserted = None
+        self.deleted = False
+
+    def insert(self, payload):
+        self.inserted = payload
+        return self
+
+    def select(self, *_args):
+        return self
+
+    def eq(self, field, value):
+        self.filters.append((field, value))
+        return self
+
+    def order(self, *_args, **_kwargs):
+        return self
+
+    def limit(self, *_args):
+        return self
+
+    def delete(self):
+        self.deleted = True
+        return self
+
+    def execute(self):
+        return _FakeResponse(self.data)
+
+
+class _CrudClient:
+    def __init__(self, data=None):
+        self.query = _CrudQuery(data)
+
+    def table(self, name):
+        assert name == "sowia_documents"
+        return self.query
+
+
+def test_save_cloud_attaches_authenticated_owner_and_validates_document():
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient()
+    document_library.save_cloud(client, user, "Mon PDF", "mon.pdf", "Texte extrait")
+
+    assert client.query.inserted == {
+        "user_id": "owner-42",
+        "title": "Mon PDF",
+        "filename": "mon.pdf",
+        "extracted_text": "Texte extrait",
+        "text_length": len("Texte extrait"),
+    }
+
+
+def test_save_cloud_rejects_missing_user_before_insert():
+    user = type("User", (), {"id": None})()
+    client = _CrudClient()
+
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        document_library.save_cloud(client, user, "Mon PDF", "mon.pdf", "Texte extrait")
+
+    assert client.query.inserted is None
+
+
+def test_list_cloud_filters_by_authenticated_owner():
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient([{"id": 9, "title": "Privé"}])
+
+    result = document_library.list_cloud(client, user)
+
+    assert result[0]["id"] == 9
+    assert ("user_id", "owner-42") in client.query.filters
+
+
+def test_get_cloud_filters_by_owner_and_document_id():
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient([{"id": 9, "extracted_text": "privé"}])
+
+    result = document_library.get_cloud(client, user, 9)
+
+    assert result["id"] == 9
+    assert ("user_id", "owner-42") in client.query.filters
+    assert ("id", 9) in client.query.filters
+
+
+def test_delete_cloud_filters_by_owner_and_document_id():
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient()
+
+    document_library.delete_cloud(client, user, 9)
+
+    assert client.query.deleted is True
+    assert ("user_id", "owner-42") in client.query.filters
+    assert ("id", 9) in client.query.filters
