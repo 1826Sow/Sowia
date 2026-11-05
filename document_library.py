@@ -105,13 +105,21 @@ def delete_cloud(client, user, document_id):
 
 
 
+def _normalize_search_text(value):
+    """Case- and accent-insensitive normalization that preserves character positions."""
+    import unicodedata
+
+    decomposed = unicodedata.normalize("NFD", str(value or "").casefold())
+    return "".join(char for char in decomposed if unicodedata.category(char) != "Mn")
+
+
 def _search_match(text, query, radius=100):
     """Return an excerpt and the nearest preceding PDF page marker."""
     import re
 
     source = str(text or "")
     needle = (query or "").strip()
-    index = source.casefold().find(needle.casefold())
+    index = _normalize_search_text(source).find(_normalize_search_text(needle))
     if index < 0:
         return None
     left = max(0, index - radius)
