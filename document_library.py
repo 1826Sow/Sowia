@@ -170,12 +170,21 @@ def get_cloud(client, user, document_id):
             .eq("user_id", _user_id(user)).eq("id", document_id)
             .limit(1).execute().data)
     except Exception:
-        rows = (client.table("sowia_documents")
-            .select("id, title, filename, extracted_text, created_at")
-            .eq("user_id", _user_id(user)).eq("id", document_id)
-            .limit(1).execute().data)
-        for item in rows:
-            item["category"] = categorize_document(item)
+        try:
+            rows = (client.table("sowia_documents")
+                .select("id, title, filename, extracted_text, created_at, category")
+                .eq("user_id", _user_id(user)).eq("id", document_id)
+                .limit(1).execute().data)
+            for item in rows:
+                item["folder"] = DEFAULT_FOLDER
+        except Exception:
+            rows = (client.table("sowia_documents")
+                .select("id, title, filename, extracted_text, created_at")
+                .eq("user_id", _user_id(user)).eq("id", document_id)
+                .limit(1).execute().data)
+            for item in rows:
+                item["category"] = categorize_document(item)
+                item["folder"] = DEFAULT_FOLDER
     return rows[0] if rows else None
 
 
