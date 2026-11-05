@@ -5,6 +5,10 @@
 with expected_columns(table_name, column_name) as (
     values
         ('sowia_documents', 'user_id'),
+        ('sowia_documents', 'title'),
+        ('sowia_documents', 'filename'),
+        ('sowia_documents', 'extracted_text'),
+        ('sowia_documents', 'text_length'),
         ('sowia_documents', 'created_at'),
         ('sowia_documents', 'category'),
         ('sowia_documents', 'folder'),
@@ -77,6 +81,44 @@ expected_policies(table_name, command_name) as (
         ('sowia_messages', 'INSERT'),
         ('sowia_messages', 'DELETE')
 ),
+document_constraint_checks as (
+    select
+        'Contrainte de taille du texte extrait' as check_name,
+        case when exists (
+            select 1
+            from pg_constraint c
+            where c.conrelid = to_regclass('public.sowia_documents')
+              and c.contype = 'c'
+              and pg_get_constraintdef(c.oid) ilike '%char_length(extracted_text)%'
+              and pg_get_constraintdef(c.oid) ilike '%100000%'
+        ) then 'OK' else 'À CORRIGER' end as status,
+        'Le texte extrait doit rester limité à 100 000 caractères.' as details
+    union all
+    select
+        'Contrainte de catégorie des documents',
+        case when exists (
+            select 1
+            from pg_constraint c
+            where c.conrelid = to_regclass('public.sowia_documents')
+              and c.contype = 'c'
+              and pg_get_constraintdef(c.oid) ilike '%category%'
+              and pg_get_constraintdef(c.oid) ilike '%Finances%'
+              and pg_get_constraintdef(c.oid) ilike '%Autres%'
+        ) then 'OK' else 'À CORRIGER' end,
+        'La catégorie doit respecter la liste autorisée.'
+    union all
+    select
+        'Contrainte de longueur du dossier',
+        case when exists (
+            select 1
+            from pg_constraint c
+            where c.conrelid = to_regclass('public.sowia_documents')
+              and c.contype = 'c'
+              and pg_get_constraintdef(c.oid) ilike '%folder%'
+              and pg_get_constraintdef(c.oid) ilike '%60%'
+        ) then 'OK' else 'À CORRIGER' end,
+        'Le nom du dossier doit être limité à 60 caractères.'
+),
 policy_checks as (
     select
         'Politique ' || p.command_name || ' sur ' || p.table_name as check_name,
@@ -111,6 +153,8 @@ union all
 select check_name, status, details from rls_checks
 union all
 select check_name, status, details from policy_checks
+union all
+select check_name, status, details from document_constraint_checks
 union all
 select
     'Index de corbeille sowia_documents_user_deleted_idx' as check_name,
