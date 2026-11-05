@@ -436,12 +436,20 @@ elif page == "Mes documents":
         try:
             uploaded_pdf.seek(0)
             extracted = extract_pdf_text(uploaded_pdf, max_chars=100000)
-            if cloud_mode:
-                document_library.save_cloud(supabase_client, current_user, document_title, uploaded_pdf.name, extracted)
+            if not extracted.strip():
+                st.warning(
+                    "Aucun texte n'a été détecté dans ce PDF. "
+                    "Il peut s'agir d'un document scanné ou composé d'images. "
+                    "La reconnaissance OCR n'est pas encore disponible : "
+                    "ce document n'a pas été enregistré."
+                )
             else:
-                document_library.save_local(document_title, uploaded_pdf.name, extracted)
-            st.success("Document enregistré. Le texte extrait est conservé; le fichier PDF original n'est pas stocké.")
-            st.rerun()
+                if cloud_mode:
+                    document_library.save_cloud(supabase_client, current_user, document_title, uploaded_pdf.name, extracted)
+                else:
+                    document_library.save_local(document_title, uploaded_pdf.name, extracted)
+                st.success("Document enregistré. Le texte extrait est conservé; le fichier PDF original n'est pas stocké.")
+                st.rerun()
         except Exception:
             st.error("Impossible d'enregistrer ce document. Vérifiez le fichier et la configuration de la bibliothèque.")
 
