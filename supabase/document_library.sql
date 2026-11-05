@@ -7,7 +7,8 @@ create table if not exists public.sowia_documents (
     extracted_text text not null check (char_length(extracted_text) between 1 and 100000),
     text_length integer not null check (text_length between 1 and 100000),
     created_at timestamptz not null default now(),
-    category text not null default 'Autres' check (category in ('Finances', 'Administratif', 'Travail', 'Études', 'Santé', 'Autres'))
+    category text not null default 'Autres' check (category in ('Finances', 'Administratif', 'Travail', 'Études', 'Santé', 'Autres')),
+    folder text not null default 'Général' check (char_length(folder) between 1 and 60)
 );
 
 create index if not exists sowia_documents_user_created_idx
