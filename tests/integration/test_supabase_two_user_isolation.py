@@ -166,7 +166,7 @@ def test_documents_are_isolated_between_two_authenticated_users():
 
 
 @pytest.mark.parametrize(
-    ("table_name", "payload_factory", "select_columns"),
+    ("table_name", "payload_factory", "tamper_payload_factory", "value_column", "expected_value", "select_columns"),
     [
         (
             "sowia_memory_items",
@@ -174,6 +174,9 @@ def test_documents_are_isolated_between_two_authenticated_users():
                 "user_id": owner,
                 "content": marker,
             },
+            lambda marker: {"content": marker + "-tampered"},
+            "content",
+            None,
             "id,content",
         ),
         (
@@ -184,6 +187,9 @@ def test_documents_are_isolated_between_two_authenticated_users():
                 "role": "user",
                 "content": "Private conversation RLS test",
             },
+            lambda marker: {"content": "Tampered conversation content"},
+            "content",
+            "Private conversation RLS test",
             "id,session_id,content",
         ),
         (
@@ -192,12 +198,16 @@ def test_documents_are_isolated_between_two_authenticated_users():
                 "user_id": owner,
                 "report": {"integration_test": marker},
             },
+            lambda marker: {"report": {"integration_test": marker + "-tampered"}},
+            "report",
+            None,
             "id,report",
         ),
     ],
 )
 def test_private_data_tables_are_isolated_between_two_users(
-    table_name, payload_factory, select_columns
+    table_name, payload_factory, tamper_payload_factory,
+    value_column, expected_value, select_columns
 ):
     """Check SELECT/INSERT/DELETE RLS on memory, messages and comparison history."""
     url = os.environ["SOWIA_TEST_SUPABASE_URL"]
@@ -251,6 +261,29 @@ def test_private_data_tables_are_isolated_between_two_users(
             f"RLS should reject cross-owner INSERT into {table_name}; "
             f"received HTTP {forged.status_code}"
         )
+
+        # B's update must not change A's private row.
+        account_b.table(
+            "PATCH",
+            table_name=table_name,
+            params={"id": row_filter},
+            payload=tamper_payload_factory(marker),
+            prefer="return=representation",
+        )
+        still_visible_to_a = account_a.table(
+            "GET",
+            table_name=table_name,
+            params={"id": row_filter, "select": select_columns},
+        )
+        assert any(
+            row["id"] == row_id
+            and (
+                row.get(value_column) == expected_value
+                if expected_value is not None
+                else row.get(value_column) == {"integration_test": marker}
+            )
+            for row in still_visible_to_a
+        ), f"Account B changed A's private row in {table_name}"
 
         account_b.table(
             "DELETE",
