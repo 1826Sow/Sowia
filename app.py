@@ -446,6 +446,8 @@ elif page == "Mes documents":
                 st.success(f"{len(matches)} document(s) contiennent cette expression.")
                 for match in matches:
                     st.markdown(f"**{match['title']}** — {match['filename']}")
+                    if match.get("page"):
+                        st.caption(f"Passage trouvé à la page {match['page']}")
                     st.write(match["snippet"])
                     st.caption(f"Document enregistré le : {match.get('created_at', 'date inconnue')}")
             else:
