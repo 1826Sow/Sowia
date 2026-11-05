@@ -3,7 +3,7 @@ from openai import OpenAI, AuthenticationError, RateLimitError
 from config import API_KEY, BASE_URL, MODEL, SYSTEM_PROMPT
 
 
-def _offline_reply(messages):
+def _offline_reply(messages, memories=None):
     """Return honest, limited help when the paid API is unavailable."""
     prompt = ""
     for item in reversed(messages or []):
@@ -12,6 +12,28 @@ def _offline_reply(messages):
             break
 
     lowered = prompt.lower()
+    if memories and prompt:
+        relevant = select_relevant_memories(
+            [{"role": "user", "content": prompt}],
+            memories,
+            max_items=5,
+        )
+        memory_intent = any(
+            phrase in lowered
+            for phrase in (
+                "memoire", "mémoire", "souviens", "souvenir", "retenu",
+                "retenue", "sais-tu de moi", "sais tu de moi",
+                "qu'est-ce que tu sais", "qu est ce que tu sais",
+                "mes preferences", "mes préférences",
+            )
+        )
+        if relevant and memory_intent:
+            notes = "\\n".join(f"- {item}" for item in relevant)
+            return (
+                "Voici les informations pertinentes retrouvées dans votre mémoire SOW IA :\\n"
+                + notes
+                + "\\n\\nCette réponse provient de vos notes enregistrées, pas d'une génération IA."
+            )
     if any(word in lowered for word in ("429", "crédit", "credits", "quota", "facturation")):
         return (
             "SOW IA fonctionne en mode de secours : le quota OpenAI est épuisé "
@@ -121,6 +143,6 @@ def answer(messages, memories=None):
             "si vous utilisez l'API officielle OpenAI. Ne communiquez jamais votre clé."
         ) from exc
     except RateLimitError:
-        return _offline_reply(messages)
+        return _offline_reply(messages, memories=saved_memories)
 
     return response.choices[0].message.content or ""
