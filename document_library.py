@@ -293,24 +293,27 @@ def trash_cloud(client, user, document_id):
 
 
 def list_trashed_cloud(client, user, limit=100):
+    user_id = _user_id(user)
     return (client.table("sowia_documents")
         .select("id, title, filename, text_length, created_at, category, folder, deleted_at")
-        .eq("user_id", _user_id(user)).not_.is_("deleted_at", "null")
+        .eq("user_id", user_id).not_.is_("deleted_at", "null")
         .order("deleted_at", desc=True)
         .limit(min(max(int(limit), 1), 100)).execute().data)
 
 
 def restore_cloud(client, user, document_id):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     return (client.table("sowia_documents").update({"deleted_at": None})
-        .eq("user_id", _user_id(user)).eq("id", document_id)
+        .eq("user_id", user_id).eq("id", document_id)
         .not_.is_("deleted_at", "null").execute())
 
 
 def permanently_delete_cloud(client, user, document_id):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     return (client.table("sowia_documents").delete()
-        .eq("user_id", _user_id(user)).eq("id", document_id)
+        .eq("user_id", user_id).eq("id", document_id)
         .not_.is_("deleted_at", "null").execute())
 
 
