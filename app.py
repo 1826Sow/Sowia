@@ -324,9 +324,12 @@ elif page == "Analyse PDF":
     if file and st.button("Analyser le PDF", type="primary"):
         try:
             file.seek(0)
+            st.session_state.pdf_pages = []
+            st.session_state.pdf_text = ""
+            st.session_state.pop("pdf_summary", None)
             st.session_state.pdf_pages = extract_pdf_pages(file, max_chars=100000)
-            st.session_state.pdf_text = "\\n\\n".join(
-                f"--- Page {item['page']} ---\\n{item['text']}"
+            st.session_state.pdf_text = "\n\n".join(
+                f"--- Page {item['page']} ---\n{item['text']}"
                 for item in st.session_state.pdf_pages
             )
             st.success(f"Extraction terminée : {len(st.session_state.pdf_pages)} page(s) contenant du texte.")
@@ -359,7 +362,7 @@ elif page == "Analyse PDF":
         st.caption("SOW IA sélectionne les phrases les plus représentatives du texte. Ce résumé est extractif et peut nécessiter une relecture.")
         if st.button("Générer le résumé local"):
             summary = extractive_summary(extracted_text, max_sentences=5)
-            st.session_state.pdf_summary = "\\n\\n".join(summary)
+            st.session_state.pdf_summary = "\n\n".join(summary)
         if st.session_state.get("pdf_summary"):
             st.text_area("Résumé extrait", st.session_state.pdf_summary, height=180)
             st.download_button(
