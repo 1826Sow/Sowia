@@ -67,6 +67,10 @@ class _FakeQuery:
         self.filters.append((field, value))
         return self
 
+    def is_(self, field, value):
+        self.filters.append((field, "is", value))
+        return self
+
     def order(self, *_args, **_kwargs):
         return self
 
@@ -126,6 +130,10 @@ class _CrudQuery:
 
     def eq(self, field, value):
         self.filters.append((field, value))
+        return self
+
+    def is_(self, field, value):
+        self.filters.append((field, "is", value))
         return self
 
     def order(self, *_args, **_kwargs):
