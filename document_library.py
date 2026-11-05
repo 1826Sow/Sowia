@@ -102,3 +102,65 @@ def get_cloud(client, user, document_id):
 def delete_cloud(client, user, document_id):
     return (client.table("sowia_documents").delete()
         .eq("user_id", _user_id(user)).eq("id", document_id).execute())
+
+
+
+def _make_snippet(text, query, radius=100):
+    source = str(text or "")
+    needle = (query or "").strip()
+    if not needle:
+        return ""
+    index = source.casefold().find(needle.casefold())
+    if index < 0:
+        return ""
+    left = max(0, index - radius)
+    right = min(len(source), index + len(needle) + radius)
+    prefix = "…" if left else ""
+    suffix = "…" if right < len(source) else ""
+    return prefix + source[left:right].replace("\\n", " ") + suffix
+
+
+def search_local(query, limit=30):
+    """Search saved document text locally and return short matching excerpts."""
+    needle = (query or "").strip()
+    if not needle or len(needle) > 120:
+        raise ValueError("La recherche doit contenir entre 1 et 120 caractères.")
+    with _local_connect() as conn:
+        rows = conn.execute(
+            """SELECT id, title, filename, extracted_text, created_at
+               FROM documents
+               WHERE instr(lower(extracted_text), lower(?)) > 0
+               ORDER BY id DESC LIMIT ?""",
+            (needle, min(max(int(limit), 1), 30)),
+        ).fetchall()
+    return [
+        {"id": row[0], "title": row[1], "filename": row[2],
+         "snippet": _make_snippet(row[3], needle), "created_at": row[4]}
+        for row in rows
+    ]
+
+
+def search_cloud(client, user, query, limit=30):
+    """Search only the authenticated user's saved document text."""
+    needle = (query or "").strip()
+    if not needle or len(needle) > 120:
+        raise ValueError("La recherche doit contenir entre 1 et 120 caractères.")
+    rows = (
+        client.table("sowia_documents")
+        .select("id, title, filename, extracted_text, created_at")
+        .eq("user_id", _user_id(user))
+        .ilike("extracted_text", f"%{needle}%")
+        .order("created_at", desc=True)
+        .limit(min(max(int(limit), 1), 30))
+        .execute()
+        .data
+    )
+    results = []
+    for row in rows:
+        excerpt = _make_snippet(row.get("extracted_text", ""), needle)
+        results.append({
+            "id": row["id"], "title": row["title"],
+            "filename": row["filename"], "snippet": excerpt,
+            "created_at": row.get("created_at", ""),
+        })
+    return results
