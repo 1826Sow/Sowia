@@ -55,14 +55,14 @@ def create_user_client():
             "Supabase n'est pas configuré. Renseignez SUPABASE_URL et "
             "SUPABASE_ANON_KEY dans les secrets de l'hébergeur."
         )
+    parsed_url = urlsplit(url)
+    if parsed_url.scheme.lower() != "https" or not parsed_url.hostname:
+        raise RuntimeError("SUPABASE_URL doit être une adresse HTTPS valide.")
     if not is_public_supabase_key(key):
         raise RuntimeError(
             "SUPABASE_ANON_KEY doit être une clé publique Supabase (anon ou publishable). "
             "Les clés service_role et secrètes sont refusées."
         )
-    parsed_url = urlsplit(url)
-    if parsed_url.scheme.lower() != "https" or not parsed_url.hostname:
-        raise RuntimeError("SUPABASE_URL doit être une adresse HTTPS valide.")
     from supabase import create_client
     from supabase.client import ClientOptions
     return create_client(url, key, options=ClientOptions(flow_type="pkce"))
