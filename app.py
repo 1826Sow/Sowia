@@ -839,48 +839,87 @@ elif page == "Mes documents":
                 key="download_document_zip_export",
             )
         st.divider()
-        st.markdown("#### 🗑️ Supprimer plusieurs documents")
-        st.caption("Cette action est définitive. La suppression ne concerne que les documents sélectionnés dans la liste filtrée.")
+        st.markdown("#### 🗑️ Mettre plusieurs documents à la corbeille")
+        st.caption("Les documents seront déplacés dans la corbeille et pourront être restaurés.")
         delete_options = {
             f"{item['title']} — {item['filename']} (#{item['id']})": item["id"]
             for item in saved_documents
         }
         selected_delete_labels = st.multiselect(
-            "Documents à supprimer",
+            "Documents à déplacer dans la corbeille",
             options=list(delete_options.keys()),
             max_selections=20,
             key="document_bulk_delete_selection",
         )
         selected_delete_ids = [delete_options[label] for label in selected_delete_labels]
         confirm_bulk_delete = st.checkbox(
-            "Je confirme la suppression définitive des documents sélectionnés.",
+            "Je confirme le déplacement des documents sélectionnés dans la corbeille.",
             key="confirm_document_bulk_delete",
             disabled=not selected_delete_ids,
         )
         if st.button(
-            "Supprimer la sélection",
+            "Mettre la sélection à la corbeille",
             type="secondary",
             disabled=not selected_delete_ids or not confirm_bulk_delete,
             key="delete_selected_documents",
         ):
             def delete_one_document(selected_id):
                 if cloud_mode:
-                    document_library.delete_cloud(supabase_client, current_user, selected_id)
+                    document_library.trash_cloud(supabase_client, current_user, selected_id)
                 else:
-                    document_library.delete_local(selected_id)
+                    document_library.trash_local(selected_id)
 
             from document_bulk_actions import delete_selected_documents
             deletion_result = delete_selected_documents(selected_delete_ids, delete_one_document)
             deleted_count = deletion_result["deleted"]
             failed_count = deletion_result["failed"]
             if deleted_count:
-                st.success(f"{deleted_count} document(s) supprimé(s).")
+                st.success(f"{deleted_count} document(s) déplacé(s) dans la corbeille.")
             if failed_count:
                 st.warning(f"{failed_count} document(s) n'ont pas pu être supprimé(s). Vérifiez la connexion et réessayez.")
             if deleted_count:
                 st.rerun()
         if not saved_documents:
             st.info("Votre bibliothèque est vide. Ajoutez un PDF pour commencer.")
+        st.divider()
+        st.markdown("#### ♻️ Corbeille")
+        st.caption("Les documents restent récupérables jusqu'à leur suppression définitive. Aucun effacement automatique n'est effectué.")
+        try:
+            trashed_documents = (
+                document_library.list_trashed_cloud(supabase_client, current_user, limit=100)
+                if cloud_mode else document_library.list_trashed_local(limit=100)
+            )
+            if not trashed_documents:
+                st.caption("La corbeille est vide.")
+            for trashed in trashed_documents:
+                trashed_id = trashed["id"]
+                with st.expander(f"🗑️ {trashed.get('title', 'Document')} — {trashed.get('filename', '')}"):
+                    st.caption(f"Mis à la corbeille : {trashed.get('deleted_at', 'Date inconnue')}")
+                    if st.button("Restaurer ce document", key=f"restore_document_{trashed_id}"):
+                        if cloud_mode:
+                            document_library.restore_cloud(supabase_client, current_user, trashed_id)
+                        else:
+                            document_library.restore_local(trashed_id)
+                        st.success("Document restauré dans la bibliothèque.")
+                        st.rerun()
+                    confirm_permanent = st.checkbox(
+                        "Je confirme la suppression définitive de ce document.",
+                        key=f"confirm_permanent_document_{trashed_id}",
+                    )
+                    if st.button(
+                        "Supprimer définitivement",
+                        key=f"permanent_delete_document_{trashed_id}",
+                        disabled=not confirm_permanent,
+                    ):
+                        if cloud_mode:
+                            document_library.permanently_delete_cloud(supabase_client, current_user, trashed_id)
+                        else:
+                            document_library.permanently_delete_local(trashed_id)
+                        st.success("Document supprimé définitivement.")
+                        st.rerun()
+        except Exception:
+            st.warning("La corbeille cloud n'est pas encore disponible. Exécutez supabase/document_trash_migration.sql dans Supabase SQL Editor.")
+
         for item in saved_documents:
             category = item.get("category") or document_library.categorize_document(item)
             with st.expander(f"📄 [{category}] {item['title']} — {item['filename']}"):
@@ -959,12 +998,12 @@ elif page == "Mes documents":
                         mime="text/plain",
                         key=f"download_document_{document_id}",
                     )
-                    if st.button("Supprimer ce document", key=f"delete_document_{document_id}"):
+                    if st.button("Mettre ce document à la corbeille", key=f"delete_document_{document_id}"):
                         if cloud_mode:
-                            document_library.delete_cloud(supabase_client, current_user, document_id)
+                            document_library.trash_cloud(supabase_client, current_user, document_id)
                         else:
-                            document_library.delete_local(document_id)
-                        st.success("Document supprimé.")
+                            document_library.trash_local(document_id)
+                        st.success("Document déplacé dans la corbeille.")
                         st.rerun()
     except Exception as exc:
         st.error("La bibliothèque documentaire n'est pas encore prête.")
