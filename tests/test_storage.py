@@ -130,3 +130,16 @@ def test_storage_directory_symlink_is_rejected_without_touching_target(tmp_path,
 
     assert protected_target.read_text(encoding="utf-8") == "contenu à préserver"
     assert linked_directory.is_symlink()
+
+
+
+def test_save_document_works_before_listing_or_reading_documents(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "sowia-test.db")
+
+    document_id = storage.save_document(
+        "Contrat", "contrat.pdf", "Texte extrait du document."
+    )
+
+    assert document_id == 1
+    assert storage.get_document(document_id)["extracted_text"] == "Texte extrait du document."
+    assert storage.list_documents()[0]["title"] == "Contrat"
