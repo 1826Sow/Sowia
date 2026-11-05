@@ -242,8 +242,7 @@ elif page == "Assistant IA":
                 elif "401" in error_text or "invalid_api_key" in error_text:
                     st.error("La clé API OpenAI n'est pas reconnue. Vérifiez le secret OPENAI_API_KEY dans les paramètres Streamlit.")
                 else:
-                    st.error("Une erreur est survenue pendant la réponse de l'assistant.")
-                    st.caption(error_text)
+                    st.error("Une erreur est survenue pendant la réponse de l'assistant. Réessayez plus tard.")
     if st.button("Effacer cette conversation"):
         clear_app_history()
         st.rerun()
@@ -273,8 +272,8 @@ elif page == "Ma mémoire":
                 add_app_memory(note)
                 st.success("Information ajoutée.")
                 st.rerun()
-            except (ValueError, PermissionError) as exc:
-                st.error(str(exc))
+            except (ValueError, PermissionError):
+                st.error("Impossible d'enregistrer cette information. Vérifiez le contenu et réessayez.")
 
     st.markdown("#### Retrouver mes informations")
     memory_filter = st.text_input(
@@ -315,8 +314,8 @@ elif page == "Recherche Web":
             for item in search_web(query):
                 st.markdown(f"**[{item.get('title', 'Résultat')}]({item.get('url', '#')})**")
                 st.write(item.get("content", ""))
-        except Exception as exc:
-            st.error(str(exc))
+        except Exception:
+            st.error("La recherche Web n'a pas abouti. Vérifiez votre connexion et réessayez.")
 
 elif page == "Analyse PDF":
     st.subheader("📄 Analyse PDF")
@@ -331,8 +330,8 @@ elif page == "Analyse PDF":
                 for item in st.session_state.pdf_pages
             )
             st.success(f"Extraction terminée : {len(st.session_state.pdf_pages)} page(s) contenant du texte.")
-        except Exception as exc:
-            st.error(str(exc))
+        except Exception:
+            st.error("Le PDF n'a pas pu être analysé. Vérifiez qu'il s'agit d'un PDF lisible et non protégé.")
 
     if st.session_state.pdf_pages:
         pages = st.session_state.pdf_pages
@@ -433,9 +432,8 @@ elif page == "Mes documents":
                 document_library.save_local(document_title, uploaded_pdf.name, extracted)
             st.success("Document enregistré. Le texte extrait est conservé; le fichier PDF original n'est pas stocké.")
             st.rerun()
-        except Exception as exc:
-            st.error("Impossible d'enregistrer ce document.")
-            st.caption(str(exc))
+        except Exception:
+            st.error("Impossible d'enregistrer ce document. Vérifiez le fichier et la configuration de la bibliothèque.")
 
     st.divider()
     st.markdown("#### 🔎 Recherche dans le contenu de tous mes PDF")
