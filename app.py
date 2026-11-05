@@ -180,6 +180,63 @@ st.write("")
 
 if page == "Accueil":
     st.subheader("Bienvenue sur SOW IA")
+    st.markdown("### 📊 Votre espace documentaire")
+    try:
+        dashboard_documents = (
+            document_library.list_cloud(supabase_client, current_user)
+            if cloud_mode else document_library.list_local()
+        )
+        dashboard_reports = []
+        try:
+            import comparison_history
+            dashboard_reports = (
+                comparison_history.list_cloud(supabase_client, current_user, limit=100)
+                if cloud_mode else comparison_history.list_local(limit=100)
+            )
+        except Exception:
+            # The document dashboard remains useful if comparison history is not configured.
+            dashboard_reports = []
+
+        from document_dashboard import summarize_library
+        dashboard = summarize_library(
+            dashboard_documents,
+            comparison_reports=dashboard_reports,
+            recent_limit=5,
+        )
+        metric_cols = st.columns(4)
+        metric_cols[0].metric("Documents", dashboard["document_count"])
+        metric_cols[1].metric("Texte extrait", f'{dashboard["total_characters"]:,} caractères')
+        metric_cols[2].metric("Comparaisons", dashboard["comparison_count"])
+        metric_cols[3].metric("Moyenne par document", f'{dashboard["average_characters"]:,} caractères')
+
+        chart_cols = st.columns(2)
+        with chart_cols[0]:
+            st.markdown("**Documents par catégorie**")
+            if dashboard["category_counts"]:
+                st.bar_chart(dashboard["category_counts"])
+            else:
+                st.caption("Les catégories apparaîtront après l'ajout de documents.")
+        with chart_cols[1]:
+            st.markdown("**Documents par dossier**")
+            if dashboard["folder_counts"]:
+                st.bar_chart(dashboard["folder_counts"])
+            else:
+                st.caption("Les dossiers apparaîtront après l'ajout de documents.")
+
+        st.markdown("**Documents récents**")
+        if dashboard["recent_documents"]:
+            for recent in dashboard["recent_documents"]:
+                st.write(
+                    f'📄 **{recent["title"]}** — {recent["category"]} · '
+                    f'{recent["folder"]} · {recent["text_length"]:,} caractères'
+                )
+                st.caption(recent["created_at"] or "Date non renseignée")
+        else:
+            st.info("Votre bibliothèque est encore vide. Ajoutez votre premier PDF dans « Mes documents ».")
+        st.caption("Statistiques calculées localement à partir des métadonnées déjà chargées. Aucun crédit IA n'est utilisé.")
+    except Exception:
+        st.info("Le tableau de bord documentaire sera disponible dès que la bibliothèque sera configurée.")
+    st.divider()
     st.write("Accédez directement à vos outils :")
     shortcuts = [
         ("💬", "Assistant IA", "Posez vos questions"),
