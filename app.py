@@ -838,6 +838,48 @@ elif page == "Mes documents":
                 mime="application/zip",
                 key="download_document_zip_export",
             )
+        st.divider()
+        st.markdown("#### 🗑️ Supprimer plusieurs documents")
+        st.caption("Cette action est définitive. La suppression ne concerne que les documents sélectionnés dans la liste filtrée.")
+        delete_options = {
+            f"{item['title']} — {item['filename']} (#{item['id']})": item["id"]
+            for item in saved_documents
+        }
+        selected_delete_labels = st.multiselect(
+            "Documents à supprimer",
+            options=list(delete_options.keys()),
+            max_selections=20,
+            key="document_bulk_delete_selection",
+        )
+        selected_delete_ids = [delete_options[label] for label in selected_delete_labels]
+        confirm_bulk_delete = st.checkbox(
+            "Je confirme la suppression définitive des documents sélectionnés.",
+            key="confirm_document_bulk_delete",
+            disabled=not selected_delete_ids,
+        )
+        if st.button(
+            "Supprimer la sélection",
+            type="secondary",
+            disabled=not selected_delete_ids or not confirm_bulk_delete,
+            key="delete_selected_documents",
+        ):
+            deleted_count = 0
+            failed_count = 0
+            for selected_id in selected_delete_ids:
+                try:
+                    if cloud_mode:
+                        document_library.delete_cloud(supabase_client, current_user, selected_id)
+                    else:
+                        document_library.delete_local(selected_id)
+                    deleted_count += 1
+                except Exception:
+                    failed_count += 1
+            if deleted_count:
+                st.success(f"{deleted_count} document(s) supprimé(s).")
+            if failed_count:
+                st.warning(f"{failed_count} document(s) n'ont pas pu être supprimé(s). Vérifiez la connexion et réessayez.")
+            if deleted_count:
+                st.rerun()
         if not saved_documents:
             st.info("Votre bibliothèque est vide. Ajoutez un PDF pour commencer.")
         for item in saved_documents:
