@@ -476,7 +476,7 @@ elif page == "Mes documents":
                     value=preview_text[:preview_limit],
                     height=260,
                     disabled=True,
-                    key="library_pdf_preview",
+                    key=f"library_pdf_preview_{upload_fingerprint}",
                 )
                 if len(preview_text) > preview_limit:
                     st.caption("Aperçu limité aux 8 000 premiers caractères. Le texte complet sera enregistré.")
