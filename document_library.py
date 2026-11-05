@@ -139,24 +139,34 @@ def save_cloud(client, user, title, filename, extracted_text, category="Autres")
 def list_cloud(client, user, limit=100):
     try:
         return (client.table("sowia_documents")
-            .select("id, title, filename, text_length, created_at, category")
+            .select("id, title, filename, text_length, created_at, category, folder")
             .eq("user_id", _user_id(user)).order("created_at", desc=True)
             .limit(min(max(int(limit), 1), 100)).execute().data)
     except Exception:
-        rows = (client.table("sowia_documents")
-            .select("id, title, filename, text_length, created_at")
-            .eq("user_id", _user_id(user)).order("created_at", desc=True)
-            .limit(min(max(int(limit), 1), 100)).execute().data)
-        for item in rows:
-            item["category"] = categorize_document(item)
-        return rows
+        try:
+            rows = (client.table("sowia_documents")
+                .select("id, title, filename, text_length, created_at, category")
+                .eq("user_id", _user_id(user)).order("created_at", desc=True)
+                .limit(min(max(int(limit), 1), 100)).execute().data)
+            for item in rows:
+                item["folder"] = DEFAULT_FOLDER
+            return rows
+        except Exception:
+            rows = (client.table("sowia_documents")
+                .select("id, title, filename, text_length, created_at")
+                .eq("user_id", _user_id(user)).order("created_at", desc=True)
+                .limit(min(max(int(limit), 1), 100)).execute().data)
+            for item in rows:
+                item["category"] = categorize_document(item)
+                item["folder"] = DEFAULT_FOLDER
+            return rows
 
 
 def get_cloud(client, user, document_id):
     document_id = _document_id(document_id)
     try:
         rows = (client.table("sowia_documents")
-            .select("id, title, filename, extracted_text, created_at, category")
+            .select("id, title, filename, extracted_text, created_at, category, folder")
             .eq("user_id", _user_id(user)).eq("id", document_id)
             .limit(1).execute().data)
     except Exception:
