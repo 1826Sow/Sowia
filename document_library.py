@@ -27,6 +27,16 @@ def _validate(title, filename, extracted_text):
     return title, filename, text
 
 
+CATEGORIES = ("Finances", "Administratif", "Travail", "Études", "Santé", "Autres")
+
+
+def _clean_category(category):
+    value = str(category or "Autres").strip()
+    if value not in CATEGORIES:
+        raise ValueError("Catégorie de document invalide.")
+    return value
+
+
 def _local_connect():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
@@ -35,17 +45,22 @@ def _local_connect():
         title TEXT NOT NULL,
         filename TEXT NOT NULL,
         extracted_text TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'Autres'
     )""")
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(documents)")}
+    if "category" not in columns:
+        conn.execute("ALTER TABLE documents ADD COLUMN category TEXT NOT NULL DEFAULT 'Autres'")
     return conn
 
 
-def save_local(title, filename, extracted_text):
+def save_local(title, filename, extracted_text, category="Autres"):
     title, filename, text = _validate(title, filename, extracted_text)
+    category = _clean_category(category)
     with _local_connect() as conn:
         cursor = conn.execute(
-            "INSERT INTO documents(title, filename, extracted_text, created_at) VALUES(?,?,?,?)",
-            (title, filename, text, datetime.now(timezone.utc).isoformat()),
+            "INSERT INTO documents(title, filename, extracted_text, created_at, category) VALUES(?,?,?,?,?)",
+            (title, filename, text, datetime.now(timezone.utc).isoformat(), category),
         )
         return cursor.lastrowid
 
@@ -53,10 +68,10 @@ def save_local(title, filename, extracted_text):
 def list_local(limit=100):
     with _local_connect() as conn:
         rows = conn.execute(
-            "SELECT id, title, filename, length(extracted_text), created_at FROM documents ORDER BY id DESC LIMIT ?",
+            "SELECT id, title, filename, length(extracted_text), created_at, category FROM documents ORDER BY id DESC LIMIT ?",
             (min(max(int(limit), 1), 100),),
         ).fetchall()
-    return [{"id": r[0], "title": r[1], "filename": r[2], "text_length": r[3], "created_at": r[4]} for r in rows]
+    return [{"id": r[0], "title": r[1], "filename": r[2], "text_length": r[3], "created_at": r[4], "category": r[5]} for r in rows]
 
 
 
@@ -79,12 +94,12 @@ def get_local(document_id):
     document_id = _document_id(document_id)
     with _local_connect() as conn:
         row = conn.execute(
-            "SELECT id, title, filename, extracted_text, created_at FROM documents WHERE id=?",
+            "SELECT id, title, filename, extracted_text, created_at, category FROM documents WHERE id=?",
             (document_id,),
         ).fetchone()
     if not row:
         return None
-    return {"id": row[0], "title": row[1], "filename": row[2], "extracted_text": row[3], "created_at": row[4]}
+    return {"id": row[0], "title": row[1], "filename": row[2], "extracted_text": row[3], "created_at": row[4], "category": row[5]}
 
 
 def delete_local(document_id):
@@ -100,17 +115,18 @@ def _user_id(user):
     return str(value)
 
 
-def save_cloud(client, user, title, filename, extracted_text):
+def save_cloud(client, user, title, filename, extracted_text, category="Autres"):
     title, filename, text = _validate(title, filename, extracted_text)
+    category = _clean_category(category)
     return client.table("sowia_documents").insert({
         "user_id": _user_id(user), "title": title, "filename": filename,
-        "extracted_text": text, "text_length": len(text),
+        "extracted_text": text, "text_length": len(text), "category": category,
     }).execute().data
 
 
 def list_cloud(client, user, limit=100):
     return (client.table("sowia_documents")
-        .select("id, title, filename, text_length, created_at")
+        .select("id, title, filename, text_length, created_at, category")
         .eq("user_id", _user_id(user))
         .order("created_at", desc=True)
         .limit(min(max(int(limit), 1), 100))
@@ -120,10 +136,25 @@ def list_cloud(client, user, limit=100):
 def get_cloud(client, user, document_id):
     document_id = _document_id(document_id)
     rows = (client.table("sowia_documents")
-        .select("id, title, filename, extracted_text, created_at")
+        .select("id, title, filename, extracted_text, created_at, category")
         .eq("user_id", _user_id(user)).eq("id", document_id)
         .limit(1).execute().data)
     return rows[0] if rows else None
+
+
+def update_local_category(document_id, category):
+    document_id = _document_id(document_id)
+    category = _clean_category(category)
+    with _local_connect() as conn:
+        cursor = conn.execute("UPDATE documents SET category=? WHERE id=?", (category, document_id))
+        return cursor.rowcount > 0
+
+
+def update_cloud_category(client, user, document_id, category):
+    document_id = _document_id(document_id)
+    category = _clean_category(category)
+    return (client.table("sowia_documents").update({"category": category})
+        .eq("user_id", _user_id(user)).eq("id", document_id).execute())
 
 
 def delete_cloud(client, user, document_id):
