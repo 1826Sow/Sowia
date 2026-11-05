@@ -67,12 +67,15 @@ class _FakeQuery:
         self.filters.append((field, value))
         return self
 
-    def is_(self, field, value):
-        self.filters.append((field, "is", value))
+    @property
+    def not_(self):
+        self._negated = True
         return self
 
-    def not_is(self, field, value):
-        self.filters.append((field, "not_is", value))
+    def is_(self, field, value):
+        operator = "not_is" if self._negated else "is"
+        self._negated = False
+        self.filters.append((field, operator, value))
         return self
 
     def order(self, *_args, **_kwargs):
@@ -125,7 +128,7 @@ class _CrudQuery:
         self.inserted = None
         self.deleted = False
         self.updated = None
-        self.not_ = self
+        self._negated = False
 
     def insert(self, payload):
         self.inserted = payload
@@ -142,12 +145,15 @@ class _CrudQuery:
         self.filters.append((field, value))
         return self
 
-    def is_(self, field, value):
-        self.filters.append((field, "is", value))
+    @property
+    def not_(self):
+        self._negated = True
         return self
 
-    def not_is(self, field, value):
-        self.filters.append((field, "not_is", value))
+    def is_(self, field, value):
+        operator = "not_is" if self._negated else "is"
+        self._negated = False
+        self.filters.append((field, operator, value))
         return self
 
     def order(self, *_args, **_kwargs):
