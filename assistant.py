@@ -43,6 +43,50 @@ def _offline_reply(messages):
     )
 
 
+
+def select_relevant_memories(messages, memories, max_items=8):
+    """Choose a small set of useful notes using local keyword matching only."""
+    import re
+    import unicodedata
+
+    def normalize(value):
+        value = unicodedata.normalize("NFKD", str(value).lower())
+        value = "".join(char for char in value if not unicodedata.combining(char))
+        return set(re.findall(r"[a-z0-9]{3,}", value))
+
+    stop_words = {
+        "avec", "dans", "pour", "mais", "donc", "plus", "moins", "cela",
+        "cette", "comme", "quel", "quelle", "quels", "quelles", "vous",
+        "nous", "votre", "vos", "mon", "mes", "une", "des", "les", "est",
+        "sont", "etre", "avoir", "faire", "sur", "par", "qui", "quoi",
+        "comment", "pourquoi", "quand", "tout", "tous", "aussi", "alors",
+    }
+    user_text = " ".join(
+        str(item.get("content", ""))
+        for item in (messages or [])[-6:]
+        if item.get("role") == "user"
+    )
+    query_terms = normalize(user_text) - stop_words
+    candidates = []
+    for index, item in enumerate(memories or []):
+        content = str(item.get("content", "")).strip()
+        if not content:
+            continue
+        terms = normalize(content) - stop_words
+        overlap = len(query_terms & terms)
+        score = overlap / max(len(query_terms), 1)
+        candidates.append((score, index, content))
+    if not candidates:
+        return []
+    matched = [item for item in candidates if item[0] > 0]
+    if matched:
+        chosen = sorted(matched, key=lambda item: (-item[0], -item[1]))[:max_items]
+    else:
+        # If no topic matches, retain a few recent notes that may be preferences.
+        chosen = sorted(candidates, key=lambda item: -item[1])[:min(3, max_items)]
+    return [item[2] for item in chosen]
+
+
 def answer(messages, memories=None):
     if not API_KEY:
         raise RuntimeError(
