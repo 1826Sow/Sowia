@@ -535,7 +535,14 @@ elif page == "Mes documents":
                 f"{sum(item['size'] for item in batch_items):,} octets au total. "
                 "Seul le texte extrait sera enregistré, jamais les PDF originaux."
             )
-            if st.button("Analyser et prévisualiser tous les PDF", key="analyze_pdf_batch"):
+            batch_too_large = len(batch_items) > 10 or sum(item["size"] for item in batch_items) > 60 * 1024 * 1024
+            if batch_too_large:
+                st.warning("Pour préserver la stabilité de SOW IA, limitez un lot à 10 PDF et 60 Mo au total.")
+            if st.button(
+                "Analyser et prévisualiser tous les PDF",
+                key="analyze_pdf_batch",
+                disabled=batch_too_large,
+            ):
                 from io import BytesIO
 
                 analyzed = []
