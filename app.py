@@ -14,6 +14,7 @@ from storage import (
     save_message as local_save_message,
 )
 from documents import extract_pdf_text
+import document_library
 from websearch import search_web
 from supabase_auth import (
     authenticated_user,
@@ -325,7 +326,75 @@ elif page == "Créer un PDF":
             st.caption(str(exc))
 elif page == "Mes documents":
     st.subheader("📁 Mes documents")
-    st.info("Espace documentaire à connecter à un stockage sécurisé.")
+    st.write("Conservez le texte extrait de vos PDF, retrouvez-le et téléchargez-le à tout moment.")
+    if cloud_mode:
+        st.success("Bibliothèque privée : vos documents sont associés à votre compte.")
+    else:
+        st.warning("Mode local : la bibliothèque est stockée dans cette installation et n'est pas adaptée à plusieurs utilisateurs.")
+
+    uploaded_pdf = st.file_uploader("Ajouter un document PDF", type=["pdf"], key="library_pdf")
+    document_title = st.text_input(
+        "Nom du document",
+        value=(uploaded_pdf.name.rsplit(".", 1)[0][:160] if uploaded_pdf else ""),
+        max_chars=160,
+        key="library_title",
+    )
+    if st.button("Enregistrer dans Mes documents", type="primary", disabled=uploaded_pdf is None or not document_title.strip()):
+        try:
+            uploaded_pdf.seek(0)
+            extracted = extract_pdf_text(uploaded_pdf, max_chars=100000)
+            if cloud_mode:
+                document_library.save_cloud(supabase_client, current_user, document_title, uploaded_pdf.name, extracted)
+            else:
+                document_library.save_local(document_title, uploaded_pdf.name, extracted)
+            st.success("Document enregistré. Le texte extrait est conservé; le fichier PDF original n'est pas stocké.")
+            st.rerun()
+        except Exception as exc:
+            st.error("Impossible d'enregistrer ce document.")
+            st.caption(str(exc))
+
+    st.divider()
+    filter_text = st.text_input("Rechercher dans les titres et noms de fichiers", key="document_filter").strip().lower()
+    try:
+        saved_documents = (
+            document_library.list_cloud(supabase_client, current_user)
+            if cloud_mode else document_library.list_local()
+        )
+        saved_documents = [
+            item for item in saved_documents
+            if filter_text in (item.get("title", "") + " " + item.get("filename", "")).lower()
+        ]
+        st.caption(f"{len(saved_documents)} document(s) trouvé(s).")
+        if not saved_documents:
+            st.info("Votre bibliothèque est vide. Ajoutez un PDF pour commencer.")
+        for item in saved_documents:
+            with st.expander(f"📄 {item['title']} — {item['filename']}"):
+                st.caption(f"{item.get('text_length', 0):,} caractères · {item.get('created_at', '')}")
+                document_id = item["id"]
+                saved = (
+                    document_library.get_cloud(supabase_client, current_user, document_id)
+                    if cloud_mode else document_library.get_local(document_id)
+                )
+                if saved:
+                    st.text_area("Texte extrait", saved["extracted_text"], height=220, key=f"document_text_{document_id}")
+                    st.download_button(
+                        "Télécharger le texte (.txt)",
+                        data=saved["extracted_text"],
+                        file_name=f"sowia_{item['filename'].rsplit('.', 1)[0]}.txt",
+                        mime="text/plain",
+                        key=f"download_document_{document_id}",
+                    )
+                    if st.button("Supprimer ce document", key=f"delete_document_{document_id}"):
+                        if cloud_mode:
+                            document_library.delete_cloud(supabase_client, current_user, document_id)
+                        else:
+                            document_library.delete_local(document_id)
+                        st.success("Document supprimé.")
+                        st.rerun()
+    except Exception as exc:
+        st.error("La bibliothèque documentaire n'est pas encore prête.")
+        st.caption("En mode cloud, exécutez le script supabase/document_library.sql dans Supabase SQL Editor.")
+        st.caption(str(exc))
 
 elif page == "Historique":
     st.subheader("🕘 Historique")
