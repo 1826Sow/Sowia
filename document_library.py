@@ -60,16 +60,19 @@ def _local_connect():
     columns = {row[1] for row in conn.execute("PRAGMA table_info(documents)")}
     if "category" not in columns:
         conn.execute("ALTER TABLE documents ADD COLUMN category TEXT NOT NULL DEFAULT 'Autres'")
+    if "folder" not in columns:
+        conn.execute("ALTER TABLE documents ADD COLUMN folder TEXT NOT NULL DEFAULT 'Général'")
     return conn
 
 
-def save_local(title, filename, extracted_text, category="Autres"):
+def save_local(title, filename, extracted_text, category="Autres", folder=DEFAULT_FOLDER):
     title, filename, text = _validate(title, filename, extracted_text)
     category = _clean_category(category)
+    folder = _clean_folder(folder)
     with _local_connect() as conn:
         cursor = conn.execute(
-            "INSERT INTO documents(title, filename, extracted_text, created_at, category) VALUES(?,?,?,?,?)",
-            (title, filename, text, datetime.now(timezone.utc).isoformat(), category),
+            "INSERT INTO documents(title, filename, extracted_text, created_at, category, folder) VALUES(?,?,?,?,?,?)",
+            (title, filename, text, datetime.now(timezone.utc).isoformat(), category, folder),
         )
         return cursor.lastrowid
 
@@ -77,10 +80,10 @@ def save_local(title, filename, extracted_text, category="Autres"):
 def list_local(limit=100):
     with _local_connect() as conn:
         rows = conn.execute(
-            "SELECT id, title, filename, length(extracted_text), created_at, category FROM documents ORDER BY id DESC LIMIT ?",
+            "SELECT id, title, filename, length(extracted_text), created_at, category, folder FROM documents ORDER BY id DESC LIMIT ?",
             (min(max(int(limit), 1), 100),),
         ).fetchall()
-    return [{"id": r[0], "title": r[1], "filename": r[2], "text_length": r[3], "created_at": r[4], "category": r[5]} for r in rows]
+    return [{"id": r[0], "title": r[1], "filename": r[2], "text_length": r[3], "created_at": r[4], "category": r[5], "folder": r[6]} for r in rows]
 
 
 
@@ -103,12 +106,12 @@ def get_local(document_id):
     document_id = _document_id(document_id)
     with _local_connect() as conn:
         row = conn.execute(
-            "SELECT id, title, filename, extracted_text, created_at, category FROM documents WHERE id=?",
+            "SELECT id, title, filename, extracted_text, created_at, category, folder FROM documents WHERE id=?",
             (document_id,),
         ).fetchone()
     if not row:
         return None
-    return {"id": row[0], "title": row[1], "filename": row[2], "extracted_text": row[3], "created_at": row[4], "category": row[5]}
+    return {"id": row[0], "title": row[1], "filename": row[2], "extracted_text": row[3], "created_at": row[4], "category": row[5], "folder": row[6]}
 
 
 def delete_local(document_id):
@@ -166,12 +169,27 @@ def get_cloud(client, user, document_id):
     return rows[0] if rows else None
 
 
+def update_local_folder(document_id, folder):
+    document_id = _document_id(document_id)
+    folder = _clean_folder(folder)
+    with _local_connect() as conn:
+        cursor = conn.execute("UPDATE documents SET folder=? WHERE id=?", (folder, document_id))
+        return cursor.rowcount > 0
+
+
 def update_local_category(document_id, category):
     document_id = _document_id(document_id)
     category = _clean_category(category)
     with _local_connect() as conn:
         cursor = conn.execute("UPDATE documents SET category=? WHERE id=?", (category, document_id))
         return cursor.rowcount > 0
+
+
+def update_cloud_folder(client, user, document_id, folder):
+    document_id = _document_id(document_id)
+    folder = _clean_folder(folder)
+    return (client.table("sowia_documents").update({"folder": folder})
+        .eq("user_id", _user_id(user)).eq("id", document_id).execute())
 
 
 def update_cloud_category(client, user, document_id, category):
