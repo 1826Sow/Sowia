@@ -51,7 +51,7 @@ def compare_documents(documents, max_terms=12):
     }
 
 _NEGATIONS = {"aucun", "aucune", "jamais", "non", "pas", "sans", "ni", "n"}
-_SENTENCE_SPLIT = re.compile(r"(?<=[.!?;])\\s+|\\n+")
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?;])\s+|\n+")
 
 
 def _sentence_facts(text):
@@ -64,7 +64,7 @@ def _sentence_facts(text):
         anchors = set(tokens)
         if len(anchors) < 2:
             continue
-        numbers = set(re.findall(r"(?<![a-z])\\d+(?:[.,]\\d+)?%?(?![a-z])", sentence.casefold()))
+        numbers = set(re.findall(r"(?<![a-z])\d+(?:[.,]\d+)?%?(?![a-z])", sentence.casefold()))
         polarity = any(word in _NEGATIONS for word in _tokens(sentence))
         facts.append({"sentence": sentence[:500], "anchors": anchors, "numbers": numbers, "polarity": polarity})
     return facts
