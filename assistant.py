@@ -14,7 +14,7 @@ def _offline_reply(messages):
     lowered = prompt.lower()
     if any(word in lowered for word in ("429", "crédit", "credits", "quota", "facturation")):
         return (
-            "SOW IA fonctionne en mode de secours : le quota OpenAI est épuisé "
+            "SOW IA fonctionne en mode de secours : le quota du fournisseur IA est épuisé "
             "(erreur 429). Aucune réponse générative OpenAI ne peut être produite "
             "tant que le quota n'est pas rétabli. Vous pouvez continuer à utiliser "
             "les fonctions locales de l'application, notamment l'historique, la "
@@ -46,7 +46,7 @@ def _offline_reply(messages):
 def answer(messages, memories=None):
     if not API_KEY:
         raise RuntimeError(
-            "La clé OPENAI_API_KEY est absente. Dans Streamlit, ouvrez "
+            "Aucune clé API IA n'est configurée. Ajoutez GROQ_API_KEY ou OPENAI_API_KEY dans Streamlit > Secrets. Ouvrez "
             "Paramètres > Secrets et vérifiez le nom exact OPENAI_API_KEY. "
             "Ne partagez jamais votre clé API."
         )
@@ -69,10 +69,10 @@ def answer(messages, memories=None):
         )
     except AuthenticationError as exc:
         raise RuntimeError(
-            "OpenAI refuse la clé API (erreur 401). La connexion de SOW IA fonctionne, "
+            "Le fournisseur IA refuse la clé API (erreur 401). La connexion de SOW IA fonctionne, "
             "mais la clé enregistrée n'est pas acceptée par OpenAI. Dans Streamlit > "
             "Paramètres > Secrets, vérifiez que OPENAI_API_KEY contient une clé API "
-            "active copiée depuis https://platform.openai.com/api-keys, sans texte "
+            "active copiée depuis le tableau de bord de votre fournisseur, sans texte "
             "supplémentaire. Vérifiez aussi que OPENAI_BASE_URL n'est pas renseigné "
             "si vous utilisez l'API officielle OpenAI. Ne communiquez jamais votre clé."
         ) from exc
