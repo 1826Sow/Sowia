@@ -68,5 +68,6 @@ def test_trashed_document_is_excluded_from_search_and_category_updates(tmp_path,
     assert document_library.search_local("confidentielle")
     assert document_library.trash_local(document_id) is True
     assert document_library.search_local("confidentielle") == []
-    assert document_library.update_local_category(document_id, "Travail") is True
+    assert document_library.update_local_category(document_id, "Travail") is False
+    assert document_library.update_local_folder(document_id, "Archives") is False
     assert document_library.get_local(document_id) is None

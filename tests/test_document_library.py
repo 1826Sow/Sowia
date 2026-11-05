@@ -59,6 +59,7 @@ class _FakeQuery:
     def __init__(self, data):
         self.data = data
         self.filters = []
+        self._negated = False
 
     def select(self, *_args):
         return self
@@ -67,8 +68,15 @@ class _FakeQuery:
         self.filters.append((field, value))
         return self
 
+    @property
+    def not_(self):
+        self._negated = True
+        return self
+
     def is_(self, field, value):
-        self.filters.append((field, "is", value))
+        operator = "not_is" if self._negated else "is"
+        self._negated = False
+        self.filters.append((field, operator, value))
         return self
 
     def order(self, *_args, **_kwargs):
@@ -120,9 +128,15 @@ class _CrudQuery:
         self.filters = []
         self.inserted = None
         self.deleted = False
+        self.updated = None
+        self._negated = False
 
     def insert(self, payload):
         self.inserted = payload
+        return self
+
+    def update(self, payload):
+        self.updated = payload
         return self
 
     def select(self, *_args):
@@ -132,8 +146,15 @@ class _CrudQuery:
         self.filters.append((field, value))
         return self
 
+    @property
+    def not_(self):
+        self._negated = True
+        return self
+
     def is_(self, field, value):
-        self.filters.append((field, "is", value))
+        operator = "not_is" if self._negated else "is"
+        self._negated = False
+        self.filters.append((field, operator, value))
         return self
 
     def order(self, *_args, **_kwargs):
@@ -170,6 +191,7 @@ def test_save_cloud_attaches_authenticated_owner_and_validates_document():
         "filename": "mon.pdf",
         "extracted_text": "Texte extrait",
         "text_length": len("Texte extrait"),
+        "category": "Autres",
     }
 
 
@@ -289,3 +311,152 @@ def test_safe_text_download_name_never_contains_path_or_unsafe_characters(untrus
 
 def test_safe_text_download_name_has_fallback_for_empty_stem():
     assert document_library.safe_text_download_name(".pdf") == "sowia_document.txt"
+
+
+
+def test_cloud_list_and_get_exclude_trashed_documents():
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient([{"id": 9, "title": "Actif"}])
+
+    document_library.list_cloud(client, user)
+    assert ("user_id", "owner-42") in client.query.filters
+    assert ("deleted_at", "is", "null") in client.query.filters
+
+    client = _CrudClient([{"id": 9, "title": "Actif", "extracted_text": "Texte"}])
+    document_library.get_cloud(client, user, 9)
+    assert ("deleted_at", "is", "null") in client.query.filters
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda client, user: document_library.update_cloud_category(client, user, 9, "Finances"),
+        lambda client, user: document_library.update_cloud_folder(client, user, 9, "Archives"),
+        lambda client, user: document_library.trash_cloud(client, user, 9),
+    ],
+    ids=["category", "folder", "trash"],
+)
+def test_cloud_mutations_are_owner_scoped_and_only_touch_active_documents(operation):
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient()
+
+    operation(client, user)
+
+    assert ("user_id", "owner-42") in client.query.filters
+    assert ("id", 9) in client.query.filters
+    assert ("deleted_at", "is", "null") in client.query.filters
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda client, user: document_library.update_cloud_category(client, user, 9, "Finances"),
+        lambda client, user: document_library.update_cloud_folder(client, user, 9, "Archives"),
+        lambda client, user: document_library.trash_cloud(client, user, 9),
+    ],
+    ids=["category", "folder", "trash"],
+)
+def test_cloud_mutations_reject_missing_user_before_query(operation):
+    user = type("User", (), {"id": None})()
+    client = _CrudClient()
+
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        operation(client, user)
+
+    assert client.query.filters == []
+
+
+
+def test_cloud_trash_listing_is_scoped_and_only_returns_deleted_rows():
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient([{"id": 9, "title": "Supprimé"}])
+
+    result = document_library.list_trashed_cloud(client, user)
+
+    assert result[0]["id"] == 9
+    assert ("user_id", "owner-42") in client.query.filters
+    assert ("deleted_at", "not_is", "null") in client.query.filters
+
+
+def test_cloud_restore_only_clears_deleted_at_for_the_owner():
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient()
+
+    document_library.restore_cloud(client, user, 9)
+
+    assert client.query.updated == {"deleted_at": None}
+    assert ("user_id", "owner-42") in client.query.filters
+    assert ("id", 9) in client.query.filters
+    assert ("deleted_at", "not_is", "null") in client.query.filters
+
+
+def test_cloud_permanent_delete_only_deletes_trashed_documents_for_the_owner():
+    user = type("User", (), {"id": "owner-42"})()
+    client = _CrudClient()
+
+    document_library.permanently_delete_cloud(client, user, 9)
+
+    assert client.query.deleted is True
+    assert ("user_id", "owner-42") in client.query.filters
+    assert ("id", 9) in client.query.filters
+    assert ("deleted_at", "not_is", "null") in client.query.filters
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda client, user: document_library.list_trashed_cloud(client, user),
+        lambda client, user: document_library.restore_cloud(client, user, 9),
+        lambda client, user: document_library.permanently_delete_cloud(client, user, 9),
+    ],
+    ids=["list-trash", "restore", "permanent-delete"],
+)
+def test_cloud_trash_operations_reject_missing_user_before_query(operation):
+    user = type("User", (), {"id": None})()
+    client = _CrudClient()
+
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        operation(client, user)
+
+    assert client.query.filters == []
+    assert client.query.deleted is False
+    assert client.query.updated is None
+
+
+class _NoTableClient:
+    def __init__(self):
+        self.calls = 0
+
+    def table(self, _name):
+        self.calls += 1
+        raise AssertionError("La base ne doit pas être interrogée sans utilisateur.")
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda client, user: document_library.save_cloud(client, user, "Titre", "f.pdf", "texte"),
+        lambda client, user: document_library.list_cloud(client, user),
+        lambda client, user: document_library.get_cloud(client, user, 1),
+        lambda client, user: document_library.update_cloud_folder(client, user, 1, "Archives"),
+        lambda client, user: document_library.update_cloud_category(client, user, 1, "Finances"),
+        lambda client, user: document_library.trash_cloud(client, user, 1),
+        lambda client, user: document_library.delete_cloud(client, user, 1),
+        lambda client, user: document_library.list_trashed_cloud(client, user),
+        lambda client, user: document_library.restore_cloud(client, user, 1),
+        lambda client, user: document_library.permanently_delete_cloud(client, user, 1),
+        lambda client, user: document_library.search_cloud(client, user, "texte"),
+    ],
+    ids=[
+        "save", "list", "get", "update-folder", "update-category", "trash",
+        "delete", "list-trash", "restore", "permanent-delete", "search",
+    ],
+)
+def test_every_cloud_document_operation_checks_user_before_client_access(operation):
+    client = _NoTableClient()
+    user = type("User", (), {"id": None})()
+
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        operation(client, user)
+
+    assert client.calls == 0

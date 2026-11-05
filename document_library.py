@@ -189,26 +189,28 @@ def _user_id(user):
 
 
 def save_cloud(client, user, title, filename, extracted_text, category="Autres"):
+    user_id = _user_id(user)
     title, filename, text = _validate(title, filename, extracted_text)
     category = _clean_category(category)
     return client.table("sowia_documents").insert({
-        "user_id": _user_id(user), "title": title, "filename": filename,
-        "extracted_text": text, "text_length": len(text),
+        "user_id": user_id, "title": title, "filename": filename,
+        "extracted_text": text, "text_length": len(text), "category": category,
     }).execute().data
 
 
 def list_cloud(client, user, limit=100):
+    user_id = _user_id(user)
     try:
         return (client.table("sowia_documents")
             .select("id, title, filename, text_length, created_at, category, folder")
-            .eq("user_id", _user_id(user)).is_("deleted_at", "null")
+            .eq("user_id", user_id).is_("deleted_at", "null")
             .order("created_at", desc=True)
             .limit(min(max(int(limit), 1), 100)).execute().data)
     except Exception:
         try:
             rows = (client.table("sowia_documents")
                 .select("id, title, filename, text_length, created_at, category")
-                .eq("user_id", _user_id(user)).is_("deleted_at", "null")
+                .eq("user_id", user_id).is_("deleted_at", "null")
                 .order("created_at", desc=True)
                 .limit(min(max(int(limit), 1), 100)).execute().data)
             for item in rows:
@@ -217,7 +219,7 @@ def list_cloud(client, user, limit=100):
         except Exception:
             rows = (client.table("sowia_documents")
                 .select("id, title, filename, text_length, created_at")
-                .eq("user_id", _user_id(user)).is_("deleted_at", "null")
+                .eq("user_id", user_id).is_("deleted_at", "null")
                 .order("created_at", desc=True)
                 .limit(min(max(int(limit), 1), 100)).execute().data)
             for item in rows:
@@ -227,24 +229,25 @@ def list_cloud(client, user, limit=100):
 
 
 def get_cloud(client, user, document_id):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     try:
         rows = (client.table("sowia_documents")
             .select("id, title, filename, extracted_text, created_at, category, folder")
-            .eq("user_id", _user_id(user)).eq("id", document_id)
+            .eq("user_id", user_id).eq("id", document_id)
             .is_("deleted_at", "null").limit(1).execute().data)
     except Exception:
         try:
             rows = (client.table("sowia_documents")
                 .select("id, title, filename, extracted_text, created_at, category")
-                .eq("user_id", _user_id(user)).eq("id", document_id)
+                .eq("user_id", user_id).eq("id", document_id)
                 .is_("deleted_at", "null").limit(1).execute().data)
             for item in rows:
                 item["folder"] = DEFAULT_FOLDER
         except Exception:
             rows = (client.table("sowia_documents")
                 .select("id, title, filename, extracted_text, created_at")
-                .eq("user_id", _user_id(user)).eq("id", document_id)
+                .eq("user_id", user_id).eq("id", document_id)
                 .is_("deleted_at", "null").limit(1).execute().data)
             for item in rows:
                 item["category"] = categorize_document(item)
@@ -256,7 +259,7 @@ def update_local_folder(document_id, folder):
     document_id = _document_id(document_id)
     folder = _clean_folder(folder)
     with _local_connect() as conn:
-        cursor = conn.execute("UPDATE documents SET folder=? WHERE id=?", (folder, document_id))
+        cursor = conn.execute("UPDATE documents SET folder=? WHERE id=? AND deleted_at IS NULL", (folder, document_id))
         return cursor.rowcount > 0
 
 
@@ -264,60 +267,67 @@ def update_local_category(document_id, category):
     document_id = _document_id(document_id)
     category = _clean_category(category)
     with _local_connect() as conn:
-        cursor = conn.execute("UPDATE documents SET category=? WHERE id=?", (category, document_id))
+        cursor = conn.execute("UPDATE documents SET category=? WHERE id=? AND deleted_at IS NULL", (category, document_id))
         return cursor.rowcount > 0
 
 
 def update_cloud_folder(client, user, document_id, folder):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     folder = _clean_folder(folder)
     return (client.table("sowia_documents").update({"folder": folder})
-        .eq("user_id", _user_id(user)).eq("id", document_id)
+        .eq("user_id", user_id).eq("id", document_id)
         .is_("deleted_at", "null").execute())
 
 
 def update_cloud_category(client, user, document_id, category):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     category = _clean_category(category)
     return (client.table("sowia_documents").update({"category": category})
-        .eq("user_id", _user_id(user)).eq("id", document_id)
+        .eq("user_id", user_id).eq("id", document_id)
         .is_("deleted_at", "null").execute())
 
 
 def trash_cloud(client, user, document_id):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     return (client.table("sowia_documents").update({
         "deleted_at": datetime.now(timezone.utc).isoformat()
-    }).eq("user_id", _user_id(user)).eq("id", document_id)
+    }).eq("user_id", user_id).eq("id", document_id)
         .is_("deleted_at", "null").execute())
 
 
 def list_trashed_cloud(client, user, limit=100):
+    user_id = _user_id(user)
     return (client.table("sowia_documents")
         .select("id, title, filename, text_length, created_at, category, folder, deleted_at")
-        .eq("user_id", _user_id(user)).not_.is_("deleted_at", "null")
+        .eq("user_id", user_id).not_.is_("deleted_at", "null")
         .order("deleted_at", desc=True)
         .limit(min(max(int(limit), 1), 100)).execute().data)
 
 
 def restore_cloud(client, user, document_id):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     return (client.table("sowia_documents").update({"deleted_at": None})
-        .eq("user_id", _user_id(user)).eq("id", document_id)
+        .eq("user_id", user_id).eq("id", document_id)
         .not_.is_("deleted_at", "null").execute())
 
 
 def permanently_delete_cloud(client, user, document_id):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     return (client.table("sowia_documents").delete()
-        .eq("user_id", _user_id(user)).eq("id", document_id)
+        .eq("user_id", user_id).eq("id", document_id)
         .not_.is_("deleted_at", "null").execute())
 
 
 def delete_cloud(client, user, document_id):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     return (client.table("sowia_documents").delete()
-        .eq("user_id", _user_id(user)).eq("id", document_id).execute())
+        .eq("user_id", user_id).eq("id", document_id).execute())
 
 
 
@@ -418,13 +428,14 @@ def search_local(query, limit=30):
 
 def search_cloud(client, user, query, limit=30):
     """Search only the authenticated user's recent saved documents."""
+    user_id = _user_id(user)
     needle = (query or "").strip()
     if not needle or len(needle) > 120:
         raise ValueError("La recherche doit contenir entre 1 et 120 caractères.")
     rows = (
         client.table("sowia_documents")
         .select("id, title, filename, extracted_text, created_at")
-        .eq("user_id", _user_id(user))
+        .eq("user_id", user_id)
         .is_("deleted_at", "null")
         .order("created_at", desc=True)
         .limit(100)
