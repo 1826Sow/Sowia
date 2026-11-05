@@ -863,17 +863,16 @@ elif page == "Mes documents":
             disabled=not selected_delete_ids or not confirm_bulk_delete,
             key="delete_selected_documents",
         ):
-            deleted_count = 0
-            failed_count = 0
-            for selected_id in selected_delete_ids:
-                try:
-                    if cloud_mode:
-                        document_library.delete_cloud(supabase_client, current_user, selected_id)
-                    else:
-                        document_library.delete_local(selected_id)
-                    deleted_count += 1
-                except Exception:
-                    failed_count += 1
+            def delete_one_document(selected_id):
+                if cloud_mode:
+                    document_library.delete_cloud(supabase_client, current_user, selected_id)
+                else:
+                    document_library.delete_local(selected_id)
+
+            from document_bulk_actions import delete_selected_documents
+            deletion_result = delete_selected_documents(selected_delete_ids, delete_one_document)
+            deleted_count = deletion_result["deleted"]
+            failed_count = deletion_result["failed"]
             if deleted_count:
                 st.success(f"{deleted_count} document(s) supprimé(s).")
             if failed_count:
