@@ -18,3 +18,8 @@ def test_sensitive_operation_failures_use_generic_messages():
     assert "La recherche Web n'a pas abouti." in source
     assert "Le PDF n'a pas pu être analysé." in source
     assert "Impossible d'enregistrer ce document." in source
+
+
+def test_memory_validation_uses_a_safe_user_message():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert "Impossible d'enregistrer cette information." in source
