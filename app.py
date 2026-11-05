@@ -467,6 +467,18 @@ elif page == "Mes documents":
                         st.caption(f"Passage trouvé à la page {match['page']}")
                     st.write(match["snippet"])
                     st.caption(f"Document enregistré le : {match.get('created_at', 'date inconnue')}")
+                    saved_match = (
+                        document_library.get_cloud(supabase_client, current_user, match["id"])
+                        if cloud_mode else document_library.get_local(match["id"])
+                    )
+                    if saved_match:
+                        st.download_button(
+                            "Télécharger ce document (.txt)",
+                            data=saved_match["extracted_text"],
+                            file_name=document_library.safe_text_download_name(match["filename"]),
+                            mime="text/plain",
+                            key=f"download_search_match_{match['id']}",
+                        )
             else:
                 st.info("Aucune occurrence trouvée dans le texte des documents enregistrés.")
         except Exception as exc:
