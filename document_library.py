@@ -189,26 +189,28 @@ def _user_id(user):
 
 
 def save_cloud(client, user, title, filename, extracted_text, category="Autres"):
+    user_id = _user_id(user)
     title, filename, text = _validate(title, filename, extracted_text)
     category = _clean_category(category)
     return client.table("sowia_documents").insert({
-        "user_id": _user_id(user), "title": title, "filename": filename,
+        "user_id": user_id, "title": title, "filename": filename,
         "extracted_text": text, "text_length": len(text),
     }).execute().data
 
 
 def list_cloud(client, user, limit=100):
+    user_id = _user_id(user)
     try:
         return (client.table("sowia_documents")
             .select("id, title, filename, text_length, created_at, category, folder")
-            .eq("user_id", _user_id(user)).is_("deleted_at", "null")
+            .eq("user_id", user_id).is_("deleted_at", "null")
             .order("created_at", desc=True)
             .limit(min(max(int(limit), 1), 100)).execute().data)
     except Exception:
         try:
             rows = (client.table("sowia_documents")
                 .select("id, title, filename, text_length, created_at, category")
-                .eq("user_id", _user_id(user)).is_("deleted_at", "null")
+                .eq("user_id", user_id).is_("deleted_at", "null")
                 .order("created_at", desc=True)
                 .limit(min(max(int(limit), 1), 100)).execute().data)
             for item in rows:
@@ -227,11 +229,12 @@ def list_cloud(client, user, limit=100):
 
 
 def get_cloud(client, user, document_id):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     try:
         rows = (client.table("sowia_documents")
             .select("id, title, filename, extracted_text, created_at, category, folder")
-            .eq("user_id", _user_id(user)).eq("id", document_id)
+            .eq("user_id", user_id).eq("id", document_id)
             .is_("deleted_at", "null").limit(1).execute().data)
     except Exception:
         try:
@@ -269,6 +272,7 @@ def update_local_category(document_id, category):
 
 
 def update_cloud_folder(client, user, document_id, folder):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     folder = _clean_folder(folder)
     return (client.table("sowia_documents").update({"folder": folder})
@@ -277,6 +281,7 @@ def update_cloud_folder(client, user, document_id, folder):
 
 
 def update_cloud_category(client, user, document_id, category):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     category = _clean_category(category)
     return (client.table("sowia_documents").update({"category": category})
@@ -285,6 +290,7 @@ def update_cloud_category(client, user, document_id, category):
 
 
 def trash_cloud(client, user, document_id):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     return (client.table("sowia_documents").update({
         "deleted_at": datetime.now(timezone.utc).isoformat()
@@ -318,6 +324,7 @@ def permanently_delete_cloud(client, user, document_id):
 
 
 def delete_cloud(client, user, document_id):
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     return (client.table("sowia_documents").delete()
         .eq("user_id", _user_id(user)).eq("id", document_id).execute())
