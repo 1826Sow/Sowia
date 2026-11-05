@@ -148,6 +148,19 @@ def _normalize_search_text(value):
     return "".join(normalized), offsets
 
 
+
+def matches_document_metadata(document, query):
+    """Match a saved document title or filename without case/accent sensitivity."""
+    needle, _ = _normalize_search_text(query)
+    if not needle:
+        return True
+    metadata = " ".join((
+        str(document.get("title", "")),
+        str(document.get("filename", "")),
+    ))
+    normalized_metadata, _ = _normalize_search_text(metadata)
+    return needle in normalized_metadata
+
 def _search_match(text, query, radius=100):
     """Return an excerpt and the nearest preceding PDF page marker."""
     import re
