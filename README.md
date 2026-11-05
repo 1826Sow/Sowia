@@ -35,7 +35,7 @@ SOWIA_REQUIRE_AUTH = "true"
 
 Ajouter aussi `TAVILY_API_KEY` seulement si la recherche web est utilisée. Ne jamais ajouter la clé Supabase `service_role` dans Streamlit, le navigateur ou GitHub. Utiliser uniquement la clé publique anon/publishable avec les politiques RLS activées.
 
-Le mode public doit impérativement conserver `SOWIA_REQUIRE_AUTH=true`. Si Supabase n'est pas configuré, l'application doit rester fermée plutôt que d'ouvrir un accès non authentifié.
+L'authentification est activée par défaut. Dès que `SOWIA_PUBLIC_URL` est renseignée, elle est imposée même si `SOWIA_REQUIRE_AUTH=false` est présent. Si Supabase n'est pas configuré, l'application reste fermée plutôt que d'ouvrir un accès non authentifié. Le réglage `SOWIA_REQUIRE_AUTH=false` est réservé au développement local sans URL publique.
 
 ## Installation locale
 
