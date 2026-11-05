@@ -1,5 +1,6 @@
 """SOW IA — application web Streamlit."""
 import uuid
+import hashlib
 import streamlit as st
 from settings import get_setting
 
@@ -438,26 +439,71 @@ elif page == "Mes documents":
         max_chars=160,
         key="library_title",
     )
-    if st.button("Enregistrer dans Mes documents", type="primary", disabled=uploaded_pdf is None or not document_title.strip()):
-        try:
-            uploaded_pdf.seek(0)
-            extracted = extract_pdf_text(uploaded_pdf, max_chars=100000)
-            if not extracted.strip():
+    if uploaded_pdf is not None:
+        uploaded_bytes = uploaded_pdf.getvalue()
+        upload_fingerprint = hashlib.sha256(uploaded_bytes).hexdigest()
+        if st.button("Prévisualiser le texte extrait", disabled=not document_title.strip()):
+            try:
+                uploaded_pdf.seek(0)
+                preview_text = extract_pdf_text(uploaded_pdf, max_chars=100000)
+                st.session_state["library_preview_fingerprint"] = upload_fingerprint
+                st.session_state["library_preview_text"] = preview_text
+            except Exception:
+                st.session_state.pop("library_preview_fingerprint", None)
+                st.session_state.pop("library_preview_text", None)
+                st.error("Impossible de lire ce PDF. Vérifiez le fichier et réessayez.")
+
+        preview_is_current = (
+            st.session_state.get("library_preview_fingerprint") == upload_fingerprint
+        )
+        if preview_is_current:
+            preview_text = st.session_state.get("library_preview_text", "")
+            if not preview_text.strip():
                 st.warning(
                     "Aucun texte n'a été détecté dans ce PDF. "
                     "Il peut s'agir d'un document scanné ou composé d'images. "
                     "La reconnaissance OCR n'est pas encore disponible : "
-                    "ce document n'a pas été enregistré."
+                    "ce document ne peut pas être enregistré dans la bibliothèque."
                 )
             else:
-                if cloud_mode:
-                    document_library.save_cloud(supabase_client, current_user, document_title, uploaded_pdf.name, extracted)
-                else:
-                    document_library.save_local(document_title, uploaded_pdf.name, extracted)
-                st.success("Document enregistré. Le texte extrait est conservé; le fichier PDF original n'est pas stocké.")
-                st.rerun()
-        except Exception:
-            st.error("Impossible d'enregistrer ce document. Vérifiez le fichier et la configuration de la bibliothèque.")
+                st.success(
+                    f"Prévisualisation prête : {len(preview_text):,} caractères extraits. "
+                    "Vérifiez le contenu avant de confirmer."
+                )
+                preview_limit = 8000
+                st.text_area(
+                    "Aperçu du texte extrait",
+                    value=preview_text[:preview_limit],
+                    height=260,
+                    disabled=True,
+                    key="library_pdf_preview",
+                )
+                if len(preview_text) > preview_limit:
+                    st.caption("Aperçu limité aux 8 000 premiers caractères. Le texte complet sera enregistré.")
+                if st.button(
+                    "Confirmer et enregistrer le document",
+                    type="primary",
+                    disabled=not document_title.strip(),
+                ):
+                    try:
+                        if cloud_mode:
+                            document_library.save_cloud(
+                                supabase_client, current_user, document_title, uploaded_pdf.name, preview_text
+                            )
+                        else:
+                            document_library.save_local(document_title, uploaded_pdf.name, preview_text)
+                        st.session_state.pop("library_preview_fingerprint", None)
+                        st.session_state.pop("library_preview_text", None)
+                        st.success(
+                            "Document enregistré. Le texte extrait est conservé; "
+                            "le fichier PDF original n'est pas stocké."
+                        )
+                        st.rerun()
+                    except Exception:
+                        st.error(
+                            "Impossible d'enregistrer ce document. "
+                            "Vérifiez le fichier et la configuration de la bibliothèque."
+                        )
 
     st.divider()
     st.markdown("#### 🔎 Recherche dans le contenu de tous mes PDF")
