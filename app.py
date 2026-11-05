@@ -575,48 +575,92 @@ elif page == "Mes documents":
                     )
                     if stored:
                         comparison_docs.append(stored)
-                from document_comparison import compare_documents
+                from document_comparison import compare_documents, find_possible_differences
+                from datetime import datetime
                 comparison = compare_documents(comparison_docs)
-                from document_comparison import find_possible_differences
                 possible_differences = find_possible_differences(comparison_docs)
-                st.success(
-                    f"Comparaison terminée : {comparison['document_count']} documents · "
-                    f"similarité lexicale globale {comparison['similarity_percent']} %."
-                )
-                st.caption(
-                    f"{comparison['shared_term_count']} terme(s) commun(s) détecté(s). "
-                    "Cette mesure compare le vocabulaire, pas le sens juridique ou factuel."
-                )
-                if comparison["shared_terms"]:
-                    st.write("**Termes communs :** " + ", ".join(comparison["shared_terms"]))
-                else:
-                    st.info("Aucun terme commun significatif détecté.")
-                for detail in comparison["documents"]:
-                    st.markdown(f"**{detail['title']}** — {detail['term_count']} termes distincts")
-                    st.write(
-                        "Termes propres à ce document : "
-                        + (", ".join(detail["distinctive_terms"]) or "aucun terme distinctif détecté")
-                    )
-                st.markdown("**Vérification de différences possibles**")
-                if possible_differences:
-                    st.warning(
-                        f"{len(possible_differences)} passage(s) à vérifier : différences de chiffres "
-                        "ou formulations négatives repérées avec des termes communs."
-                    )
-                    for number, difference in enumerate(possible_differences, start=1):
-                        st.markdown(f"**Piste {number} — {', '.join(difference['reasons'])}**")
-                        st.caption(f"{difference['document_a']} : {difference['excerpt_a']}")
-                        st.caption(f"{difference['document_b']} : {difference['excerpt_b']}")
-                        st.caption("Termes en commun : " + ", ".join(difference["shared_terms"]))
-                else:
-                    st.info("Aucune différence candidate de chiffre ou de négation n'a été repérée par les règles simples.")
-                st.info(
-                    "Repérage automatique indicatif, fondé sur les chiffres, négations et mots communs. "
-                    "Une différence signalée peut être sans contradiction réelle; l'outil peut aussi manquer des conflits. "
-                    "Vérifiez toujours les passages originaux."
-                )
+                created_at = datetime.now().astimezone().strftime("%d/%m/%Y à %H:%M")
+                report = {
+                    "created_at": created_at,
+                    "comparison": comparison,
+                    "possible_differences": possible_differences,
+                }
+                history = list(st.session_state.get("comparison_report_history", []))
+                history.insert(0, report)
+                st.session_state["comparison_report_history"] = history[:20]
+                st.session_state["latest_comparison_report"] = report
             except Exception:
                 st.error("La comparaison n'a pas pu aboutir. Vérifiez que les documents contiennent du texte lisible.")
+
+        latest_report = st.session_state.get("latest_comparison_report")
+        if latest_report:
+            comparison = latest_report["comparison"]
+            possible_differences = latest_report["possible_differences"]
+            st.success(
+                f"Comparaison terminée : {comparison['document_count']} documents · "
+                f"similarité lexicale globale {comparison['similarity_percent']} %."
+            )
+            st.caption(
+                f"{comparison['shared_term_count']} terme(s) commun(s) détecté(s). "
+                "Cette mesure compare le vocabulaire, pas le sens juridique ou factuel."
+            )
+            if comparison["shared_terms"]:
+                st.write("**Termes communs :** " + ", ".join(comparison["shared_terms"]))
+            else:
+                st.info("Aucun terme commun significatif détecté.")
+            for detail in comparison["documents"]:
+                st.markdown(f"**{detail['title']}** — {detail['term_count']} termes distincts")
+                st.write(
+                    "Termes propres à ce document : "
+                    + (", ".join(detail["distinctive_terms"]) or "aucun terme distinctif détecté")
+                )
+            st.markdown("**Vérification de différences possibles**")
+            if possible_differences:
+                st.warning(
+                    f"{len(possible_differences)} passage(s) à vérifier : différences de chiffres "
+                    "ou formulations négatives repérées avec des termes communs."
+                )
+                for number, difference in enumerate(possible_differences, start=1):
+                    st.markdown(f"**Piste {number} — {', '.join(difference['reasons'])}**")
+                    st.caption(f"{difference['document_a']} : {difference['excerpt_a']}")
+                    st.caption(f"{difference['document_b']} : {difference['excerpt_b']}")
+                    st.caption("Termes en commun : " + ", ".join(difference["shared_terms"]))
+            else:
+                st.info("Aucune différence candidate de chiffre ou de négation n'a été repérée par les règles simples.")
+            st.info(
+                "Repérage automatique indicatif, fondé sur les chiffres, négations et mots communs. "
+                "Une différence signalée peut être sans contradiction réelle; l'outil peut aussi manquer des conflits. "
+                "Vérifiez toujours les passages originaux."
+            )
+            try:
+                from comparison_report import build_comparison_report_pdf
+                report_pdf = build_comparison_report_pdf(
+                    comparison, possible_differences, latest_report["created_at"]
+                )
+                st.download_button(
+                    "Télécharger le rapport de comparaison (.pdf)",
+                    data=report_pdf,
+                    file_name="sowia_rapport_comparaison.pdf",
+                    mime="application/pdf",
+                    key="download_latest_comparison_report",
+                )
+            except Exception:
+                st.warning("Le rapport PDF n'a pas pu être préparé. La comparaison reste consultable ici.")
+
+        report_history = st.session_state.get("comparison_report_history", [])
+        if report_history:
+            with st.expander(f"Historique des comparaisons de cette session ({len(report_history)})"):
+                st.caption("Historique conservé dans cette session de navigateur, limité aux 20 dernières comparaisons.")
+                for index, report_item in enumerate(report_history):
+                    result = report_item["comparison"]
+                    st.markdown(
+                        f"**{report_item['created_at']}** — {result['document_count']} documents · "
+                        f"{result['similarity_percent']} % de similarité lexicale · "
+                        f"{len(report_item['possible_differences'])} piste(s) à vérifier"
+                    )
+                    if st.button("Afficher ce rapport", key=f"restore_comparison_report_{index}"):
+                        st.session_state["latest_comparison_report"] = report_item
+                        st.rerun()
         category_filter = st.selectbox(
             "Filtrer par catégorie",
             ["Toutes", "Finances", "Administratif", "Travail", "Études", "Santé", "Autres"],
