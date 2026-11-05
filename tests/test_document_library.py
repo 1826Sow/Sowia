@@ -191,6 +191,7 @@ def test_save_cloud_attaches_authenticated_owner_and_validates_document():
         "filename": "mon.pdf",
         "extracted_text": "Texte extrait",
         "text_length": len("Texte extrait"),
+        "category": "Autres",
     }
 
 
