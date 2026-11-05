@@ -1,6 +1,8 @@
 """SOW IA document library: extracted PDF text, scoped to the signed-in user."""
+import os
 import re
 import sqlite3
+import stat
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -47,6 +49,18 @@ def _clean_category(category):
 
 def _local_connect():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if os.name == "posix":
+        if stat.S_ISLNK(DB_PATH.parent.lstat().st_mode):
+            raise OSError("Le dossier de stockage ne peut pas être un lien symbolique.")
+        DB_PATH.parent.chmod(0o700)
+        flags = os.O_CREAT | os.O_RDWR
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        descriptor = os.open(DB_PATH, flags, 0o600)
+        try:
+            os.fchmod(descriptor, 0o600)
+        finally:
+            os.close(descriptor)
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""CREATE TABLE IF NOT EXISTS documents (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
