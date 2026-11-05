@@ -39,3 +39,11 @@ def test_search_local_finds_accented_text(tmp_path, monkeypatch):
     assert len(results) == 1
     assert results[0]["page"] == 3
     assert "École" in results[0]["snippet"]
+
+
+def test_search_match_keeps_correct_offset_after_accented_characters():
+    text = "--- Page 1 ---\\nÉléments précédents\\n--- Page 2 ---\\nLe résumé final."
+    result = document_library._search_match(text, "resume")
+    assert result is not None
+    assert result["page"] == 2
+    assert "résumé final" in result["snippet"]
