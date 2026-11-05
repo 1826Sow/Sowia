@@ -187,7 +187,8 @@ def list_cloud(client, user, limit=100):
     try:
         return (client.table("sowia_documents")
             .select("id, title, filename, text_length, created_at, category, folder")
-            .eq("user_id", _user_id(user)).order("created_at", desc=True)
+            .eq("user_id", _user_id(user)).is_("deleted_at", "null")
+            .order("created_at", desc=True)
             .limit(min(max(int(limit), 1), 100)).execute().data)
     except Exception:
         try:
