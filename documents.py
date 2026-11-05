@@ -4,6 +4,9 @@ from collections import Counter
 
 from pypdf import PdfReader
 
+MAX_PDF_BYTES = 15 * 1024 * 1024
+MAX_PDF_PAGES = 500
+
 _STOPWORDS = {
     "alors", "au", "aucun", "aussi", "autre", "avec", "avoir", "bon", "car",
     "ce", "cela", "ces", "ceux", "chaque", "ci", "comme", "comment", "dans",
@@ -23,9 +26,42 @@ _STOPWORDS = {
 }
 
 
+def validate_pdf_upload(uploaded_file, max_bytes=MAX_PDF_BYTES, max_pages=MAX_PDF_PAGES):
+    """Validate upload size, PDF signature, encryption and page count before extraction."""
+    try:
+        uploaded_file.seek(0, 2)
+        file_size = uploaded_file.tell()
+        uploaded_file.seek(0)
+        header = uploaded_file.read(1024)
+        uploaded_file.seek(0)
+    except (AttributeError, OSError, ValueError) as exc:
+        raise ValueError("Fichier PDF impossible à lire.") from exc
+
+    if file_size <= 0:
+        raise ValueError("Le fichier est vide.")
+    if file_size > max_bytes:
+        raise ValueError("PDF trop volumineux : limite de 15 Mo.")
+    if b"%PDF-" not in header:
+        raise ValueError("Le fichier envoyé n'est pas un PDF valide.")
+
+    try:
+        reader = PdfReader(uploaded_file)
+        if reader.is_encrypted:
+            raise ValueError("Les PDF protégés par mot de passe ne sont pas acceptés.")
+        if len(reader.pages) > max_pages:
+            raise ValueError(f"PDF trop long : maximum {max_pages} pages.")
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError("Le PDF est illisible ou endommagé.") from exc
+    finally:
+        uploaded_file.seek(0)
+    return reader
+
+
 def extract_pdf_pages(uploaded_file, max_chars=100000):
     """Return readable PDF pages with page numbers, within a total character cap."""
-    reader = PdfReader(uploaded_file)
+    reader = validate_pdf_upload(uploaded_file)
     pages = []
     total = 0
     for number, page in enumerate(reader.pages, start=1):
