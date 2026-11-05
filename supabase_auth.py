@@ -22,9 +22,11 @@ def create_user_client():
         )
     if not url.startswith("https://"):
         raise RuntimeError("SUPABASE_URL doit utiliser HTTPS.")
+    # Use the public factory with its supported defaults. Avoid importing
+    # ClientOptions directly: this extra internal import has caused package
+    # resolution conflicts on some hosted Python environments.
     from supabase import create_client
-    from supabase.client import ClientOptions
-    return create_client(url, key, options=ClientOptions(flow_type="pkce"))
+    return create_client(url, key)
 
 
 def github_authorization_url(client, redirect_to):
