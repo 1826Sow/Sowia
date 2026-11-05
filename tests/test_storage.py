@@ -92,3 +92,23 @@ def test_database_is_private_before_sqlite_opens_it(tmp_path, monkeypatch):
     storage.save_message("session-1", "user", "Donnée privée")
 
     assert observed == {"directory_mode": 0o700, "database_mode": 0o600}
+
+
+
+@pytest.mark.skipif(
+    os.name != "posix" or not hasattr(os, "O_NOFOLLOW"),
+    reason="O_NOFOLLOW is required",
+)
+def test_database_symlink_is_rejected_without_touching_target(tmp_path, monkeypatch):
+    db_path = tmp_path / "private" / "sowia-test.db"
+    db_path.parent.mkdir()
+    protected_target = tmp_path / "important.txt"
+    protected_target.write_text("contenu à préserver", encoding="utf-8")
+    db_path.symlink_to(protected_target)
+    monkeypatch.setattr(storage, "DB_PATH", db_path)
+
+    with pytest.raises(OSError):
+        storage._connect()
+
+    assert protected_target.read_text(encoding="utf-8") == "contenu à préserver"
+    assert db_path.is_symlink()
