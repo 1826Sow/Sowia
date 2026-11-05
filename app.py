@@ -55,10 +55,14 @@ if "pdf_text" not in st.session_state:
 if "pdf_pages" not in st.session_state:
     st.session_state.pdf_pages = []
 
+from deployment_security import deployment_auth_required, validate_deployment_security
+
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
-auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "false")).strip().lower() in {"1", "true", "yes"}
+auth_required = deployment_auth_required(get_setting("SOWIA_REQUIRE_AUTH", "false"))
 supabase_enabled = configuration_ready()
-if auth_required and not supabase_enabled:
+try:
+    validate_deployment_security(auth_required, supabase_enabled)
+except RuntimeError:
     st.error("SOW IA est en mode protégé, mais Supabase n'est pas encore configuré. L'accès est fermé jusqu'à la configuration de l'authentification.")
     st.stop()
 
