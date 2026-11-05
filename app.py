@@ -568,10 +568,37 @@ elif page == "Mes documents":
                     if cloud_mode else document_library.get_local(document_id)
                 )
                 if saved:
-                    st.text_area("Texte extrait", saved["extracted_text"], height=220, key=f"document_text_{document_id}")
+                    full_text = saved["extracted_text"]
+                    section_size = 5000
+                    total_sections = max(1, (len(full_text) + section_size - 1) // section_size)
+                    st.caption(
+                        f"{len(full_text):,} caractères · "
+                        f"{total_sections} section(s) de lecture"
+                    )
+                    selected_section = st.selectbox(
+                        "Section à lire",
+                        options=list(range(1, total_sections + 1)),
+                        format_func=lambda number: f"Section {number} sur {total_sections}",
+                        key=f"document_section_{document_id}",
+                    )
+                    start = (selected_section - 1) * section_size
+                    section_text = full_text[start:start + section_size]
+                    st.text_area(
+                        "Texte extrait — lecture par sections",
+                        value=section_text,
+                        height=300,
+                        disabled=True,
+                        key=f"document_text_{document_id}_{selected_section}",
+                    )
+                    if total_sections > 1:
+                        st.caption(
+                            f"Affichage des caractères {start + 1:,} à "
+                            f"{min(start + len(section_text), len(full_text)):,} "
+                            f"sur {len(full_text):,}."
+                        )
                     st.download_button(
-                        "Télécharger le texte (.txt)",
-                        data=saved["extracted_text"],
+                        "Télécharger le texte complet (.txt)",
+                        data=full_text,
                         file_name=document_library.safe_text_download_name(item["filename"]),
                         mime="text/plain",
                         key=f"download_document_{document_id}",
