@@ -24,6 +24,7 @@ from supabase_auth import (
     sign_out,
 )
 import cloud_storage
+from document_storage import upload_document, list_documents, download_document, delete_document
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
@@ -352,7 +353,55 @@ elif page == "Créer un PDF":
             st.caption(str(exc))
 elif page == "Mes documents":
     st.subheader("📁 Mes documents")
-    st.info("Espace documentaire à connecter à un stockage sécurisé.")
+    if not cloud_mode:
+        st.warning("Connectez-vous avec votre compte pour utiliser le stockage documentaire privé.")
+    else:
+        st.caption("Vos PDF sont conservés dans un espace privé Supabase, séparé de celui des autres utilisateurs. Taille maximale : 10 Mo par fichier.")
+        uploaded_pdf = st.file_uploader("Ajouter un PDF à mes documents", type=["pdf"], key="private_pdf_upload")
+        if uploaded_pdf and st.button("Enregistrer dans mes documents", type="primary"):
+            try:
+                upload_document(supabase_client, current_user, uploaded_pdf.name, uploaded_pdf.getvalue())
+                st.success("Document enregistré dans votre espace privé.")
+                st.rerun()
+            except (ValueError, PermissionError) as exc:
+                st.error(str(exc))
+            except Exception:
+                st.error("Impossible d'enregistrer le document. Vérifiez que le stockage privé Supabase est configuré.")
+        st.divider()
+        st.markdown("#### Mes fichiers")
+        try:
+            stored_documents = list_documents(supabase_client, current_user)
+            if not stored_documents:
+                st.caption("Aucun document enregistré pour le moment.")
+            for stored in stored_documents:
+                stored_name = stored.get("name", "")
+                if not stored_name or stored_name in {".", ".."}:
+                    continue
+                stored_path = f"{current_user.id}/{stored_name}"
+                display_name = stored_name.split("_", 1)[-1] if "_" in stored_name else stored_name
+                with st.container(border=True):
+                    st.write(f"📄 {display_name}")
+                    prepared_path = st.session_state.get("prepared_document_path")
+                    if prepared_path == stored_path and st.session_state.get("prepared_document_bytes"):
+                        st.download_button(
+                            "Télécharger le PDF",
+                            data=st.session_state["prepared_document_bytes"],
+                            file_name=display_name,
+                            mime="application/pdf",
+                            key=f"download_private_{stored_name}",
+                        )
+                    if st.button("Préparer le téléchargement", key=f"prepare_private_{stored_name}"):
+                        st.session_state["prepared_document_bytes"] = download_document(supabase_client, current_user, stored_path)
+                        st.session_state["prepared_document_path"] = stored_path
+                        st.rerun()
+                    if st.button("Supprimer", key=f"delete_private_{stored_name}"):
+                        delete_document(supabase_client, current_user, stored_path)
+                        if st.session_state.get("prepared_document_path") == stored_path:
+                            st.session_state.pop("prepared_document_path", None)
+                            st.session_state.pop("prepared_document_bytes", None)
+                        st.rerun()
+        except Exception:
+            st.error("Impossible de charger vos documents. Vérifiez que le bucket privé et ses règles de sécurité sont installés dans Supabase.")
 
 elif page == "Historique":
     st.subheader("🕘 Historique")
