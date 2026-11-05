@@ -6,6 +6,8 @@ from pypdf import PdfReader
 
 MAX_PDF_BYTES = 15 * 1024 * 1024
 MAX_PDF_PAGES = 500
+MAX_EXTRACTED_CHARS = 1_000_000
+
 
 _STOPWORDS = {
     "alors", "au", "aucun", "aussi", "autre", "avec", "avoir", "bon", "car",
@@ -26,8 +28,17 @@ _STOPWORDS = {
 }
 
 
+def _positive_int(value, name, maximum):
+    """Reject booleans, strings and out-of-range values for resource limits."""
+    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= maximum:
+        raise ValueError(f"Limite {name} invalide.")
+    return value
+
+
 def validate_pdf_upload(uploaded_file, max_bytes=MAX_PDF_BYTES, max_pages=MAX_PDF_PAGES):
     """Validate upload size, PDF signature, encryption and page count before extraction."""
+    _positive_int(max_bytes, "de taille", MAX_PDF_BYTES)
+    _positive_int(max_pages, "de pages", MAX_PDF_PAGES)
     try:
         uploaded_file.seek(0, 2)
         file_size = uploaded_file.tell()
@@ -61,6 +72,7 @@ def validate_pdf_upload(uploaded_file, max_bytes=MAX_PDF_BYTES, max_pages=MAX_PD
 
 def extract_pdf_pages(uploaded_file, max_chars=100000):
     """Return readable PDF pages with page numbers, within a total character cap."""
+    _positive_int(max_chars, "de caractères", MAX_EXTRACTED_CHARS)
     reader = validate_pdf_upload(uploaded_file)
     pages = []
     total = 0
