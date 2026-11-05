@@ -105,17 +105,38 @@ def delete_cloud(client, user, document_id):
 
 
 
+def _normalize_search_text(value):
+    """Normalize case and accents while retaining source offsets for each character."""
+    import unicodedata
+
+    normalized = []
+    offsets = []
+    for index, char in enumerate(str(value or "")):
+        folded = unicodedata.normalize("NFD", char.casefold())
+        for item in folded:
+            if unicodedata.category(item) != "Mn":
+                normalized.append(item)
+                offsets.append(index)
+    return "".join(normalized), offsets
+
+
 def _search_match(text, query, radius=100):
     """Return an excerpt and the nearest preceding PDF page marker."""
     import re
 
     source = str(text or "")
     needle = (query or "").strip()
-    index = source.casefold().find(needle.casefold())
-    if index < 0:
+    normalized_source, offsets = _normalize_search_text(source)
+    normalized_needle, _ = _normalize_search_text(needle)
+    if not normalized_needle:
         return None
+    match_index = normalized_source.find(normalized_needle)
+    if match_index < 0:
+        return None
+    index = offsets[match_index]
+    match_end = offsets[match_index + len(normalized_needle) - 1] + 1
     left = max(0, index - radius)
-    right = min(len(source), index + len(needle) + radius)
+    right = min(len(source), match_end + radius)
     prefix = "…" if left else ""
     suffix = "…" if right < len(source) else ""
     excerpt = prefix + source[left:right].replace("\n", " ") + suffix
