@@ -118,8 +118,8 @@ def _search_match(text, query, radius=100):
     right = min(len(source), index + len(needle) + radius)
     prefix = "…" if left else ""
     suffix = "…" if right < len(source) else ""
-    excerpt = prefix + source[left:right].replace("\\n", " ") + suffix
-    page_markers = list(re.finditer(r"---\\s*Page\\s+(\\d+)\\s*---", source[:index], re.IGNORECASE))
+    excerpt = prefix + source[left:right].replace("\n", " ") + suffix
+    page_markers = list(re.finditer(r"---\s*Page\s+(\d+)\s*---", source[:index], re.IGNORECASE))
     page = int(page_markers[-1].group(1)) if page_markers else None
     return {"snippet": excerpt, "page": page}
 
