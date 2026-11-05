@@ -1,10 +1,10 @@
-"""Tests for PDF extraction safeguards."""
+""""Tests for PDF extraction safeguards."""
 from io import BytesIO
 
 import pytest
 from pypdf import PdfWriter
 
-from documents import extract_pdf_text, validate_pdf_upload
+from documents import extract_pdf_pages, extract_pdf_text, validate_pdf_upload
 
 
 def make_pdf(page_count=1):
@@ -47,3 +47,21 @@ def test_accepts_valid_pdf_and_rewinds_file():
     reader = validate_pdf_upload(uploaded)
     assert len(reader.pages) == 1
     assert uploaded.tell() == 0
+
+
+@pytest.mark.parametrize("value", [0, -1, True, False, "100", 15 * 1024 * 1024 + 1])
+def test_rejects_invalid_upload_size_limits(value):
+    with pytest.raises(ValueError, match="Limite de taille"):
+        validate_pdf_upload(make_pdf(), max_bytes=value)
+
+
+@pytest.mark.parametrize("value", [0, -1, True, "10", 501])
+def test_rejects_invalid_page_limits(value):
+    with pytest.raises(ValueError, match="Limite de pages"):
+        validate_pdf_upload(make_pdf(), max_pages=value)
+
+
+@pytest.mark.parametrize("value", [0, -1, True, "1000", 1_000_001])
+def test_rejects_invalid_extraction_character_limits(value):
+    with pytest.raises(ValueError, match="Limite de caractères"):
+        extract_pdf_pages(make_pdf(), max_chars=value)
