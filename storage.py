@@ -7,14 +7,25 @@ from datetime import datetime, timezone
 DB_PATH = Path("data/sowia.db")
 
 
+def _prepare_private_database_file():
+    """Create/open the database with private permissions before SQLite uses it."""
+    flags = os.O_CREAT | os.O_RDWR
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    descriptor = os.open(DB_PATH, flags, 0o600)
+    try:
+        os.fchmod(descriptor, 0o600)
+    finally:
+        os.close(descriptor)
+
+
 def _connect():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     if os.name == "posix":
         DB_PATH.parent.chmod(0o700)
+        _prepare_private_database_file()
     conn = sqlite3.connect(DB_PATH)
     try:
-        if os.name == "posix":
-            DB_PATH.chmod(0o600)
         conn.execute(
             """CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
