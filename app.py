@@ -585,10 +585,17 @@ elif page == "Mes documents":
                     "comparison": comparison,
                     "possible_differences": possible_differences,
                 }
-                history = list(st.session_state.get("comparison_report_history", []))
-                history.insert(0, report)
-                st.session_state["comparison_report_history"] = history[:20]
-                st.session_state["latest_comparison_report"] = report
+                try:
+                    import comparison_history
+                    saved = (
+                        comparison_history.save_cloud(supabase_client, current_user, report)
+                        if cloud_mode else comparison_history.save_local(report)
+                    )
+                    report['history_id'] = saved[0]['id'] if cloud_mode and saved else saved
+                    report['history_saved'] = True
+                except Exception:
+                    report['history_saved'] = False
+                st.session_state['latest_comparison_report'] = report
             except Exception:
                 st.error("La comparaison n'a pas pu aboutir. Vérifiez que les documents contiennent du texte lisible.")
 
@@ -647,20 +654,48 @@ elif page == "Mes documents":
             except Exception:
                 st.warning("Le rapport PDF n'a pas pu être préparé. La comparaison reste consultable ici.")
 
-        report_history = st.session_state.get("comparison_report_history", [])
-        if report_history:
-            with st.expander(f"Historique des comparaisons de cette session ({len(report_history)})"):
-                st.caption("Historique conservé dans cette session de navigateur, limité aux 20 dernières comparaisons.")
-                for index, report_item in enumerate(report_history):
-                    result = report_item["comparison"]
-                    st.markdown(
-                        f"**{report_item['created_at']}** — {result['document_count']} documents · "
-                        f"{result['similarity_percent']} % de similarité lexicale · "
-                        f"{len(report_item['possible_differences'])} piste(s) à vérifier"
-                    )
-                    if st.button("Afficher ce rapport", key=f"restore_comparison_report_{index}"):
-                        st.session_state["latest_comparison_report"] = report_item
+        if latest_report and latest_report.get("history_saved"):
+            st.success("Cette comparaison est enregistrée dans votre historique privé.")
+        elif latest_report:
+            st.warning("Comparaison exportable, mais historique permanent non enregistré. " + ("Exécutez la migration Supabase comparison_history.sql." if cloud_mode else "Vérifiez le stockage local."))
+
+        st.markdown("#### Historique permanent des comparaisons")
+        try:
+            import comparison_history
+            saved_reports = (
+                comparison_history.list_cloud(supabase_client, current_user, limit=50)
+                if cloud_mode else comparison_history.list_local(limit=50)
+            )
+            if not saved_reports:
+                st.caption("Aucun rapport enregistré pour le moment.")
+            for saved_item in saved_reports:
+                report_item = saved_item.get("report") or {}
+                result = report_item.get("comparison", {})
+                report_id = saved_item["id"]
+                st.markdown(
+                    f"**{saved_item.get('created_at', report_item.get('created_at', 'Date inconnue'))}** — "
+                    f"{result.get('document_count', 0)} documents · {result.get('similarity_percent', 0)} % · "
+                    f"{len(report_item.get('possible_differences', []))} piste(s) à vérifier"
+                )
+                col_restore, col_delete = st.columns(2)
+                with col_restore:
+                    if st.button("Afficher", key=f"restore_saved_comparison_{report_id}"):
+                        st.session_state["latest_comparison_report"] = {
+                            "created_at": report_item.get("created_at", saved_item.get("created_at", "")),
+                            "comparison": result,
+                            "possible_differences": report_item.get("possible_differences", []),
+                            "history_id": report_id, "history_saved": True,
+                        }
                         st.rerun()
+                with col_delete:
+                    if st.button("Supprimer", key=f"delete_saved_comparison_{report_id}"):
+                        if cloud_mode:
+                            comparison_history.delete_cloud(supabase_client, current_user, report_id)
+                        else:
+                            comparison_history.delete_local(report_id)
+                        st.rerun()
+        except Exception:
+            st.warning("Historique permanent indisponible. " + ("Exécutez supabase/comparison_history.sql." if cloud_mode else "Vérifiez le stockage local."))
         category_filter = st.selectbox(
             "Filtrer par catégorie",
             ["Toutes", "Finances", "Administratif", "Travail", "Études", "Santé", "Autres"],
