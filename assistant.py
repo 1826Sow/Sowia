@@ -69,11 +69,10 @@ def answer(messages, memories=None):
     except AuthenticationError as exc:
         raise RuntimeError(
             "Le fournisseur IA refuse la clé API (erreur 401). La connexion de SOW IA fonctionne, "
-            "mais la clé enregistrée n'est pas acceptée par OpenAI. Dans Streamlit > "
-            "Paramètres > Secrets, vérifiez que OPENAI_API_KEY contient une clé API "
-            "active copiée depuis le tableau de bord de votre fournisseur, sans texte "
-            "supplémentaire. Vérifiez aussi que OPENAI_BASE_URL n'est pas renseigné "
-            "si vous utilisez l'API officielle OpenAI. Ne communiquez jamais votre clé."
+            "mais la clé enregistrée n'est pas acceptée par le fournisseur configuré. Dans Streamlit > "
+            "Paramètres > Secrets, vérifiez GROQ_API_KEY (si vous utilisez Groq) ou "
+            "OPENAI_API_KEY (si vous utilisez OpenAI). Vérifiez également l'adresse API "
+            "configurée et le nom du modèle. Ne communiquez jamais votre clé."
         ) from exc
     except RateLimitError:
         return _offline_reply(messages)
