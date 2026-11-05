@@ -24,6 +24,16 @@ Application web d'intelligence artificielle construite avec Streamlit.
 
 ### Secrets requis
 
+**Option recommandée sans frais obligatoires : Groq (quota gratuit limité).** Créez une clé API dans le tableau de bord Groq, puis ajoutez-la dans les Secrets Streamlit :
+
+```toml
+GROQ_API_KEY = "..."
+GROQ_MODEL = "openai/gpt-oss-20b"
+```
+
+SOW IA sélectionne automatiquement Groq lorsqu'une variable `GROQ_API_KEY` est présente. Le forfait gratuit est soumis à des limites d'utilisation ; en cas de dépassement, le service peut temporairement refuser les requêtes.
+
+**Alternative : OpenAI**
 ```toml
 OPENAI_API_KEY = "..."
 OPENAI_MODEL = "gpt-4o-mini"
