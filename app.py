@@ -294,6 +294,28 @@ elif page == "Analyse PDF":
     if st.session_state.pdf_text:
         st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
         st.download_button("Télécharger le texte", st.session_state.pdf_text, file_name="sowia_extraction.txt")
+        st.markdown("#### Poser une question sur ce PDF")
+        st.caption("SOW IA répond à partir du texte extrait. Le document reste dans votre session et n'est pas ajouté à votre historique.")
+        pdf_question = st.text_input(
+            "Votre question sur le document",
+            placeholder="Ex. : Résume les points essentiels de ce document.",
+            key="pdf_question",
+        )
+        if st.button("Analyser le document", type="primary", disabled=not pdf_question.strip()):
+            if not API_KEY:
+                st.warning("Ajoutez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit pour activer l'analyse IA.")
+            else:
+                with st.spinner("Analyse du document en cours..."):
+                    try:
+                        response = answer(
+                            [{"role": "user", "content": pdf_question.strip()}],
+                            document_context=st.session_state.pdf_text,
+                        )
+                        st.markdown("**Réponse de SOW IA**")
+                        st.write(response)
+                    except Exception as exc:
+                        st.error("L'analyse du document a échoué.")
+                        st.caption(str(exc))
 
 elif page == "Créer un PDF":
     st.subheader("🪄 Créer un PDF")
