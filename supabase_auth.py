@@ -4,6 +4,8 @@ Create and retain one client per Streamlit browser session. Never cache a
 user-authenticated client globally: it contains authentication state and PKCE
 verification material.
 """
+import base64
+import json
 from urllib.parse import urlsplit
 
 from settings import get_setting
@@ -11,6 +13,37 @@ from settings import get_setting
 
 def configuration_ready():
     return bool(get_setting("SUPABASE_URL") and get_setting("SUPABASE_ANON_KEY"))
+
+
+def is_public_supabase_key(key):
+    """Accept only Supabase publishable keys or legacy anon JWTs.
+
+    JWT payload inspection is a defensive role check, not signature validation;
+    Supabase remains responsible for cryptographic token validation.
+    """
+    value = str(key or "").strip()
+    if value.startswith("sb_publishable_"):
+        return True
+    if value.startswith("sb_secret_"):
+        return False
+
+    parts = value.split(".")
+    if len(parts) != 3 or not parts[1]:
+        return False
+    try:
+        payload = parts[1] + "=" * (-len(parts[1]) % 4)
+        claims = json.loads(base64.urlsafe_b64decode(payload.encode("ascii")))
+    except (ValueError, UnicodeError, json.JSONDecodeError):
+        return False
+    return isinstance(claims, dict) and claims.get("role") == "anon"
+
+
+def clear_private_session_state(session_state, preserve_keys=("page_nav",)):
+    """Remove account-specific and widget state while preserving navigation."""
+    preserved = set(preserve_keys)
+    for key in list(session_state.keys()):
+        if key not in preserved:
+            session_state.pop(key, None)
 
 
 def create_user_client():
@@ -25,6 +58,11 @@ def create_user_client():
     parsed_url = urlsplit(url)
     if parsed_url.scheme.lower() != "https" or not parsed_url.hostname:
         raise RuntimeError("SUPABASE_URL doit être une adresse HTTPS valide.")
+    if not is_public_supabase_key(key):
+        raise RuntimeError(
+            "SUPABASE_ANON_KEY doit être une clé publique Supabase (anon ou publishable). "
+            "Les clés service_role et secrètes sont refusées."
+        )
     from supabase import create_client
     from supabase.client import ClientOptions
     return create_client(url, key, options=ClientOptions(flow_type="pkce"))
