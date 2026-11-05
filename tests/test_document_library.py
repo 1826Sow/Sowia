@@ -256,3 +256,28 @@ def test_cloud_document_operations_reject_invalid_ids_before_query(operation):
 def test_document_id_accepts_positive_integer_and_numeric_string():
     assert document_library._document_id(12) == 12
     assert document_library._document_id("12") == 12
+
+
+@pytest.mark.parametrize(
+    "untrusted_name",
+    [
+        "../../secret.pdf",
+        "C:/Users/Public/document.pdf",
+        "../../<script>alert(1)</script>.pdf",
+        "",
+        ".pdf",
+        "nom avec espaces et accents éà.pdf",
+    ],
+)
+def test_safe_text_download_name_never_contains_path_or_unsafe_characters(untrusted_name):
+    result = document_library.safe_text_download_name(untrusted_name)
+    assert result.startswith("sowia_")
+    assert result.endswith(".txt")
+    assert "/" not in result
+    assert chr(92) not in result
+    assert "<" not in result
+    assert ">" not in result
+
+
+def test_safe_text_download_name_has_fallback_for_empty_stem():
+    assert document_library.safe_text_download_name(".pdf") == "sowia_document.txt"

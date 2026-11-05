@@ -1,10 +1,18 @@
 """SOW IA document library: extracted PDF text, scoped to the signed-in user."""
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
 from storage import DB_PATH
 
+
+def safe_text_download_name(filename):
+    """Build a harmless TXT download name from an untrusted uploaded filename."""
+    raw_name = str(filename or "").replace(chr(92), "/").split("/")[-1]
+    stem = raw_name.rsplit(".", 1)[0] if "." in raw_name else raw_name
+    stem = re.sub(r"[^A-Za-z0-9_-]+", "_", stem).strip("_-")[:80]
+    return "sowia_" + (stem or "document") + ".txt"
 
 def _validate(title, filename, extracted_text):
     title = (title or "").strip()
