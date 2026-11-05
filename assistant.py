@@ -15,7 +15,7 @@ def _offline_reply(messages):
     if any(word in lowered for word in ("429", "crédit", "credits", "quota", "facturation")):
         return (
             "SOW IA fonctionne en mode de secours : le quota du fournisseur IA est épuisé "
-            "(erreur 429). Aucune réponse générative OpenAI ne peut être produite "
+            "(erreur 429). Aucune réponse générative ne peut être produite "
             "tant que le quota n'est pas rétabli. Vous pouvez continuer à utiliser "
             "les fonctions locales de l'application, notamment l'historique, la "
             "mémoire et l'importation de PDF. Je peux aussi vous guider dans les "
@@ -26,16 +26,16 @@ def _offline_reply(messages):
             "Le service IA est temporairement indisponible faute de quota. "
             "Vous pouvez néanmoins ouvrir « Analyse PDF » pour importer un PDF "
             "et extraire son texte. Vous pouvez aussi créer et télécharger un PDF "
-            "depuis la rubrique « Créer un PDF », sans consommer de crédit OpenAI."
+            "depuis la rubrique « Créer un PDF », sans consommer de crédit IA."
         )
     if any(word in lowered for word in ("mémoire", "memoire", "historique", "sauvegarder")):
         return (
-            "Même sans crédits OpenAI, les fonctions locales de mémoire et "
+            "Même sans crédits IA, les fonctions locales de mémoire et "
             "d'historique de SOW IA restent accessibles dans leurs rubriques, "
             "sous réserve que le stockage de l'application soit disponible."
         )
     return (
-        "Le mode de secours de SOW IA est actif. Le quota du service OpenAI est "
+        "Le mode de secours de SOW IA est actif. Le quota du fournisseur IA est "
         "épuisé : je ne peux donc pas générer une véritable réponse IA pour le moment. "
         "Les rubriques locales de l'application restent utilisables. Vous pouvez "
         "me demander de l'aide sur les réglages, la mémoire, l'historique ou les "
@@ -46,9 +46,8 @@ def _offline_reply(messages):
 def answer(messages, memories=None):
     if not API_KEY:
         raise RuntimeError(
-            "Aucune clé API IA n'est configurée. Ajoutez GROQ_API_KEY ou OPENAI_API_KEY dans Streamlit > Secrets. Ouvrez "
-            "Paramètres > Secrets et vérifiez le nom exact OPENAI_API_KEY. "
-            "Ne partagez jamais votre clé API."
+            "Aucune clé API IA n'est configurée. Ajoutez GROQ_API_KEY ou OPENAI_API_KEY dans Streamlit > Secrets. Ne partagez jamais cette clé. "
+            ""
         )
 
     system_prompt = SYSTEM_PROMPT
