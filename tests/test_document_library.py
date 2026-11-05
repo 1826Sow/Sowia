@@ -205,3 +205,24 @@ def test_delete_cloud_filters_by_owner_and_document_id():
     assert client.query.deleted is True
     assert ("user_id", "owner-42") in client.query.filters
     assert ("id", 9) in client.query.filters
+
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda client, user: document_library.list_cloud(client, user),
+        lambda client, user: document_library.get_cloud(client, user, 9),
+        lambda client, user: document_library.delete_cloud(client, user, 9),
+    ],
+    ids=["list", "get", "delete"],
+)
+def test_cloud_document_reads_and_deletes_reject_missing_user(operation):
+    user = type("User", (), {"id": None})()
+    client = _CrudClient([{"id": 9, "title": "Document privé"}])
+
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        operation(client, user)
+
+    # No ownership filter or database query may be executed for an anonymous user.
+    assert client.query.filters == []
