@@ -256,7 +256,7 @@ def update_local_folder(document_id, folder):
     document_id = _document_id(document_id)
     folder = _clean_folder(folder)
     with _local_connect() as conn:
-        cursor = conn.execute("UPDATE documents SET folder=? WHERE id=?", (folder, document_id))
+        cursor = conn.execute("UPDATE documents SET folder=? WHERE id=? AND deleted_at IS NULL", (folder, document_id))
         return cursor.rowcount > 0
 
 
@@ -264,7 +264,7 @@ def update_local_category(document_id, category):
     document_id = _document_id(document_id)
     category = _clean_category(category)
     with _local_connect() as conn:
-        cursor = conn.execute("UPDATE documents SET category=? WHERE id=?", (category, document_id))
+        cursor = conn.execute("UPDATE documents SET category=? WHERE id=? AND deleted_at IS NULL", (category, document_id))
         return cursor.rowcount > 0
 
 
