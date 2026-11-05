@@ -506,7 +506,7 @@ elif page == "Mes documents":
     except Exception as exc:
         st.error("La bibliothèque documentaire n'est pas encore prête.")
         st.caption("En mode cloud, exécutez le script supabase/document_library.sql dans Supabase SQL Editor.")
-        st.caption(str(exc))
+        st.caption("Vérifiez la configuration de la bibliothèque et réessayez. Aucun détail technique n’est affiché.")
 
 elif page == "Historique":
     st.subheader("🕘 Historique")
