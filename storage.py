@@ -1,6 +1,7 @@
 """Local SQLite storage for conversations and user-managed memory."""
 import os
 import sqlite3
+import stat
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -22,6 +23,8 @@ def _prepare_private_database_file():
 def _connect():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     if os.name == "posix":
+        if stat.S_ISLNK(DB_PATH.parent.lstat().st_mode):
+            raise OSError("Le dossier de stockage ne peut pas être un lien symbolique.")
         DB_PATH.parent.chmod(0o700)
         _prepare_private_database_file()
     conn = sqlite3.connect(DB_PATH)

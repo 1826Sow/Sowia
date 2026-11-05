@@ -112,3 +112,21 @@ def test_database_symlink_is_rejected_without_touching_target(tmp_path, monkeypa
 
     assert protected_target.read_text(encoding="utf-8") == "contenu à préserver"
     assert db_path.is_symlink()
+
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX symlink behavior only")
+def test_storage_directory_symlink_is_rejected_without_touching_target(tmp_path, monkeypatch):
+    real_directory = tmp_path / "real-data"
+    real_directory.mkdir()
+    protected_target = real_directory / "sowia.db"
+    protected_target.write_text("contenu à préserver", encoding="utf-8")
+    linked_directory = tmp_path / "data"
+    linked_directory.symlink_to(real_directory, target_is_directory=True)
+    monkeypatch.setattr(storage, "DB_PATH", linked_directory / "sowia.db")
+
+    with pytest.raises(OSError, match="lien symbolique"):
+        storage._connect()
+
+    assert protected_target.read_text(encoding="utf-8") == "contenu à préserver"
+    assert linked_directory.is_symlink()
