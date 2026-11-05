@@ -577,6 +577,8 @@ elif page == "Mes documents":
                         comparison_docs.append(stored)
                 from document_comparison import compare_documents
                 comparison = compare_documents(comparison_docs)
+                from document_comparison import find_possible_differences
+                possible_differences = find_possible_differences(comparison_docs)
                 st.success(
                     f"Comparaison terminée : {comparison['document_count']} documents · "
                     f"similarité lexicale globale {comparison['similarity_percent']} %."
@@ -595,9 +597,23 @@ elif page == "Mes documents":
                         "Termes propres à ce document : "
                         + (", ".join(detail["distinctive_terms"]) or "aucun terme distinctif détecté")
                     )
+                st.markdown("**Vérification de différences possibles**")
+                if possible_differences:
+                    st.warning(
+                        f"{len(possible_differences)} passage(s) à vérifier : différences de chiffres "
+                        "ou formulations négatives repérées avec des termes communs."
+                    )
+                    for number, difference in enumerate(possible_differences, start=1):
+                        st.markdown(f"**Piste {number} — {', '.join(difference['reasons'])}**")
+                        st.caption(f"{difference['document_a']} : {difference['excerpt_a']}")
+                        st.caption(f"{difference['document_b']} : {difference['excerpt_b']}")
+                        st.caption("Termes en commun : " + ", ".join(difference["shared_terms"]))
+                else:
+                    st.info("Aucune différence candidate de chiffre ou de négation n'a été repérée par les règles simples.")
                 st.info(
-                    "Analyse lexicale hors ligne : elle aide à repérer des thèmes communs et des différences de vocabulaire. "
-                    "Elle ne remplace pas une vérification humaine et ne déduit pas les contradictions."
+                    "Repérage automatique indicatif, fondé sur les chiffres, négations et mots communs. "
+                    "Une différence signalée peut être sans contradiction réelle; l'outil peut aussi manquer des conflits. "
+                    "Vérifiez toujours les passages originaux."
                 )
             except Exception:
                 st.error("La comparaison n'a pas pu aboutir. Vérifiez que les documents contiennent du texte lisible.")
