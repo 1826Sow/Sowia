@@ -86,6 +86,7 @@ policy_checks as (
             where pol.schemaname = 'public'
               and pol.tablename = p.table_name
               and upper(pol.cmd) = p.command_name
+              and 'authenticated'::name = any(pol.roles)
               and (
                   case when p.command_name in ('INSERT', 'ALL')
                       then coalesce(pol.with_check, '') ilike '%auth.uid%'
@@ -110,4 +111,15 @@ union all
 select check_name, status, details from rls_checks
 union all
 select check_name, status, details from policy_checks
+union all
+select
+    'Index de corbeille sowia_documents_user_deleted_idx' as check_name,
+    case when exists (
+        select 1 from pg_indexes
+        where schemaname = 'public'
+          and tablename = 'sowia_documents'
+          and indexname = 'sowia_documents_user_deleted_idx'
+          and indexdef ilike '%(user_id, deleted_at, created_at%'
+    ) then 'OK' else 'À CORRIGER' end as status,
+    'L’index utilisateur/corbeille/date doit exister pour les recherches de corbeille.' as details
 order by check_name;
