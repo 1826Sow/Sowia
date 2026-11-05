@@ -75,6 +75,11 @@ if cloud_mode:
             st.rerun()
 
         current_user = authenticated_user(supabase_client)
+        if current_user is not None:
+            # Reuse one private conversation history for this authenticated account.
+            st.session_state.session_id = str(
+                uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
+            )
     except Exception as exc:
         st.error("La connexion sécurisée n'a pas pu être vérifiée. Réessayez ou vérifiez les réglages Supabase.")
         st.caption(str(exc))
@@ -222,7 +227,7 @@ elif page == "Assistant IA":
                 if "429" in error_text or "insufficient_quota" in error_text or "quota" in error_text.lower():
                     st.warning("Le service IA est temporairement indisponible : le crédit API OpenAI est épuisé ou le quota est atteint. Vous pouvez continuer à créer et télécharger des PDF sans utiliser l'IA.")
                 elif "401" in error_text or "invalid_api_key" in error_text:
-                    st.error("La clé API OpenAI n'est pas reconnue. Vérifiez le secret OPENAI_API_KEY dans les paramètres Streamlit.")
+                    st.error("La clé API du fournisseur IA n'est pas reconnue. Vérifiez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit.")
                 else:
                     st.error("Une erreur est survenue pendant la réponse de l'assistant.")
                     st.caption(error_text)
