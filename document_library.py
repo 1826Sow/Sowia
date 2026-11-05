@@ -189,7 +189,7 @@ def _user_id(user):
 
 
 def save_cloud(client, user, title, filename, extracted_text, category="Autres"):
-    user_id = user_id
+    user_id = _user_id(user)
     title, filename, text = _validate(title, filename, extracted_text)
     category = _clean_category(category)
     return client.table("sowia_documents").insert({
@@ -199,7 +199,7 @@ def save_cloud(client, user, title, filename, extracted_text, category="Autres")
 
 
 def list_cloud(client, user, limit=100):
-    user_id = user_id
+    user_id = _user_id(user)
     try:
         return (client.table("sowia_documents")
             .select("id, title, filename, text_length, created_at, category, folder")
@@ -229,7 +229,7 @@ def list_cloud(client, user, limit=100):
 
 
 def get_cloud(client, user, document_id):
-    user_id = user_id
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     try:
         rows = (client.table("sowia_documents")
@@ -272,7 +272,7 @@ def update_local_category(document_id, category):
 
 
 def update_cloud_folder(client, user, document_id, folder):
-    user_id = user_id
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     folder = _clean_folder(folder)
     return (client.table("sowia_documents").update({"folder": folder})
@@ -281,7 +281,7 @@ def update_cloud_folder(client, user, document_id, folder):
 
 
 def update_cloud_category(client, user, document_id, category):
-    user_id = user_id
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     category = _clean_category(category)
     return (client.table("sowia_documents").update({"category": category})
@@ -290,7 +290,7 @@ def update_cloud_category(client, user, document_id, category):
 
 
 def trash_cloud(client, user, document_id):
-    user_id = user_id
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     return (client.table("sowia_documents").update({
         "deleted_at": datetime.now(timezone.utc).isoformat()
@@ -299,7 +299,7 @@ def trash_cloud(client, user, document_id):
 
 
 def list_trashed_cloud(client, user, limit=100):
-    user_id = user_id
+    user_id = _user_id(user)
     return (client.table("sowia_documents")
         .select("id, title, filename, text_length, created_at, category, folder, deleted_at")
         .eq("user_id", user_id).not_.is_("deleted_at", "null")
@@ -308,7 +308,7 @@ def list_trashed_cloud(client, user, limit=100):
 
 
 def restore_cloud(client, user, document_id):
-    user_id = user_id
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     return (client.table("sowia_documents").update({"deleted_at": None})
         .eq("user_id", user_id).eq("id", document_id)
@@ -316,7 +316,7 @@ def restore_cloud(client, user, document_id):
 
 
 def permanently_delete_cloud(client, user, document_id):
-    user_id = user_id
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     return (client.table("sowia_documents").delete()
         .eq("user_id", user_id).eq("id", document_id)
@@ -324,7 +324,7 @@ def permanently_delete_cloud(client, user, document_id):
 
 
 def delete_cloud(client, user, document_id):
-    user_id = user_id
+    user_id = _user_id(user)
     document_id = _document_id(document_id)
     return (client.table("sowia_documents").delete()
         .eq("user_id", user_id).eq("id", document_id).execute())
@@ -428,7 +428,7 @@ def search_local(query, limit=30):
 
 def search_cloud(client, user, query, limit=30):
     """Search only the authenticated user's recent saved documents."""
-    user_id = user_id
+    user_id = _user_id(user)
     needle = (query or "").strip()
     if not needle or len(needle) > 120:
         raise ValueError("La recherche doit contenir entre 1 et 120 caractères.")
