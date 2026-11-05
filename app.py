@@ -14,6 +14,7 @@ from storage import (
     save_message as local_save_message,
 )
 from documents import extract_pdf_text
+from documents import extract_pdf_pages, search_pdf_pages, extractive_summary
 import document_library
 from websearch import search_web
 from supabase_auth import (
@@ -51,6 +52,8 @@ if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 if "pdf_text" not in st.session_state:
     st.session_state.pdf_text = ""
+if "pdf_pages" not in st.session_state:
+    st.session_state.pdf_pages = []
 
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
 auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "false")).strip().lower() in {"1", "true", "yes"}
@@ -280,16 +283,60 @@ elif page == "Recherche Web":
 
 elif page == "Analyse PDF":
     st.subheader("📄 Analyse PDF")
-    file = st.file_uploader("Importer un document PDF", type=["pdf"])
-    if file and st.button("Extraire le texte"):
+    st.write("Extraction, recherche et résumé local : aucune clé API ni aucun crédit IA n'est nécessaire.")
+    file = st.file_uploader("Importer un document PDF", type=["pdf"], key="analysis_pdf")
+    if file and st.button("Analyser le PDF", type="primary"):
         try:
-            st.session_state.pdf_text = extract_pdf_text(file)
-            st.success("Texte extrait.")
+            file.seek(0)
+            st.session_state.pdf_pages = extract_pdf_pages(file, max_chars=100000)
+            st.session_state.pdf_text = "\\n\\n".join(
+                f"--- Page {item['page']} ---\\n{item['text']}"
+                for item in st.session_state.pdf_pages
+            )
+            st.success(f"Extraction terminée : {len(st.session_state.pdf_pages)} page(s) contenant du texte.")
         except Exception as exc:
             st.error(str(exc))
-    if st.session_state.pdf_text:
-        st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
-        st.download_button("Télécharger le texte", st.session_state.pdf_text, file_name="sowia_extraction.txt")
+
+    if st.session_state.pdf_pages:
+        pages = st.session_state.pdf_pages
+        extracted_text = st.session_state.pdf_text
+        st.caption(f"{len(pages)} page(s) lisible(s) · {len(extracted_text):,} caractères extraits")
+        st.download_button(
+            "Télécharger tout le texte (.txt)",
+            extracted_text,
+            file_name="sowia_extraction.txt",
+            mime="text/plain",
+        )
+
+        st.markdown("#### 🔎 Rechercher dans le PDF")
+        search_query = st.text_input("Mot ou expression à rechercher", key="pdf_search_query")
+        if search_query.strip():
+            matches = search_pdf_pages(pages, search_query, limit=30)
+            if matches:
+                st.success(f"{len(matches)} occurrence(s) trouvée(s), maximum 30 affichées.")
+                for match in matches:
+                    st.markdown(f"**Page {match['page']}** — {match['snippet']}")
+            else:
+                st.info("Aucune occurrence trouvée dans le texte extrait.")
+
+        st.markdown("#### 📝 Résumé automatique sans IA")
+        st.caption("SOW IA sélectionne les phrases les plus représentatives du texte. Ce résumé est extractif et peut nécessiter une relecture.")
+        if st.button("Générer le résumé local"):
+            summary = extractive_summary(extracted_text, max_sentences=5)
+            st.session_state.pdf_summary = "\\n\\n".join(summary)
+        if st.session_state.get("pdf_summary"):
+            st.text_area("Résumé extrait", st.session_state.pdf_summary, height=180)
+            st.download_button(
+                "Télécharger le résumé (.txt)",
+                st.session_state.pdf_summary,
+                file_name="sowia_resume_extrait.txt",
+                mime="text/plain",
+            )
+
+        with st.expander("Afficher le texte complet par page"):
+            for item in pages:
+                st.markdown(f"**Page {item['page']}**")
+                st.text(item["text"])
 
 elif page == "Créer un PDF":
     st.subheader("🪄 Créer un PDF")
