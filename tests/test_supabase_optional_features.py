@@ -65,11 +65,24 @@ def test_memory_and_history_schema_uses_owner_scoped_rls():
     assert "with check ((select auth.uid()) = user_id)" in sql
 
 
+def test_memory_and_history_table_privileges_are_explicitly_restricted():
+    sql = SCHEMA_PATH.read_text(encoding="utf-8").lower()
+    assert (
+        "revoke all on table public.sowia_messages, public.sowia_memory_items "
+        "from public, anon, authenticated"
+    ) in " ".join(sql.split())
+    assert "grant select, insert, delete on public.sowia_messages to authenticated" in sql
+    assert "grant select, insert, delete on public.sowia_memory_items to authenticated" in sql
+    assert "grant update on public.sowia_messages" not in sql
+    assert "grant update on public.sowia_memory_items" not in sql
+
+
 def test_memory_and_history_sequence_grants_are_narrowly_scoped():
     sql = SCHEMA_PATH.read_text(encoding="utf-8").lower()
     assert "on all sequences in schema public" not in sql
     assert "public.sowia_messages_id_seq" in sql
     assert "public.sowia_memory_items_id_seq" in sql
+    assert "revoke all on sequence" in sql
 
 
 def test_memory_schema_allows_the_documented_premium_note_limit():
