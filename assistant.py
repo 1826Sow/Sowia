@@ -48,7 +48,10 @@ MAX_DOCUMENT_CONTEXT_CHARS = 24000
 
 def build_system_prompt(memories=None, document_context=None, user_mode="Personnel"):
     """Build a bounded prompt; uploaded document text is untrusted reference material."""
-    from user_modes import mode_system_instruction\n\n    system_prompt = SYSTEM_PROMPT + "\\n\\n" + mode_system_instruction(user_mode)\n    saved_memories = [item.strip() for item in (memories or []) if item and item.strip()]
+    from user_modes import mode_system_instruction
+
+    system_prompt = SYSTEM_PROMPT + "\n\n" + mode_system_instruction(user_mode)
+    saved_memories = [item.strip() for item in (memories or []) if item and item.strip()]
     if saved_memories:
         memory_context = "\n".join(f"- {item}" for item in saved_memories)
         system_prompt += (
