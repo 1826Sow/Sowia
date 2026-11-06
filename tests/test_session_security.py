@@ -58,7 +58,7 @@ def test_cleanup_removes_private_pdf_checkout_and_mode_state():
 
 def test_app_uses_the_same_private_state_cleanup_on_switch_logout_and_expiry():
     app_source = (ROOT / "app.py").read_text(encoding="utf-8")
-    assert app_source.count("clear_account_private_state(st.session_state)") == 3
+    assert app_source.count("clear_account_private_state(st.session_state)") == 4
     assert "from session_security import clear_account_private_state" in app_source
 
 
@@ -71,3 +71,15 @@ def test_logout_clears_private_state_before_network_sign_out():
     assert logout_block.index("clear_account_private_state(st.session_state)") < logout_block.index(
         "sign_out(supabase_client)"
     )
+
+def test_required_authentication_failure_clears_private_state_before_stopping():
+    app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+    failure_block = app_source.split("if auth_required:", 1)[1].split(
+        'st.error(\n                "La connexion sécurisée Supabase est indisponible.', 1
+    )[0]
+    assert failure_block.index(
+        "clear_account_private_state(st.session_state)"
+    ) < failure_block.index("st.stop()") if "st.stop()" in failure_block else (
+        "clear_account_private_state(st.session_state)" in failure_block
+    )
+
