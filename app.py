@@ -491,6 +491,10 @@ elif page == "Analyse PDF":
                             )
                             st.markdown("**Analyse avancée SOW IA**")
                             st.write(advanced_result)
+                        except RateLimitExceeded as exc:
+                            st.warning(str(exc))
+                        except RateLimitUnavailable as exc:
+                            st.error(str(exc))
                         except PermissionError:
                             st.error("Cette fonction nécessite un accès Premium actif. Aucun document n'a été envoyé au service IA.")
                         except ValueError as exc:
@@ -564,6 +568,10 @@ elif page == "Analyse PDF":
                         )
                         st.markdown("**Comparaison et synthèse des documents**")
                         st.write(batch_result)
+                except RateLimitExceeded as exc:
+                    st.warning(str(exc))
+                except RateLimitUnavailable as exc:
+                    st.error(str(exc))
                 except PermissionError:
                     st.error("Cette fonction nécessite un accès Premium actif. Aucun document n'a été envoyé au service IA.")
                 except ValueError as exc:
