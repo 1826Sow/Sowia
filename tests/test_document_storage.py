@@ -69,6 +69,21 @@ def test_list_documents_uses_only_authenticated_user_folder():
     assert client.bucket.listed == "user-123"
 
 
+def test_download_allows_a_document_in_the_authenticated_users_folder():
+    client = FakeClient()
+    path = "user-123/report.pdf"
+    result = docs.download_document(client, User(), path)
+    assert result.startswith(b"%PDF-")
+    assert client.bucket.downloaded == path
+
+
+def test_delete_allows_a_document_in_the_authenticated_users_folder():
+    client = FakeClient()
+    path = "user-123/report.pdf"
+    docs.delete_document(client, User(), path)
+    assert client.bucket.removed == [path]
+
+
 def test_download_rejects_another_users_path_before_storage_access():
     client = FakeClient()
     with pytest.raises(PermissionError):
@@ -76,11 +91,24 @@ def test_download_rejects_another_users_path_before_storage_access():
     assert client.bucket.downloaded is None
 
 
-def test_delete_rejects_path_traversal():
+def test_delete_rejects_another_users_path_before_storage_access():
     client = FakeClient()
-    with pytest.raises(ValueError):
-        docs.delete_document(client, User(), "user-123/../private.pdf")
+    with pytest.raises(PermissionError):
+        docs.delete_document(client, User(), "other-user/report.pdf")
     assert client.bucket.removed is None
+
+
+@pytest.mark.parametrize("path", [
+    "user-123/../private.pdf",
+    "user-123/folder/report.pdf",
+    "user-123/",
+    "user-123\\\\report.pdf",
+])
+def test_download_rejects_malformed_owned_paths(path):
+    client = FakeClient()
+    with pytest.raises((PermissionError, ValueError)):
+        docs.download_document(client, User(), path)
+    assert client.bucket.downloaded is None
 
 
 def test_upload_rejects_non_pdf_oversized_and_fake_pdf_before_storage_access():
@@ -91,6 +119,8 @@ def test_upload_rejects_non_pdf_oversized_and_fake_pdf_before_storage_access():
         docs.upload_document(client, User(), "large.pdf", b"%PDF-" + b"x" * docs.MAX_DOCUMENT_BYTES)
     with pytest.raises(ValueError, match="PDF"):
         docs.upload_document(client, User(), "fake.pdf", b"%PDF-1.7\\nnot really a PDF")
+    with pytest.raises(ValueError, match="vide"):
+        docs.upload_document(client, User(), "empty.pdf", b"")
     assert client.bucket.uploaded is None
 
 
