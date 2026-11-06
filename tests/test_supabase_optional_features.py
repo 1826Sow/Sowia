@@ -45,3 +45,9 @@ def test_premium_entitlements_are_user_scoped_and_not_client_writable():
     assert "grant insert" not in sql
     assert "grant update" not in sql
     assert "grant delete" not in sql
+
+def test_existing_pdf_bucket_is_never_reconfigured_automatically():
+    sql = _sql()
+    bucket_setup = sql.split("insert into storage.buckets", 1)[1].split("-- a user's files", 1)[0]
+    assert "on conflict (id) do nothing" in bucket_setup
+    assert "do update" not in bucket_setup
