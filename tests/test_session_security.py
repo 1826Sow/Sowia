@@ -1,5 +1,8 @@
 """Tests for account-scoped Streamlit session cleanup."""
+from pathlib import Path
 from session_security import clear_account_private_state
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class FakeSessionState(dict):
@@ -42,3 +45,10 @@ def test_cleanup_removes_private_pdf_checkout_and_mode_state():
     assert state["session_id"] != "old-account-session"
     # Keep the unauthenticated PKCE client so the login screen can start OAuth.
     assert "sowia_supabase_client" in state
+
+
+
+def test_app_uses_the_same_private_state_cleanup_on_switch_logout_and_expiry():
+    app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert app_source.count("clear_account_private_state(st.session_state)") == 3
+    assert "from session_security import clear_account_private_state" in app_source
