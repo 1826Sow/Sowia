@@ -411,8 +411,8 @@ elif page == "Recherche Web":
             for item in search_web(query):
                 st.markdown(f"**[{item.get('title', 'Résultat')}]({item.get('url', '#')})**")
                 st.write(item.get("content", ""))
-        except Exception as exc:
-            st.error(str(exc))
+        except Exception:
+            st.error("La recherche Web est temporairement indisponible. Réessayez plus tard.")
 
 elif page == "Analyse PDF":
     st.subheader("📄 Analyse PDF")
@@ -421,8 +421,8 @@ elif page == "Analyse PDF":
         try:
             st.session_state.pdf_text = extract_pdf_text(file)
             st.success("Texte extrait.")
-        except Exception as exc:
-            st.error(str(exc))
+        except Exception:
+            st.error("Le PDF n’a pas pu être lu. Vérifiez le fichier et réessayez.")
     if st.session_state.pdf_text:
         st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
         st.download_button("Télécharger le texte", st.session_state.pdf_text, file_name="sowia_extraction.txt")
@@ -714,10 +714,9 @@ elif page == "Abonnement":
     else:
         try:
             entitlement = premium_access.get_entitlement(supabase_client, current_user)
-        except Exception as exc:
+        except Exception:
             entitlement = None
-            st.error("Impossible de vérifier votre abonnement auprès de Supabase.")
-            st.caption(str(exc))
+            st.error("Impossible de vérifier votre abonnement auprès de Supabase. Réessayez plus tard.")
 
         if entitlement:
             st.success("Votre accès SOW IA Premium est actif.")
