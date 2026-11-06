@@ -185,3 +185,42 @@ def test_save_message_rejects_empty_or_non_text_content_before_database_write(co
 
     with pytest.raises(ValueError, match="message"):
         cloud_storage.save_message(Client(), User(), "private-session", "user", content)
+
+
+
+@pytest.mark.parametrize("session_id", ["", " ", "x" * 65, None, 123])
+def test_history_read_and_delete_reject_invalid_session_before_database_access(session_id):
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid session")
+
+    with pytest.raises(ValueError, match="conversation"):
+        cloud_storage.get_history(Client(), User(), session_id)
+    with pytest.raises(ValueError, match="conversation"):
+        cloud_storage.clear_history(Client(), User(), session_id)
+
+
+@pytest.mark.parametrize("limit", [True, 1.5, "30", None])
+def test_history_rejects_non_integer_limit_before_database_access(limit):
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid limit")
+
+    with pytest.raises(ValueError, match="entier"):
+        cloud_storage.get_history(Client(), User(), "private-session", limit=limit)
+
+
+def test_history_queries_are_scoped_to_each_authenticated_user():
+    first = FakeClient()
+    second = FakeClient()
+
+    class OtherUser:
+        id = "user-456"
+
+    cloud_storage.get_history(first, User(), "private-session")
+    cloud_storage.get_history(second, OtherUser(), "private-session")
+
+    assert ("user_id", "user-123") in first.tables["sowia_messages"].filters
+    assert ("user_id", "user-456") in second.tables["sowia_messages"].filters
+    assert ("user_id", "user-456") not in first.tables["sowia_messages"].filters
+    assert ("user_id", "user-123") not in second.tables["sowia_messages"].filters
