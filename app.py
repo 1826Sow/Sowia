@@ -32,7 +32,7 @@ from feature_access import (
     can_access_feature,
     has_active_premium,
     normalize_workspace_mode,
-    workspace_home_content,
+    workspace_home_content,\n    workspace_navigation,
 )
 from document_storage import upload_document, list_documents, download_document, delete_document
 
@@ -241,13 +241,14 @@ with st.sidebar:
             st.rerun()
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
+    navigation_pages = workspace_navigation(workspace_mode)
+    # Switching workspace must not leave a page selected that is hidden in
+    # the new workspace (for example, Ma mémoire in Professionnel).
+    if st.session_state.get("page_nav") not in navigation_pages:
+        st.session_state.page_nav = "Accueil"
     page = st.radio(
         "Navigation",
-        [
-            "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
-            "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-            "Abonnement", "Paramètres", "Aide",
-        ],
+        navigation_pages,
         key="page_nav",
     )
     st.divider()
