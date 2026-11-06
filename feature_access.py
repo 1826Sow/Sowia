@@ -17,6 +17,35 @@ FREE_FEATURES = frozenset({
 })
 PREMIUM_FEATURES = frozenset({"Mes documents"})
 
+NAVIGATION_PAGES = (
+    "Accueil",
+    "Assistant IA",
+    "Ma mémoire",
+    "Recherche Web",
+    "Analyse PDF",
+    "Créer un PDF",
+    "Mes documents",
+    "Historique",
+    "Abonnement",
+    "Paramètres",
+    "Aide",
+)
+
+# The professional workspace focuses on work tools and does not expose the
+# personal memory page in its navigation. This is a UI/workspace boundary,
+# not a replacement for server-side authorization.
+WORKSPACE_HIDDEN_PAGES = {
+    "Professionnel": frozenset({"Ma mémoire"}),
+}
+
+
+def workspace_navigation(mode):
+    """Return the navigation pages visible in the selected workspace."""
+    workspace = normalize_workspace_mode(mode)
+    hidden = WORKSPACE_HIDDEN_PAGES.get(workspace, frozenset())
+    return tuple(page for page in NAVIGATION_PAGES if page not in hidden)
+
+
 
 def normalize_workspace_mode(value):
     """Return a supported workspace mode, defaulting safely to Personnel."""
