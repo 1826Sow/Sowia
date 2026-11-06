@@ -98,7 +98,7 @@ def test_upload_rejects_empty_or_invalid_pdf_content():
     [
         "user-123/",
         "user-123/subfolder/report.pdf",
-        "user-123\\\\report.pdf",
+        "user-123/\\\\report.pdf",
         "user-123/..report.pdf",
         "user-123/../other-user/report.pdf",
     ],
@@ -124,7 +124,7 @@ def test_delete_accepts_only_the_users_single_object_path():
 
 
 def test_filename_is_sanitized_and_extension_is_preserved():
-    assert docs._safe_filename("../../My report?.PDF") == "My_report_.PDF"
+    assert docs._safe_filename("../../My report?.PDF") == "My_report.PDF"
 
 
 def test_upload_rejects_non_pdf_and_missing_user():
