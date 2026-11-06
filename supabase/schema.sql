@@ -45,8 +45,21 @@ drop policy if exists "Users can delete own memory" on public.sowia_memory_items
 create policy "Users can delete own memory" on public.sowia_memory_items
     for delete to authenticated using ((select auth.uid()) = user_id);
 
+-- Remove inherited/default client privileges first. RLS policies do not
+-- revoke SQL grants; both layers are required for least-privilege access.
+revoke all on table
+    public.sowia_messages,
+    public.sowia_memory_items
+from anon, authenticated;
+
 grant select, insert, delete on public.sowia_messages to authenticated;
 grant select, insert, delete on public.sowia_memory_items to authenticated;
+
+revoke all on sequence
+    public.sowia_messages_id_seq,
+    public.sowia_memory_items_id_seq
+from anon, authenticated;
+
 grant usage, select on sequence
     public.sowia_messages_id_seq,
     public.sowia_memory_items_id_seq
