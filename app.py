@@ -159,9 +159,9 @@ if cloud_mode and current_user is not None:
             st.query_params.clear()
             st.session_state["paypal_purchase_confirmed"] = True
             st.rerun()
-        except Exception as exc:
+        except Exception:
             st.error("Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.")
-            st.caption(str(exc))
+            st.caption("Vérifiez la configuration serveur ou réessayez plus tard. Les détails techniques restent dans les journaux serveur.")
     if st.query_params.get("paypal") == "cancel":
         st.info("Le paiement a été annulé. Aucun montant n'a été confirmé par SOW IA.")
         st.query_params.clear()
@@ -513,9 +513,9 @@ elif page == "Abonnement":
                         order = paypal_payments.create_premium_order(str(current_user.id))
                         st.session_state["paypal_approval_url"] = order["approval_url"]
                         st.session_state["paypal_order_id"] = order["id"]
-                    except Exception as exc:
+                    except Exception:
                         st.error("Impossible de préparer le paiement PayPal.")
-                        st.caption(str(exc))
+                        st.caption("Vérifiez la configuration serveur ou réessayez plus tard. Les détails techniques restent dans les journaux serveur.")
                 approval_url = st.session_state.get("paypal_approval_url")
                 if approval_url:
                     st.link_button("Continuer vers PayPal", approval_url, type="primary")

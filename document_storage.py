@@ -18,10 +18,11 @@ def _safe_filename(filename):
     original = os.path.basename(str(filename or "").replace("\\", "/"))
     if not original.lower().endswith(".pdf"):
         raise ValueError("Seuls les fichiers PDF sont acceptés.")
-    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", original).strip("._")
-    if not cleaned:
-        raise ValueError("Nom de fichier invalide.")
-    return cleaned[:100]
+    stem = original[:-4]
+    cleaned_stem = re.sub(r"[^A-Za-z0-9_-]", "_", stem).strip("_-")
+    if not cleaned_stem:
+        cleaned_stem = "document"
+    return f"{cleaned_stem[:95]}.pdf"
 
 
 def _owned_path(user, path):
@@ -40,6 +41,8 @@ def upload_document(client, user, filename, content):
     payload = bytes(content or b"")
     if not payload:
         raise ValueError("Le fichier PDF est vide.")
+    if not payload.startswith(b"%PDF-"):
+        raise ValueError("Le contenu du fichier n'est pas un PDF valide.")
     if len(payload) > MAX_DOCUMENT_BYTES:
         raise ValueError("Le fichier dépasse la limite de 10 Mo.")
     object_name = f"{uuid4().hex}_{safe_name}"
