@@ -1,6 +1,4 @@
-"""Tests for private Supabase PDF storage ownership and validation."""
-from types import SimpleNamespace
-
+""""Tests for private Supabase PDF storage ownership and validation."""
 import pytest
 import document_storage as docs
 
@@ -26,7 +24,7 @@ class FakeBucket:
 
     def download(self, path):
         self.downloaded = path
-        return b"%PDF"
+        return b"%PDF-1.7"
 
     def remove(self, paths):
         self.removed = paths
@@ -45,10 +43,11 @@ class FakeClient:
 
 def test_upload_is_stored_under_authenticated_user_folder():
     client = FakeClient()
-    path = docs.upload_document(client, User(), "Mon rapport.pdf", b"%PDF")
+    content = b"%PDF-1.7\nvalid test payload"
+    path = docs.upload_document(client, User(), "Mon rapport.pdf", content)
     assert path.startswith("user-123/")
     assert path.endswith("_Mon_rapport.pdf")
-    assert client.bucket.uploaded[1] == b"%PDF"
+    assert client.bucket.uploaded[1] == content
     assert client.bucket.uploaded[2]["content-type"] == "application/pdf"
 
 
@@ -72,15 +71,18 @@ def test_delete_rejects_path_traversal():
     assert client.bucket.removed is None
 
 
-def test_upload_rejects_non_pdf_and_oversized_files_before_storage_access():
+def test_upload_rejects_non_pdf_oversized_and_fake_pdf_before_storage_access():
     client = FakeClient()
     with pytest.raises(ValueError, match="PDF"):
         docs.upload_document(client, User(), "notes.txt", b"hello")
     with pytest.raises(ValueError, match="10 Mo"):
-        docs.upload_document(client, User(), "large.pdf", b"x" * (docs.MAX_DOCUMENT_BYTES + 1))
+        docs.upload_document(client, User(), "large.pdf", b"%PDF-" + b"x" * docs.MAX_DOCUMENT_BYTES)
+    with pytest.raises(ValueError, match="pas un PDF valide"):
+        docs.upload_document(client, User(), "fake.pdf", b"not really a PDF")
     assert client.bucket.uploaded is None
 
 
 def test_storage_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         docs.list_documents(FakeClient(), None)
+"
