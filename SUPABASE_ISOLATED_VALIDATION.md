@@ -195,3 +195,78 @@ order by conname;
 ```
 
 Résultat attendu : la contrainte sur `content` autorise au minimum 1 à 5 000 caractères. Si une contrainte existante plafonne à 1 000 caractères, ne pas la supprimer ni la remplacer automatiquement : documenter l'écart et préparer une migration dédiée, testée uniquement dans le projet isolé, après vérification des données et des usages. Aucun ajustement de contrainte ne doit être improvisé sur la base de production.
+
+
+
+## Scénarios complémentaires — limiteur de requêtes partagé
+
+> À exécuter uniquement après les contrôles précédents et dans le projet `SOW IA - TEST`. Ne jamais lancer cette migration dans le projet de production.
+
+### Précontrôle et migration
+
+1. Vérifier que le projet affiché est bien le projet isolé de test et relever son identifiant.
+2. Contrôler en lecture seule l'existence éventuelle de `public.sowia_rate_limits`, ses politiques RLS et ses privilèges.
+3. Examiner la fonction `public.sowia_consume_rate_limit(text)` si elle existe déjà : propriétaire, définition, `SECURITY DEFINER`, `search_path` et droits EXECUTE.
+4. Si un objet existe avec une définition ou des privilèges inattendus, arrêter et analyser ; ne pas le remplacer automatiquement.
+5. Dans ce projet isolé uniquement, appliquer `supabase/migrations/202611060001_shared_rate_limits.sql`.
+6. Répéter les contrôles en lecture seule et confirmer : RLS activé, aucun accès direct à la table pour `anon` ou `authenticated`, exécution RPC accordée à `authenticated` uniquement (hors propriétaire de confiance), et aucun droit EXECUTE pour `PUBLIC` ou `anon`.
+
+Requêtes de contrôle :
+
+```sql
+select n.nspname, c.relname, c.relrowsecurity, c.relforcerowsecurity
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public'
+  and c.relname = 'sowia_rate_limits';
+
+select schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check
+from pg_policies
+where schemaname = 'public' and tablename = 'sowia_rate_limits';
+
+select table_schema, table_name, grantee, privilege_type
+from information_schema.role_table_grants
+where table_schema = 'public' and table_name = 'sowia_rate_limits'
+order by grantee, privilege_type;
+
+select routine_schema, routine_name, security_type, routine_definition
+from information_schema.routines
+where routine_schema = 'public'
+  and routine_name = 'sowia_consume_rate_limit';
+
+select routine_schema, routine_name, grantee, privilege_type
+from information_schema.routine_privileges
+where routine_schema = 'public'
+  and routine_name = 'sowia_consume_rate_limit'
+order by grantee, privilege_type;
+```
+
+### Essais fonctionnels avec deux comptes
+
+Utiliser les comptes A et B et deux sessions indépendantes. Effectuer les appels RPC avec les jetons de session normaux de chaque compte, jamais avec une clé service-role dans le navigateur.
+
+| Test | Action | Résultat attendu |
+|---|---|---|
+| R1 | A consomme le quota Assistant jusqu'à 10 appels dans une fenêtre de 60 s | Les 10 premiers sont autorisés |
+| R2 | A effectue un 11e appel Assistant dans la même fenêtre | Refusé, remaining = 0 |
+| R3 | B consomme son quota Assistant pendant que A est limité | B dispose de son propre compteur |
+| R4 | A utilise deux sessions/appareils avec le même compte | Les deux sessions partagent le compteur |
+| R5 | Appeler la RPC sans session authentifiée | Refusé |
+| R6 | Appeler la RPC avec une clé de compartiment inconnue | Refusé |
+| R7 | A tente SELECT, INSERT, UPDATE ou DELETE directement sur la table | Refusé |
+| R8 | Répéter des appels simultanés au-delà du seuil | Jamais plus que le seuil autorisé dans la fenêtre |
+| R9 | Attendre l'expiration de la fenêtre puis appeler de nouveau | Nouveau compteur, première requête autorisée |
+| R10 | Simuler une réponse RPC indisponible ou invalide côté application | Opération protégée refusée, aucun fallback local |
+| R11 | Vérifier les autres catégories (PDF, Web, Premium et documents) | Chaque catégorie respecte sa fenêtre et son seuil définis côté SQL |
+
+Pour R1 et R2, tester également les catégories ayant des limites différentes avec un jeu de test séparé. Pour R8, lancer plusieurs appels concurrents avec le même compte et noter le nombre exact d'autorisations. Conserver uniquement les résultats expurgés, sans jetons, identifiants personnels ni contenu de document.
+
+### Critères supplémentaires de réussite
+
+- Les compteurs sont isolés par utilisateur et catégorie, et partagés entre les sessions du même compte.
+- Les appels concurrents sont atomiques et ne permettent pas de dépasser le seuil.
+- Les utilisateurs authentifiés ne peuvent pas lire ou modifier directement la table.
+- Seul le RPC contrôlé peut consommer un quota ; les limites ne sont jamais fournies par le client.
+- Les erreurs RPC bloquent l'opération protégée et ne divulguent pas de détails internes.
+- Les quotas sont bien distincts par catégorie et reviennent à zéro après expiration.
+- Aucun de ces essais n'est réalisé sur la base de production.
