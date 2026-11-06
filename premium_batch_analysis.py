@@ -6,6 +6,30 @@ MAX_BATCH_TOTAL_CHARS = 24000
 MAX_BATCH_DOCUMENT_CHARS = 7000
 
 
+
+MAX_BATCH_FILE_BYTES = 10 * 1024 * 1024
+PDF_SIGNATURE = b"%PDF-"
+
+
+def prepare_pdf_batch_uploads(uploaded_files, extract_text):
+    """Validate uploaded PDF size and signature before extracting any text."""
+    files = list(uploaded_files or [])
+    if not 2 <= len(files) <= MAX_BATCH_DOCUMENTS:
+        raise ValueError("Sélectionnez entre 2 et 5 PDF pour une analyse groupée.")
+
+    documents = []
+    for uploaded in files:
+        payload = uploaded.getvalue()
+        if not payload:
+            raise ValueError("Un des fichiers PDF est vide.")
+        if len(payload) > MAX_BATCH_FILE_BYTES:
+            raise ValueError("Chaque PDF doit faire 10 Mo maximum.")
+        if not payload.startswith(PDF_SIGNATURE):
+            raise ValueError("Un des fichiers sélectionnés n'est pas un PDF valide.")
+        uploaded.seek(0)
+        documents.append((uploaded.name, extract_text(uploaded, max_chars=MAX_BATCH_DOCUMENT_CHARS)))
+    return documents
+
 def analyze_pdf_batch(user_client, user, documents, answer_function):
     """Analyze and compare up to five named PDF text extracts."""
     items = list(documents or [])
