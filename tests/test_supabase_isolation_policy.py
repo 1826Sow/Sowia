@@ -38,18 +38,15 @@ def test_storage_has_restrictive_user_and_active_entitlement_guard():
 
 
 def test_authenticated_users_get_no_entitlement_write_policy():
-    policies = [
-        line.lower()
-        for line in OPTIONAL_SCHEMA.splitlines()
-        if line.strip().lower().startswith("create policy")
-        and "sowia_entitlements" in line.lower()
-    ]
-    assert policies == [
-        'create policy "users can read own premium entitlement"'
-    ]
-    assert "for insert to authenticated" not in OPTIONAL_SCHEMA.lower()
-    assert "for update to authenticated" not in OPTIONAL_SCHEMA.lower()
-    assert "for delete to authenticated" not in OPTIONAL_SCHEMA.lower()
+    entitlement_section = OPTIONAL_SCHEMA.split(
+        "-- 2) Private PDF bucket", 1
+    )[0].lower()
+    assert 'create policy "users can read own premium entitlement"' in entitlement_section
+    assert "for insert" not in entitlement_section
+    assert "for update" not in entitlement_section
+    assert "for delete" not in entitlement_section
+    assert "revoke all on public.sowia_entitlements" in entitlement_section
+    assert "grant select on public.sowia_entitlements to authenticated" in entitlement_section
 
 
 def test_validation_guide_requires_isolated_project_and_two_accounts():
