@@ -36,7 +36,7 @@ def test_configuration_uses_sandbox_and_euro_amount(monkeypatch):
     assert config["currency"] == "EUR"
 
 
-@pytest.mark.parametrize("price", ["12.999", "0.001", "NaN", "Infinity"])
+@pytest.mark.parametrize("price", ["12.999", "12.901", "0.001", "NaN", "Infinity"])
 def test_configuration_rejects_invalid_cent_precision(monkeypatch, price):
     _settings(monkeypatch, PAYPAL_PREMIUM_PRICE=price)
     with pytest.raises(ValueError):
@@ -132,3 +132,14 @@ def test_payments_enabled_requires_explicit_owner_switch(monkeypatch):
     assert paypal.payments_enabled() is False
     _settings(monkeypatch, SOWIA_PAYMENTS_ENABLED="true")
     assert paypal.payments_enabled() is True
+
+
+def test_disabled_payments_never_make_a_paypal_network_request(monkeypatch):
+    _settings(monkeypatch, SOWIA_PAYMENTS_ENABLED="false")
+
+    def unexpected_network_call(*args, **kwargs):
+        pytest.fail("PayPal must not be contacted while payments are disabled")
+
+    monkeypatch.setattr(paypal.requests, "post", unexpected_network_call)
+    with pytest.raises(RuntimeError, match="configuration PayPal"):
+        paypal.create_premium_order("user-123")
