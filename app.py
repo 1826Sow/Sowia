@@ -352,7 +352,7 @@ elif page == "Ma mémoire":
                 st.success("Note ajoutée à la mémoire.")
                 st.rerun()
             except (ValueError, PermissionError) as exc:
-                st.error("La recherche Web est temporairement indisponible. Réessayez plus tard.")
+                st.error("Impossible d’enregistrer cette note mémoire. Vérifiez son contenu et réessayez.")
 
     st.divider()
     st.markdown("#### Mémoire étendue — Premium")
@@ -384,7 +384,7 @@ elif page == "Ma mémoire":
                         st.success("Note mémoire étendue enregistrée.")
                         st.rerun()
                     except (ValueError, PermissionError) as exc:
-                        st.error("Le PDF n’a pas pu être lu. Vérifiez le fichier et réessayez.")
+                        st.error("La note mémoire n’a pas pu être enregistrée. Vérifiez son contenu et réessayez.")
                     except Exception:
                         st.error("Impossible d'enregistrer cette note étendue. Réessayez plus tard.")
         else:
