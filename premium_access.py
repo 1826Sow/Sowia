@@ -42,10 +42,16 @@ def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
     if not str(user_id or "").strip() or not str(order_id or "").strip() or currency != "EUR":
         raise ValueError("Informations de paiement Premium incomplètes.")
     try:
-        normalized_amount = Decimal(str(amount)).quantize(Decimal("0.01"))
+        raw_amount = Decimal(str(amount))
+        normalized_amount = raw_amount.quantize(Decimal("0.01"))
     except (InvalidOperation, ValueError, TypeError):
         raise ValueError("Le montant Premium doit être un montant valide.")
-    if not normalized_amount.is_finite() or normalized_amount <= 0 or normalized_amount > Decimal("9999.99"):
+    if (
+        not raw_amount.is_finite()
+        or raw_amount != normalized_amount
+        or normalized_amount <= 0
+        or normalized_amount > Decimal("9999.99")
+    ):
         raise ValueError("Le montant Premium doit être compris entre 0,01 € et 9 999,99 €.")
     payload = {
         "user_id": str(user_id).strip(),
