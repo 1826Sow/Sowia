@@ -123,7 +123,7 @@ def test_batch_upload_preparation_rejects_more_than_200_pages_before_extraction(
         premium_batch_analysis.prepare_pdf_batch_uploads(
             files, lambda *args, **kwargs: extraction_calls.append(True) or "texte"
         )
-    assert extraction_calls == [True]
+    assert extraction_calls == []
 
 
 def test_batch_upload_preparation_checks_pdf_signature_size_and_resets_pointer():
