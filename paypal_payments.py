@@ -1,4 +1,4 @@
-"""Server-side PayPal Orders v2 helpers for SOW IA.
+""""Server-side PayPal Orders v2 helpers for SOW IA.
 
 Only call these functions from the trusted Streamlit server. Never expose the
 PayPal client secret or access token to browser-side code.
@@ -20,7 +20,11 @@ def _setting(name: str, default: str = "") -> str:
 
 
 def paypal_configuration():
-    """Return non-secret checkout configuration, or None if not ready."""
+    """Return checkout configuration only after an explicit enable switch."""
+    # Payments stay completely inactive by default until the owner explicitly
+    # enables them after the application is finished and verified.
+    if _setting("SOWIA_PAYMENTS_ENABLED", "false").lower() not in {"1", "true", "yes"}:
+        return None
     client_id = _setting("PAYPAL_CLIENT_ID")
     client_secret = _setting("PAYPAL_CLIENT_SECRET")
     price = _setting("PAYPAL_PREMIUM_PRICE")
