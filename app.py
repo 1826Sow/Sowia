@@ -32,6 +32,7 @@ from feature_access import (
     can_access_feature,
     has_active_premium,
     normalize_workspace_mode,
+    workspace_home_content,
 )
 from document_storage import upload_document, list_documents, download_document, delete_document
 
@@ -260,20 +261,14 @@ st.write("")
 st.caption(f"Espace actif : {normalize_workspace_mode(st.session_state.get('workspace_mode'))}")
 
 if page == "Accueil":
-    st.subheader("Bienvenue sur SOW IA")
+    active_workspace = normalize_workspace_mode(st.session_state.get("workspace_mode"))
+    home = workspace_home_content(active_workspace, premium_active)
+    st.subheader(home["title"])
+    st.write(home["description"])
+    if home["notice"]:
+        st.info(home["notice"])
     st.write("Accédez directement à vos outils :")
-    shortcuts = [
-        ("💬", "Assistant IA", "Posez vos questions"),
-        ("🧠", "Ma mémoire", "Enregistrez vos informations utiles"),
-        ("🌐", "Recherche Web", "Recherchez des informations en ligne"),
-        ("📄", "Analyse PDF", "Importez et analysez un PDF"),
-        ("🪄", "Créer un PDF", "Préparez vos futurs documents PDF"),
-        ("📁", "Mes documents", "Retrouvez votre espace documentaire"),
-        ("🕘", "Historique", "Consultez vos conversations"),
-        ("👑", "Abonnement", "Découvrez l’espace Premium"),
-        ("⚙️", "Paramètres", "Vérifiez votre configuration"),
-        ("❓", "Aide", "Consultez les indications d’utilisation"),
-    ]
+    shortcuts = home["shortcuts"]
     for start in range(0, len(shortcuts), 3):
         cols = st.columns(3)
         for col, (icon, title, desc) in zip(cols, shortcuts[start:start + 3]):
@@ -283,7 +278,7 @@ if page == "Accueil":
                     st.caption(desc)
                     st.button(
                         f"Ouvrir {title}",
-                        key=f"open_{title}",
+                        key=f"open_{active_workspace}_{title}",
                         use_container_width=True,
                         on_click=go_to_page,
                         args=(title,),
