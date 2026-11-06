@@ -108,6 +108,9 @@ if cloud_mode:
         # explicitly requires it.
         st.session_state.pop("sowia_supabase_client", None)
         if auth_required:
+            # Authentication could not be verified: discard any account-scoped
+            # data before stopping, even when the auth service itself is down.
+            clear_account_private_state(st.session_state)
             # Show a compact diagnostic directly in the main error box so it
             # remains visible on small mobile screens.
             detail = str(exc)
