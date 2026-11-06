@@ -21,6 +21,9 @@ def _setting(name: str, default: str = "") -> str:
 
 def paypal_configuration():
     """Return non-secret checkout configuration, or None if not ready."""
+    # Checkout is disabled unless the account owner explicitly opts in.
+    if _setting("PAYPAL_ENABLED", "false").lower() not in {"1", "true", "yes"}:
+        return None
     client_id = _setting("PAYPAL_CLIENT_ID")
     client_secret = _setting("PAYPAL_CLIENT_SECRET")
     price = _setting("PAYPAL_PREMIUM_PRICE")
