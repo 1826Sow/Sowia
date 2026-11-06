@@ -1,4 +1,4 @@
-"""Server-side PayPal Orders v2 helpers for SOW IA.
+""""Server-side PayPal Orders v2 helpers for SOW IA.
 
 Only call these functions from the trusted Streamlit server. Never expose the
 PayPal client secret or access token to browser-side code.
@@ -20,7 +20,11 @@ def _setting(name: str, default: str = "") -> str:
 
 
 def paypal_configuration():
-    """Return non-secret checkout configuration, or None if not ready."""
+    """Return checkout configuration only after an explicit enable switch."""
+    # Payments stay completely inactive by default until the owner explicitly
+    # enables them after the application is finished and verified.
+    if _setting("SOWIA_PAYMENTS_ENABLED", "false").lower() not in {"1", "true", "yes"}:
+        return None
     client_id = _setting("PAYPAL_CLIENT_ID")
     client_secret = _setting("PAYPAL_CLIENT_SECRET")
     price = _setting("PAYPAL_PREMIUM_PRICE")
@@ -35,10 +39,11 @@ def paypal_configuration():
     if currency != "EUR":
         raise ValueError("La devise SOW IA doit être EUR pour ce parcours.")
     try:
-        amount = Decimal(price).quantize(Decimal("0.01"))
+        raw_amount = Decimal(price)
+        amount = raw_amount.quantize(Decimal("0.01"))
     except (InvalidOperation, ValueError):
         raise ValueError("PAYPAL_PREMIUM_PRICE doit être un montant en euros valide.")
-    if amount <= 0 or amount > Decimal("9999.99"):
+    if not raw_amount.is_finite() or raw_amount != amount or amount <= 0 or amount > Decimal("9999.99"):
         raise ValueError("Le prix Premium doit être compris entre 0,01 € et 9 999,99 €.")
     if not return_url.startswith("https://") or not cancel_url.startswith("https://"):
         raise ValueError("Les URL de retour PayPal doivent utiliser HTTPS.")
@@ -124,6 +129,27 @@ def create_premium_order(user_id: str):
     return {"id": order["id"], "approval_url": approval_url}
 
 
+def _validate_completed_capture(payload, config):
+    """Require a completed capture for the exact configured amount and currency."""
+    units = payload.get("purchase_units") or []
+    captures = [
+        capture
+        for unit in units
+        for capture in ((unit.get("payments") or {}).get("captures") or [])
+    ]
+    if len(captures) != 1:
+        raise PermissionError("La capture PayPal est absente ou ambiguë.")
+    capture = captures[0]
+    amount = capture.get("amount") or {}
+    if (
+        capture.get("status") != "COMPLETED"
+        or amount.get("currency_code") != config["currency"]
+        or amount.get("value") != config["amount"]
+    ):
+        raise PermissionError("Le montant réellement capturé ne correspond pas au prix Premium.")
+    return payload
+
+
 def capture_premium_order(order_id: str, user_id: str):
     """Capture only an order whose server-side details match this user and price."""
     config = paypal_configuration()
@@ -156,7 +182,7 @@ def capture_premium_order(order_id: str, user_id: str):
     ):
         raise PermissionError("La commande PayPal ne correspond pas à cet achat SOW IA.")
     if details.get("status") == "COMPLETED":
-        return details
+        return _validate_completed_capture(details, config)
     capture_response = requests.post(
         f"{base}/v2/checkout/orders/{order_id}/capture",
         json={},
@@ -167,4 +193,4 @@ def capture_premium_order(order_id: str, user_id: str):
     result = capture_response.json()
     if result.get("status") != "COMPLETED":
         raise RuntimeError("PayPal n'a pas confirmé le paiement.")
-    return result
+    return _validate_completed_capture(result, config)

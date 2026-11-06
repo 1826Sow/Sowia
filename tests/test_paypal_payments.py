@@ -5,6 +5,7 @@ import paypal_payments as paypal
 
 def _settings(monkeypatch, **overrides):
     values = {
+        "SOWIA_PAYMENTS_ENABLED": "true",
         "PAYPAL_CLIENT_ID": "sandbox-client",
         "PAYPAL_CLIENT_SECRET": "sandbox-secret",
         "PAYPAL_PREMIUM_PRICE": "12.90",
@@ -15,6 +16,11 @@ def _settings(monkeypatch, **overrides):
     }
     values.update(overrides)
     monkeypatch.setattr(paypal, "get_setting", lambda key, default="": values.get(key, default))
+
+
+def test_payments_remain_disabled_by_default_even_if_credentials_exist(monkeypatch):
+    _settings(monkeypatch, SOWIA_PAYMENTS_ENABLED="false")
+    assert paypal.paypal_configuration() is None
 
 
 def test_configuration_is_disabled_until_all_secrets_exist(monkeypatch):
@@ -38,18 +44,23 @@ def test_configuration_rejects_non_https_return_url(monkeypatch):
 
 def test_capture_refuses_order_belonging_to_another_user(monkeypatch):
     _settings(monkeypatch)
+
     class Response:
         def __init__(self, data):
             self.data = data
+
         def raise_for_status(self):
             pass
+
         def json(self):
             return self.data
 
     calls = []
+
     def fake_post(url, **kwargs):
         calls.append(("post", url))
         return Response({"access_token": "test-token"})
+
     def fake_get(url, **kwargs):
         calls.append(("get", url))
         return Response({
@@ -68,3 +79,42 @@ def test_capture_refuses_order_belonging_to_another_user(monkeypatch):
     with pytest.raises(PermissionError, match="ne correspond pas"):
         paypal.capture_premium_order("ORDER-1", "current-user")
     assert [kind for kind, _ in calls] == ["post", "get"]
+
+
+def test_completed_capture_requires_exact_amount_and_currency():
+    config = {"currency": "EUR", "amount": "12.90"}
+    payload = {
+        "purchase_units": [{
+            "payments": {"captures": [{
+                "status": "COMPLETED",
+                "amount": {"currency_code": "EUR", "value": "12.90"},
+            }]}
+        }]
+    }
+    assert paypal._validate_completed_capture(payload, config) is payload
+
+
+@pytest.mark.parametrize(
+    "capture",
+    [
+        {"status": "PENDING", "amount": {"currency_code": "EUR", "value": "12.90"}},
+        {"status": "COMPLETED", "amount": {"currency_code": "USD", "value": "12.90"}},
+        {"status": "COMPLETED", "amount": {"currency_code": "EUR", "value": "0.01"}},
+    ],
+)
+def test_completed_capture_rejects_unpaid_or_mismatched_capture(capture):
+    config = {"currency": "EUR", "amount": "12.90"}
+    payload = {"purchase_units": [{"payments": {"captures": [capture]}}]}
+    with pytest.raises(PermissionError):
+        paypal._validate_completed_capture(payload, config)
+
+
+def test_completed_capture_rejects_missing_or_ambiguous_capture():
+    config = {"currency": "EUR", "amount": "12.90"}
+    with pytest.raises(PermissionError, match="absente ou ambiguë"):
+        paypal._validate_completed_capture({"purchase_units": []}, config)
+
+    capture = {"status": "COMPLETED", "amount": {"currency_code": "EUR", "value": "12.90"}}
+    payload = {"purchase_units": [{"payments": {"captures": [capture, capture]}}]}
+    with pytest.raises(PermissionError, match="absente ou ambiguë"):
+        paypal._validate_completed_capture(payload, config)
