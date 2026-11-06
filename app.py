@@ -454,7 +454,7 @@ elif page == "Analyse PDF":
             "Analyser les PDF ensemble",
             type="primary",
             key="run_premium_batch_pdf",
-            disabled=not batch_files or len(batch_files) > 5,
+            disabled=len(batch_files) < 2 or len(batch_files) > 5,
         ):
             with st.spinner("Vérification Premium et préparation des documents..."):
                 try:
