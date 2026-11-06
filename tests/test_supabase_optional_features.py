@@ -45,3 +45,18 @@ def test_premium_entitlements_are_user_scoped_and_not_client_writable():
     assert "grant insert" not in sql
     assert "grant update" not in sql
     assert "grant delete" not in sql
+
+
+def test_restrictive_storage_guard_blocks_other_users_even_with_permissive_policies():
+    sql = _sql()
+    marker = 'create policy "sow ia enforce private pdf folder isolation"'
+    assert marker in sql
+    section = sql.split(marker, 1)[1].split(";", 1)[0]
+    assert "as restrictive" in section
+    assert "for all" in section
+    assert "to public" in section
+    assert "bucket_id <> 'sowia-private-documents'" in section
+    assert "(storage.foldername(name))[1]" in section
+    assert "auth.uid()" in section
+    assert "using (" in section
+    assert "with check (" in section
