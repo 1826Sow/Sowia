@@ -456,6 +456,10 @@ elif page == "Recherche Web":
             for item in search_web(query):
                 st.markdown(f"**[{item.get('title', 'Résultat')}]({item.get('url', '#')})**")
                 st.write(item.get("content", ""))
+        except RateLimitExceeded as exc:
+            st.warning(str(exc))
+        except RateLimitUnavailable as exc:
+            st.error(str(exc))
         except Exception:
             st.error("La recherche Web est temporairement indisponible. Réessayez plus tard.")
 
