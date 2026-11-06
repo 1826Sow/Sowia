@@ -7,6 +7,7 @@ from settings import get_setting
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
 from user_modes import MODE_OPTIONS
+from workspace_access import WORKSPACE_MODES, normalize_workspace_mode, workspace_home_content, workspace_navigation
 from storage import (
     add_memory as local_add_memory,
     clear_history as local_clear_history,
@@ -238,20 +239,25 @@ with st.sidebar:
             st.rerun()
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
+    workspace_mode = st.selectbox(
+        "Espace de travail",
+        options=WORKSPACE_MODES,
+        key="workspace_mode",
+        help="Choisissez votre contexte. Les droits Premium restent vérifiés séparément côté serveur.",
+    )
     selected_mode = st.selectbox(
-        "Mode de travail",
+        "Mode de réponse de l’assistant",
         options=list(MODE_OPTIONS),
         key="sowia_user_mode",
-        help="Ce choix adapte les réponses de l’assistant. Il ne modifie pas votre abonnement ni vos droits Premium.",
+        help="Ce choix adapte les réponses de l’assistant sans modifier votre abonnement.",
     )
-    st.caption("Mode actif pour cette session : " + selected_mode)
+    st.caption("Espace actif : " + normalize_workspace_mode(workspace_mode))
+    navigation_pages = workspace_navigation(workspace_mode)
+    if st.session_state.get("page_nav") not in navigation_pages:
+        st.session_state.page_nav = "Accueil"
     page = st.radio(
         "Navigation",
-        [
-            "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
-            "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-            "Abonnement", "Paramètres", "Aide",
-        ],
+        navigation_pages,
         key="page_nav",
     )
     st.divider()
@@ -264,20 +270,22 @@ st.markdown(
 st.write("")
 
 if page == "Accueil":
-    st.subheader("Bienvenue sur SOW IA")
-    st.write("Accédez directement à vos outils :")
-    shortcuts = [
-        ("💬", "Assistant IA", "Posez vos questions"),
-        ("🧠", "Ma mémoire", "Enregistrez vos informations utiles"),
-        ("🌐", "Recherche Web", "Recherchez des informations en ligne"),
-        ("📄", "Analyse PDF", "Importez et analysez un PDF"),
-        ("🪄", "Créer un PDF", "Préparez vos futurs documents PDF"),
-        ("📁", "Mes documents", "Retrouvez votre espace documentaire"),
-        ("🕘", "Historique", "Consultez vos conversations"),
-        ("👑", "Abonnement", "Découvrez l’espace Premium"),
-        ("⚙️", "Paramètres", "Vérifiez votre configuration"),
-        ("❓", "Aide", "Consultez les indications d’utilisation"),
-    ]
+    try:
+        premium_entitlement = (
+            premium_access.get_entitlement(supabase_client, current_user)
+            if cloud_mode and current_user is not None else None
+        )
+        premium_active = bool(
+            premium_entitlement and premium_entitlement.get("status") == "active"
+        )
+    except Exception:
+        premium_active = False
+    home = workspace_home_content(workspace_mode, premium_active)
+    st.subheader(home["title"])
+    st.write(home["description"])
+    if home["notice"]:
+        st.info(home["notice"])
+    shortcuts = home["shortcuts"]
     for start in range(0, len(shortcuts), 3):
         cols = st.columns(3)
         for col, (icon, title, desc) in zip(cols, shortcuts[start:start + 3]):
