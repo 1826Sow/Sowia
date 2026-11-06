@@ -536,8 +536,27 @@ elif page == "Analyse PDF":
 elif page == "Créer un PDF":
     st.subheader("🪄 Créer un PDF")
     st.write("Rédigez un document et téléchargez-le au format PDF. Cette fonction ne consomme aucun crédit OpenAI.")
-    pdf_title = st.text_input("Titre du document", value="Mon document")
-    pdf_body = st.text_area("Contenu du document", height=300, placeholder="Écrivez ou collez votre texte ici...")
+    if normalize_workspace_mode(st.session_state.get("workspace_mode")) == "Professionnel":
+        from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
+
+        selected_template = st.selectbox(
+            "Modèle professionnel (facultatif)",
+            PROFESSIONAL_TEMPLATE_NAMES,
+            key="professional_pdf_template",
+        )
+        if st.button("Insérer ce modèle", key="insert_professional_pdf_template"):
+            template = get_professional_template(selected_template)
+            st.session_state["pdf_title"] = template["title"]
+            st.session_state["pdf_body"] = template["body"]
+    st.session_state.setdefault("pdf_title", "Mon document")
+    st.session_state.setdefault("pdf_body", "")
+    pdf_title = st.text_input("Titre du document", key="pdf_title")
+    pdf_body = st.text_area(
+        "Contenu du document",
+        height=300,
+        placeholder="Écrivez ou collez votre texte ici...",
+        key="pdf_body",
+    )
     if st.button("Créer le PDF", type="primary", disabled=not pdf_body.strip()):
         try:
             from io import BytesIO
