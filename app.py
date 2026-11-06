@@ -93,6 +93,13 @@ if cloud_mode:
             if previous_document_owner != document_owner_id:
                 st.session_state.pop("prepared_document_path", None)
                 st.session_state.pop("prepared_document_bytes", None)
+                # Clear account-scoped checkout state as well as private documents.
+                for key in (
+                    "paypal_approval_url",
+                    "paypal_order_id",
+                    "paypal_purchase_confirmed",
+                ):
+                    st.session_state.pop(key, None)
                 # Extracted PDF text is also private: never carry it across accounts.
                 st.session_state.pdf_text = ""
                 st.session_state["private_document_owner_id"] = document_owner_id
@@ -231,6 +238,13 @@ with st.sidebar:
             st.session_state.pop("prepared_document_path", None)
             st.session_state.pop("prepared_document_bytes", None)
             st.session_state.pop("private_document_owner_id", None)
+            # Clear any account-scoped checkout state when ending this session.
+            for key in (
+                "paypal_approval_url",
+                "paypal_order_id",
+                "paypal_purchase_confirmed",
+            ):
+                st.session_state.pop(key, None)
             # Clear extracted PDF text as well as cached private document bytes.
             st.session_state.pdf_text = ""
             st.session_state.session_id = str(uuid.uuid4())
