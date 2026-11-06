@@ -11,11 +11,13 @@ Vérifier en conditions réelles les politiques RLS de stockage PDF privé et de
 1. Créer ou choisir un projet Supabase temporaire, clairement nommé `SOW IA - TEST`.
 2. Vérifier deux fois son nom et son identifiant dans le tableau de bord avant toute action SQL.
 3. Créer deux comptes de test distincts : Utilisateur A et Utilisateur B.
-4. Dans l'éditeur SQL de **ce projet de test uniquement**, exécuter d'abord les requêtes de précontrôle en lecture seule présentées plus bas dans la section « Précontrôle en lecture seule des politiques déjà présentes ».
+4. Dans l'éditeur SQL de **ce projet de test uniquement**, exécuter d'abord les requêtes de précontrôle en lecture seule présentées plus bas dans la section « Précontrôle en lecture seule des politiques déjà présentes ». Pour un projet neuf, l'absence des tables mémoire/historique et de leurs politiques est normale à ce stade ; ne pas exécuter la requête de contrôle de contrainte mémoire avant la création du schéma.
 5. Examiner les résultats : si une politique inconnue ou permissive est présente, ou si le bucket existe déjà avec une configuration ou un usage non vérifié, arrêter la procédure et analyser avant toute modification.
-6. Seulement si le précontrôle est sûr, exécuter `supabase_optional_features.sql` depuis la branche de la PR dans ce projet de test.
-7. Vérifier dans Storage que le bucket `sowia-private-documents` est privé, limité à 10 485 760 octets et au type MIME `application/pdf`.
-8. Ne pas ajouter de clé service-role dans le navigateur, dans un dépôt Git ou dans un message.
+6. Si les précontrôles sont sûrs, exécuter **d'abord** `supabase/schema.sql` depuis la branche de la PR dans ce projet isolé. C'est le schéma de base prévu pour les tables mémoire, historique et droits Premium.
+7. Exécuter ensuite `supabase_optional_features.sql` depuis la branche de la PR dans ce même projet isolé pour configurer le bucket privé et réappliquer la politique de lecture Premium.
+8. Ne pas exécuter le fichier racine historique `supabase_schema.sql` : il s'agit d'un ancien script, différent du schéma de base actuel et doté d'un octroi de privilèges de séquence plus large. Ne pas mélanger les deux scripts.
+9. Après création du schéma, exécuter le contrôle de contrainte mémoire plus bas, puis vérifier dans Storage que le bucket `sowia-private-documents` est privé, limité à 10 485 760 octets et au type MIME `application/pdf`.
+10. Ne pas ajouter de clé service-role dans le navigateur, dans un dépôt Git ou dans un message.
 
 ## Scénarios Storage à valider
 
@@ -153,6 +155,8 @@ Ce précontrôle ne remplace pas les scénarios S1 à S8 ni les essais RLS Premi
 
 
 ## Compatibilité de la limite des notes mémoire
+
+Effectuer le contrôle SQL ci-dessous **après** l'exécution de `supabase/schema.sql` dans le projet isolé. Dans un projet neuf, la table n'existe pas avant cette étape.
 
 La mémoire standard accepte au plus 1 000 caractères, tandis que la mémoire étendue Premium accepte jusqu'à 5 000 caractères côté application. Le script `supabase/schema.sql` définit une contrainte de 5 000 caractères, mais `CREATE TABLE IF NOT EXISTS` ne modifie pas une table déjà créée avec une ancienne contrainte de 1 000 caractères.
 
