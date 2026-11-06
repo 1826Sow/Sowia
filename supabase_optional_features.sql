@@ -72,7 +72,7 @@ create policy "SOW IA users read own Premium entitlement"
 on public.sowia_entitlements for select to authenticated
 using ((select auth.uid()) = user_id);
 
-revoke all on public.sowia_entitlements from anon, authenticated;
+revoke all on public.sowia_entitlements from public, anon, authenticated;
 grant select on public.sowia_entitlements to authenticated;
 
 -- No INSERT/UPDATE/DELETE policy is granted to authenticated users.
