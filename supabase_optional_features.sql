@@ -24,6 +24,14 @@ create policy "Users can read own Premium entitlement"
 on public.sowia_entitlements for select to authenticated
 using ((select auth.uid()) = user_id);
 
+-- Restrictive owner guard prevents legacy permissive policies from exposing
+-- another account's entitlement row.
+drop policy if exists "SOW IA enforce own Premium entitlement" on public.sowia_entitlements;
+create policy "SOW IA enforce own Premium entitlement"
+on public.sowia_entitlements as restrictive for all to public
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
 revoke all on public.sowia_entitlements from public, anon, authenticated;
 grant select on public.sowia_entitlements to authenticated;
 
