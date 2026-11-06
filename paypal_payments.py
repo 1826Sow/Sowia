@@ -133,6 +133,27 @@ def create_premium_order(user_id: str):
     return {"id": order["id"], "approval_url": approval_url}
 
 
+def _validate_completed_capture(payload, config):
+    """Require exactly one completed capture for the configured amount and currency."""
+    units = payload.get("purchase_units") or []
+    captures = [
+        capture
+        for unit in units
+        for capture in ((unit.get("payments") or {}).get("captures") or [])
+    ]
+    if len(captures) != 1:
+        raise PermissionError("La capture PayPal est absente ou ambiguë.")
+    capture = captures[0]
+    amount = capture.get("amount") or {}
+    if (
+        capture.get("status") != "COMPLETED"
+        or amount.get("currency_code") != config["currency"]
+        or amount.get("value") != config["amount"]
+    ):
+        raise PermissionError("Le montant réellement capturé ne correspond pas au prix Premium.")
+    return payload
+
+
 def capture_premium_order(order_id: str, user_id: str):
     """Capture only an order whose server-side details match this user and price."""
     config = paypal_configuration()
@@ -165,7 +186,7 @@ def capture_premium_order(order_id: str, user_id: str):
     ):
         raise PermissionError("La commande PayPal ne correspond pas à cet achat SOW IA.")
     if details.get("status") == "COMPLETED":
-        return details
+        return _validate_completed_capture(details, config)
     capture_response = requests.post(
         f"{base}/v2/checkout/orders/{order_id}/capture",
         json={},
@@ -176,4 +197,4 @@ def capture_premium_order(order_id: str, user_id: str):
     result = capture_response.json()
     if result.get("status") != "COMPLETED":
         raise RuntimeError("PayPal n'a pas confirmé le paiement.")
-    return result
+    return _validate_completed_capture(result, config)
