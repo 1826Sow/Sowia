@@ -126,3 +126,13 @@ def test_existing_bucket_configuration_is_not_overwritten():
     assert "on conflict (id) do nothing" in bucket_setup
     assert "do update" not in bucket_setup
     assert "set public" not in bucket_setup
+
+
+def test_optional_and_canonical_schema_use_the_same_entitlement_read_policy():
+    optional = _sql()
+    canonical = SCHEMA_PATH.read_text(encoding="utf-8").lower()
+    policy = '"users can read own premium entitlement"'
+    assert f"drop policy if exists {policy}" in optional
+    assert f"create policy {policy}" in optional
+    assert f"drop policy if exists {policy}" in canonical
+    assert f"create policy {policy}" in canonical
