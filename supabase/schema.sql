@@ -57,6 +57,19 @@ create policy "Users can delete own memory"
     on public.sowia_memory_items for delete to authenticated
     using ((select auth.uid()) = user_id);
 
+-- Restrictive owner guards also neutralize any legacy permissive policies.
+drop policy if exists "SOW IA enforce own messages" on public.sowia_messages;
+create policy "SOW IA enforce own messages"
+    on public.sowia_messages as restrictive for all to public
+    using ((select auth.uid()) = user_id)
+    with check ((select auth.uid()) = user_id);
+
+drop policy if exists "SOW IA enforce own memory" on public.sowia_memory_items;
+create policy "SOW IA enforce own memory"
+    on public.sowia_memory_items as restrictive for all to public
+    using ((select auth.uid()) = user_id)
+    with check ((select auth.uid()) = user_id);
+
 -- Remove any older or inherited client privileges before granting the exact
 -- operations required by SOW IA. RLS then restricts each operation to its owner.
 revoke all on table public.sowia_messages, public.sowia_memory_items
@@ -94,6 +107,14 @@ drop policy if exists "Users can read own Premium entitlement" on public.sowia_e
 create policy "Users can read own Premium entitlement"
     on public.sowia_entitlements for select to authenticated
     using ((select auth.uid()) = user_id);
+
+-- Restrictive owner guard prevents legacy permissive policies from exposing
+-- another account's entitlement row.
+drop policy if exists "SOW IA enforce own Premium entitlement" on public.sowia_entitlements;
+create policy "SOW IA enforce own Premium entitlement"
+    on public.sowia_entitlements as restrictive for all to public
+    using ((select auth.uid()) = user_id)
+    with check ((select auth.uid()) = user_id);
 
 -- Explicitly remove inherited/default client privileges before allowing
 -- authenticated users to read only their own row through the RLS policy.
