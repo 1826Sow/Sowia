@@ -87,6 +87,15 @@ def valid_pdf_bytes():
     return buffer.getvalue()
 
 
+def pdf_with_page_count(count):
+    buffer = BytesIO()
+    writer = PdfWriter()
+    for _ in range(count):
+        writer.add_blank_page(width=72, height=72)
+    writer.write(buffer)
+    return buffer.getvalue()
+
+
 class FakeUploadedFile:
     def __init__(self, name, payload):
         self.name = name
@@ -98,6 +107,23 @@ class FakeUploadedFile:
 
     def seek(self, position):
         self.position = position
+
+
+def test_batch_upload_preparation_rejects_more_than_200_pages_before_extraction():
+    files = [
+        FakeUploadedFile("a.pdf", valid_pdf_bytes()),
+        FakeUploadedFile(
+            "too-many-pages.pdf",
+            pdf_with_page_count(premium_batch_analysis.MAX_BATCH_DOCUMENT_PAGES + 1),
+        ),
+    ]
+    extraction_calls = []
+
+    with pytest.raises(ValueError, match="200 pages"):
+        premium_batch_analysis.prepare_pdf_batch_uploads(
+            files, lambda *args, **kwargs: extraction_calls.append(True) or "texte"
+        )
+    assert extraction_calls == [True]
 
 
 def test_batch_upload_preparation_checks_pdf_signature_size_and_resets_pointer():
