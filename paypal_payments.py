@@ -38,11 +38,17 @@ def paypal_configuration():
     if currency != "EUR":
         raise ValueError("La devise SOW IA doit être EUR pour ce parcours.")
     try:
-        amount = Decimal(price).quantize(Decimal("0.01"))
+        raw_amount = Decimal(price)
+        amount = raw_amount.quantize(Decimal("0.01"))
     except (InvalidOperation, ValueError):
         raise ValueError("PAYPAL_PREMIUM_PRICE doit être un montant en euros valide.")
-    if amount <= 0 or amount > Decimal("9999.99"):
-        raise ValueError("Le prix Premium doit être compris entre 0,01 € et 9 999,99 €.")
+    if (
+        not raw_amount.is_finite()
+        or raw_amount != amount
+        or amount <= 0
+        or amount > Decimal("9999.99")
+    ):
+        raise ValueError("Le prix Premium doit être un montant exact compris entre 0,01 € et 9 999,99 €.")
     if not return_url.startswith("https://") or not cancel_url.startswith("https://"):
         raise ValueError("Les URL de retour PayPal doivent utiliser HTTPS.")
     base_url = (
