@@ -11,7 +11,7 @@ MODE_OPTIONS = {
 
 def normalize_user_mode(value):
     """Return a supported mode, falling back safely to Personnel."""
-    return value if value in MODE_OPTIONS else "Personnel"
+    return value if isinstance(value, str) and value in MODE_OPTIONS else "Personnel"
 
 
 def mode_system_instruction(value):
