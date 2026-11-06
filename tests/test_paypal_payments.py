@@ -49,6 +49,43 @@ def test_configuration_rejects_non_https_return_url(monkeypatch):
         paypal.paypal_configuration()
 
 
+
+def test_order_creation_binds_the_purchase_to_user_and_premium_product(monkeypatch):
+    _settings(monkeypatch)
+    calls = []
+
+    class Response:
+        def __init__(self, data):
+            self.data = data
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.data
+
+    def fake_post(url, **kwargs):
+        calls.append((url, kwargs))
+        if url.endswith("/v1/oauth2/token"):
+            return Response({"access_token": "test-token"})
+        return Response({
+            "id": "ORDER-BOUND",
+            "links": [{"rel": "approve", "href": "https://paypal.test/approve"}],
+        })
+
+    monkeypatch.setattr(paypal.requests, "post", fake_post)
+    result = paypal.create_premium_order("user-123")
+
+    order_call = next(call for call in calls if call[0].endswith("/v2/checkout/orders"))
+    unit = order_call[1]["json"]["purchase_units"][0]
+    assert unit["custom_id"] == "user-123"
+    assert unit["reference_id"] == "sowia-premium"
+    assert result == {
+        "id": "ORDER-BOUND",
+        "approval_url": "https://paypal.test/approve",
+    }
+
+
 def test_capture_refuses_order_belonging_to_another_user(monkeypatch):
     _settings(monkeypatch)
 
