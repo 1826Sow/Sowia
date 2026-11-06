@@ -149,3 +149,22 @@ def test_upload_rejects_encrypted_pdf():
 def test_storage_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         docs.list_documents(FakeClient(), None)
+
+@pytest.mark.parametrize("path", [
+    "user-123/../other-user/private.pdf",
+    "user-123/subfolder/private.pdf",
+    "user-123\\\\private.pdf",
+    "user-123/private.pdf\\x00suffix",
+])
+def test_delete_rejects_malformed_owned_paths_before_storage_access(path):
+    client = FakeClient()
+    with pytest.raises((PermissionError, ValueError)):
+        docs.delete_document(client, User(), path)
+    assert client.bucket.removed is None
+
+
+def test_document_path_rejects_prefix_spoofing():
+    client = FakeClient()
+    with pytest.raises(PermissionError):
+        docs.download_document(client, User(), "user-123-evil/private.pdf")
+    assert client.bucket.downloaded is None
