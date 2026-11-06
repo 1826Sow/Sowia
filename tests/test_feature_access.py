@@ -31,3 +31,24 @@ def test_known_free_features_remain_available_without_premium():
 def test_unknown_features_are_denied_until_registered():
     assert not access.can_access_feature("Future Premium Feature", {"status": "active"})
     assert not access.can_access_feature("Typo in feature name", None)
+
+
+def test_personal_home_keeps_personal_tools_and_copy():
+    home = access.workspace_home_content("Personnel", premium_active=False)
+    assert home["title"] == "Bienvenue sur SOW IA"
+    assert "Ma mémoire" in [item[1] for item in home["shortcuts"]]
+    assert home["notice"] == ""
+
+
+def test_professional_home_has_work_context_and_premium_notice():
+    home = access.workspace_home_content("Professionnel", premium_active=False)
+    assert home["title"] == "Votre espace Professionnel"
+    assert "Ma mémoire" not in [item[1] for item in home["shortcuts"]]
+    assert "Premium" in home["notice"]
+    assert "documents professionnels" in home["description"]
+
+
+def test_professional_home_notice_disappears_only_with_active_premium():
+    home = access.workspace_home_content("Professionnel", premium_active=True)
+    assert home["notice"] == ""
+    assert "Mes documents" in [item[1] for item in home["shortcuts"]]
