@@ -21,6 +21,10 @@ def test_cleanup_removes_private_pdf_checkout_and_mode_state():
         "pdf_question": "question privée",
         "premium_batch_pdf_files": ["document privé"],
         "private_pdf_upload": "autre document privé",
+        "pdf_title": "Titre confidentiel",
+        "pdf_body": "Texte de document confidentiel",
+        "professional_export_title": "Rapport confidentiel",
+        "professional_export_body": "Contenu Premium confidentiel",
         "pdf_text": "texte PDF privé",
         "session_id": "old-account-session",
         "sowia_supabase_client": object(),
@@ -39,6 +43,10 @@ def test_cleanup_removes_private_pdf_checkout_and_mode_state():
         "pdf_question",
         "premium_batch_pdf_files",
         "private_pdf_upload",
+        "pdf_title",
+        "pdf_body",
+        "professional_export_title",
+        "professional_export_body",
     ):
         assert key not in state
     assert state["pdf_text"] == ""
