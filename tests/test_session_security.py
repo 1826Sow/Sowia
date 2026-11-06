@@ -99,3 +99,11 @@ def test_required_authentication_without_supabase_configuration_clears_private_s
 def test_public_authentication_is_required_by_default():
     app_source = (ROOT / "app.py").read_text(encoding="utf-8")
     assert 'get_setting("SOWIA_REQUIRE_AUTH", "true")' in app_source
+
+
+
+def test_app_uses_random_browser_session_id_instead_of_account_wide_session_id():
+    app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert 'st.session_state.session_id = str(uuid.uuid4())' in app_source
+    assert "uuid.uuid5" not in app_source
+    assert "Separate tabs/devices for the same account must not share a live conversation." in app_source
