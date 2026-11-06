@@ -36,6 +36,13 @@ def test_configuration_uses_sandbox_and_euro_amount(monkeypatch):
     assert config["currency"] == "EUR"
 
 
+@pytest.mark.parametrize("price", ["12.999", "0.001", "NaN", "Infinity"])
+def test_configuration_rejects_invalid_cent_precision(monkeypatch, price):
+    _settings(monkeypatch, PAYPAL_PREMIUM_PRICE=price)
+    with pytest.raises(ValueError):
+        paypal.paypal_configuration()
+
+
 def test_configuration_rejects_non_https_return_url(monkeypatch):
     _settings(monkeypatch, PAYPAL_RETURN_URL="http://example.test/return")
     with pytest.raises(ValueError, match="HTTPS"):
