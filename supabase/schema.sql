@@ -59,7 +59,11 @@ create policy "Users can delete own memory"
 
 grant select, insert, delete on public.sowia_messages to authenticated;
 grant select, insert, delete on public.sowia_memory_items to authenticated;
-grant usage, select on all sequences in schema public to authenticated;
+-- Restrict sequence privileges to the two identity sequences used above.
+grant usage, select on sequence
+    public.sowia_messages_id_seq,
+    public.sowia_memory_items_id_seq
+    to authenticated;
 
 
 -- Premium access is written only by the trusted server using the service-role
