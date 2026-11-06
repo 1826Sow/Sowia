@@ -6,7 +6,7 @@ from settings import get_setting
 
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
-from user_modes import normalize_user_mode, MODE_OPTIONS
+from user_modes import MODE_OPTIONS
 from storage import (
     add_memory as local_add_memory,
     clear_history as local_clear_history,
