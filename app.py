@@ -564,7 +564,7 @@ elif page == "Créer un PDF":
         except Exception:
             premium_entitlement = None
             st.warning("Impossible de vérifier votre accès Premium pour le moment.")
-        if not premium_entitlement:
+        if not premium_entitlement or premium_entitlement.get("status") != "active":
             st.caption("Fonction réservée aux comptes disposant d'un accès Premium actif.")
         else:
             with st.form("premium_professional_export_form"):
