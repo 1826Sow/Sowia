@@ -26,7 +26,7 @@ class FakeBucket:
 
     def download(self, path):
         self.downloaded = path
-        return b"%PDF"
+        return b"%PDF-1.4"
 
     def remove(self, paths):
         self.removed = paths
@@ -45,10 +45,10 @@ class FakeClient:
 
 def test_upload_is_stored_under_authenticated_user_folder():
     client = FakeClient()
-    path = docs.upload_document(client, User(), "Mon rapport.pdf", b"%PDF")
+    path = docs.upload_document(client, User(), "Mon rapport.pdf", b"%PDF-1.4")
     assert path.startswith("user-123/")
     assert path.endswith("_Mon_rapport.pdf")
-    assert client.bucket.uploaded[1] == b"%PDF"
+    assert client.bucket.uploaded[1] == b"%PDF-1.4"
     assert client.bucket.uploaded[2]["content-type"] == "application/pdf"
 
 
