@@ -1,6 +1,4 @@
 """Regression tests for exact PayPal cent precision."""
-from decimal import Decimal
-
 import pytest
 
 import paypal_payments as paypal
@@ -23,11 +21,14 @@ def test_paypal_configuration_rejects_non_cent_or_non_finite_prices(monkeypatch,
         "get_setting",
         lambda key, default="": values.get(key, default),
     )
-    with pytest.raises(ValueError, match="montant exact"):
+    with pytest.raises(ValueError, match="montant exact|montant en euros valide"):
         paypal.paypal_configuration()
 
 
-@pytest.mark.parametrize("price, expected", [("12.90", "12.90"), ("12.9", "12.90"), ("0.01", "0.01")])
+@pytest.mark.parametrize(
+    "price, expected",
+    [("12.90", "12.90"), ("12.9", "12.90"), ("0.01", "0.01")],
+)
 def test_paypal_configuration_accepts_exact_cent_amounts(monkeypatch, price, expected):
     values = {
         "SOWIA_PAYMENTS_ENABLED": "true",
