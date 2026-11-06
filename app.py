@@ -67,18 +67,21 @@ cloud_mode = supabase_enabled and auth_required
 current_user = None
 supabase_client = None
 if cloud_mode:
+    auth_stage = "initialisation du client Supabase"
     try:
         if "sowia_supabase_client" not in st.session_state:
             # Keep this PKCE client in this browser session; never use a global cache.
             st.session_state.sowia_supabase_client = create_user_client()
         supabase_client = st.session_state.sowia_supabase_client
 
+        auth_stage = "échange du code de retour GitHub avec Supabase"
         authorization_code = st.query_params.get("code")
         if authorization_code:
             complete_github_login(supabase_client, authorization_code)
             st.query_params.clear()
             st.rerun()
 
+        auth_stage = "vérification de la session Supabase"
         current_user = authenticated_user(supabase_client)
         if current_user is not None:
             # Reuse one private conversation history for this authenticated account.
@@ -101,7 +104,7 @@ if cloud_mode:
             st.error(
                 "La connexion sécurisée Supabase est indisponible. "
                 "L'accès reste fermé car l'authentification est obligatoire.\n\n"
-                f"Diagnostic : {type(exc).__name__} — {detail}"
+                f"Étape : {auth_stage}.\nDiagnostic : {type(exc).__name__} — {detail}"
             )
             st.stop()
         st.warning("Supabase ne répond pas correctement : SOW IA continue en mode local temporaire. Les fonctions locales, dont la création de PDF, restent accessibles. Les données locales ne sont pas destinées à un usage partagé.")
