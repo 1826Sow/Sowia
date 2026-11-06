@@ -350,6 +350,43 @@ elif page == "Ma mémoire":
                 st.rerun()
             except (ValueError, PermissionError) as exc:
                 st.error(str(exc))
+
+    st.divider()
+    st.markdown("#### Mémoire étendue — Premium")
+    st.caption("Enregistrez une note plus détaillée, jusqu'à 5 000 caractères. Vos notes restent dans votre espace personnel.")
+    if not cloud_mode or current_user is None:
+        st.caption("La mémoire étendue nécessite une connexion à votre espace SOW IA et un accès Premium actif.")
+    else:
+        try:
+            extended_memory_entitlement = premium_access.get_entitlement(supabase_client, current_user)
+        except Exception:
+            extended_memory_entitlement = None
+        if extended_memory_entitlement and extended_memory_entitlement.get("status") == "active":
+            with st.form("add_extended_memory_form", clear_on_submit=True):
+                extended_note = st.text_area(
+                    "Note mémoire détaillée",
+                    placeholder="Ajoutez un contexte, des préférences ou des consignes durables...",
+                    max_chars=5000,
+                    height=180,
+                )
+                extended_submitted = st.form_submit_button(
+                    "Enregistrer une note étendue",
+                    disabled=not extended_note.strip(),
+                )
+                if extended_submitted:
+                    try:
+                        from premium_memory import add_extended_memory
+
+                        add_extended_memory(supabase_client, current_user, extended_note)
+                        st.success("Note mémoire étendue enregistrée.")
+                        st.rerun()
+                    except (ValueError, PermissionError) as exc:
+                        st.error(str(exc))
+                    except Exception:
+                        st.error("Impossible d'enregistrer cette note étendue. Réessayez plus tard.")
+        else:
+            st.caption("Fonction réservée aux comptes disposant d'un accès Premium actif.")
+
     st.markdown("#### Informations mémorisées")
     memories = get_app_memories()
     if not memories:
