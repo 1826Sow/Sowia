@@ -86,4 +86,7 @@ create policy "Users can read own Premium entitlement"
     on public.sowia_entitlements for select to authenticated
     using ((select auth.uid()) = user_id);
 
+-- Explicitly remove inherited/default client privileges before allowing
+-- authenticated users to read only their own row through the RLS policy.
+revoke all on public.sowia_entitlements from public, anon, authenticated;
 grant select on public.sowia_entitlements to authenticated;
