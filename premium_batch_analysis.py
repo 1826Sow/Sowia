@@ -12,6 +12,7 @@ MAX_BATCH_DOCUMENT_CHARS = 7000
 
 
 MAX_BATCH_FILE_BYTES = 10 * 1024 * 1024
+MAX_BATCH_TOTAL_BYTES = 20 * 1024 * 1024
 PDF_SIGNATURE = b"%PDF-"
 
 
@@ -22,8 +23,12 @@ def prepare_pdf_batch_uploads(uploaded_files, extract_text):
         raise ValueError("Sélectionnez entre 2 et 5 PDF pour une analyse groupée.")
 
     documents = []
+    total_bytes = 0
     for uploaded in files:
         payload = uploaded.getvalue()
+        total_bytes += len(payload)
+        if total_bytes > MAX_BATCH_TOTAL_BYTES:
+            raise ValueError("La taille totale des PDF ne doit pas dépasser 20 Mo.")
         if not payload:
             raise ValueError("Un des fichiers PDF est vide.")
         if len(payload) > MAX_BATCH_FILE_BYTES:
