@@ -2,7 +2,7 @@
 import uuid
 import traceback
 import streamlit as st
-from settings import get_setting, authentication_required
+from settings import get_setting, authentication_required, redact_secrets
 
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
@@ -111,16 +111,8 @@ if cloud_mode:
         if auth_required:
             # Show a compact diagnostic directly in the main error box so it
             # remains visible on small mobile screens.
-            detail = str(exc)
-            for secret_name in ("SUPABASE_URL", "SUPABASE_ANON_KEY"):
-                secret_value = str(get_setting(secret_name, "")).strip()
-                if secret_value:
-                    detail = detail.replace(secret_value, "[valeur masquée]")
-            trace = traceback.format_exc()
-            for secret_name in ("SUPABASE_URL", "SUPABASE_ANON_KEY"):
-                secret_value = str(get_setting(secret_name, "")).strip()
-                if secret_value:
-                    trace = trace.replace(secret_value, "[valeur masquée]")
+            detail = redact_secrets(str(exc))
+            trace = redact_secrets(traceback.format_exc())
             st.error(
                 "La connexion sécurisée Supabase est indisponible. "
                 "L'accès reste fermé car l'authentification est obligatoire.\n\n"
