@@ -154,6 +154,30 @@ Ne pas ajouter de politique ni modifier les tables sur la seule base de ces rés
 Ce précontrôle ne remplace pas les scénarios S1 à S8 ni les essais RLS Premium. Il réduit le risque qu'une politique héritée ou un bucket déjà utilisé fausse la validation.
 
 
+## Compatibilité des séquences SQL héritées
+
+Le schéma courant accorde `USAGE` et `SELECT` uniquement sur les séquences d'identifiants des tables SOW IA `sowia_messages` et `sowia_memory_items`. L'ancien fichier racine `supabase_schema.sql` accordait ces privilèges sur toutes les séquences du schéma `public`. Si cet ancien script a déjà été exécuté dans un environnement existant, des droits plus larges peuvent donc subsister : le schéma courant ne révoque volontairement pas les droits sur les séquences d'autres applications.
+
+Avant et après le script, dans le projet isolé uniquement, examiner les droits effectifs sur les séquences :
+
+```sql
+select n.nspname as schema_name,
+       c.relname as sequence_name,
+       pg_get_userbyid(c.relowner) as owner,
+       has_sequence_privilege('anon', c.oid, 'USAGE') as anon_usage,
+       has_sequence_privilege('authenticated', c.oid, 'USAGE') as authenticated_usage,
+       has_sequence_privilege('authenticated', c.oid, 'SELECT') as authenticated_select
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where c.relkind = 'S'
+  and n.nspname = 'public'
+order by c.relname;
+```
+
+Après le script, les deux séquences SOW IA doivent être accessibles au rôle `authenticated` pour les insertions prévues. Les autres séquences ne doivent pas recevoir de privilèges applicatifs uniquement à cause de l'ancien script. Ne révoquer aucun droit sur une séquence tierce sans avoir identifié son propriétaire, son usage et les dépendances de l'application concernée ; préparer toute correction séparément dans le projet isolé.
+
+---
+
 ## Compatibilité de la limite des notes mémoire
 
 Effectuer le contrôle SQL ci-dessous **après** l'exécution de `supabase/schema.sql` dans le projet isolé. Dans un projet neuf, la table n'existe pas avant cette étape.
