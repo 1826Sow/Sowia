@@ -12,6 +12,18 @@ def _user_id(user):
     return str(value)
 
 
+def _session_id(session_id):
+    if not isinstance(session_id, str) or not session_id.strip() or len(session_id) > MAX_SESSION_ID_CHARS:
+        raise ValueError("Identifiant de conversation invalide.")
+    return session_id
+
+
+def _history_limit(limit):
+    if isinstance(limit, bool) or not isinstance(limit, int):
+        raise ValueError("La limite d'historique doit être un entier.")
+    return min(max(limit, 1), 100)
+
+
 def list_memories(client, user):
     user_id = _user_id(user)
     # RLS independently enforces user ownership on every query.
@@ -52,13 +64,15 @@ def delete_memory(client, user, memory_id):
 
 def get_history(client, user, session_id, limit=30):
     user_id = _user_id(user)
+    session_id = _session_id(session_id)
+    limit = _history_limit(limit)
     return (
         client.table("sowia_messages")
         .select("role, content")
         .eq("user_id", user_id)
         .eq("session_id", session_id)
         .order("id", desc=True)
-        .limit(min(max(int(limit), 1), 100))
+        .limit(limit)
         .execute()
         .data[::-1]
     )
@@ -66,11 +80,12 @@ def get_history(client, user, session_id, limit=30):
 
 def clear_history(client, user, session_id):
     user_id = _user_id(user)
+    session_id = _session_id(session_id)
     return (
         client.table("sowia_messages")
         .delete()
         .eq("user_id", user_id)
-        .eq("session_id", str(session_id))
+        .eq("session_id", session_id)
         .execute()
     )
 
@@ -79,8 +94,7 @@ def save_message(client, user, session_id, role, content):
     user_id = _user_id(user)
     if role not in {"user", "assistant"}:
         raise ValueError("Rôle de message invalide.")
-    if not isinstance(session_id, str) or not session_id.strip() or len(session_id) > MAX_SESSION_ID_CHARS:
-        raise ValueError("Identifiant de conversation invalide.")
+    session_id = _session_id(session_id)
     if not isinstance(content, str) or not content.strip():
         raise ValueError("Le message doit contenir du texte.")
     if len(content) > MAX_STORED_MESSAGE_CHARS:
