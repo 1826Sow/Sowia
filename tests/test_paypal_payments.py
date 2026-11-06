@@ -70,7 +70,8 @@ def test_order_creation_binds_the_purchase_to_user_and_premium_product(monkeypat
             return Response({"access_token": "test-token"})
         return Response({
             "id": "ORDER-BOUND",
-            "links": [{"rel": "approve", "href": "https://paypal.test/approve"}],
+            "status": "CREATED",
+            "links": [{"rel": "approve", "href": "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-BOUND"}],
         })
 
     monkeypatch.setattr(paypal.requests, "post", fake_post)
@@ -82,7 +83,7 @@ def test_order_creation_binds_the_purchase_to_user_and_premium_product(monkeypat
     assert unit["reference_id"] == "sowia-premium"
     assert result == {
         "id": "ORDER-BOUND",
-        "approval_url": "https://paypal.test/approve",
+        "approval_url": "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-BOUND",
     }
 
 
@@ -244,3 +245,39 @@ def test_completed_capture_must_match_the_requested_order_id():
         paypal._validate_completed_capture(
             payload, config, expected_order_id="EXPECTED-ORDER"
         )
+
+
+@pytest.mark.parametrize(
+    "order",
+    [
+        {"id": "ORDER-BOUND", "status": "APPROVED",
+         "links": [{"rel": "approve", "href": "https://www.sandbox.paypal.com/checkoutnow"}]},
+        {"id": "ORDER-BOUND", "status": "CREATED",
+         "links": [{"rel": "approve", "href": "https://paypal.example/checkout"}]},
+        {"id": "ORDER-BOUND", "status": "CREATED",
+         "links": [{"rel": "approve", "href": "http://www.sandbox.paypal.com/checkoutnow"}]},
+        {"id": "ORDER-BOUND", "status": "CREATED",
+         "links": [{"rel": "approve", "href": "https://www.sandbox.paypal.com.attacker.example/checkoutnow"}]},
+    ],
+)
+def test_order_creation_rejects_untrusted_approval_responses(monkeypatch, order):
+    _settings(monkeypatch)
+
+    class Response:
+        def __init__(self, data):
+            self.data = data
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.data
+
+    def fake_post(url, **kwargs):
+        if url.endswith("/v1/oauth2/token"):
+            return Response({"access_token": "test-token"})
+        return Response(order)
+
+    monkeypatch.setattr(paypal.requests, "post", fake_post)
+    with pytest.raises(RuntimeError):
+        paypal.create_premium_order("user-123")
