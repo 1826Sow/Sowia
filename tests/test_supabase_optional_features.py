@@ -133,6 +133,7 @@ def test_optional_and_canonical_schema_use_the_same_entitlement_read_policy():
     canonical = SCHEMA_PATH.read_text(encoding="utf-8").lower()
     policy = '"users can read own premium entitlement"'
     assert f"drop policy if exists {policy}" in optional
+    assert 'drop policy if exists "sow ia users read own premium entitlement"' in optional
     assert f"create policy {policy}" in optional
     assert f"drop policy if exists {policy}" in canonical
     assert f"create policy {policy}" in canonical
