@@ -351,8 +351,10 @@ elif page == "Ma mémoire":
                 add_app_memory(note)
                 st.success("Note ajoutée à la mémoire.")
                 st.rerun()
-            except (ValueError, PermissionError) as exc:
+            except (ValueError, PermissionError):
                 st.error("Impossible d’enregistrer cette note mémoire. Vérifiez son contenu et réessayez.")
+            except Exception:
+                st.error("Le service mémoire est momentanément indisponible. Réessayez plus tard.")
 
     st.divider()
     st.markdown("#### Mémoire étendue — Premium")
