@@ -82,6 +82,20 @@ def build_system_prompt(memories=None, document_context=None, user_mode="Personn
     return system_prompt
 
 
+def _filter_conversation_messages(messages):
+    """Keep only plain user/assistant messages; never forward caller-supplied system roles."""
+    filtered = []
+    for message in messages or []:
+        if not isinstance(message, dict):
+            continue
+        role = message.get("role")
+        content = message.get("content")
+        if role not in {"user", "assistant"} or not isinstance(content, str):
+            continue
+        filtered.append({"role": role, "content": content})
+    return filtered
+
+
 def answer(messages, memories=None, document_context=None, user_mode="Personnel"):
     if not API_KEY:
         raise RuntimeError(
@@ -90,12 +104,13 @@ def answer(messages, memories=None, document_context=None, user_mode="Personnel"
         )
 
     system_prompt = build_system_prompt(memories=memories, document_context=document_context, user_mode=user_mode)
+    safe_messages = _filter_conversation_messages(messages)
 
     client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
     try:
         response = client.chat.completions.create(
             model=MODEL,
-            messages=[{"role": "system", "content": system_prompt}, *messages],
+            messages=[{"role": "system", "content": system_prompt}, *safe_messages],
             temperature=0.4,
         )
     except AuthenticationError as exc:
@@ -107,6 +122,6 @@ def answer(messages, memories=None, document_context=None, user_mode="Personnel"
             "configurée et le nom du modèle. Ne communiquez jamais votre clé."
         ) from exc
     except RateLimitError:
-        return _offline_reply(messages)
+        return _offline_reply(safe_messages)
 
     return response.choices[0].message.content or ""
