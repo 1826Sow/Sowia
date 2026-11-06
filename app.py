@@ -87,8 +87,18 @@ if cloud_mode:
         # explicitly requires it.
         st.session_state.pop("sowia_supabase_client", None)
         if auth_required:
-            st.error("La connexion sécurisée Supabase est indisponible. L'accès reste fermé car l'authentification est obligatoire.")
-            st.caption(str(exc))
+            # Show a compact diagnostic directly in the main error box so it
+            # remains visible on small mobile screens.
+            detail = str(exc)
+            for secret_name in ("SUPABASE_URL", "SUPABASE_ANON_KEY"):
+                secret_value = str(get_setting(secret_name, "")).strip()
+                if secret_value:
+                    detail = detail.replace(secret_value, "[valeur masquée]")
+            st.error(
+                "La connexion sécurisée Supabase est indisponible. "
+                "L'accès reste fermé car l'authentification est obligatoire.\n\n"
+                f"Diagnostic : {type(exc).__name__} — {detail}"
+            )
             st.stop()
         st.warning("Supabase ne répond pas correctement : SOW IA continue en mode local temporaire. Les fonctions locales, dont la création de PDF, restent accessibles. Les données locales ne sont pas destinées à un usage partagé.")
         st.caption(f"Détail technique : {exc}")
