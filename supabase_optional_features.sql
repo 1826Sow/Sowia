@@ -12,10 +12,10 @@ values (
     10485760,
     array['application/pdf']
 )
-on conflict (id) do update
-set public = false,
-    file_size_limit = 10485760,
-    allowed_mime_types = array['application/pdf'];
+-- Do not alter an existing bucket automatically: inspect its current use and
+-- configuration first. A pre-existing bucket with mismatched settings must be
+-- handled manually in the isolated test project after review.
+on conflict (id) do nothing;
 
 -- A user's files must be stored under a first-level folder named with auth.uid().
 drop policy if exists "SOW IA users read own private PDFs" on storage.objects;
