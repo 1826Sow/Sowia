@@ -80,5 +80,5 @@ def test_app_guards_assistant_web_and_pdf_calls_before_external_requests():
     web_section = source.split('elif page == "Recherche Web":', 1)[1].split('elif page == "Analyse PDF":', 1)[0]
     assert web_section.index('require_shared_quota("web_search")') < web_section.index("search_web(query)")
 
-    pdf_section = source.split('elif page == "Analyse PDF":', 1)[1].split('elif page == "Analyse groupée PDF":', 1)[0]
+    pdf_section = source.split('elif page == "Analyse PDF":', 1)[1].split('st.markdown("#### Analyse de plusieurs PDF — Premium")', 1)[0]
     assert pdf_section.index('require_shared_quota("pdf_question")') < pdf_section.index("response = answer(")
