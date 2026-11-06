@@ -1,5 +1,6 @@
 """SOW IA — application web Streamlit."""
 import uuid
+import traceback
 import streamlit as st
 from settings import get_setting
 
@@ -101,11 +102,18 @@ if cloud_mode:
                 secret_value = str(get_setting(secret_name, "")).strip()
                 if secret_value:
                     detail = detail.replace(secret_value, "[valeur masquée]")
+            trace = traceback.format_exc()
+            for secret_name in ("SUPABASE_URL", "SUPABASE_ANON_KEY"):
+                secret_value = str(get_setting(secret_name, "")).strip()
+                if secret_value:
+                    trace = trace.replace(secret_value, "[valeur masquée]")
             st.error(
                 "La connexion sécurisée Supabase est indisponible. "
                 "L'accès reste fermé car l'authentification est obligatoire.\n\n"
                 f"Étape : {auth_stage}.\nDiagnostic : {type(exc).__name__} — {detail}"
             )
+            with st.expander("Détails techniques pour le diagnostic"):
+                st.code(trace)
             st.stop()
         st.warning("Supabase ne répond pas correctement : SOW IA continue en mode local temporaire. Les fonctions locales, dont la création de PDF, restent accessibles. Les données locales ne sont pas destinées à un usage partagé.")
         st.caption(f"Détail technique : {exc}")
