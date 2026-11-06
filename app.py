@@ -99,10 +99,8 @@ if cloud_mode:
                 clear_account_private_state(st.session_state)
                 st.session_state["private_document_owner_id"] = document_owner_id
 
-            # Reuse one private conversation history for this authenticated account.
-            st.session_state.session_id = str(
-                uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
-            )
+            # Keep the random session ID created for this browser session.
+            # Separate tabs/devices for the same account must not share a live conversation.
     except Exception as exc:
         # Keep the application usable if the optional Supabase connection is
         # unavailable. Never bypass authentication when the deployment
