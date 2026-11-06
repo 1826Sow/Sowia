@@ -152,3 +152,36 @@ def test_history_query_caps_requested_limit_at_one_hundred():
     client = FakeClient()
     cloud_storage.get_history(client, User(), "private-session", limit=500)
     assert ("limit", 100) in client.tables["sowia_messages"].operations
+
+
+
+def test_save_message_rejects_oversized_content_before_database_write():
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for oversized content")
+
+    with pytest.raises(ValueError, match="30 000"):
+        cloud_storage.save_message(
+            Client(), User(), "private-session", "user",
+            "x" * (cloud_storage.MAX_STORED_MESSAGE_CHARS + 1),
+        )
+
+
+@pytest.mark.parametrize("session_id", ["", " " , "x" * 65, None, 123])
+def test_save_message_rejects_invalid_session_identifier_before_database_write(session_id):
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid session")
+
+    with pytest.raises(ValueError, match="conversation"):
+        cloud_storage.save_message(Client(), User(), session_id, "user", "Bonjour")
+
+
+@pytest.mark.parametrize("content", ["", "  ", None, 123])
+def test_save_message_rejects_empty_or_non_text_content_before_database_write(content):
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid content")
+
+    with pytest.raises(ValueError, match="message"):
+        cloud_storage.save_message(Client(), User(), "private-session", "user", content)
