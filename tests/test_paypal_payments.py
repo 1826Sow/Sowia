@@ -143,3 +143,31 @@ def test_disabled_payments_never_make_a_paypal_network_request(monkeypatch):
     monkeypatch.setattr(paypal.requests, "post", unexpected_network_call)
     with pytest.raises(RuntimeError, match="configuration PayPal"):
         paypal.create_premium_order("user-123")
+
+
+def test_capture_rejects_malformed_order_id_before_network_access(monkeypatch):
+    _settings(monkeypatch)
+
+    def unexpected_network_call(*args, **kwargs):
+        pytest.fail("Malformed PayPal order IDs must be rejected before network access")
+
+    monkeypatch.setattr(paypal.requests, "post", unexpected_network_call)
+    with pytest.raises(ValueError, match="Identifiant de commande"):
+        paypal.capture_premium_order("../other-order", "user-123")
+
+
+def test_completed_capture_must_match_the_requested_order_id():
+    config = {"currency": "EUR", "amount": "12.90"}
+    payload = {
+        "id": "ANOTHER-ORDER",
+        "purchase_units": [{
+            "payments": {"captures": [{
+                "status": "COMPLETED",
+                "amount": {"currency_code": "EUR", "value": "12.90"},
+            }]}
+        }],
+    }
+    with pytest.raises(PermissionError, match="ne correspond pas"):
+        paypal._validate_completed_capture(
+            payload, config, expected_order_id="EXPECTED-ORDER"
+        )
