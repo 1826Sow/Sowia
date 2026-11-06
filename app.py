@@ -86,6 +86,15 @@ if cloud_mode:
         auth_stage = "vérification de la session Supabase"
         current_user = authenticated_user(supabase_client)
         if current_user is not None:
+            # Never retain a previously authenticated user's private PDF bytes
+            # when the browser session changes accounts.
+            document_owner_id = str(current_user.id)
+            previous_document_owner = st.session_state.get("private_document_owner_id")
+            if previous_document_owner != document_owner_id:
+                st.session_state.pop("prepared_document_path", None)
+                st.session_state.pop("prepared_document_bytes", None)
+                st.session_state["private_document_owner_id"] = document_owner_id
+
             # Reuse one private conversation history for this authenticated account.
             st.session_state.session_id = str(
                 uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
@@ -216,6 +225,10 @@ with st.sidebar:
         if st.button("Se déconnecter", use_container_width=True):
             sign_out(supabase_client)
             st.session_state.pop("sowia_supabase_client", None)
+            # Clear private document cache before ending this account session.
+            st.session_state.pop("prepared_document_path", None)
+            st.session_state.pop("prepared_document_bytes", None)
+            st.session_state.pop("private_document_owner_id", None)
             st.session_state.session_id = str(uuid.uuid4())
             st.rerun()
     else:
