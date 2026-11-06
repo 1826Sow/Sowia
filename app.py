@@ -93,6 +93,8 @@ if cloud_mode:
             if previous_document_owner != document_owner_id:
                 st.session_state.pop("prepared_document_path", None)
                 st.session_state.pop("prepared_document_bytes", None)
+                # Extracted PDF text is also private: never carry it across accounts.
+                st.session_state.pdf_text = ""
                 st.session_state["private_document_owner_id"] = document_owner_id
 
             # Reuse one private conversation history for this authenticated account.
@@ -229,6 +231,8 @@ with st.sidebar:
             st.session_state.pop("prepared_document_path", None)
             st.session_state.pop("prepared_document_bytes", None)
             st.session_state.pop("private_document_owner_id", None)
+            # Clear extracted PDF text as well as cached private document bytes.
+            st.session_state.pdf_text = ""
             st.session_state.session_id = str(uuid.uuid4())
             st.rerun()
     else:
