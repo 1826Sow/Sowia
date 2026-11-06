@@ -60,3 +60,18 @@ def test_restrictive_storage_guard_blocks_other_users_even_with_permissive_polic
     assert "auth.uid()" in section
     assert "using (" in section
     assert "with check (" in section
+
+def test_existing_bucket_configuration_is_never_overwritten_automatically():
+    sql = _sql()
+    bucket_setup = sql.split("insert into storage.buckets", 1)[1].split(";", 1)[0]
+    assert "on conflict (id) do nothing" in bucket_setup
+    assert "do update" not in bucket_setup
+    assert "set public" not in bucket_setup
+    assert "set file_size_limit" not in bucket_setup
+    assert "set allowed_mime_types" not in bucket_setup
+
+
+def test_entitlement_table_revokes_default_public_and_client_privileges():
+    sql = _sql()
+    assert "revoke all on public.sowia_entitlements from public, anon, authenticated" in sql
+    assert "grant select on public.sowia_entitlements to authenticated" in sql
