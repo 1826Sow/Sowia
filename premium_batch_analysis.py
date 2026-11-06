@@ -23,7 +23,7 @@ def prepare_pdf_batch_uploads(uploaded_files, extract_text):
     if not 2 <= len(files) <= MAX_BATCH_DOCUMENTS:
         raise ValueError("Sélectionnez entre 2 et 5 PDF pour une analyse groupée.")
 
-    documents = []
+    validated_files = []
     total_bytes = 0
     for uploaded in files:
         payload = uploaded.getvalue()
@@ -49,6 +49,11 @@ def prepare_pdf_batch_uploads(uploaded_files, extract_text):
             raise
         except Exception as exc:
             raise ValueError("Un des fichiers sélectionnés est un PDF illisible ou mal formé.") from exc
+        validated_files.append(uploaded)
+
+    # Validate every file before extracting text from any of them.
+    documents = []
+    for uploaded in validated_files:
         uploaded.seek(0)
         documents.append((uploaded.name, extract_text(uploaded, max_chars=MAX_BATCH_DOCUMENT_CHARS)))
     return documents
