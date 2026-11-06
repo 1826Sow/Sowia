@@ -6,6 +6,7 @@ from settings import get_setting
 
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
+from user_modes import normalize_user_mode, MODE_OPTIONS
 from storage import (
     add_memory as local_add_memory,
     clear_history as local_clear_history,
@@ -214,8 +215,7 @@ with st.sidebar:
             st.rerun()
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
-    page = st.radio(
-        "Navigation",
+    selected_mode = st.selectbox(\n        "Mode de travail",\n        options=list(MODE_OPTIONS),\n        key="sowia_user_mode",\n        help="Ce choix adapte les réponses de l’assistant. Il ne modifie pas votre abonnement ni vos droits Premium.",\n    )\n    st.caption("Mode actif pour cette session : " + selected_mode)\n    page = st.radio(\n        "Navigation",
         [
             "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
             "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
@@ -282,6 +282,7 @@ elif page == "Assistant IA":
                 reply = answer(
                     get_app_history(),
                     memories=[item["content"] for item in memories],
+                    user_mode=st.session_state.get("sowia_user_mode", "Personnel"),
                 )
                 st.markdown(reply)
                 save_app_message("assistant", reply)
@@ -373,6 +374,7 @@ elif page == "Analyse PDF":
                         response = answer(
                             [{"role": "user", "content": pdf_question.strip()}],
                             document_context=st.session_state.pdf_text,
+                            user_mode=st.session_state.get("sowia_user_mode", "Personnel"),
                         )
                         st.markdown("**Réponse de SOW IA**")
                         st.write(response)
