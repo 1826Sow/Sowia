@@ -613,6 +613,21 @@ elif page == "Créer un PDF":
 
 elif page == "Mes documents":
     st.subheader("📁 Mes documents")
+    if cloud_mode:
+        # Private document storage is a Premium feature. Verify entitlement on
+        # the server before listing, uploading, downloading or deleting files.
+        try:
+            from feature_access import require_feature_access
+
+            require_feature_access(
+                supabase_client, current_user, "private_document_storage"
+            )
+        except PermissionError:
+            st.info("L’espace documentaire privé est réservé aux comptes SOW IA Premium.")
+            st.stop()
+        except Exception:
+            st.error("Impossible de vérifier votre accès Premium. L’accès aux documents reste fermé par sécurité.")
+            st.stop()
     if not cloud_mode:
         st.warning("Connectez-vous avec votre compte pour utiliser le stockage documentaire privé.")
     else:
