@@ -7,11 +7,11 @@ from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
 
 
 def build_professional_pdf(title, content):
-    """Build a polished, paginated PDF; entitlement checks belong to the caller."""
+    """Build a cover page and paginated report; entitlement checks belong to the caller."""
     clean_title = str(title or "").strip()
     clean_content = str(content or "").strip()
     if not clean_title:
@@ -50,11 +50,32 @@ def build_professional_pdf(title, content):
         textColor=colors.HexColor("#24344D"),
         spaceAfter=9,
     )
+    cover_label = ParagraphStyle(
+        "SowiaCoverLabel",
+        parent=styles["Heading2"],
+        textColor=colors.HexColor("#17365D"),
+        fontSize=15,
+        leading=20,
+        spaceAfter=12,
+    )
+    cover_note = ParagraphStyle(
+        "SowiaCoverNote",
+        parent=styles["BodyText"],
+        textColor=colors.HexColor("#718198"),
+        fontSize=10,
+    )
     story = [
-        Paragraph("SOW IA — RAPPORT PROFESSIONNEL", styles["Heading2"]),
-        Spacer(1, 10),
+        Spacer(1, 4.2 * cm),
+        Paragraph("SOW IA", cover_label),
+        Spacer(1, 1.2 * cm),
+        Paragraph("RAPPORT PROFESSIONNEL", styles["Heading2"]),
+        Spacer(1, 0.7 * cm),
         Paragraph(escape(clean_title), title_style),
-        Spacer(1, 8),
+        Spacer(1, 1.0 * cm),
+        Paragraph("Document préparé avec SOW IA", cover_note),
+        PageBreak(),
+        Paragraph("Contenu du rapport", styles["Heading2"]),
+        Spacer(1, 12),
     ]
     for line in clean_content.splitlines():
         if line.strip():
