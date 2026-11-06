@@ -150,3 +150,20 @@ Ajouter ensuite ces essais avec les comptes A et B :
 Ne pas ajouter de politique ni modifier les tables sur la seule base de ces résultats sans avoir identifié leur schéma et leurs usages. Ce contrôle complète les scénarios Storage et Premium ; il ne les remplace pas.
 
 Ce précontrôle ne remplace pas les scénarios S1 à S8 ni les essais RLS Premium. Il réduit le risque qu'une politique héritée ou un bucket déjà utilisé fausse la validation.
+
+
+## Compatibilité de la limite des notes mémoire
+
+La mémoire standard accepte au plus 1 000 caractères, tandis que la mémoire étendue Premium accepte jusqu'à 5 000 caractères côté application. Le script `supabase/schema.sql` définit une contrainte de 5 000 caractères, mais `CREATE TABLE IF NOT EXISTS` ne modifie pas une table déjà créée avec une ancienne contrainte de 1 000 caractères.
+
+Avant tout essai Premium dans le projet isolé, contrôler la contrainte réelle :
+
+```sql
+select conname, pg_get_constraintdef(oid) as definition
+from pg_constraint
+where conrelid = 'public.sowia_memory_items'::regclass
+  and contype = 'c'
+order by conname;
+```
+
+Résultat attendu : la contrainte sur `content` autorise au minimum 1 à 5 000 caractères. Si une contrainte existante plafonne à 1 000 caractères, ne pas la supprimer ni la remplacer automatiquement : documenter l'écart et préparer une migration dédiée, testée uniquement dans le projet isolé, après vérification des données et des usages. Aucun ajustement de contrainte ne doit être improvisé sur la base de production.
