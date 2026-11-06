@@ -1,7 +1,9 @@
 """Tests for private Supabase PDF storage ownership and validation."""
-from types import SimpleNamespace
+from io import BytesIO
 
 import pytest
+from reportlab.pdfgen import canvas
+
 import document_storage as docs
 
 
@@ -26,7 +28,7 @@ class FakeBucket:
 
     def download(self, path):
         self.downloaded = path
-        return b"%PDF"
+        return make_pdf()
 
     def remove(self, paths):
         self.removed = paths
@@ -43,12 +45,21 @@ class FakeClient:
         return self.bucket
 
 
+def make_pdf():
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer)
+    pdf.drawString(72, 720, "SOW IA test document")
+    pdf.save()
+    return buffer.getvalue()
+
+
 def test_upload_is_stored_under_authenticated_user_folder():
     client = FakeClient()
-    path = docs.upload_document(client, User(), "Mon rapport.pdf", b"%PDF")
+    content = make_pdf()
+    path = docs.upload_document(client, User(), "Mon rapport.pdf", content)
     assert path.startswith("user-123/")
     assert path.endswith("_Mon_rapport.pdf")
-    assert client.bucket.uploaded[1] == b"%PDF"
+    assert client.bucket.uploaded[1] == content
     assert client.bucket.uploaded[2]["content-type"] == "application/pdf"
 
 
@@ -72,13 +83,26 @@ def test_delete_rejects_path_traversal():
     assert client.bucket.removed is None
 
 
-def test_upload_rejects_non_pdf_and_oversized_files_before_storage_access():
+def test_upload_rejects_non_pdf_oversized_and_fake_pdf_before_storage_access():
     client = FakeClient()
     with pytest.raises(ValueError, match="PDF"):
         docs.upload_document(client, User(), "notes.txt", b"hello")
     with pytest.raises(ValueError, match="10 Mo"):
-        docs.upload_document(client, User(), "large.pdf", b"x" * (docs.MAX_DOCUMENT_BYTES + 1))
+        docs.upload_document(client, User(), "large.pdf", b"%PDF-" + b"x" * docs.MAX_DOCUMENT_BYTES)
+    with pytest.raises(ValueError, match="PDF"):
+        docs.upload_document(client, User(), "fake.pdf", b"%PDF-1.7\\nnot really a PDF")
     assert client.bucket.uploaded is None
+
+
+def test_upload_rejects_encrypted_pdf():
+    from reportlab.lib.pdfencrypt import StandardEncryption
+
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, encrypt=StandardEncryption("secret"))
+    pdf.drawString(72, 720, "Protected")
+    pdf.save()
+    with pytest.raises(ValueError, match="mot de passe"):
+        docs.upload_document(FakeClient(), User(), "protected.pdf", buffer.getvalue())
 
 
 def test_storage_requires_authenticated_user():
