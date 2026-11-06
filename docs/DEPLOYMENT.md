@@ -48,3 +48,22 @@ Le Client ID et le Client Secret GitHub sont enregistrés uniquement dans les pa
 Le bouton de connexion GitHub, le callback PKCE et les appels de mémoire/historique cloud sont raccordés à l'interface. Ils restent à valider sur une URL HTTPS réelle avec un projet Supabase configuré. L'historique et la mémoire SQLite existants ne sont jamais importés automatiquement : ils restent inchangés jusqu'à une migration contrôlée. Les clés OpenAI/Tavily, si utilisées, doivent être ajoutées uniquement aux secrets de l'hébergeur.
 
 Aucune clé, aucun mot de passe et aucun secret n'est requis dans ce dépôt.
+
+
+## 6. Préparer PayPal Premium (mode test uniquement au départ)
+
+Le module `paypal_payments.py` prépare les appels serveur à l'API PayPal Orders v2. Le secret PayPal et le jeton OAuth restent côté serveur ; le navigateur ne reçoit que le lien d'approbation. Le serveur revérifie le compte SOW IA, le produit, le montant et la devise avant de capturer une commande. Voir la documentation officielle : https://developer.paypal.com/api/rest/integration/orders-api
+
+Dans PayPal Developer, créer une application REST en mode **Sandbox** et récupérer son Client ID et son Secret. Ajouter les paramètres suivants aux secrets Streamlit (ne jamais les publier dans GitHub ni les envoyer dans une conversation) :
+
+```toml
+PAYPAL_CLIENT_ID = "<client-id-sandbox>"
+PAYPAL_CLIENT_SECRET = "<secret-sandbox>"
+PAYPAL_MODE = "sandbox"
+PAYPAL_PREMIUM_PRICE = "<prix-à-définir-en-euros>"
+PAYPAL_CURRENCY = "EUR"
+PAYPAL_RETURN_URL = "https://<adresse-deploiement>/?paypal=return"
+PAYPAL_CANCEL_URL = "https://<adresse-deploiement>/?paypal=cancel"
+```
+
+Le montant Premium doit être décidé avant d'activer le paiement. Garder `PAYPAL_MODE = "sandbox"` jusqu'à la réussite de transactions de test. Le passage en mode réel nécessite les identifiants Live, une URL HTTPS publique et des essais de paiement/remboursement. Les notifications PayPal (webhooks), l'enregistrement durable des droits Premium par utilisateur et l'activation du parcours dans l'interface restent des étapes distinctes à terminer avant toute mise en vente. Ne pas considérer une simple redirection PayPal comme une preuve de paiement.
