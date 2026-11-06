@@ -83,3 +83,9 @@ def test_entitlement_statuses_match_in_both_sql_setup_paths():
     expected = "status text not null check (status in ('active', 'inactive', 'cancelled'))"
     assert expected in canonical
     assert expected in optional
+
+
+def test_canonical_schema_also_revokes_client_write_privileges_on_entitlements():
+    canonical = SCHEMA_PATH.read_text(encoding="utf-8").lower()
+    assert "revoke all on public.sowia_entitlements from public, anon, authenticated" in canonical
+    assert "grant select on public.sowia_entitlements to authenticated" in canonical
