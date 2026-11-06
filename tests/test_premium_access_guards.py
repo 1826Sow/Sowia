@@ -146,3 +146,13 @@ def test_standard_feature_does_not_require_premium(monkeypatch):
     monkeypatch.setattr("access_control.require_premium_access", unexpected)
     assert feature_access.require_feature_access(object(), User(), "pdf_creation") is None
 
+def test_server_guard_fails_closed_when_entitlement_lookup_errors(monkeypatch):
+    import access_control
+
+    def lookup_error(client, user):
+        raise RuntimeError("Supabase indisponible")
+
+    monkeypatch.setattr(premium_access, "get_entitlement", lookup_error)
+    with pytest.raises(RuntimeError, match="Supabase indisponible"):
+        access_control.require_premium_access(object(), User(), "analyse PDF")
+
