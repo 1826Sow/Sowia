@@ -44,6 +44,7 @@ def _offline_reply(messages):
 
 
 MAX_DOCUMENT_CONTEXT_CHARS = 24000
+MAX_MEMORY_CONTEXT_CHARS = 12000
 
 
 def build_system_prompt(memories=None, document_context=None, user_mode="Personnel"):
@@ -53,7 +54,13 @@ def build_system_prompt(memories=None, document_context=None, user_mode="Personn
     system_prompt = SYSTEM_PROMPT + "\n\n" + mode_system_instruction(user_mode)
     saved_memories = [item.strip() for item in (memories or []) if item and item.strip()]
     if saved_memories:
-        memory_context = "\n".join(f"- {item}" for item in saved_memories)
+        memory_context = ""
+        for item in saved_memories:
+            entry = f"- {item}\n"
+            remaining = MAX_MEMORY_CONTEXT_CHARS - len(memory_context)
+            if remaining <= 0:
+                break
+            memory_context += entry[:remaining]
         system_prompt += (
             "\n\nInformations mémorisées par l'utilisateur (à utiliser uniquement "
             "si elles sont pertinentes) :\n" + memory_context
