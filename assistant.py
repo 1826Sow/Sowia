@@ -45,6 +45,9 @@ def _offline_reply(messages):
 
 MAX_DOCUMENT_CONTEXT_CHARS = 24000
 MAX_MEMORY_CONTEXT_CHARS = 12000
+MAX_CONVERSATION_MESSAGES = 40
+MAX_MESSAGE_CHARS = 12000
+MAX_CONVERSATION_CONTEXT_CHARS = 30000
 
 
 def build_system_prompt(memories=None, document_context=None, user_mode="Personnel"):
@@ -85,14 +88,23 @@ def build_system_prompt(memories=None, document_context=None, user_mode="Personn
 def _filter_conversation_messages(messages):
     """Keep only plain user/assistant messages; never forward caller-supplied system roles."""
     filtered = []
-    for message in messages or []:
+    total_chars = 0
+    for message in (messages or [])[-MAX_CONVERSATION_MESSAGES:]:
         if not isinstance(message, dict):
             continue
         role = message.get("role")
         content = message.get("content")
         if role not in {"user", "assistant"} or not isinstance(content, str):
             continue
+        content = content.strip()[:MAX_MESSAGE_CHARS]
+        if not content:
+            continue
+        remaining = MAX_CONVERSATION_CONTEXT_CHARS - total_chars
+        if remaining <= 0:
+            break
+        content = content[:remaining]
         filtered.append({"role": role, "content": content})
+        total_chars += len(content)
     return filtered
 
 
@@ -106,7 +118,7 @@ def answer(messages, memories=None, document_context=None, user_mode="Personnel"
     system_prompt = build_system_prompt(memories=memories, document_context=document_context, user_mode=user_mode)
     safe_messages = _filter_conversation_messages(messages)
 
-    client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
+    client = OpenAI(api_key=API_KEY, base_url=BASE_URL, timeout=45, max_retries=0)
     try:
         response = client.chat.completions.create(
             model=MODEL,
