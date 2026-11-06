@@ -187,3 +187,29 @@ def test_document_path_rejects_prefix_spoofing():
     with pytest.raises(PermissionError):
         docs.download_document(client, User(), "user-123-evil/private.pdf")
     assert client.bucket.downloaded is None
+
+
+@pytest.mark.parametrize("operation", ["upload", "download", "delete"])
+def test_document_mutations_and_download_require_authenticated_user(operation):
+    client = FakeClient()
+    if operation == "upload":
+        action = lambda: docs.upload_document(client, None, "report.pdf", make_pdf())
+    elif operation == "download":
+        action = lambda: docs.download_document(client, None, "user-123/report.pdf")
+    else:
+        action = lambda: docs.delete_document(client, None, "user-123/report.pdf")
+
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        action()
+
+    assert client.bucket.uploaded is None
+    assert client.bucket.downloaded is None
+    assert client.bucket.removed is None
+
+
+def test_list_documents_requires_authenticated_user_before_storage_access():
+    client = FakeClient()
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        docs.list_documents(client, None)
+    assert client.bucket.listed is None
+
