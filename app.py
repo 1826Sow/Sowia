@@ -229,10 +229,11 @@ with st.sidebar:
         st.success("Espace personnel sécurisé")
         st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
         if st.button("Se déconnecter", use_container_width=True):
-            sign_out(supabase_client)
-            # Use the same complete cleanup path as account switching and
-            # expired sessions, then discard the authenticated client.
+            # Erase local private caches before the network sign-out, so a
+            # transient Supabase error cannot leave the previous account's
+            # PDF or checkout data in this browser session.
             clear_account_private_state(st.session_state)
+            sign_out(supabase_client)
             st.session_state.pop("sowia_supabase_client", None)
             st.rerun()
     else:
