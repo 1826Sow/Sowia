@@ -22,7 +22,7 @@ def _safe_filename(filename):
     stem = cleaned[:-4].strip("._")
     if not stem:
         raise ValueError("Nom de fichier invalide.")
-    return f"{stem[:96]}.pdf"
+    return f"{stem[:96]}{cleaned[-4:]}"
 
 
 def _owned_path(user, path):
