@@ -27,6 +27,14 @@ from sowia_supabase_auth import (
 import cloud_storage
 import paypal_payments
 import premium_access
+from feature_access import (
+    WORKSPACE_MODES,
+    can_access_feature,
+    has_active_premium,
+    normalize_workspace_mode,
+    workspace_home_content,
+    workspace_navigation,
+)
 from document_storage import upload_document, list_documents, download_document, delete_document
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
@@ -167,6 +175,18 @@ if cloud_mode and current_user is not None:
         st.query_params.clear()
 
 
+# Resolve Premium from the authenticated account on the server. Any lookup
+# failure closes Premium-only features rather than granting access by default.
+premium_entitlement = None
+premium_entitlement_error = False
+if cloud_mode and current_user is not None:
+    try:
+        premium_entitlement = premium_access.get_entitlement(supabase_client, current_user)
+    except Exception:
+        premium_entitlement_error = True
+premium_active = has_active_premium(premium_entitlement)
+
+
 def get_app_history(limit=30):
     if cloud_mode:
         return cloud_storage.get_history(supabase_client, current_user, st.session_state.session_id, limit)
@@ -204,6 +224,14 @@ def go_to_page(page_name):
 with st.sidebar:
     st.markdown("## 🧠 SOW IA")
     st.caption("Intelligence artificielle")
+    workspace_mode = st.selectbox(
+        "Espace de travail",
+        WORKSPACE_MODES,
+        key="workspace_mode",
+        help="Choisissez votre contexte d’utilisation. Les fonctions Premium restent contrôlées côté serveur.",
+    )
+    if workspace_mode == "Professionnel" and not premium_active:
+        st.caption("Mode Professionnel : aperçu. Les fonctions réservées à Premium restent verrouillées.")
     if cloud_mode:
         st.success("Espace personnel sécurisé")
         st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
@@ -214,13 +242,14 @@ with st.sidebar:
             st.rerun()
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
+    navigation_pages = workspace_navigation(workspace_mode)
+    # Switching workspace must not leave a page selected that is hidden in
+    # the new workspace (for example, Ma mémoire in Professionnel).
+    if st.session_state.get("page_nav") not in navigation_pages:
+        st.session_state.page_nav = "Accueil"
     page = st.radio(
         "Navigation",
-        [
-            "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
-            "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-            "Abonnement", "Paramètres", "Aide",
-        ],
+        navigation_pages,
         key="page_nav",
     )
     st.divider()
@@ -231,22 +260,17 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.write("")
+st.caption(f"Espace actif : {normalize_workspace_mode(st.session_state.get('workspace_mode'))}")
 
 if page == "Accueil":
-    st.subheader("Bienvenue sur SOW IA")
+    active_workspace = normalize_workspace_mode(st.session_state.get("workspace_mode"))
+    home = workspace_home_content(active_workspace, premium_active)
+    st.subheader(home["title"])
+    st.write(home["description"])
+    if home["notice"]:
+        st.info(home["notice"])
     st.write("Accédez directement à vos outils :")
-    shortcuts = [
-        ("💬", "Assistant IA", "Posez vos questions"),
-        ("🧠", "Ma mémoire", "Enregistrez vos informations utiles"),
-        ("🌐", "Recherche Web", "Recherchez des informations en ligne"),
-        ("📄", "Analyse PDF", "Importez et analysez un PDF"),
-        ("🪄", "Créer un PDF", "Préparez vos futurs documents PDF"),
-        ("📁", "Mes documents", "Retrouvez votre espace documentaire"),
-        ("🕘", "Historique", "Consultez vos conversations"),
-        ("👑", "Abonnement", "Découvrez l’espace Premium"),
-        ("⚙️", "Paramètres", "Vérifiez votre configuration"),
-        ("❓", "Aide", "Consultez les indications d’utilisation"),
-    ]
+    shortcuts = home["shortcuts"]
     for start in range(0, len(shortcuts), 3):
         cols = st.columns(3)
         for col, (icon, title, desc) in zip(cols, shortcuts[start:start + 3]):
@@ -256,7 +280,7 @@ if page == "Accueil":
                     st.caption(desc)
                     st.button(
                         f"Ouvrir {title}",
-                        key=f"open_{title}",
+                        key=f"open_{active_workspace}_{title}",
                         use_container_width=True,
                         on_click=go_to_page,
                         args=(title,),
@@ -383,8 +407,24 @@ elif page == "Analyse PDF":
 elif page == "Créer un PDF":
     st.subheader("🪄 Créer un PDF")
     st.write("Rédigez un document et téléchargez-le au format PDF. Cette fonction ne consomme aucun crédit OpenAI.")
-    pdf_title = st.text_input("Titre du document", value="Mon document")
-    pdf_body = st.text_area("Contenu du document", height=300, placeholder="Écrivez ou collez votre texte ici...")
+    if normalize_workspace_mode(st.session_state.get("workspace_mode")) == "Professionnel":
+        from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
+        selected_template = st.selectbox(
+            "Modèle professionnel (facultatif)",
+            PROFESSIONAL_TEMPLATE_NAMES,
+            key="professional_pdf_template",
+        )
+        if st.button("Insérer ce modèle", key="insert_professional_pdf_template"):
+            template = get_professional_template(selected_template)
+            st.session_state["pdf_title"] = template["title"]
+            st.session_state["pdf_body"] = template["body"]
+    pdf_title = st.text_input("Titre du document", value="Mon document", key="pdf_title")
+    pdf_body = st.text_area(
+        "Contenu du document",
+        height=300,
+        placeholder="Écrivez ou collez votre texte ici...",
+        key="pdf_body",
+    )
     if st.button("Créer le PDF", type="primary", disabled=not pdf_body.strip()):
         try:
             from io import BytesIO
@@ -415,6 +455,13 @@ elif page == "Créer un PDF":
             st.caption(str(exc))
 elif page == "Mes documents":
     st.subheader("📁 Mes documents")
+    if cloud_mode and premium_entitlement_error:
+        st.error("Impossible de vérifier votre droit Premium. Par sécurité, l’accès aux documents privés reste fermé.")
+        st.stop()
+    if cloud_mode and not can_access_feature("Mes documents", premium_entitlement):
+        st.info("L’espace documentaire privé est réservé aux comptes SOW IA Premium.")
+        st.button("Découvrir Premium", on_click=go_to_page, args=("Abonnement",), type="primary")
+        st.stop()
     if not cloud_mode:
         st.warning("Connectez-vous avec votre compte pour utiliser le stockage documentaire privé.")
     else:
@@ -502,7 +549,11 @@ elif page == "Abonnement":
 
             admin_ready = premium_access.create_admin_client() is not None
             if payment_config is None:
-                st.info("Le paiement PayPal est préparé, mais attend les identifiants Sandbox et le prix Premium dans les secrets Streamlit.")
+                st.info(
+                    "Les paiements sont actuellement désactivés. "
+                    "Ils resteront inactifs pendant la finalisation de SOW IA ; "
+                    "leur activation sera faite par le propriétaire uniquement lorsque l’application sera prête."
+                )
             elif not admin_ready:
                 st.warning("Le paiement reste désactivé tant que SUPABASE_SERVICE_ROLE_KEY n'est pas configuré côté serveur.")
             else:

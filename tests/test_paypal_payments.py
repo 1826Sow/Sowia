@@ -5,6 +5,8 @@ import paypal_payments as paypal
 
 def _settings(monkeypatch, **overrides):
     values = {
+        # Unit tests explicitly simulate the owner-enabled payment environment.
+        "SOWIA_PAYMENTS_ENABLED": "true",
         "PAYPAL_CLIENT_ID": "sandbox-client",
         "PAYPAL_CLIENT_SECRET": "sandbox-secret",
         "PAYPAL_PREMIUM_PRICE": "12.90",
@@ -68,3 +70,42 @@ def test_capture_refuses_order_belonging_to_another_user(monkeypatch):
     with pytest.raises(PermissionError, match="ne correspond pas"):
         paypal.capture_premium_order("ORDER-1", "current-user")
     assert [kind for kind, _ in calls] == ["post", "get"]
+
+
+def test_completed_capture_requires_exact_amount_and_currency():
+    config = {"currency": "EUR", "amount": "12.90"}
+    payload = {
+        "purchase_units": [{
+            "payments": {"captures": [{
+                "status": "COMPLETED",
+                "amount": {"currency_code": "EUR", "value": "12.90"},
+            }]}
+        }]
+    }
+    assert paypal._validate_completed_capture(payload, config) is payload
+
+
+@pytest.mark.parametrize(
+    "capture",
+    [
+        {"status": "PENDING", "amount": {"currency_code": "EUR", "value": "12.90"}},
+        {"status": "COMPLETED", "amount": {"currency_code": "USD", "value": "12.90"}},
+        {"status": "COMPLETED", "amount": {"currency_code": "EUR", "value": "0.01"}},
+    ],
+)
+def test_completed_capture_rejects_unpaid_or_mismatched_capture(capture):
+    config = {"currency": "EUR", "amount": "12.90"}
+    payload = {"purchase_units": [{"payments": {"captures": [capture]}}]}
+    with pytest.raises(PermissionError):
+        paypal._validate_completed_capture(payload, config)
+
+
+def test_completed_capture_rejects_missing_or_ambiguous_capture():
+    config = {"currency": "EUR", "amount": "12.90"}
+    with pytest.raises(PermissionError, match="absente ou ambiguë"):
+        paypal._validate_completed_capture({"purchase_units": []}, config)
+
+    capture = {"status": "COMPLETED", "amount": {"currency_code": "EUR", "value": "12.90"}}
+    payload = {"purchase_units": [{"payments": {"captures": [capture, capture]}}]}
+    with pytest.raises(PermissionError, match="absente ou ambiguë"):
+        paypal._validate_completed_capture(payload, config)
