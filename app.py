@@ -441,6 +441,59 @@ elif page == "Créer un PDF":
         except Exception as exc:
             st.error("La création du PDF a échoué. Vérifiez que les dépendances sont installées.")
             st.caption(str(exc))
+    st.divider()
+    st.markdown("#### Export professionnel Premium")
+    st.write("Créez un PDF professionnel avec page de garde, mise en page soignée et pagination. Cette fonction ne consomme aucun crédit IA.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous à votre espace personnel pour vérifier vos droits Premium.")
+    else:
+        try:
+            premium_entitlement = premium_access.get_entitlement(supabase_client, current_user)
+        except Exception:
+            premium_entitlement = None
+            st.warning("Impossible de vérifier votre accès Premium pour le moment.")
+        if not premium_entitlement:
+            st.caption("Fonction réservée aux comptes disposant d'un accès Premium actif.")
+        else:
+            with st.form("premium_professional_export_form"):
+                professional_title = st.text_input("Titre professionnel", value="Rapport SOW IA")
+                professional_body = st.text_area(
+                    "Contenu du rapport",
+                    height=220,
+                    placeholder="Rédigez ou collez le contenu de votre rapport...",
+                )
+                create_professional_export = st.form_submit_button(
+                    "Créer l'export professionnel",
+                    type="primary",
+                    disabled=not professional_body.strip(),
+                )
+            if create_professional_export:
+                try:
+                    from feature_access import require_feature_access
+                    from premium_exports import build_professional_pdf
+
+                    require_feature_access(
+                        supabase_client, current_user, "advanced_professional_exports"
+                    )
+                    professional_pdf = build_professional_pdf(
+                        professional_title, professional_body
+                    )
+                    st.success("Votre export professionnel est prêt.")
+                    st.download_button(
+                        "Télécharger le PDF professionnel",
+                        data=professional_pdf,
+                        file_name="sowia_export_professionnel.pdf",
+                        mime="application/pdf",
+                        type="primary",
+                        key="download_premium_professional_export",
+                    )
+                except PermissionError:
+                    st.error("Votre accès Premium n'est pas actif. Aucun export n'a été créé.")
+                except ValueError as exc:
+                    st.error(str(exc))
+                except Exception:
+                    st.error("La création de l'export professionnel a échoué. Réessayez plus tard.")
+
 elif page == "Mes documents":
     st.subheader("📁 Mes documents")
     if not cloud_mode:
