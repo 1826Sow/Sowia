@@ -5,6 +5,7 @@ user-authenticated client globally: it contains authentication state and PKCE
 verification material.
 """
 from settings import get_setting
+import inspect
 
 
 def configuration_ready():
@@ -53,8 +54,24 @@ def complete_github_login(client, authorization_code):
     """Exchange the one-time PKCE code using the same session's client."""
     if not authorization_code:
         raise ValueError("Code de connexion manquant.")
-    # supabase-py v2 expects a credentials dictionary, not the raw code string.
-    return client.auth.exchange_code_for_session({"auth_code": authorization_code})
+    # Keep the Python SDK's documented credentials-dictionary format.
+    credentials = {"auth_code": str(authorization_code)}
+    method = client.auth.exchange_code_for_session
+    try:
+        return method(credentials)
+    except AttributeError as exc:
+        # Safe runtime diagnostics: never include the one-time OAuth code or secrets.
+        try:
+            signature = str(inspect.signature(method))
+        except Exception:
+            signature = "signature indisponible"
+        raise RuntimeError(
+            "Diagnostic SDK Supabase : "
+            f"méthode={getattr(method, '__qualname__', type(method).__name__)} ; "
+            f"signature={signature} ; "
+            f"type_transmis={type(credentials).__name__} ; "
+            f"module={getattr(method, '__module__', 'inconnu')}"
+        ) from exc
 
 
 def authenticated_user(client):
