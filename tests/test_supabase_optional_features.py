@@ -40,7 +40,7 @@ def test_premium_entitlements_are_user_scoped_and_not_client_writable():
     assert "create table if not exists public.sowia_entitlements" in sql
     assert "enable row level security" in sql
     assert "using ((select auth.uid()) = user_id)" in sql
-    assert "revoke all on public.sowia_entitlements from anon, authenticated" in sql
+    assert "revoke all on public.sowia_entitlements from public, anon, authenticated" in sql
     assert "grant select on public.sowia_entitlements to authenticated" in sql
     assert "grant insert" not in sql
     assert "grant update" not in sql
