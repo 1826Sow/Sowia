@@ -5,6 +5,8 @@ import paypal_payments as paypal
 
 def _settings(monkeypatch, **overrides):
     values = {
+        # Unit tests explicitly simulate the owner-enabled payment environment.
+        "SOWIA_PAYMENTS_ENABLED": "true",
         "PAYPAL_CLIENT_ID": "sandbox-client",
         "PAYPAL_CLIENT_SECRET": "sandbox-secret",
         "PAYPAL_PREMIUM_PRICE": "12.90",
