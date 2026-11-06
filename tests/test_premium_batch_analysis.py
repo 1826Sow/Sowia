@@ -143,3 +143,15 @@ def test_batch_upload_preparation_rejects_malformed_pdf_before_extraction():
     with pytest.raises(ValueError, match="PDF illisible ou mal formé"):
         premium_batch_analysis.prepare_pdf_batch_uploads(files, extract)
     assert extraction_calls == []
+
+
+def test_app_checks_batch_entitlement_before_pdf_parsing():
+    """Keep the UI gate ahead of CPU-intensive parsing of uploaded PDFs."""
+    app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+    batch_section = app_source.split('st.markdown("#### Analyse de plusieurs PDF — Premium")', 1)[1]
+    batch_section = batch_section.split('elif page == "Créer un PDF":', 1)[0]
+    guard = batch_section.index(
+        'require_feature_access(\n                        supabase_client, current_user, "batch_pdf_analysis"'
+    )
+    parsing = batch_section.index("prepare_pdf_batch_uploads(")
+    assert guard < parsing
