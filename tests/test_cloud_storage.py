@@ -129,3 +129,26 @@ def test_save_message_rejects_unknown_role_before_database_write():
 
     with pytest.raises(ValueError, match="Rôle de message invalide"):
         cloud_storage.save_message(Client(), User(), "private-session", "admin", "Nope")
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda client: cloud_storage.list_memories(client, None),
+        lambda client: cloud_storage.add_memory(client, None, "note"),
+        lambda client: cloud_storage.delete_memory(client, None, "memory-1"),
+        lambda client: cloud_storage.get_history(client, None, "session-1"),
+        lambda client: cloud_storage.clear_history(client, None, "session-1"),
+        lambda client: cloud_storage.save_message(client, None, "session-1", "user", "hi"),
+    ],
+)
+def test_every_memory_and_history_operation_rejects_anonymous_user_before_query(operation):
+    client = FakeClient()
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        operation(client)
+    assert client.tables == {}
+
+
+def test_history_query_caps_requested_limit_at_one_hundred():
+    client = FakeClient()
+    cloud_storage.get_history(client, User(), "private-session", limit=500)
+    assert ("limit", 100) in client.tables["sowia_messages"].operations
