@@ -17,6 +17,19 @@ values (
 -- handled manually in the isolated test project after review.
 on conflict (id) do nothing;
 
+-- Restrictive guard: legacy permissive policies cannot grant cross-user access.
+drop policy if exists "SOW IA enforce private PDF folder isolation" on storage.objects;
+create policy "SOW IA enforce private PDF folder isolation"
+on storage.objects as restrictive for all to public
+using (
+    bucket_id <> 'sowia-private-documents'
+    or (storage.foldername(name))[1] = (select auth.uid())::text
+)
+with check (
+    bucket_id <> 'sowia-private-documents'
+    or (storage.foldername(name))[1] = (select auth.uid())::text
+);
+
 -- A user's files must be stored under a first-level folder named with auth.uid().
 drop policy if exists "SOW IA users read own private PDFs" on storage.objects;
 create policy "SOW IA users read own private PDFs"
