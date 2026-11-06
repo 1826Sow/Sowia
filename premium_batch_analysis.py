@@ -1,4 +1,8 @@
 """Premium batch PDF analysis, guarded before any AI request."""
+from io import BytesIO
+
+from pypdf import PdfReader
+
 from feature_access import require_feature_access
 
 MAX_BATCH_DOCUMENTS = 5
@@ -26,6 +30,16 @@ def prepare_pdf_batch_uploads(uploaded_files, extract_text):
             raise ValueError("Chaque PDF doit faire 10 Mo maximum.")
         if not payload.startswith(PDF_SIGNATURE):
             raise ValueError("Un des fichiers sélectionnés n'est pas un PDF valide.")
+        try:
+            reader = PdfReader(BytesIO(payload), strict=True)
+            if reader.is_encrypted:
+                raise ValueError("Les PDF protégés par mot de passe ne sont pas acceptés.")
+            if len(reader.pages) < 1:
+                raise ValueError("Un des PDF ne contient aucune page.")
+        except ValueError:
+            raise
+        except Exception as exc:
+            raise ValueError("Un des fichiers sélectionnés est un PDF illisible ou mal formé.") from exc
         uploaded.seek(0)
         documents.append((uploaded.name, extract_text(uploaded, max_chars=MAX_BATCH_DOCUMENT_CHARS)))
     return documents
