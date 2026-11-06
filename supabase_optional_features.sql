@@ -54,6 +54,26 @@ using (
     and (storage.foldername(name))[1] = (select auth.uid())::text
 );
 
+-- Important: PostgreSQL combines permissive policies with OR. A pre-existing
+-- broad storage.objects policy could otherwise override the own-folder policies
+-- above. This restrictive guard caps access to this bucket for every role:
+-- only the authenticated owner folder is allowed. Service-role operations
+-- continue to bypass RLS as intended.
+drop policy if exists "SOW IA enforce private PDF folder isolation" on storage.objects;
+create policy "SOW IA enforce private PDF folder isolation"
+on storage.objects
+as restrictive
+for all
+to public
+using (
+    bucket_id <> 'sowia-private-documents'
+    or (storage.foldername(name))[1] = (select auth.uid())::text
+)
+with check (
+    bucket_id <> 'sowia-private-documents'
+    or (storage.foldername(name))[1] = (select auth.uid())::text
+);
+
 -- 2) Premium entitlements. Only the trusted server (service role) should write.
 create table if not exists public.sowia_entitlements (
     user_id uuid primary key references auth.users(id) on delete cascade,
