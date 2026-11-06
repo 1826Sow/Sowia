@@ -59,7 +59,7 @@ if "pdf_text" not in st.session_state:
     st.session_state.pdf_text = ""
 
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
-auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "false")).strip().lower() in {"1", "true", "yes"}
+auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "true")).strip().lower() in {"1", "true", "yes"}
 supabase_enabled = configuration_ready()
 if auth_required and not supabase_enabled:
     # Fail closed and erase any private data left in this browser session.
