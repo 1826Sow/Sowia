@@ -2,6 +2,7 @@
 from io import BytesIO
 
 import pytest
+from pypdf import PdfWriter
 from reportlab.pdfgen import canvas
 
 import document_storage as docs
@@ -50,6 +51,15 @@ def make_pdf():
     pdf = canvas.Canvas(buffer)
     pdf.drawString(72, 720, "SOW IA test document")
     pdf.save()
+    return buffer.getvalue()
+
+
+def make_pdf_with_pages(count):
+    buffer = BytesIO()
+    writer = PdfWriter()
+    for _ in range(count):
+        writer.add_blank_page(width=72, height=72)
+    writer.write(buffer)
     return buffer.getvalue()
 
 
@@ -146,9 +156,18 @@ def test_upload_rejects_encrypted_pdf():
         docs.upload_document(FakeClient(), User(), "protected.pdf", buffer.getvalue())
 
 
+def test_upload_rejects_pdf_with_more_than_200_pages():
+    client = FakeClient()
+    payload = make_pdf_with_pages(docs.MAX_DOCUMENT_PAGES + 1)
+    with pytest.raises(ValueError, match="200 pages"):
+        docs.upload_document(client, User(), "too-many-pages.pdf", payload)
+    assert client.bucket.uploaded is None
+
+
 def test_storage_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         docs.list_documents(FakeClient(), None)
+
 
 @pytest.mark.parametrize("path", [
     "user-123/../other-user/private.pdf",
