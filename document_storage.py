@@ -1,4 +1,4 @@
-""""Private, user-scoped PDF storage using Supabase Storage."""
+"""Private, user-scoped PDF storage using Supabase Storage."""
 import os
 import re
 from uuid import uuid4
@@ -68,4 +68,3 @@ def download_document(client, user, path):
 def delete_document(client, user, path):
     owned_path = _owned_path(user, path)
     return client.storage.from_(BUCKET_NAME).remove([owned_path])
-"
