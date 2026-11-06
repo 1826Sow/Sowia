@@ -495,12 +495,16 @@ elif page == "Analyse PDF":
         ):
             with st.spinner("Vérification Premium et préparation des documents..."):
                 try:
-                    from premium_batch_analysis import analyze_pdf_batch
+                    from feature_access import require_feature_access
+                    from premium_batch_analysis import analyze_pdf_batch, prepare_pdf_batch_uploads
 
-                    batch_documents = [
-                        (uploaded.name, extract_pdf_text(uploaded, max_chars=7000))
-                        for uploaded in batch_files
-                    ]
+                    # Check Premium before spending CPU on parsing uploaded files.
+                    require_feature_access(
+                        supabase_client, current_user, "batch_pdf_analysis"
+                    )
+                    batch_documents = prepare_pdf_batch_uploads(
+                        batch_files, extract_pdf_text
+                    )
                     if not API_KEY:
                         st.warning("Le service IA n'est pas configuré. Aucun appel IA n'a été effectué.")
                     else:
