@@ -80,6 +80,8 @@ create table if not exists public.sowia_entitlements (
 
 alter table public.sowia_entitlements enable row level security;
 
+-- Remove the earlier optional-script name too, so upgrades do not leave a duplicate permissive policy.
+drop policy if exists "SOW IA users read own Premium entitlement" on public.sowia_entitlements;
 drop policy if exists "Users can read own Premium entitlement" on public.sowia_entitlements;
 create policy "Users can read own Premium entitlement"
 on public.sowia_entitlements for select to authenticated
