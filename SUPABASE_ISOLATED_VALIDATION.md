@@ -59,3 +59,43 @@ Arrêter les essais, noter le scénario et le résultat observé, puis corriger 
 - Aucun projet Supabase isolé n'a encore été validé.
 - Aucune migration n'a été exécutée sur Supabase de production.
 - La PR doit rester en brouillon et non fusionnée jusqu'à validation de cette procédure.
+
+
+## Précontrôle en lecture seule des politiques déjà présentes
+
+Avant d'exécuter le script de configuration, relever les politiques déjà présentes dans le projet de test. Les politiques permissives PostgreSQL peuvent s'additionner : une ancienne politique trop large sur `storage.objects` pourrait donc autoriser un accès que les nouvelles politiques ne bloquent pas.
+
+Exécuter ces requêtes **en lecture seule**, dans le projet `SOW IA - TEST` uniquement :
+
+```sql
+-- Politiques existantes sur le stockage Supabase.
+select schemaname, tablename, policyname, permissive, roles,
+       cmd, qual, with_check
+from pg_policies
+where schemaname = 'storage'
+  and tablename = 'objects'
+order by policyname;
+
+-- Politiques existantes sur la table des droits Premium.
+select schemaname, tablename, policyname, permissive, roles,
+       cmd, qual, with_check
+from pg_policies
+where schemaname = 'public'
+  and tablename = 'sowia_entitlements'
+order by policyname;
+
+-- Configuration actuelle du bucket, s'il existe déjà.
+select id, name, public, file_size_limit, allowed_mime_types
+from storage.buckets
+where id = 'sowia-private-documents';
+```
+
+### Décision avant migration
+
+- Examiner chaque politique retournée, notamment celles accordant `SELECT`, `INSERT`, `UPDATE` ou `DELETE` à `anon`, `authenticated` ou `public`.
+- Ne supprimer aucune politique inconnue ou préexistante automatiquement.
+- Si une politique générale autorise un accès large, arrêter la procédure et analyser son origine et ses dépendances avant toute modification.
+- Vérifier que le bucket existant, s'il existe, n'est pas utilisé par une autre application avant toute mise à jour de ses paramètres.
+- Conserver les résultats expurgés, sans identifiants personnels ni secrets.
+
+Ce précontrôle ne remplace pas les scénarios S1 à S8 ni les essais RLS Premium. Il réduit le risque qu'une politique héritée ou un bucket déjà utilisé fausse la validation.
