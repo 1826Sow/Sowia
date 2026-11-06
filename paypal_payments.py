@@ -20,7 +20,10 @@ def _setting(name: str, default: str = "") -> str:
 
 
 def paypal_configuration():
-    """Return non-secret checkout configuration, or None if not ready."""
+    """Return checkout configuration only after the owner explicitly enables payments."""
+    payments_enabled = _setting("SOWIA_PAYMENTS_ENABLED", "false").lower() in {"1", "true", "yes"}
+    if not payments_enabled:
+        return None
     client_id = _setting("PAYPAL_CLIENT_ID")
     client_secret = _setting("PAYPAL_CLIENT_SECRET")
     price = _setting("PAYPAL_PREMIUM_PRICE")
