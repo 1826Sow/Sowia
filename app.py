@@ -121,7 +121,7 @@ if cloud_mode:
             )
             st.stop()
         st.warning("Supabase ne répond pas correctement : SOW IA continue en mode local temporaire. Les fonctions locales, dont la création de PDF, restent accessibles. Les données locales ne sont pas destinées à un usage partagé.")
-        st.caption(f"Détail technique : {exc}")
+        # Keep provider diagnostics out of the user interface.
         cloud_mode = False
         current_user = None
         supabase_client = None
@@ -143,7 +143,7 @@ if cloud_mode:
             st.link_button("Continuer avec GitHub", login_url, type="primary")
         except Exception as exc:
             st.warning("La connexion GitHub attend encore la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
-            st.caption(str(exc))
+            # Technical details stay in server-side logs, not in the browser.
         st.stop()
 
 
@@ -175,7 +175,7 @@ if cloud_mode and current_user is not None:
             st.rerun()
         except Exception as exc:
             st.error("Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.")
-            st.caption(str(exc))
+            # Technical details stay in server-side logs, not in the browser.
     if st.query_params.get("paypal") == "cancel":
         st.info("Le paiement a été annulé. Aucun montant n'a été confirmé par SOW IA.")
         st.query_params.clear()
@@ -325,7 +325,7 @@ elif page == "Assistant IA":
                     st.error("La clé API du fournisseur IA n'est pas reconnue. Vérifiez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit.")
                 else:
                     st.error("Une erreur est survenue pendant la réponse de l'assistant.")
-                    st.caption(error_text)
+                    # Avoid exposing raw provider or network errors to users.
     if st.button("Effacer cette conversation"):
         clear_app_history()
         st.rerun()
@@ -354,7 +354,7 @@ elif page == "Ma mémoire":
                 st.success("Note ajoutée à la mémoire.")
                 st.rerun()
             except (ValueError, PermissionError) as exc:
-                st.error(str(exc))
+                st.error("La recherche Web est temporairement indisponible. Réessayez plus tard.")
 
     st.divider()
     st.markdown("#### Mémoire étendue — Premium")
@@ -386,7 +386,7 @@ elif page == "Ma mémoire":
                         st.success("Note mémoire étendue enregistrée.")
                         st.rerun()
                     except (ValueError, PermissionError) as exc:
-                        st.error(str(exc))
+                        st.error("Le PDF n’a pas pu être lu. Vérifiez le fichier et réessayez.")
                     except Exception:
                         st.error("Impossible d'enregistrer cette note étendue. Réessayez plus tard.")
         else:
@@ -475,7 +475,7 @@ elif page == "Analyse PDF":
                         st.write(response)
                     except Exception as exc:
                         st.error("L'analyse du document a échoué.")
-                        st.caption(str(exc))
+                        # Technical details stay in server-side logs, not in the browser.
 
 
     st.divider()
@@ -576,7 +576,7 @@ elif page == "Créer un PDF":
             st.download_button("Télécharger mon PDF", data=buffer.getvalue(), file_name="document_sow_ia.pdf", mime="application/pdf", type="primary")
         except Exception as exc:
             st.error("La création du PDF a échoué. Vérifiez que les dépendances sont installées.")
-            st.caption(str(exc))
+            # Technical details stay in server-side logs, not in the browser.
     st.divider()
     st.markdown("#### Export professionnel Premium")
     st.write("Créez un PDF professionnel avec page de garde, mise en page soignée et pagination. Cette fonction ne consomme aucun crédit IA.")
@@ -751,7 +751,7 @@ elif page == "Abonnement":
                             st.session_state["paypal_order_id"] = order["id"]
                         except Exception as exc:
                             st.error("Impossible de préparer le paiement PayPal.")
-                            st.caption(str(exc))
+                            # Technical details stay in server-side logs, not in the browser.
                     approval_url = st.session_state.get("paypal_approval_url")
                     if approval_url:
                         st.link_button("Continuer vers PayPal", approval_url, type="primary")
