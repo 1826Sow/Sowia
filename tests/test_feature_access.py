@@ -52,3 +52,20 @@ def test_professional_home_notice_disappears_only_with_active_premium():
     home = access.workspace_home_content("Professionnel", premium_active=True)
     assert home["notice"] == ""
     assert "Mes documents" in [item[1] for item in home["shortcuts"]]
+
+
+def test_professional_navigation_hides_personal_memory_page():
+    pages = access.workspace_navigation("Professionnel")
+    assert "Ma mémoire" not in pages
+    assert "Assistant IA" in pages
+    assert "Mes documents" in pages
+
+
+def test_personal_navigation_keeps_personal_memory_page():
+    pages = access.workspace_navigation("Personnel")
+    assert "Ma mémoire" in pages
+    assert pages == access.NAVIGATION_PAGES
+
+
+def test_unknown_workspace_uses_safe_personal_navigation():
+    assert access.workspace_navigation("unknown") == access.workspace_navigation("Personnel")
