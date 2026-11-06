@@ -39,7 +39,7 @@ Pour S1 à S8, conserver uniquement les résultats et messages d'erreur expurgé
 3. Vérifier que B ne peut ni lire la ligne d'A ni modifier ses droits.
 4. Vérifier qu'un client authentifié standard ne peut pas insérer, modifier ou supprimer une ligne d'abonnement.
 5. Vérifier qu'un utilisateur non authentifié ne peut pas lire la table.
-6. Vérifier que l'accès applicatif est refusé si la ligne est absente, inactive, annulée ou en attente, et autorisé uniquement si le statut est `active`.
+6. Vérifier que l'accès applicatif est refusé si la ligne est absente, `inactive` ou `cancelled`, et autorisé uniquement si le statut est `active`. Le schéma SQL n'accepte volontairement que ces trois statuts ; une commande en attente ne doit pas créer de droit Premium.
 
 ## Critères de réussite
 
