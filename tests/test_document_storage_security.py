@@ -40,6 +40,8 @@ def test_upload_rejects_empty_and_oversized_payload_before_storage():
     client = type("FakeClient", (), {"storage": ForbiddenStorage()})()
     with pytest.raises(ValueError, match="vide"):
         document_storage.upload_document(client, FakeUser(), "file.pdf", b"")
+    with pytest.raises(ValueError, match="PDF valide"):
+        document_storage.upload_document(client, FakeUser(), "file.pdf", b"not a pdf")
     with pytest.raises(ValueError, match="10 Mo"):
         document_storage.upload_document(
             client, FakeUser(), "file.pdf", b"x" * (document_storage.MAX_DOCUMENT_BYTES + 1)
