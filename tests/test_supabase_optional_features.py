@@ -102,3 +102,27 @@ def test_canonical_schema_also_revokes_client_write_privileges_on_entitlements()
     canonical = SCHEMA_PATH.read_text(encoding="utf-8").lower()
     assert "revoke all on public.sowia_entitlements from public, anon, authenticated" in canonical
     assert "grant select on public.sowia_entitlements to authenticated" in canonical
+
+
+
+def test_private_storage_guard_is_restrictive_against_legacy_policies():
+    sql = _sql()
+    marker = 'create policy "sow ia enforce private pdf folder isolation"'
+    assert marker in sql
+    section = sql.split(marker, 1)[1].split(";", 1)[0]
+    assert "as restrictive" in section
+    assert "for all" in section
+    assert "to public" in section
+    assert "bucket_id <> 'sowia-private-documents'" in section
+    assert "(storage.foldername(name))[1]" in section
+    assert "auth.uid()" in section
+    assert "using (" in section
+    assert "with check (" in section
+
+
+def test_existing_bucket_configuration_is_not_overwritten():
+    sql = _sql()
+    bucket_setup = sql.split("insert into storage.buckets", 1)[1].split(";", 1)[0]
+    assert "on conflict (id) do nothing" in bucket_setup
+    assert "do update" not in bucket_setup
+    assert "set public" not in bucket_setup
