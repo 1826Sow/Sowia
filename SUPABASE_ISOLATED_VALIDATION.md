@@ -15,7 +15,7 @@ Vérifier en conditions réelles les politiques RLS de stockage PDF privé et de
 5. Examiner les résultats : si une politique inconnue ou permissive est présente, ou si le bucket existe déjà avec une configuration ou un usage non vérifié, arrêter la procédure et analyser avant toute modification.
 6. Seulement si le précontrôle est sûr, exécuter `supabase_optional_features.sql` depuis la branche de la PR dans ce projet de test.
 7. Vérifier dans Storage que le bucket `sowia-private-documents` est privé, limité à 10 485 760 octets et au type MIME `application/pdf`.
-6. Ne pas ajouter de clé service-role dans le navigateur, dans un dépôt Git ou dans un message.
+8. Ne pas ajouter de clé service-role dans le navigateur, dans un dépôt Git ou dans un message.
 
 ## Scénarios Storage à valider
 
@@ -61,7 +61,6 @@ Arrêter les essais, noter le scénario et le résultat observé, puis corriger 
 - Aucun projet Supabase isolé n'a encore été validé.
 - Aucune migration n'a été exécutée sur Supabase de production.
 - La PR doit rester en brouillon et non fusionnée jusqu'à validation de cette procédure.
-
 
 ## Précontrôle en lecture seule des politiques déjà présentes
 
