@@ -2,8 +2,19 @@
 
 WORKSPACE_MODES = ("Personnel", "Professionnel")
 
-# Features that must never be exposed unless the signed-in account has an
-# active server-verified Premium entitlement.
+# Explicit registry: unknown feature names are denied until deliberately added.
+FREE_FEATURES = frozenset({
+    "Accueil",
+    "Assistant IA",
+    "Ma mémoire",
+    "Recherche Web",
+    "Analyse PDF",
+    "Créer un PDF",
+    "Historique",
+    "Abonnement",
+    "Paramètres",
+    "Aide",
+})
 PREMIUM_FEATURES = frozenset({"Mes documents"})
 
 
@@ -18,7 +29,9 @@ def has_active_premium(entitlement):
 
 
 def can_access_feature(feature, entitlement):
-    """Fail closed for Premium features; ordinary features remain available."""
-    if feature not in PREMIUM_FEATURES:
+    """Allow known free features; require active Premium or deny unknown names."""
+    if feature in FREE_FEATURES:
         return True
-    return has_active_premium(entitlement)
+    if feature in PREMIUM_FEATURES:
+        return has_active_premium(entitlement)
+    return False
