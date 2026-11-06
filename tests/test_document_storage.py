@@ -1,4 +1,4 @@
-"""Tests for private Supabase PDF storage ownership and validation."""
+""""Tests for private Supabase PDF storage ownership and validation."""
 from io import BytesIO
 
 import pytest
@@ -63,6 +63,16 @@ def test_upload_is_stored_under_authenticated_user_folder():
     assert client.bucket.uploaded[2]["content-type"] == "application/pdf"
 
 
+@pytest.mark.parametrize("filename", [
+    "x" * 140 + ".pdf",
+    ".pdf",
+])
+def test_safe_filename_always_preserves_pdf_extension(filename):
+    safe = docs._safe_filename(filename)
+    assert safe.endswith(".pdf")
+    assert len(safe) <= 100
+
+
 def test_list_documents_uses_only_authenticated_user_folder():
     client = FakeClient()
     docs.list_documents(client, User())
@@ -103,6 +113,7 @@ def test_delete_rejects_another_users_path_before_storage_access():
     "user-123/folder/report.pdf",
     "user-123/",
     "user-123\\\\report.pdf",
+    "user-123/report.pdf\\x00suffix",
 ])
 def test_download_rejects_malformed_owned_paths(path):
     client = FakeClient()
