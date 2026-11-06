@@ -73,3 +73,46 @@ def test_batch_analysis_caps_total_context(monkeypatch):
     documents = [(f"{i}.pdf", "x" * 7000) for i in range(5)]
     premium_batch_analysis.analyze_pdf_batch("client", "user", documents, answer)
     assert len(received["document_context"]) <= premium_batch_analysis.MAX_BATCH_TOTAL_CHARS + 200
+
+
+class FakeUploadedFile:
+    def __init__(self, name, payload):
+        self.name = name
+        self.payload = payload
+        self.position = 0
+
+    def getvalue(self):
+        return self.payload
+
+    def seek(self, position):
+        self.position = position
+
+
+def test_batch_upload_preparation_checks_pdf_signature_size_and_resets_pointer():
+    calls = []
+
+    def extract(uploaded, max_chars):
+        calls.append((uploaded.name, max_chars, uploaded.position))
+        return "Texte extrait"
+
+    files = [
+        FakeUploadedFile("a.pdf", b"%PDF-1.7 document A"),
+        FakeUploadedFile("b.pdf", b"%PDF-1.7 document B"),
+    ]
+    prepared = premium_batch_analysis.prepare_pdf_batch_uploads(files, extract)
+    assert prepared == [("a.pdf", "Texte extrait"), ("b.pdf", "Texte extrait")]
+    assert calls == [("a.pdf", 7000, 0), ("b.pdf", 7000, 0)]
+
+
+@pytest.mark.parametrize("payload,message", [
+    (b"", "vide"),
+    (b"not a PDF", "pas un PDF valide"),
+    (b"%PDF-" + b"x" * (premium_batch_analysis.MAX_BATCH_FILE_BYTES + 1), "10 Mo maximum"),
+])
+def test_batch_upload_preparation_rejects_invalid_or_oversized_files(payload, message):
+    files = [
+        FakeUploadedFile("a.pdf", b"%PDF-1.7 valid"),
+        FakeUploadedFile("b.pdf", payload),
+    ]
+    with pytest.raises(ValueError, match=message):
+        premium_batch_analysis.prepare_pdf_batch_uploads(files, lambda *a, **k: "texte")
