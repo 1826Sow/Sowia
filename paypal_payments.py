@@ -6,6 +6,7 @@ PayPal client secret or access token to browser-side code.
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+import re
 from uuid import uuid4
 
 import requests
@@ -134,8 +135,18 @@ def create_premium_order(user_id: str):
     return {"id": order["id"], "approval_url": approval_url}
 
 
-def _validate_completed_capture(payload, config):
+def _validate_order_id(order_id):
+    """Accept only PayPal order identifiers before placing them in API paths."""
+    value = str(order_id or "")
+    if not re.fullmatch(r"[A-Za-z0-9-]{1,64}", value):
+        raise ValueError("Identifiant de commande PayPal invalide.")
+    return value
+
+
+def _validate_completed_capture(payload, config, expected_order_id=None):
     """Require a completed capture for the exact configured amount and currency."""
+    if expected_order_id is not None and payload.get("id") != expected_order_id:
+        raise PermissionError("La réponse PayPal ne correspond pas à la commande demandée.")
     units = payload.get("purchase_units") or []
     captures = [
         capture
@@ -160,8 +171,9 @@ def capture_premium_order(order_id: str, user_id: str):
     config = paypal_configuration()
     if not config:
         raise RuntimeError("La configuration PayPal n'est pas encore complète.")
-    if not order_id or not user_id:
+    if not user_id:
         raise PermissionError("Commande ou utilisateur manquant.")
+    order_id = _validate_order_id(order_id)
     token = _access_token(config)
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     base = config["base_url"]
@@ -173,7 +185,7 @@ def capture_premium_order(order_id: str, user_id: str):
     details_response.raise_for_status()
     details = details_response.json()
     units = details.get("purchase_units") or []
-    if len(units) != 1:
+    if details.get("id") != order_id or len(units) != 1:
         raise PermissionError("Commande PayPal non reconnue.")
     unit = units[0]
     amount = unit.get("amount") or {}
@@ -187,7 +199,7 @@ def capture_premium_order(order_id: str, user_id: str):
     ):
         raise PermissionError("La commande PayPal ne correspond pas à cet achat SOW IA.")
     if details.get("status") == "COMPLETED":
-        return _validate_completed_capture(details, config)
+        return _validate_completed_capture(details, config, expected_order_id=order_id)
     capture_response = requests.post(
         f"{base}/v2/checkout/orders/{order_id}/capture",
         json={},
@@ -198,4 +210,4 @@ def capture_premium_order(order_id: str, user_id: str):
     result = capture_response.json()
     if result.get("status") != "COMPLETED":
         raise RuntimeError("PayPal n'a pas confirmé le paiement.")
-    return _validate_completed_capture(result, config)
+    return _validate_completed_capture(result, config, expected_order_id=order_id)
