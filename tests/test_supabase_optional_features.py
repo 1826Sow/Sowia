@@ -137,3 +137,17 @@ def test_optional_and_canonical_schema_use_the_same_entitlement_read_policy():
     assert f"create policy {policy}" in optional
     assert f"drop policy if exists {policy}" in canonical
     assert f"create policy {policy}" in canonical
+
+
+def test_private_storage_requires_an_active_premium_entitlement_in_postgres():
+    sql = _sql()
+    entitlement_table = sql.index("create table if not exists public.sowia_entitlements")
+    storage_guard = sql.index('create policy "sow ia enforce private pdf folder isolation"')
+    assert entitlement_table < storage_guard
+    guard = sql.split('create policy "sow ia enforce private pdf folder isolation"', 1)[1].split(";", 1)[0]
+    assert "as restrictive" in guard
+    assert "exists (" in guard
+    assert "from public.sowia_entitlements entitlement" in guard
+    assert "entitlement.user_id = (select auth.uid())" in guard
+    assert "entitlement.status = 'active'" in guard
+    assert "with check (" in guard
