@@ -32,7 +32,8 @@ from feature_access import (
     can_access_feature,
     has_active_premium,
     normalize_workspace_mode,
-    workspace_home_content,\n    workspace_navigation,
+    workspace_home_content,
+    workspace_navigation,
 )
 from document_storage import upload_document, list_documents, download_document, delete_document
 
