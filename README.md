@@ -20,10 +20,10 @@ Application web d'intelligence artificielle construite avec Streamlit.
 3. **Ne pas exécuter de script SQL sur le projet Supabase actuellement utilisé par SOW IA.** Avant toute migration, créer un projet Supabase de test distinct et suivre intégralement `SUPABASE_ISOLATED_VALIDATION.md`, en commençant par les précontrôles en lecture seule.
 4. Dans ce projet isolé uniquement, suivre l'ordre documenté : `supabase/schema.sql` (schéma de base), puis `supabase_optional_features.sql` (Storage privé et politique Premium).
 5. Le fichier racine historique `supabase_schema.sql` est obsolète pour cette procédure : **ne pas l'exécuter**. Il n'est pas interchangeable avec `supabase/schema.sql` et accorde des privilèges de séquence plus larges.
-5. Dans les paramètres **Secrets** de Streamlit, renseigner les variables ci-dessous. Pour une instance publique, `SOWIA_REQUIRE_AUTH` doit être explicitement réglé sur `true`.
-6. Dans Supabase > Authentication > URL Configuration, ajouter l'URL HTTPS de l'application comme **Site URL** et dans **Redirect URLs**.
-7. Dans Supabase > Authentication > Providers, activer GitHub et vérifier les identifiants OAuth GitHub.
-8. Après validation isolée et configuration autorisée, tester la connexion GitHub, l'enregistrement d'une conversation, la mémoire et la déconnexion avec deux comptes de test distincts.
+6. Dans les paramètres **Secrets** de Streamlit, renseigner les variables ci-dessous. Pour une instance publique, `SOWIA_REQUIRE_AUTH` doit être explicitement réglé sur `true`.
+7. Dans Supabase > Authentication > URL Configuration, ajouter l'URL HTTPS de l'application comme **Site URL** et dans **Redirect URLs**.
+8. Dans Supabase > Authentication > Providers, activer GitHub et vérifier les identifiants OAuth GitHub.
+9. Après validation isolée et configuration autorisée, tester la connexion GitHub, l'enregistrement d'une conversation, la mémoire et la déconnexion avec deux comptes de test distincts.
 
 ### Secrets requis
 
