@@ -215,7 +215,15 @@ with st.sidebar:
             st.rerun()
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
-    selected_mode = st.selectbox(\n        "Mode de travail",\n        options=list(MODE_OPTIONS),\n        key="sowia_user_mode",\n        help="Ce choix adapte les réponses de l’assistant. Il ne modifie pas votre abonnement ni vos droits Premium.",\n    )\n    st.caption("Mode actif pour cette session : " + selected_mode)\n    page = st.radio(\n        "Navigation",
+    selected_mode = st.selectbox(
+        "Mode de travail",
+        options=list(MODE_OPTIONS),
+        key="sowia_user_mode",
+        help="Ce choix adapte les réponses de l’assistant. Il ne modifie pas votre abonnement ni vos droits Premium.",
+    )
+    st.caption("Mode actif pour cette session : " + selected_mode)
+    page = st.radio(
+        "Navigation",
         [
             "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
             "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
