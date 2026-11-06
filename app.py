@@ -59,7 +59,9 @@ if auth_required and not supabase_enabled:
     st.error("SOW IA est en mode protégé, mais Supabase n'est pas encore configuré. L'accès est fermé jusqu'à la configuration de l'authentification.")
     st.stop()
 
-cloud_mode = supabase_enabled
+# Supabase ne doit être utilisé que si l'authentification obligatoire est activée.
+# Sinon, SOW IA reste accessible en mode local sans bloquer sur GitHub OAuth.
+cloud_mode = supabase_enabled and auth_required
 current_user = None
 supabase_client = None
 if cloud_mode:
