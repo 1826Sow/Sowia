@@ -1,5 +1,6 @@
 """Tests for Premium batch PDF analysis access and limits."""
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 from pypdf import PdfWriter
@@ -147,7 +148,7 @@ def test_batch_upload_preparation_rejects_malformed_pdf_before_extraction():
 
 def test_app_checks_batch_entitlement_before_pdf_parsing():
     """Keep the UI gate ahead of CPU-intensive parsing of uploaded PDFs."""
-    app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+    app_source = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
     batch_section = app_source.split('st.markdown("#### Analyse de plusieurs PDF — Premium")', 1)[1]
     batch_section = batch_section.split('elif page == "Créer un PDF":', 1)[0]
     guard = batch_section.index(
