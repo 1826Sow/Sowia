@@ -52,3 +52,14 @@ def test_app_uses_the_same_private_state_cleanup_on_switch_logout_and_expiry():
     app_source = (ROOT / "app.py").read_text(encoding="utf-8")
     assert app_source.count("clear_account_private_state(st.session_state)") == 3
     assert "from session_security import clear_account_private_state" in app_source
+
+
+
+def test_logout_clears_private_state_before_network_sign_out():
+    app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+    logout_block = app_source.split('if st.button("Se déconnecter"', 1)[1].split(
+        '\n    else:', 1
+    )[0]
+    assert logout_block.index("clear_account_private_state(st.session_state)") < logout_block.index(
+        "sign_out(supabase_client)"
+    )
