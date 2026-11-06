@@ -23,3 +23,6 @@ grant select on public.sowia_entitlements to authenticated;
 
 -- No INSERT, UPDATE, or DELETE policy is granted to authenticated users.
 -- The server-side service-role client is the only intended writer.
+
+-- The trusted server uses the service-role client for validated payment writes.
+grant select, insert, update on public.sowia_entitlements to service_role;
