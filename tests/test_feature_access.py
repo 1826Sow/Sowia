@@ -41,3 +41,7 @@ def test_premium_feature_uses_server_side_entitlement_guard(monkeypatch):
     result = feature_access.require_feature_access("client", "user", "advanced_pdf_analysis")
     assert result is expected
     assert calls == [("client", "user", "advanced pdf analysis")]
+
+
+def test_private_document_storage_is_premium():
+    assert feature_access.feature_tier("private_document_storage") == "premium"
