@@ -9,6 +9,32 @@ OPTIONAL_SCHEMA = (ROOT / "supabase_optional_features.sql").read_text(
 )
 
 
+def test_messages_and_memory_tables_enable_rls_and_scope_every_policy_to_owner():
+    for table in ("sowia_messages", "sowia_memory_items"):
+        assert f"alter table public.{table} enable row level security;" in BASE_SCHEMA
+        assert f"on public.{table} for select to authenticated" in BASE_SCHEMA
+        assert f"on public.{table} for insert to authenticated" in BASE_SCHEMA
+        assert f"on public.{table} for delete to authenticated" in BASE_SCHEMA
+    assert BASE_SCHEMA.count("using ((select auth.uid()) = user_id);") >= 4
+    assert BASE_SCHEMA.count("with check ((select auth.uid()) = user_id);") >= 2
+
+
+def test_messages_and_memory_grants_are_limited_to_required_operations():
+    assert (
+        "revoke all on table public.sowia_messages, public.sowia_memory_items"
+        in BASE_SCHEMA
+    )
+    assert (
+        "grant select, insert, delete on public.sowia_messages to authenticated;"
+        in BASE_SCHEMA
+    )
+    assert (
+        "grant select, insert, delete on public.sowia_memory_items to authenticated;"
+        in BASE_SCHEMA
+    )
+    assert "grant update on" not in BASE_SCHEMA.lower()
+
+
 def test_entitlements_are_readable_only_by_their_owner():
     assert "alter table public.sowia_entitlements enable row level security;" in BASE_SCHEMA
     assert "using ((select auth.uid()) = user_id);" in BASE_SCHEMA
