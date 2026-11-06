@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 import pytest
 
 import paypal_payments as paypal
