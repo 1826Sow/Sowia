@@ -72,6 +72,20 @@ def test_private_pdf_bucket_is_limited_and_has_owner_scoped_policies():
         assert "for delete" in sql
 
 
+
+def test_standalone_storage_script_reuses_schema_policy_names():
+    policy_names = (
+        "SOW IA users read own PDFs",
+        "SOW IA users upload own PDFs",
+        "SOW IA users delete own PDFs",
+    )
+    for name in policy_names:
+        assert f'drop policy if exists "{name}"' in SCHEMA
+        assert f'create policy "{name}"' in SCHEMA
+        assert f'drop policy if exists "{name}"' in STORAGE
+        assert f'create policy "{name}"' in STORAGE
+
+
 def test_document_storage_uses_the_same_uuid_folder_as_supabase_rls():
     class AuthenticatedUser:
         id = "11111111-1111-1111-1111-111111111111"
