@@ -1,12 +1,12 @@
 """Static safeguards for the optional Supabase storage and Premium SQL setup.
-
-These tests do not connect to Supabase or execute SQL. They protect the
-intended least-privilege configuration from accidental edits.
+These tests do not connect to Supabase or execute SQL.
 """
 from pathlib import Path
 
 
-SQL_PATH = Path(__file__).resolve().parents[1] / "supabase_optional_features.sql"
+ROOT = Path(__file__).resolve().parents[1]
+SQL_PATH = ROOT / "supabase_optional_features.sql"
+SCHEMA_PATH = ROOT / "supabase" / "schema.sql"
 
 
 def _sql():
@@ -46,8 +46,27 @@ def test_premium_entitlements_are_user_scoped_and_not_client_writable():
     assert "grant update" not in sql
     assert "grant delete" not in sql
 
+
 def test_existing_pdf_bucket_is_never_reconfigured_automatically():
     sql = _sql()
     bucket_setup = sql.split("insert into storage.buckets", 1)[1].split("-- a user's files", 1)[0]
     assert "on conflict (id) do nothing" in bucket_setup
     assert "do update" not in bucket_setup
+
+
+def test_memory_and_history_schema_uses_owner_scoped_rls():
+    sql = SCHEMA_PATH.read_text(encoding="utf-8").lower()
+    for table in ("sowia_messages", "sowia_memory_items"):
+        assert f"alter table public.{table} enable row level security" in sql
+    assert "for select to authenticated" in sql
+    assert "for insert to authenticated" in sql
+    assert "for delete to authenticated" in sql
+    assert "using ((select auth.uid()) = user_id)" in sql
+    assert "with check ((select auth.uid()) = user_id)" in sql
+
+
+def test_memory_and_history_sequence_grants_are_narrowly_scoped():
+    sql = SCHEMA_PATH.read_text(encoding="utf-8").lower()
+    assert "on all sequences in schema public" not in sql
+    assert "public.sowia_messages_id_seq" in sql
+    assert "public.sowia_memory_items_id_seq" in sql
