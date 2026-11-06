@@ -118,3 +118,10 @@ def test_completed_capture_rejects_missing_or_ambiguous_capture():
     payload = {"purchase_units": [{"payments": {"captures": [capture, capture]}}]}
     with pytest.raises(PermissionError, match="absente ou ambiguë"):
         paypal._validate_completed_capture(payload, config)
+
+
+def test_payments_enabled_requires_explicit_owner_switch(monkeypatch):
+    _settings(monkeypatch, SOWIA_PAYMENTS_ENABLED="false")
+    assert paypal.payments_enabled() is False
+    _settings(monkeypatch, SOWIA_PAYMENTS_ENABLED="true")
+    assert paypal.payments_enabled() is True
