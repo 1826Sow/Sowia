@@ -1,10 +1,11 @@
-"""Private, user-scoped PDF storage using Supabase Storage."""
+""""Private, user-scoped PDF storage using Supabase Storage."""
 import os
 import re
 from uuid import uuid4
 
 BUCKET_NAME = "sowia-private-documents"
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
+PDF_SIGNATURE = b"%PDF-"
 
 
 def _user_prefix(user):
@@ -42,6 +43,8 @@ def upload_document(client, user, filename, content):
         raise ValueError("Le fichier PDF est vide.")
     if len(payload) > MAX_DOCUMENT_BYTES:
         raise ValueError("Le fichier dépasse la limite de 10 Mo.")
+    if not payload.startswith(PDF_SIGNATURE):
+        raise ValueError("Le contenu du fichier n'est pas un PDF valide.")
     object_name = f"{uuid4().hex}_{safe_name}"
     path = f"{prefix}/{object_name}"
     client.storage.from_(BUCKET_NAME).upload(
@@ -65,3 +68,4 @@ def download_document(client, user, path):
 def delete_document(client, user, path):
     owned_path = _owned_path(user, path)
     return client.storage.from_(BUCKET_NAME).remove([owned_path])
+"
