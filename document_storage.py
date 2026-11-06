@@ -8,6 +8,7 @@ from pypdf import PdfReader
 
 BUCKET_NAME = "sowia-private-documents"
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
+MAX_DOCUMENT_PAGES = 200
 PDF_SIGNATURE = b"%PDF-"
 
 
@@ -31,15 +32,18 @@ def _safe_filename(filename):
 
 
 def _validate_pdf(payload):
-    """Check both the PDF header and that a parser can read at least one page."""
+    """Check PDF structure and bound page-processing work."""
     if not payload.startswith(PDF_SIGNATURE):
         raise ValueError("Le contenu du fichier n'est pas un PDF valide.")
     try:
         reader = PdfReader(BytesIO(payload), strict=True)
         if reader.is_encrypted:
             raise ValueError("Les PDF protégés par mot de passe ne sont pas acceptés.")
-        if len(reader.pages) < 1:
+        page_count = len(reader.pages)
+        if page_count < 1:
             raise ValueError("Le PDF ne contient aucune page.")
+        if page_count > MAX_DOCUMENT_PAGES:
+            raise ValueError("Le PDF dépasse la limite de 200 pages.")
     except ValueError:
         raise
     except Exception as exc:
