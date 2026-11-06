@@ -100,6 +100,9 @@ if cloud_mode:
                     "paypal_purchase_confirmed",
                 ):
                     st.session_state.pop(key, None)
+                # Reset the work-mode preference so accounts do not inherit
+                # another user's session context.
+                st.session_state.pop("sowia_user_mode", None)
                 # Extracted PDF text is also private: never carry it across accounts.
                 st.session_state.pdf_text = ""
                 st.session_state["private_document_owner_id"] = document_owner_id
@@ -245,6 +248,8 @@ with st.sidebar:
                 "paypal_purchase_confirmed",
             ):
                 st.session_state.pop(key, None)
+            # Reset the work-mode preference with the rest of account context.
+            st.session_state.pop("sowia_user_mode", None)
             # Clear extracted PDF text as well as cached private document bytes.
             st.session_state.pdf_text = ""
             st.session_state.session_id = str(uuid.uuid4())
