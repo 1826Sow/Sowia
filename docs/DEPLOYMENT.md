@@ -17,7 +17,7 @@ Dans Supabase, relever l'URL du projet et la clé publishable/anon. Les ajouter 
 - `SUPABASE_ANON_KEY`
 - `SOWIA_PUBLIC_URL` (URL HTTPS de l'application après déploiement)
 
-Ne jamais utiliser la clé `service_role` dans l'application Streamlit.
+La clé `service_role` ne doit jamais être envoyée au navigateur, affichée dans l'interface ou commitée dans Git. Pour l'écriture serveur des droits Premium, elle peut être stockée exclusivement dans les secrets privés de Streamlit sous `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## 3. Connexion GitHub dans Supabase
 
@@ -66,4 +66,4 @@ PAYPAL_RETURN_URL = "https://<adresse-deploiement>/?paypal=return"
 PAYPAL_CANCEL_URL = "https://<adresse-deploiement>/?paypal=cancel"
 ```
 
-Le montant Premium doit être décidé avant d'activer le paiement. Garder `PAYPAL_MODE = "sandbox"` jusqu'à la réussite de transactions de test. Le passage en mode réel nécessite les identifiants Live, une URL HTTPS publique et des essais de paiement/remboursement. Les notifications PayPal (webhooks), l'enregistrement durable des droits Premium par utilisateur et l'activation du parcours dans l'interface restent des étapes distinctes à terminer avant toute mise en vente. Ne pas considérer une simple redirection PayPal comme une preuve de paiement.
+Le montant Premium doit être décidé avant d'activer le paiement. Garder `PAYPAL_MODE = "sandbox"` jusqu'à la réussite de transactions de test. Le passage en mode réel nécessite les identifiants Live, une URL HTTPS publique et des essais de paiement/remboursement. Après fusion du parcours Premium, réexécuter le fichier `supabase/schema.sql` dans le SQL Editor afin de créer `sowia_entitlements`. Ajouter aussi `SUPABASE_SERVICE_ROLE_KEY` aux secrets Streamlit : cette clé reste strictement côté serveur et sert uniquement à enregistrer un droit après capture PayPal confirmée. L'utilisateur ne peut lire que son propre droit via RLS et ne peut pas se l'attribuer lui-même. Le parcours de retour relit la commande côté serveur, vérifie le compte, le produit, le prix et la devise, capture le paiement puis enregistre l'accès. Une redirection seule ne donne jamais accès. Garder le mode Sandbox jusqu'aux essais complets ; ne pas passer en Live avant d'avoir choisi le prix et validé les achats et remboursements.
