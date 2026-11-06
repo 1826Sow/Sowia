@@ -12,10 +12,9 @@ values (
     10485760,
     array['application/pdf']
 )
-on conflict (id) do update
-set public = false,
-    file_size_limit = 10485760,
-    allowed_mime_types = array['application/pdf'];
+-- Do not alter an existing bucket automatically. Inspect its current use
+-- and configuration first in an isolated test project.
+on conflict (id) do nothing;
 
 -- A user's files must be stored under a first-level folder named with auth.uid().
 drop policy if exists "SOW IA users read own private PDFs" on storage.objects;
@@ -92,7 +91,7 @@ create policy "SOW IA users read own Premium entitlement"
 on public.sowia_entitlements for select to authenticated
 using ((select auth.uid()) = user_id);
 
-revoke all on public.sowia_entitlements from anon, authenticated;
+revoke all on public.sowia_entitlements from public, anon, authenticated;
 grant select on public.sowia_entitlements to authenticated;
 
 -- No INSERT/UPDATE/DELETE policy is granted to authenticated users.
