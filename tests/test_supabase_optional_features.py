@@ -70,3 +70,8 @@ def test_memory_and_history_sequence_grants_are_narrowly_scoped():
     assert "on all sequences in schema public" not in sql
     assert "public.sowia_messages_id_seq" in sql
     assert "public.sowia_memory_items_id_seq" in sql
+
+
+def test_memory_schema_allows_the_documented_premium_note_limit():
+    sql = SCHEMA_PATH.read_text(encoding="utf-8").lower()
+    assert "content text not null check (char_length(content) between 1 and 5000)" in sql
