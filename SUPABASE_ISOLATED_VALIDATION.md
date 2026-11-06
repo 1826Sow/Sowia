@@ -11,8 +11,10 @@ Vérifier en conditions réelles les politiques RLS de stockage PDF privé et de
 1. Créer ou choisir un projet Supabase temporaire, clairement nommé `SOW IA - TEST`.
 2. Vérifier deux fois son nom et son identifiant dans le tableau de bord avant toute action SQL.
 3. Créer deux comptes de test distincts : Utilisateur A et Utilisateur B.
-4. Dans l'éditeur SQL de **ce projet de test uniquement**, examiner puis exécuter `supabase_optional_features.sql` depuis la branche de la PR.
-5. Vérifier dans Storage que le bucket `sowia-private-documents` est privé, limité à 10 485 760 octets et au type MIME `application/pdf`.
+4. Dans l'éditeur SQL de **ce projet de test uniquement**, exécuter d'abord les requêtes de précontrôle en lecture seule présentées plus bas dans la section « Précontrôle en lecture seule des politiques déjà présentes ».
+5. Examiner les résultats : si une politique inconnue ou permissive est présente, ou si le bucket existe déjà avec une configuration ou un usage non vérifié, arrêter la procédure et analyser avant toute modification.
+6. Seulement si le précontrôle est sûr, exécuter `supabase_optional_features.sql` depuis la branche de la PR dans ce projet de test.
+7. Vérifier dans Storage que le bucket `sowia-private-documents` est privé, limité à 10 485 760 octets et au type MIME `application/pdf`.
 6. Ne pas ajouter de clé service-role dans le navigateur, dans un dépôt Git ou dans un message.
 
 ## Scénarios Storage à valider
