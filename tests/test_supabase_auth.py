@@ -1,6 +1,6 @@
 """Tests for safe Supabase configuration handling."""
 import pytest
-import supabase_auth
+import sowia_supabase_auth as supabase_auth
 
 
 def test_supabase_configuration_requires_both_values(monkeypatch):
