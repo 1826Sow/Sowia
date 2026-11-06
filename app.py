@@ -15,7 +15,7 @@ from storage import (
 )
 from documents import extract_pdf_text
 from websearch import search_web
-from supabase_auth import (
+from sowia_supabase_auth import (
     authenticated_user,
     complete_github_login,
     configuration_ready,
