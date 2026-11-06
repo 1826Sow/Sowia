@@ -95,3 +95,7 @@ def test_required_authentication_without_supabase_configuration_clears_private_s
     assert config_failure.index(
         "clear_account_private_state(st.session_state)"
     ) < config_failure.index("st.stop()")
+
+def test_public_authentication_is_required_by_default():
+    app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert 'get_setting("SOWIA_REQUIRE_AUTH", "true")' in app_source
