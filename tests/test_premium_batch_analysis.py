@@ -1,5 +1,8 @@
 """Tests for Premium batch PDF analysis access and limits."""
+from io import BytesIO
+
 import pytest
+from pypdf import PdfWriter
 
 import premium_batch_analysis
 
@@ -75,6 +78,14 @@ def test_batch_analysis_caps_total_context(monkeypatch):
     assert len(received["document_context"]) <= premium_batch_analysis.MAX_BATCH_TOTAL_CHARS + 200
 
 
+def valid_pdf_bytes():
+    buffer = BytesIO()
+    writer = PdfWriter()
+    writer.add_blank_page(width=72, height=72)
+    writer.write(buffer)
+    return buffer.getvalue()
+
+
 class FakeUploadedFile:
     def __init__(self, name, payload):
         self.name = name
@@ -96,8 +107,8 @@ def test_batch_upload_preparation_checks_pdf_signature_size_and_resets_pointer()
         return "Texte extrait"
 
     files = [
-        FakeUploadedFile("a.pdf", b"%PDF-1.7 document A"),
-        FakeUploadedFile("b.pdf", b"%PDF-1.7 document B"),
+        FakeUploadedFile("a.pdf", valid_pdf_bytes()),
+        FakeUploadedFile("b.pdf", valid_pdf_bytes()),
     ]
     prepared = premium_batch_analysis.prepare_pdf_batch_uploads(files, extract)
     assert prepared == [("a.pdf", "Texte extrait"), ("b.pdf", "Texte extrait")]
@@ -111,7 +122,7 @@ def test_batch_upload_preparation_checks_pdf_signature_size_and_resets_pointer()
 ])
 def test_batch_upload_preparation_rejects_invalid_or_oversized_files(payload, message):
     files = [
-        FakeUploadedFile("a.pdf", b"%PDF-1.7 valid"),
+        FakeUploadedFile("a.pdf", valid_pdf_bytes()),
         FakeUploadedFile("b.pdf", payload),
     ]
     with pytest.raises(ValueError, match=message):
@@ -121,7 +132,7 @@ def test_batch_upload_preparation_rejects_invalid_or_oversized_files(payload, me
 def test_batch_upload_preparation_rejects_malformed_pdf_before_extraction():
     files = [
         FakeUploadedFile("a.pdf", b"%PDF-1.7\\nnot a valid PDF structure"),
-        FakeUploadedFile("b.pdf", b"%PDF-1.7 valid"),
+        FakeUploadedFile("b.pdf", valid_pdf_bytes()),
     ]
     extraction_calls = []
 
