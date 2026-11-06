@@ -68,3 +68,17 @@ def test_rejects_unknown_bucket_before_rpc():
             raise AssertionError("RPC must not be called")
     with pytest.raises(ValueError):
         rate_limiter.consume_rate_limit(Client(), User(), "unlimited")
+
+
+def test_app_guards_assistant_web_and_pdf_calls_before_external_requests():
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    assistant_section = source.split('elif page == "Assistant IA":', 1)[1].split('elif page == "Ma mémoire":', 1)[0]
+    assert assistant_section.index('require_shared_quota("assistant")') < assistant_section.index("reply = answer(")
+
+    web_section = source.split('elif page == "Recherche Web":', 1)[1].split('elif page == "Analyse PDF":', 1)[0]
+    assert web_section.index('require_shared_quota("web_search")') < web_section.index("search_web(query)")
+
+    pdf_section = source.split('elif page == "Analyse PDF":', 1)[1].split('elif page == "Analyse groupée PDF":', 1)[0]
+    assert pdf_section.index('require_shared_quota("pdf_question")') < pdf_section.index("response = answer(")
