@@ -144,6 +144,12 @@ if cloud_mode:
         supabase_client = None
 
     if current_user is None:
+        # No authenticated identity (including an expired/revoked session):
+        # discard any private data retained by this browser session before
+        # showing the login screen. Keep the Supabase client for the OAuth flow.
+        from session_security import clear_account_private_state
+
+        clear_account_private_state(st.session_state)
         st.markdown(
             '<div class="hero"><h1>SOW IA</h1><p>Votre espace personnel sécurisé.</p></div>',
             unsafe_allow_html=True,
