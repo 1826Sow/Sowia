@@ -26,7 +26,7 @@ class FakeBucket:
 
     def download(self, path):
         self.downloaded = path
-        return b"%PDF"
+        return b"%PDF-1.7\n"
 
     def remove(self, paths):
         self.removed = paths
@@ -45,10 +45,10 @@ class FakeClient:
 
 def test_upload_is_stored_under_authenticated_user_folder():
     client = FakeClient()
-    path = docs.upload_document(client, User(), "Mon rapport.pdf", b"%PDF")
+    path = docs.upload_document(client, User(), "Mon rapport.pdf", b"%PDF-1.7\n")
     assert path.startswith("user-123/")
     assert path.endswith("_Mon_rapport.pdf")
-    assert client.bucket.uploaded[1] == b"%PDF"
+    assert client.bucket.uploaded[1] == b"%PDF-1.7\n"
     assert client.bucket.uploaded[2]["content-type"] == "application/pdf"
 
 
@@ -84,3 +84,15 @@ def test_upload_rejects_non_pdf_and_oversized_files_before_storage_access():
 def test_storage_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         docs.list_documents(FakeClient(), None)
+
+def test_upload_rejects_fake_pdf_content():
+    client = FakeClient()
+    with pytest.raises(ValueError, match="PDF valide"):
+        docs.upload_document(client, User(), "fake.pdf", b"this is not a PDF")
+    assert client.bucket.uploaded is None
+
+
+def test_upload_normalizes_empty_pdf_filename_stem():
+    client = FakeClient()
+    path = docs.upload_document(client, User(), ".pdf", b"%PDF-1.7\\n")
+    assert path.endswith("_document.pdf")
