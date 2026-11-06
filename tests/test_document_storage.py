@@ -77,7 +77,7 @@ def test_upload_rejects_non_pdf_and_oversized_files_before_storage_access():
     with pytest.raises(ValueError, match="PDF"):
         docs.upload_document(client, User(), "notes.txt", b"hello")
     with pytest.raises(ValueError, match="10 Mo"):
-        docs.upload_document(client, User(), "large.pdf", b"x" * (docs.MAX_DOCUMENT_BYTES + 1))
+        docs.upload_document(client, User(), "large.pdf", b"%PDF-1.7\\n" + b"x" * docs.MAX_DOCUMENT_BYTES)
     assert client.bucket.uploaded is None
 
 
