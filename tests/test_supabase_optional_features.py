@@ -151,3 +151,15 @@ def test_private_storage_requires_an_active_premium_entitlement_in_postgres():
     assert "entitlement.user_id = (select auth.uid())" in guard
     assert "entitlement.status = 'active'" in guard
     assert "with check (" in guard
+
+
+def test_entitlement_owner_guard_is_restrictive_against_legacy_policies():
+    sql = _sql()
+    marker = 'create policy "sow ia enforce own premium entitlement"'
+    assert marker in sql
+    section = sql.split(marker, 1)[1].split(";", 1)[0]
+    assert "as restrictive" in section
+    assert "for all" in section
+    assert "to public" in section
+    assert "using ((select auth.uid()) = user_id)" in section
+    assert "with check ((select auth.uid()) = user_id)" in section
