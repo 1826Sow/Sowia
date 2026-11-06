@@ -26,6 +26,7 @@ from sowia_supabase_auth import (
     sign_out,
 )
 import cloud_storage
+from rate_limiter import consume_rate_limit, RateLimitExceeded, RateLimitUnavailable
 import paypal_payments
 import premium_access
 from document_storage import upload_document, list_documents, download_document, delete_document
@@ -209,6 +210,15 @@ def delete_app_memory(memory_id):
         return cloud_storage.delete_memory(supabase_client, current_user, memory_id)
     return local_delete_memory(memory_id)
 
+def require_shared_quota(bucket_key):
+    # Local-only mode has no authenticated shared quota service. Hosted mode
+    # must fail closed rather than silently falling back to session counters.
+    if cloud_mode and current_user is not None:
+        return consume_rate_limit(supabase_client, current_user, bucket_key)
+    if cloud_mode:
+        raise PermissionError("Connexion requise pour cette opération.")
+    return None
+
 def go_to_page(page_name):
     st.session_state.page_nav = page_name
 
@@ -320,6 +330,7 @@ elif page == "Assistant IA":
             st.warning("Le message ne peut pas être enregistré pour le moment. La réponse sera tentée sans historique sauvegardé.")
         with st.chat_message("assistant"):
             try:
+                require_shared_quota("assistant")
                 prior_messages = chat_history if chat_history is not None else []
                 reply = answer(
                     [*prior_messages, {"role": "user", "content": prompt}],
@@ -331,6 +342,10 @@ elif page == "Assistant IA":
                     save_app_message("assistant", reply)
                 except Exception:
                     st.warning("La réponse est affichée, mais son enregistrement dans l'historique a échoué.")
+            except RateLimitExceeded as exc:
+                st.warning(str(exc))
+            except RateLimitUnavailable as exc:
+                st.error(str(exc))
             except Exception as exc:
                 error_text = str(exc)
                 if "429" in error_text or "insufficient_quota" in error_text or "quota" in error_text.lower():
@@ -437,6 +452,7 @@ elif page == "Recherche Web":
     query = st.text_input("Que souhaitez-vous rechercher ?")
     if st.button("Rechercher", disabled=not query.strip()):
         try:
+            require_shared_quota("web_search")
             for item in search_web(query):
                 st.markdown(f"**[{item.get('title', 'Résultat')}]({item.get('url', '#')})**")
                 st.write(item.get("content", ""))
@@ -495,6 +511,7 @@ elif page == "Analyse PDF":
             else:
                 with st.spinner("Analyse du document en cours..."):
                     try:
+                        require_shared_quota("pdf_question")
                         response = answer(
                             [{"role": "user", "content": pdf_question.strip()}],
                             document_context=st.session_state.pdf_text,
