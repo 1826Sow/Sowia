@@ -27,6 +27,12 @@ from sowia_supabase_auth import (
 import cloud_storage
 import paypal_payments
 import premium_access
+from feature_access import (
+    WORKSPACE_MODES,
+    can_access_feature,
+    has_active_premium,
+    normalize_workspace_mode,
+)
 from document_storage import upload_document, list_documents, download_document, delete_document
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
@@ -167,6 +173,18 @@ if cloud_mode and current_user is not None:
         st.query_params.clear()
 
 
+# Resolve Premium from the authenticated account on the server. Any lookup
+# failure closes Premium-only features rather than granting access by default.
+premium_entitlement = None
+premium_entitlement_error = False
+if cloud_mode and current_user is not None:
+    try:
+        premium_entitlement = premium_access.get_entitlement(supabase_client, current_user)
+    except Exception:
+        premium_entitlement_error = True
+premium_active = has_active_premium(premium_entitlement)
+
+
 def get_app_history(limit=30):
     if cloud_mode:
         return cloud_storage.get_history(supabase_client, current_user, st.session_state.session_id, limit)
@@ -204,6 +222,14 @@ def go_to_page(page_name):
 with st.sidebar:
     st.markdown("## 🧠 SOW IA")
     st.caption("Intelligence artificielle")
+    workspace_mode = st.selectbox(
+        "Espace de travail",
+        WORKSPACE_MODES,
+        key="workspace_mode",
+        help="Choisissez votre contexte d’utilisation. Les fonctions Premium restent contrôlées côté serveur.",
+    )
+    if workspace_mode == "Professionnel" and not premium_active:
+        st.caption("Mode Professionnel : aperçu. Les fonctions réservées à Premium restent verrouillées.")
     if cloud_mode:
         st.success("Espace personnel sécurisé")
         st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
@@ -231,6 +257,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.write("")
+st.caption(f"Espace actif : {normalize_workspace_mode(st.session_state.get('workspace_mode'))}")
 
 if page == "Accueil":
     st.subheader("Bienvenue sur SOW IA")
@@ -415,6 +442,13 @@ elif page == "Créer un PDF":
             st.caption(str(exc))
 elif page == "Mes documents":
     st.subheader("📁 Mes documents")
+    if cloud_mode and premium_entitlement_error:
+        st.error("Impossible de vérifier votre droit Premium. Par sécurité, l’accès aux documents privés reste fermé.")
+        st.stop()
+    if cloud_mode and not can_access_feature("Mes documents", premium_entitlement):
+        st.info("L’espace documentaire privé est réservé aux comptes SOW IA Premium.")
+        st.button("Découvrir Premium", on_click=go_to_page, args=("Abonnement",), type="primary")
+        st.stop()
     if not cloud_mode:
         st.warning("Connectez-vous avec votre compte pour utiliser le stockage documentaire privé.")
     else:
