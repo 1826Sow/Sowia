@@ -107,3 +107,35 @@ def test_app_uses_random_browser_session_id_instead_of_account_wide_session_id()
     assert 'st.session_state.session_id = str(uuid.uuid4())' in app_source
     assert "uuid.uuid5" not in app_source
     assert "Separate tabs/devices for the same account must not share a live conversation." in app_source
+
+def test_chat_handles_history_and_memory_service_outages_without_raw_errors():
+    app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+    chat_section = app_source.split('if page == "Assistant IA":', 1)[1].split(
+        'elif page == "Ma mémoire":', 1
+    )[0]
+    assert "try:" in chat_section
+    assert "chat_history = get_app_history()" in chat_section
+    assert "La mémoire est momentanément indisponible" in chat_section
+    assert "L'historique est momentanément indisponible" in chat_section
+    assert "prior_messages = chat_history if chat_history is not None else []" in chat_section
+    assert "La réponse est affichée, mais son enregistrement dans l'historique a échoué." in chat_section
+
+
+def test_history_page_does_not_misreport_service_failure_as_empty_history():
+    app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+    history_section = app_source.split('elif page == "Historique":', 1)[1].split(
+        'elif page == "Abonnement":', 1
+    )[0]
+    assert "try:" in history_section
+    assert "except Exception:" in history_section
+    assert "Aucune donnée n'a été supprimée." in history_section
+
+
+def test_chat_history_clear_failure_is_reported_without_exposing_provider_details():
+    app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+    chat_section = app_source.split('if page == "Assistant IA":', 1)[1].split(
+        'elif page == "Ma mémoire":', 1
+    )[0]
+    assert "clear_app_history()" in chat_section
+    assert "Impossible d'effacer l'historique pour le moment." in chat_section
+
