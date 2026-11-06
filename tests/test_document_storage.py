@@ -112,8 +112,8 @@ def test_delete_rejects_another_users_path_before_storage_access():
     "user-123/../private.pdf",
     "user-123/folder/report.pdf",
     "user-123/",
-    "user-123\\\\report.pdf",
-    "user-123/report.pdf\\x00suffix",
+    "user-123\\report.pdf",
+    "user-123/report.pdf\x00suffix",
 ])
 def test_download_rejects_malformed_owned_paths(path):
     client = FakeClient()
