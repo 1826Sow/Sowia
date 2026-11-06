@@ -60,3 +60,26 @@ create policy "Users can delete own memory"
 grant select, insert, delete on public.sowia_messages to authenticated;
 grant select, insert, delete on public.sowia_memory_items to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
+
+
+-- Premium access is written only by the trusted server using the service-role
+-- key after PayPal has confirmed a completed capture. Authenticated users may
+-- read only their own entitlement; they cannot grant or edit their own access.
+create table if not exists public.sowia_entitlements (
+    user_id uuid primary key references auth.users(id) on delete cascade,
+    status text not null check (status in ('active', 'inactive')),
+    provider text not null check (provider in ('paypal')),
+    paypal_order_id text not null unique,
+    amount numeric(10, 2) not null check (amount > 0),
+    currency text not null check (currency = 'EUR'),
+    updated_at timestamptz not null default now()
+);
+
+alter table public.sowia_entitlements enable row level security;
+
+drop policy if exists "Users can read own Premium entitlement" on public.sowia_entitlements;
+create policy "Users can read own Premium entitlement"
+    on public.sowia_entitlements for select to authenticated
+    using ((select auth.uid()) = user_id);
+
+grant select on public.sowia_entitlements to authenticated;
