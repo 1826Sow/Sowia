@@ -11,6 +11,8 @@ ACCOUNT_PRIVATE_KEYS = (
     "paypal_purchase_confirmed",
     "sowia_user_mode",
     "pdf_question",
+    "premium_batch_pdf_files",
+    "private_pdf_upload",
 )
 
 
