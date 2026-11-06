@@ -722,6 +722,8 @@ elif page == "Mes documents":
                 st.rerun()
             except (ValueError, PermissionError) as exc:
                 st.error(str(exc))
+            except RateLimitUnavailable as exc:
+                st.error(str(exc))
             except Exception:
                 st.error("Impossible d'enregistrer le document. Vérifiez que le stockage privé Supabase est configuré.")
         st.divider()
@@ -757,6 +759,10 @@ elif page == "Mes documents":
                             st.session_state.pop("prepared_document_path", None)
                             st.session_state.pop("prepared_document_bytes", None)
                         st.rerun()
+        except RateLimitExceeded as exc:
+            st.warning(str(exc))
+        except RateLimitUnavailable as exc:
+            st.error(str(exc))
         except Exception:
             st.error("Impossible de charger vos documents. Vérifiez que le bucket privé et ses règles de sécurité sont installés dans Supabase.")
 
