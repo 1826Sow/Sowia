@@ -2,33 +2,37 @@
 
 ## État et périmètre
 
-Document de conception uniquement. Aucune table, fonction SQL, politique RLS, clé, variable Streamlit ou donnée de production n'est modifiée par ce document. Le limiteur n'est pas encore actif et aucun quota n'est annoncé comme appliqué.
+Prototype et premiers raccordements présents dans la branche `sowia-shared-rate-limiter`. Une migration SQL candidate, un client Python fail-closed, des tests unitaires et des contrôles avant appels coûteux dans `app.py`, `premium_analysis.py`, `premium_batch_analysis.py` et `document_storage.py` ont été ajoutés. GitHub Actions a confirmé la réussite de la syntaxe Python et des tests automatisés sur une révision précédente de cette branche ; chaque nouveau commit déclenche une nouvelle exécution à vérifier avant validation finale. Le SQL n'a pas été exécuté sur Supabase et aucun quota n'est actif en production. Aucun SQL ni aucune donnée de production n'a été modifié.
 
 Le besoin est de compter les opérations par **utilisateur authentifié et catégorie d'opération**, de façon atomique et partagée entre onglets, appareils et workers. Un compteur dans `st.session_state`, un dictionnaire Python, un cache local ou un fichier local ne répond pas à ce besoin.
 
 ## Points d'entrée recensés dans `app.py`
 
-| Opération | Point d'appel | Catégorie proposée |
+| Opération | Emplacement | Catégorie proposée |
 |---|---:|---|
-| Assistant IA | 311 | `assistant` |
-| Question/analyse PDF via IA | 467 | `pdf_question` |
-| Analyse PDF avancée Premium | 442 | `advanced_pdf` |
-| Analyse groupée PDF Premium | 514 | `batch_pdf` |
-| Recherche Web | 409 | `web_search` |
-| Téléversement document privé | 656 | `document_upload` |
-| Téléchargement document privé | 687 | `document_download` |
-| Suppression document privé | 691 | `document_delete` |
+| Assistant IA | `app.py` — réponse de conversation | `assistant` |
+| Question/analyse PDF via IA | `app.py` — question sur le PDF extrait | `pdf_question` |
+| Analyse PDF avancée Premium | `premium_analysis.py` | `advanced_pdf` |
+| Analyse groupée PDF Premium | `premium_batch_analysis.py` | `batch_pdf` |
+| Recherche Web | `app.py` — recherche externe | `web_search` |
+| Téléversement document privé | `document_storage.py` | `document_upload` |
+| Téléchargement document privé | `document_storage.py` | `document_download` |
+| Suppression document privé | `document_storage.py` | `document_delete` |
 
-Les analyses Premium vérifient déjà le droit Premium côté serveur avant l'appel IA. Le limiteur devra être appelé après l'identification authentifiée, et avant tout appel fournisseur, écriture, lecture coûteuse ou suppression. La préparation locale des PDF doit conserver ses limites de taille même si le quota réseau est refusé.
+Les analyses Premium vérifient le droit Premium côté serveur avant l'appel IA. Le limiteur est appelé après l'identification authentifiée et avant les appels fournisseurs, les mutations documentaires et les téléchargements. La liste des documents reste non limitée à ce stade ; elle est protégée par le contrôle Premium et le périmètre RLS. La préparation locale des PDF conserve ses limites de taille même si le quota réseau est refusé.
 
 ## Architecture retenue à valider sur un projet Supabase isolé
 
 1. Une table privée `public.sowia_rate_limits`, clé primaire composée de `user_id` et `bucket_key`, contenant le début de fenêtre et le compteur.
-2. Une fonction RPC `public.sowia_consume_rate_limit(p_bucket_key text, p_window_seconds integer, p_limit integer)` qui exécute une seule opération atomique `INSERT ... ON CONFLICT ... DO UPDATE ... RETURNING`.
+2. Une fonction RPC `public.sowia_consume_rate_limit(p_bucket_key text)` qui fixe elle-même les fenêtres et seuils (le client ne peut pas les choisir) et exécute une opération atomique `INSERT ... ON CONFLICT ... DO UPDATE ... RETURNING`.
 3. La fonction vérifie `auth.uid()` et refuse toute identité absente. Le client authentifié ne reçoit aucun droit direct de lecture/écriture sur la table.
 4. La fonction est créée avec un `search_path` fixe et minimal, et son exécution est accordée uniquement au rôle `authenticated`. Aucun secret service-role n'est transmis au navigateur.
 5. Le compteur est partagé par tous les onglets/appareils du même compte. Les clés de compartiment sont choisies par le code serveur dans une liste fermée, jamais fournies librement par le navigateur.
 6. En production, après validation isolée et déploiement coordonné du SQL et du code, une erreur RPC doit refuser l'opération protégée (fail closed) avec un message utilisateur neutre. Ne jamais basculer silencieusement vers un compteur local.
+
+### Migration prototype — non exécutée
+
+Le fichier `supabase/migrations/202611060001_shared_rate_limits.sql` contient la première migration candidate. Elle doit être relue et testée dans un projet Supabase isolé avant toute utilisation. La fonction RPC n'accepte que la clé de compartiment ; les quotas sont définis côté SQL. Le module `rate_limiter.py` refuse l'opération si la RPC échoue ou renvoie une réponse invalide. Les appels Assistant IA, question PDF, recherche Web, analyses PDF Premium et opérations documentaires upload/download/delete sont raccordés au contrôle. Les tests unitaires correspondants sont dans `tests/test_rate_limiter.py` et les suites existantes des modules concernés.
 
 ### Esquisse SQL — non exécutable / non déployée
 

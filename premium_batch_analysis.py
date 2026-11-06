@@ -4,6 +4,7 @@ from io import BytesIO
 from pypdf import PdfReader
 
 from feature_access import require_feature_access
+from rate_limiter import consume_rate_limit
 
 MAX_BATCH_DOCUMENTS = 5
 MAX_BATCH_TOTAL_CHARS = 24000
@@ -87,6 +88,7 @@ def analyze_pdf_batch(user_client, user, documents, answer_function):
 
     # Verify entitlement before sending any document text to the AI provider.
     require_feature_access(user_client, user, "batch_pdf_analysis")
+    consume_rate_limit(user_client, user, "batch_pdf")
 
     document_context = "\n\n".join(
         f"DOCUMENT {index} — {name}\n{text}"

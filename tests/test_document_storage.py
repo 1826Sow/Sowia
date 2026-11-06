@@ -15,6 +15,7 @@ def _allow_document_access(*args, **kwargs):
 @pytest.fixture(autouse=True)
 def allow_document_access_in_unit_tests(monkeypatch):
     monkeypatch.setattr(docs, "require_feature_access", _allow_document_access)
+    monkeypatch.setattr(docs, "consume_rate_limit", lambda *args, **kwargs: None)
 
 
 class User:
@@ -268,3 +269,24 @@ def test_storage_operations_deny_inactive_premium_before_storage_access(monkeypa
     assert client.bucket.listed is None
     assert client.bucket.downloaded is None
     assert client.bucket.removed is None
+
+
+def test_document_mutations_consume_the_matching_shared_quota(monkeypatch):
+    calls = []
+    monkeypatch.setattr(docs, "consume_rate_limit", lambda client, user, bucket: calls.append(bucket))
+    client = FakeClient()
+    user = User()
+    path = docs.upload_document(client, user, "report.pdf", make_pdf())
+    docs.download_document(client, user, path)
+    docs.delete_document(client, user, path)
+    assert calls == ["document_upload", "document_download", "document_delete"]
+
+
+def test_document_upload_does_not_write_when_quota_is_denied(monkeypatch):
+    def deny(*args, **kwargs):
+        raise PermissionError("quota reached")
+    monkeypatch.setattr(docs, "consume_rate_limit", deny)
+    client = FakeClient()
+    with pytest.raises(PermissionError, match="quota reached"):
+        docs.upload_document(client, User(), "report.pdf", make_pdf())
+    assert client.bucket.uploaded is None

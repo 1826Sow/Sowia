@@ -4,6 +4,11 @@ import pytest
 import premium_analysis
 
 
+@pytest.fixture(autouse=True)
+def allow_shared_quota_by_default(monkeypatch):
+    monkeypatch.setattr(premium_analysis, "consume_rate_limit", lambda *args, **kwargs: None)
+
+
 def test_advanced_pdf_analysis_checks_entitlement_before_ai(monkeypatch):
     calls = []
     expected = {"status": "active"}
@@ -64,3 +69,26 @@ def test_advanced_pdf_analysis_bounds_document_context(monkeypatch):
     )
     assert len(received["document_context"]) <= premium_analysis.MAX_ADVANCED_PDF_CHARS + 100
     assert "limite de contexte atteinte" in received["document_context"]
+
+
+def test_advanced_pdf_analysis_consumes_quota_before_ai(monkeypatch):
+    calls = []
+    monkeypatch.setattr(premium_analysis, "require_feature_access", lambda *a, **k: calls.append("premium"))
+    monkeypatch.setattr(premium_analysis, "consume_rate_limit", lambda client, user, bucket: calls.append(bucket))
+    result = premium_analysis.analyze_pdf_advanced(
+        "client", "user", "Texte du document", lambda *a, **k: calls.append("ai") or "ok"
+    )
+    assert result == "ok"
+    assert calls == ["premium", "advanced_pdf", "ai"]
+
+
+def test_advanced_pdf_analysis_does_not_call_ai_when_quota_is_denied(monkeypatch):
+    monkeypatch.setattr(premium_analysis, "require_feature_access", lambda *a, **k: None)
+    def deny(*args, **kwargs):
+        raise PermissionError("quota reached")
+    monkeypatch.setattr(premium_analysis, "consume_rate_limit", deny)
+    with pytest.raises(PermissionError, match="quota reached"):
+        premium_analysis.analyze_pdf_advanced(
+            "client", "user", "Texte du document",
+            lambda *a, **k: (_ for _ in ()).throw(AssertionError("AI must not run")),
+        )

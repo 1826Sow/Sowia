@@ -7,6 +7,7 @@ from uuid import uuid4
 from pypdf import PdfReader
 
 from feature_access import require_feature_access
+from rate_limiter import consume_rate_limit
 
 BUCKET_NAME = "sowia-private-documents"
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
@@ -72,6 +73,7 @@ def upload_document(client, user, filename, content):
     if len(payload) > MAX_DOCUMENT_BYTES:
         raise ValueError("Le fichier dépasse la limite de 10 Mo.")
     _validate_pdf(payload)
+    consume_rate_limit(client, user, "document_upload")
     object_name = f"{uuid4().hex}_{safe_name}"
     path = f"{prefix}/{object_name}"
     client.storage.from_(BUCKET_NAME).upload(
@@ -91,10 +93,12 @@ def list_documents(client, user):
 def download_document(client, user, path):
     owned_path = _owned_path(user, path)
     require_feature_access(client, user, "private_document_storage")
+    consume_rate_limit(client, user, "document_download")
     return client.storage.from_(BUCKET_NAME).download(owned_path)
 
 
 def delete_document(client, user, path):
     owned_path = _owned_path(user, path)
     require_feature_access(client, user, "private_document_storage")
+    consume_rate_limit(client, user, "document_delete")
     return client.storage.from_(BUCKET_NAME).remove([owned_path])

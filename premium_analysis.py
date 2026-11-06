@@ -1,5 +1,6 @@
 """Premium advanced PDF analysis, guarded before any AI request."""
 from feature_access import require_feature_access
+from rate_limiter import consume_rate_limit
 
 MAX_ADVANCED_PDF_CHARS = 24000
 
@@ -14,6 +15,7 @@ def analyze_pdf_advanced(user_client, user, pdf_text, answer_function):
 
     # This server-side check must happen before invoking the AI provider.
     require_feature_access(user_client, user, "advanced_pdf_analysis")
+    consume_rate_limit(user_client, user, "advanced_pdf")
 
     prompt = (
         "Réalise une analyse professionnelle et structurée du document fourni. "
