@@ -100,4 +100,53 @@ where id = 'sowia-private-documents';
 - Si le bucket existe déjà, le script ne modifie désormais aucun de ses paramètres. Vérifier qu'il est privé, limité à 10 485 760 octets et au MIME `application/pdf`. En cas d'écart, arrêter la migration et examiner l'usage du bucket avant toute correction manuelle dans le projet de test.
 - Conserver les résultats expurgés, sans identifiants personnels ni secrets.
 
+
+## Contrôle complémentaire des tables de mémoire et d'historique
+
+L'application utilise également les tables existantes `public.sowia_memory_items` et `public.sowia_messages`. Le script SQL de cette PR ne les crée pas et ne modifie pas leurs politiques : elles doivent donc être contrôlées séparément dans le projet isolé avant de considérer l'isolation des comptes comme validée.
+
+Ajouter au précontrôle, toujours en lecture seule :
+
+```sql
+-- Vérifier l'existence et l'activation de RLS sur les deux tables.
+select n.nspname as schema_name, c.relname as table_name,
+       c.relrowsecurity as rls_enabled,
+       c.relforcerowsecurity as rls_forced
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public'
+  and c.relname in ('sowia_memory_items', 'sowia_messages')
+order by c.relname;
+
+-- Examiner toutes les politiques attachées à ces tables.
+select schemaname, tablename, policyname, permissive, roles,
+       cmd, qual, with_check
+from pg_policies
+where schemaname = 'public'
+  and tablename in ('sowia_memory_items', 'sowia_messages')
+order by tablename, policyname;
+
+-- Vérifier les privilèges SQL accordés aux rôles applicatifs.
+select table_schema, table_name, grantee, privilege_type
+from information_schema.role_table_grants
+where table_schema = 'public'
+  and table_name in ('sowia_memory_items', 'sowia_messages')
+  and grantee in ('anon', 'authenticated', 'public')
+order by table_name, grantee, privilege_type;
+```
+
+Résultats attendus : les deux tables existent, RLS est activé, et les politiques/privilèges ne permettent à aucun compte de lire, modifier ou supprimer les données d'un autre utilisateur. Si RLS est désactivé, si une politique permissive est trop large, ou si les privilèges sont inattendus, arrêter les essais et analyser avant toute modification.
+
+Ajouter ensuite ces essais avec les comptes A et B :
+
+| Test | Action | Résultat attendu |
+|---|---|---|
+| M1 | A crée une note mémoire et relit ses notes | Autorisé |
+| M2 | B tente de lire ou supprimer la note de A | Refusé ou aucune donnée de A visible |
+| M3 | A enregistre et relit son historique de conversation | Autorisé |
+| M4 | B tente de lire ou supprimer l'historique de A | Refusé ou aucune donnée de A visible |
+| M5 | Un utilisateur non connecté tente d'accéder aux deux tables | Refusé |
+
+Ne pas ajouter de politique ni modifier les tables sur la seule base de ces résultats sans avoir identifié leur schéma et leurs usages. Ce contrôle complète les scénarios Storage et Premium ; il ne les remplace pas.
+
 Ce précontrôle ne remplace pas les scénarios S1 à S8 ni les essais RLS Premium. Il réduit le risque qu'une politique héritée ou un bucket déjà utilisé fausse la validation.
