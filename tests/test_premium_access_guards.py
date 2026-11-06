@@ -62,6 +62,8 @@ def test_only_active_entitlement_is_returned(data):
         ("user-123", "ORDER-1", "-1.00", "EUR"),
         ("user-123", "ORDER-1", "not-a-price", "EUR"),
         ("user-123", "ORDER-1", "10000", "EUR"),
+        ("user-123", "ORDER-1", "12.999", "EUR"),
+        ("user-123", "ORDER-1", "0.001", "EUR"),
     ],
 )
 def test_entitlement_grant_rejects_incomplete_or_invalid_payment(arguments):
