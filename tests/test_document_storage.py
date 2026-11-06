@@ -1,4 +1,4 @@
-""""Tests for private Supabase PDF storage ownership and validation."""
+"""Tests for private Supabase PDF storage ownership and validation."""
 import pytest
 import document_storage as docs
 
@@ -85,4 +85,3 @@ def test_upload_rejects_non_pdf_oversized_and_fake_pdf_before_storage_access():
 def test_storage_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         docs.list_documents(FakeClient(), None)
-"
