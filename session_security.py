@@ -13,6 +13,10 @@ ACCOUNT_PRIVATE_KEYS = (
     "pdf_question",
     "premium_batch_pdf_files",
     "private_pdf_upload",
+    "pdf_title",
+    "pdf_body",
+    "professional_export_title",
+    "professional_export_body",
 )
 
 
