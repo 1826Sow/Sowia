@@ -24,6 +24,8 @@ from sowia_supabase_auth import (
     sign_out,
 )
 import cloud_storage
+import paypal_payments
+import premium_access
 from document_storage import upload_document, list_documents, download_document, delete_document
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
@@ -123,6 +125,36 @@ if cloud_mode:
             st.warning("La connexion GitHub attend encore la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
             st.caption(str(exc))
         st.stop()
+
+
+# PayPal returns the buyer to this server URL with the order ID in ?token=...
+# The server validates and captures the order before granting any entitlement.
+if cloud_mode and current_user is not None:
+    paypal_token = st.query_params.get("token")
+    if paypal_token:
+        try:
+            admin_client = premium_access.create_admin_client()
+            if admin_client is None:
+                raise RuntimeError(
+                    "Ajoutez SUPABASE_SERVICE_ROLE_KEY dans les secrets Streamlit "
+                    "avant d'activer la validation des achats."
+                )
+            paypal_payments.capture_premium_order(str(paypal_token), str(current_user.id))
+            payment_config = paypal_payments.paypal_configuration()
+            premium_access.grant_paypal_entitlement(
+                admin_client, str(current_user.id), str(paypal_token),
+                payment_config["amount"], payment_config["currency"],
+            )
+            st.query_params.clear()
+            st.session_state["paypal_purchase_confirmed"] = True
+            st.rerun()
+        except Exception as exc:
+            st.error("Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.")
+            st.caption(str(exc))
+    if st.query_params.get("paypal") == "cancel":
+        st.info("Le paiement a été annulé. Aucun montant n'a été confirmé par SOW IA.")
+        st.query_params.clear()
+
 
 def get_app_history(limit=30):
     if cloud_mode:
@@ -433,8 +465,50 @@ elif page == "Historique":
 
 elif page == "Abonnement":
     st.subheader("👑 Version Premium")
-    st.write("Les abonnements Stripe ne sont pas activés.")
-    st.caption("Stripe sera configuré après ajout des clés secrètes et validation du parcours de paiement.")
+    if not cloud_mode or current_user is None:
+        st.warning("Connectez-vous à votre espace personnel pour souscrire et conserver votre accès Premium.")
+    else:
+        try:
+            entitlement = premium_access.get_entitlement(supabase_client, current_user)
+        except Exception as exc:
+            entitlement = None
+            st.error("Impossible de vérifier votre abonnement auprès de Supabase.")
+            st.caption(str(exc))
+
+        if entitlement:
+            st.success("Votre accès SOW IA Premium est actif.")
+            st.caption(
+                f"Paiement : {entitlement.get('provider', '—')} · "
+                f"{entitlement.get('amount', '—')} {entitlement.get('currency', 'EUR')}"
+            )
+            st.write("Votre droit d'accès est enregistré sur votre compte et sera retrouvé lors de vos prochaines connexions.")
+        else:
+            try:
+                payment_config = paypal_payments.paypal_configuration()
+            except ValueError as exc:
+                payment_config = None
+                st.error(str(exc))
+
+            admin_ready = premium_access.create_admin_client() is not None
+            if payment_config is None:
+                st.info("Le paiement PayPal est préparé, mais attend les identifiants Sandbox et le prix Premium dans les secrets Streamlit.")
+            elif not admin_ready:
+                st.warning("Le paiement reste désactivé tant que SUPABASE_SERVICE_ROLE_KEY n'est pas configuré côté serveur.")
+            else:
+                st.write(f"Accès Premium : **{payment_config['amount']} €**")
+                st.caption("Paiement sécurisé PayPal — environnement Sandbox tant que PAYPAL_MODE n'est pas explicitement réglé sur live.")
+                if st.button("Préparer mon paiement PayPal", type="primary"):
+                    try:
+                        order = paypal_payments.create_premium_order(str(current_user.id))
+                        st.session_state["paypal_approval_url"] = order["approval_url"]
+                        st.session_state["paypal_order_id"] = order["id"]
+                    except Exception as exc:
+                        st.error("Impossible de préparer le paiement PayPal.")
+                        st.caption(str(exc))
+                approval_url = st.session_state.get("paypal_approval_url")
+                if approval_url:
+                    st.link_button("Continuer vers PayPal", approval_url, type="primary")
+                    st.caption("Après paiement, revenez automatiquement sur SOW IA. L'accès ne sera activé qu'après confirmation serveur.")
 
 elif page == "Paramètres":
     st.subheader("⚙️ Paramètres")
