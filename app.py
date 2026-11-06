@@ -435,6 +435,50 @@ elif page == "Analyse PDF":
                         st.error("L'analyse du document a échoué.")
                         st.caption(str(exc))
 
+
+    st.divider()
+    st.markdown("#### Analyse de plusieurs PDF — Premium")
+    st.write("Comparez jusqu'à 5 documents dans une seule analyse. Les fichiers sont traités dans votre session et ne sont pas enregistrés automatiquement.")
+    if not cloud_mode or current_user is None:
+        st.caption("Connectez-vous à votre espace SOW IA pour utiliser cette fonction Premium.")
+    else:
+        batch_files = st.file_uploader(
+            "Sélectionner jusqu'à 5 PDF",
+            type=["pdf"],
+            accept_multiple_files=True,
+            key="premium_batch_pdf_files",
+        )
+        if len(batch_files) > 5:
+            st.warning("La limite est de 5 PDF par analyse.")
+        if st.button(
+            "Analyser les PDF ensemble",
+            type="primary",
+            key="run_premium_batch_pdf",
+            disabled=not batch_files or len(batch_files) > 5,
+        ):
+            with st.spinner("Vérification Premium et préparation des documents..."):
+                try:
+                    from premium_batch_analysis import analyze_pdf_batch
+
+                    batch_documents = [
+                        (uploaded.name, extract_pdf_text(uploaded, max_chars=7000))
+                        for uploaded in batch_files
+                    ]
+                    if not API_KEY:
+                        st.warning("Le service IA n'est pas configuré. Aucun appel IA n'a été effectué.")
+                    else:
+                        batch_result = analyze_pdf_batch(
+                            supabase_client, current_user, batch_documents, answer
+                        )
+                        st.markdown("**Comparaison et synthèse des documents**")
+                        st.write(batch_result)
+                except PermissionError:
+                    st.error("Cette fonction nécessite un accès Premium actif. Aucun document n'a été envoyé au service IA.")
+                except ValueError as exc:
+                    st.error(str(exc))
+                except Exception:
+                    st.error("L'analyse groupée n'a pas abouti. Vérifiez les PDF et la disponibilité du service IA.")
+
 elif page == "Créer un PDF":
     st.subheader("🪄 Créer un PDF")
     st.write("Rédigez un document et téléchargez-le au format PDF. Cette fonction ne consomme aucun crédit OpenAI.")
