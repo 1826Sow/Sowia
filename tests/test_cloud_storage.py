@@ -129,3 +129,98 @@ def test_save_message_rejects_unknown_role_before_database_write():
 
     with pytest.raises(ValueError, match="Rôle de message invalide"):
         cloud_storage.save_message(Client(), User(), "private-session", "admin", "Nope")
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda client: cloud_storage.list_memories(client, None),
+        lambda client: cloud_storage.add_memory(client, None, "note"),
+        lambda client: cloud_storage.delete_memory(client, None, "memory-1"),
+        lambda client: cloud_storage.get_history(client, None, "session-1"),
+        lambda client: cloud_storage.clear_history(client, None, "session-1"),
+        lambda client: cloud_storage.save_message(client, None, "session-1", "user", "hi"),
+    ],
+)
+def test_every_memory_and_history_operation_rejects_anonymous_user_before_query(operation):
+    client = FakeClient()
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        operation(client)
+    assert client.tables == {}
+
+
+def test_history_query_caps_requested_limit_at_one_hundred():
+    client = FakeClient()
+    cloud_storage.get_history(client, User(), "private-session", limit=500)
+    assert ("limit", 100) in client.tables["sowia_messages"].operations
+
+
+
+def test_save_message_rejects_oversized_content_before_database_write():
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for oversized content")
+
+    with pytest.raises(ValueError, match="30 000"):
+        cloud_storage.save_message(
+            Client(), User(), "private-session", "user",
+            "x" * (cloud_storage.MAX_STORED_MESSAGE_CHARS + 1),
+        )
+
+
+@pytest.mark.parametrize("session_id", ["", " " , "x" * 65, None, 123])
+def test_save_message_rejects_invalid_session_identifier_before_database_write(session_id):
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid session")
+
+    with pytest.raises(ValueError, match="conversation"):
+        cloud_storage.save_message(Client(), User(), session_id, "user", "Bonjour")
+
+
+@pytest.mark.parametrize("content", ["", "  ", None, 123])
+def test_save_message_rejects_empty_or_non_text_content_before_database_write(content):
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid content")
+
+    with pytest.raises(ValueError, match="message"):
+        cloud_storage.save_message(Client(), User(), "private-session", "user", content)
+
+
+
+@pytest.mark.parametrize("session_id", ["", " ", "x" * 65, None, 123])
+def test_history_read_and_delete_reject_invalid_session_before_database_access(session_id):
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid session")
+
+    with pytest.raises(ValueError, match="conversation"):
+        cloud_storage.get_history(Client(), User(), session_id)
+    with pytest.raises(ValueError, match="conversation"):
+        cloud_storage.clear_history(Client(), User(), session_id)
+
+
+@pytest.mark.parametrize("limit", [True, 1.5, "30", None])
+def test_history_rejects_non_integer_limit_before_database_access(limit):
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid limit")
+
+    with pytest.raises(ValueError, match="entier"):
+        cloud_storage.get_history(Client(), User(), "private-session", limit=limit)
+
+
+def test_history_queries_are_scoped_to_each_authenticated_user():
+    first = FakeClient()
+    second = FakeClient()
+
+    class OtherUser:
+        id = "user-456"
+
+    cloud_storage.get_history(first, User(), "private-session")
+    cloud_storage.get_history(second, OtherUser(), "private-session")
+
+    assert ("user_id", "user-123") in first.tables["sowia_messages"].filters
+    assert ("user_id", "user-456") in second.tables["sowia_messages"].filters
+    assert ("user_id", "user-456") not in first.tables["sowia_messages"].filters
+    assert ("user_id", "user-123") not in second.tables["sowia_messages"].filters

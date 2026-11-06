@@ -1,0 +1,5 @@
+[server]
+# Bound individual browser uploads; batch PDF processing has a 20 MiB aggregate cap.
+maxUploadSize = 20
+# Keep WebSocket messages bounded while allowing the configured upload limit.
+maxMessageSize = 25

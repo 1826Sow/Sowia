@@ -1,0 +1,158 @@
+"""Negative tests for Premium entitlement access and grant validation."""
+from types import SimpleNamespace
+
+import pytest
+
+import premium_access
+
+
+class Query:
+    def __init__(self, data):
+        self.data = data
+        self.filters = []
+
+    def select(self, fields):
+        return self
+
+    def eq(self, field, value):
+        self.filters.append((field, value))
+        return self
+
+    def maybe_single(self):
+        return self
+
+    def execute(self):
+        return SimpleNamespace(data=self.data)
+
+
+class Client:
+    def __init__(self, data):
+        self.query = Query(data)
+
+    def table(self, name):
+        assert name == "sowia_entitlements"
+        return self.query
+
+
+class User:
+    id = "user-123"
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        None,
+        {"status": "inactive"},
+        {"status": "cancelled"},
+        {"status": "pending"},
+    ],
+)
+def test_only_active_entitlement_is_returned(data):
+    assert premium_access.get_entitlement(Client(data), User()) is None
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ("", "ORDER-1", "12.90", "EUR"),
+        ("user-123", "", "12.90", "EUR"),
+        ("user-123", "ORDER-1", "", "EUR"),
+        ("user-123", "ORDER-1", "12.90", "USD"),
+        ("user-123", "ORDER-1", "0", "EUR"),
+        ("user-123", "ORDER-1", "-1.00", "EUR"),
+        ("user-123", "ORDER-1", "not-a-price", "EUR"),
+        ("user-123", "ORDER-1", "10000", "EUR"),
+        ("user-123", "ORDER-1", "12.999", "EUR"),
+        ("user-123", "ORDER-1", "0.001", "EUR"),
+    ],
+)
+def test_entitlement_grant_rejects_incomplete_or_invalid_payment(arguments):
+    client = Client(None)
+    with pytest.raises(ValueError):
+        premium_access.grant_paypal_entitlement(client, *arguments)
+
+
+def test_entitlement_lookup_requires_authenticated_user():
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        premium_access.get_entitlement(Client(None), None)
+
+
+def test_grant_normalizes_amount_and_uses_user_scoped_upsert():
+    class WriteQuery:
+        def __init__(self):
+            self.payload = None
+            self.conflict = None
+
+        def upsert(self, payload, on_conflict):
+            self.payload = payload
+            self.conflict = on_conflict
+            return self
+
+        def execute(self):
+            return SimpleNamespace(data=[self.payload])
+
+    class WriteClient:
+        def __init__(self):
+            self.query = WriteQuery()
+
+        def table(self, name):
+            assert name == "sowia_entitlements"
+            return self.query
+
+    client = WriteClient()
+    premium_access.grant_paypal_entitlement(client, " user-123 ", " ORDER-1 ", "12.9", "EUR")
+    assert client.query.payload["user_id"] == "user-123"
+    assert client.query.payload["paypal_order_id"] == "ORDER-1"
+    assert client.query.payload["amount"] == "12.90"
+    assert client.query.payload["currency"] == "EUR"
+    assert client.query.conflict == "user_id"
+
+def test_server_guard_rejects_missing_premium_entitlement(monkeypatch):
+    import access_control
+
+    monkeypatch.setattr(premium_access, "get_entitlement", lambda client, user: None)
+    with pytest.raises(PermissionError, match="Premium actif"):
+        access_control.require_premium_access(object(), User(), "analyse PDF")
+
+
+def test_server_guard_allows_only_active_entitlement(monkeypatch):
+    import access_control
+
+    active = {"status": "active", "provider": "paypal"}
+    monkeypatch.setattr(premium_access, "get_entitlement", lambda client, user: active)
+    assert access_control.require_premium_access(object(), User()) == active
+
+
+def test_feature_policy_checks_premium_before_protected_operation(monkeypatch):
+    import feature_access
+
+    calls = []
+    def deny(client, user, feature_name=""):
+        calls.append(feature_name)
+        raise PermissionError("Premium requis")
+
+    monkeypatch.setattr("access_control.require_premium_access", deny)
+    with pytest.raises(PermissionError, match="Premium requis"):
+        feature_access.require_feature_access(object(), User(), "advanced_pdf_analysis")
+    assert calls == ["advanced pdf analysis"]
+
+
+def test_standard_feature_does_not_require_premium(monkeypatch):
+    import feature_access
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError("Aucune vérification Premium ne doit bloquer une fonction standard.")
+
+    monkeypatch.setattr("access_control.require_premium_access", unexpected)
+    assert feature_access.require_feature_access(object(), User(), "pdf_creation") is None
+
+def test_server_guard_fails_closed_when_entitlement_lookup_errors(monkeypatch):
+    import access_control
+
+    def lookup_error(client, user):
+        raise RuntimeError("Supabase indisponible")
+
+    monkeypatch.setattr(premium_access, "get_entitlement", lookup_error)
+    with pytest.raises(RuntimeError, match="Supabase indisponible"):
+        access_control.require_premium_access(object(), User(), "analyse PDF")
+

@@ -5,6 +5,7 @@ import paypal_payments as paypal
 
 def _settings(monkeypatch, **overrides):
     values = {
+        "SOWIA_PAYMENTS_ENABLED": "true",
         "PAYPAL_CLIENT_ID": "sandbox-client",
         "PAYPAL_CLIENT_SECRET": "sandbox-secret",
         "PAYPAL_PREMIUM_PRICE": "12.90",
@@ -15,6 +16,11 @@ def _settings(monkeypatch, **overrides):
     }
     values.update(overrides)
     monkeypatch.setattr(paypal, "get_setting", lambda key, default="": values.get(key, default))
+
+
+def test_payments_remain_disabled_by_default_even_if_credentials_exist(monkeypatch):
+    _settings(monkeypatch, SOWIA_PAYMENTS_ENABLED="false")
+    assert paypal.paypal_configuration() is None
 
 
 def test_configuration_is_disabled_until_all_secrets_exist(monkeypatch):
@@ -30,26 +36,76 @@ def test_configuration_uses_sandbox_and_euro_amount(monkeypatch):
     assert config["currency"] == "EUR"
 
 
+@pytest.mark.parametrize("price", ["12.999", "12.901", "0.001", "NaN", "Infinity"])
+def test_configuration_rejects_invalid_cent_precision(monkeypatch, price):
+    _settings(monkeypatch, PAYPAL_PREMIUM_PRICE=price)
+    with pytest.raises(ValueError):
+        paypal.paypal_configuration()
+
+
 def test_configuration_rejects_non_https_return_url(monkeypatch):
     _settings(monkeypatch, PAYPAL_RETURN_URL="http://example.test/return")
     with pytest.raises(ValueError, match="HTTPS"):
         paypal.paypal_configuration()
 
 
-def test_capture_refuses_order_belonging_to_another_user(monkeypatch):
+
+def test_order_creation_binds_the_purchase_to_user_and_premium_product(monkeypatch):
     _settings(monkeypatch)
+    calls = []
+
     class Response:
         def __init__(self, data):
             self.data = data
+
         def raise_for_status(self):
             pass
+
+        def json(self):
+            return self.data
+
+    def fake_post(url, **kwargs):
+        calls.append((url, kwargs))
+        if url.endswith("/v1/oauth2/token"):
+            return Response({"access_token": "test-token"})
+        return Response({
+            "id": "ORDER-BOUND",
+            "status": "CREATED",
+            "links": [{"rel": "approve", "href": "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-BOUND"}],
+        })
+
+    monkeypatch.setattr(paypal.requests, "post", fake_post)
+    result = paypal.create_premium_order("user-123")
+
+    order_call = next(call for call in calls if call[0].endswith("/v2/checkout/orders"))
+    unit = order_call[1]["json"]["purchase_units"][0]
+    assert unit["custom_id"] == "user-123"
+    assert unit["reference_id"] == "sowia-premium"
+    assert result == {
+        "id": "ORDER-BOUND",
+        "approval_url": "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-BOUND",
+    }
+
+
+def test_capture_refuses_order_belonging_to_another_user(monkeypatch):
+    _settings(monkeypatch)
+
+    class Response:
+        def __init__(self, data):
+            self.data = data
+
+        def raise_for_status(self):
+            pass
+
         def json(self):
             return self.data
 
     calls = []
+
     def fake_post(url, **kwargs):
         calls.append(("post", url))
         return Response({"access_token": "test-token"})
+
     def fake_get(url, **kwargs):
         calls.append(("get", url))
         return Response({
@@ -68,3 +124,160 @@ def test_capture_refuses_order_belonging_to_another_user(monkeypatch):
     with pytest.raises(PermissionError, match="ne correspond pas"):
         paypal.capture_premium_order("ORDER-1", "current-user")
     assert [kind for kind, _ in calls] == ["post", "get"]
+
+
+def test_completed_capture_requires_exact_amount_and_currency():
+    config = {"currency": "EUR", "amount": "12.90"}
+    payload = {
+        "purchase_units": [{
+            "custom_id": "user-123",
+            "reference_id": "sowia-premium",
+            "payments": {"captures": [{
+                "status": "COMPLETED",
+                "amount": {"currency_code": "EUR", "value": "12.90"},
+            }]}
+        }]
+    }
+    assert paypal._validate_completed_capture(payload, config) is payload
+
+
+@pytest.mark.parametrize(
+    "capture",
+    [
+        {"status": "PENDING", "amount": {"currency_code": "EUR", "value": "12.90"}},
+        {"status": "COMPLETED", "amount": {"currency_code": "USD", "value": "12.90"}},
+        {"status": "COMPLETED", "amount": {"currency_code": "EUR", "value": "0.01"}},
+    ],
+)
+def test_completed_capture_rejects_unpaid_or_mismatched_capture(capture):
+    config = {"currency": "EUR", "amount": "12.90"}
+    payload = {"purchase_units": [{"payments": {"captures": [capture]}}]}
+    with pytest.raises(PermissionError):
+        paypal._validate_completed_capture(payload, config)
+
+
+def test_completed_capture_rejects_missing_or_ambiguous_capture():
+    config = {"currency": "EUR", "amount": "12.90"}
+    with pytest.raises(PermissionError, match="absente ou ambiguë"):
+        paypal._validate_completed_capture({"purchase_units": []}, config)
+
+    capture = {"status": "COMPLETED", "amount": {"currency_code": "EUR", "value": "12.90"}}
+    payload = {"purchase_units": [{"payments": {"captures": [capture, capture]}}]}
+    with pytest.raises(PermissionError, match="absente ou ambiguë"):
+        paypal._validate_completed_capture(payload, config)
+
+
+
+@pytest.mark.parametrize(
+    "unit",
+    [
+        {"custom_id": "another-user", "reference_id": "sowia-premium",
+         "payments": {"captures": [{"status": "COMPLETED",
+          "amount": {"currency_code": "EUR", "value": "12.90"}}]}},
+        {"custom_id": "user-123", "reference_id": "another-product",
+         "payments": {"captures": [{"status": "COMPLETED",
+          "amount": {"currency_code": "EUR", "value": "12.90"}}]}},
+    ],
+)
+def test_completed_capture_rejects_wrong_owner_or_product(unit):
+    config = {"currency": "EUR", "amount": "12.90"}
+    with pytest.raises(PermissionError, match="utilisateur SOW IA"):
+        paypal._validate_completed_capture(
+            {"id": "ORDER-1", "purchase_units": [unit]},
+            config,
+            expected_order_id="ORDER-1",
+            expected_user_id="user-123",
+        )
+
+
+def test_completed_capture_rejects_multiple_purchase_units():
+    config = {"currency": "EUR", "amount": "12.90"}
+    with pytest.raises(PermissionError, match="absente ou ambiguë"):
+        paypal._validate_completed_capture(
+            {"id": "ORDER-1", "purchase_units": [{}, {}]},
+            config,
+            expected_order_id="ORDER-1",
+            expected_user_id="user-123",
+        )
+
+
+def test_payments_enabled_requires_explicit_owner_switch(monkeypatch):
+    _settings(monkeypatch, SOWIA_PAYMENTS_ENABLED="false")
+    assert paypal.payments_enabled() is False
+    _settings(monkeypatch, SOWIA_PAYMENTS_ENABLED="true")
+    assert paypal.payments_enabled() is True
+
+
+def test_disabled_payments_never_make_a_paypal_network_request(monkeypatch):
+    _settings(monkeypatch, SOWIA_PAYMENTS_ENABLED="false")
+
+    def unexpected_network_call(*args, **kwargs):
+        pytest.fail("PayPal must not be contacted while payments are disabled")
+
+    monkeypatch.setattr(paypal.requests, "post", unexpected_network_call)
+    with pytest.raises(RuntimeError, match="configuration PayPal"):
+        paypal.create_premium_order("user-123")
+
+
+def test_capture_rejects_malformed_order_id_before_network_access(monkeypatch):
+    _settings(monkeypatch)
+
+    def unexpected_network_call(*args, **kwargs):
+        pytest.fail("Malformed PayPal order IDs must be rejected before network access")
+
+    monkeypatch.setattr(paypal.requests, "post", unexpected_network_call)
+    with pytest.raises(ValueError, match="Identifiant de commande"):
+        paypal.capture_premium_order("../other-order", "user-123")
+
+
+def test_completed_capture_must_match_the_requested_order_id():
+    config = {"currency": "EUR", "amount": "12.90"}
+    payload = {
+        "id": "ANOTHER-ORDER",
+        "purchase_units": [{
+            "payments": {"captures": [{
+                "status": "COMPLETED",
+                "amount": {"currency_code": "EUR", "value": "12.90"},
+            }]}
+        }],
+    }
+    with pytest.raises(PermissionError, match="ne correspond pas"):
+        paypal._validate_completed_capture(
+            payload, config, expected_order_id="EXPECTED-ORDER"
+        )
+
+
+@pytest.mark.parametrize(
+    "order",
+    [
+        {"id": "ORDER-BOUND", "status": "APPROVED",
+         "links": [{"rel": "approve", "href": "https://www.sandbox.paypal.com/checkoutnow"}]},
+        {"id": "ORDER-BOUND", "status": "CREATED",
+         "links": [{"rel": "approve", "href": "https://paypal.example/checkout"}]},
+        {"id": "ORDER-BOUND", "status": "CREATED",
+         "links": [{"rel": "approve", "href": "http://www.sandbox.paypal.com/checkoutnow"}]},
+        {"id": "ORDER-BOUND", "status": "CREATED",
+         "links": [{"rel": "approve", "href": "https://www.sandbox.paypal.com.attacker.example/checkoutnow"}]},
+    ],
+)
+def test_order_creation_rejects_untrusted_approval_responses(monkeypatch, order):
+    _settings(monkeypatch)
+
+    class Response:
+        def __init__(self, data):
+            self.data = data
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.data
+
+    def fake_post(url, **kwargs):
+        if url.endswith("/v1/oauth2/token"):
+            return Response({"access_token": "test-token"})
+        return Response(order)
+
+    monkeypatch.setattr(paypal.requests, "post", fake_post)
+    with pytest.raises(RuntimeError):
+        paypal.create_premium_order("user-123")

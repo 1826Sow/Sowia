@@ -1,11 +1,12 @@
 """SOW IA — application web Streamlit."""
 import uuid
-import traceback
 import streamlit as st
 from settings import get_setting
 
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
+from user_modes import MODE_OPTIONS
+from workspace_access import WORKSPACE_MODES, normalize_workspace_mode, workspace_home_content, workspace_navigation
 from storage import (
     add_memory as local_add_memory,
     clear_history as local_clear_history,
@@ -28,6 +29,7 @@ import cloud_storage
 import paypal_payments
 import premium_access
 from document_storage import upload_document, list_documents, download_document, delete_document
+from session_security import clear_account_private_state
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
@@ -56,9 +58,11 @@ if "pdf_text" not in st.session_state:
     st.session_state.pdf_text = ""
 
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
-auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "false")).strip().lower() in {"1", "true", "yes"}
+auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "true")).strip().lower() in {"1", "true", "yes"}
 supabase_enabled = configuration_ready()
 if auth_required and not supabase_enabled:
+    # Fail closed and erase any private data left in this browser session.
+    clear_account_private_state(st.session_state)
     st.error("SOW IA est en mode protégé, mais Supabase n'est pas encore configuré. L'accès est fermé jusqu'à la configuration de l'authentification.")
     st.stop()
 
@@ -85,43 +89,46 @@ if cloud_mode:
         auth_stage = "vérification de la session Supabase"
         current_user = authenticated_user(supabase_client)
         if current_user is not None:
-            # Reuse one private conversation history for this authenticated account.
-            st.session_state.session_id = str(
-                uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
-            )
+            # Never retain a previously authenticated user's private PDF bytes
+            # when the browser session changes accounts.
+            document_owner_id = str(current_user.id)
+            previous_document_owner = st.session_state.get("private_document_owner_id")
+            if previous_document_owner != document_owner_id:
+                # Clear every account-scoped cache, upload and preference before
+                # attaching this browser session to the newly authenticated user.
+                clear_account_private_state(st.session_state)
+                st.session_state["private_document_owner_id"] = document_owner_id
+
+            # Keep the random session ID created for this browser session.
+            # Separate tabs/devices for the same account must not share a live conversation.
     except Exception as exc:
         # Keep the application usable if the optional Supabase connection is
         # unavailable. Never bypass authentication when the deployment
         # explicitly requires it.
         st.session_state.pop("sowia_supabase_client", None)
         if auth_required:
-            # Show a compact diagnostic directly in the main error box so it
-            # remains visible on small mobile screens.
-            detail = str(exc)
-            for secret_name in ("SUPABASE_URL", "SUPABASE_ANON_KEY"):
-                secret_value = str(get_setting(secret_name, "")).strip()
-                if secret_value:
-                    detail = detail.replace(secret_value, "[valeur masquée]")
-            trace = traceback.format_exc()
-            for secret_name in ("SUPABASE_URL", "SUPABASE_ANON_KEY"):
-                secret_value = str(get_setting(secret_name, "")).strip()
-                if secret_value:
-                    trace = trace.replace(secret_value, "[valeur masquée]")
+            # Authentication could not be verified: discard any account-scoped
+            # data before stopping, even when the auth service itself is down.
+            clear_account_private_state(st.session_state)
+            # Do not expose raw SDK exceptions or tracebacks in a public login screen.
+            # They may contain request metadata, URLs, or provider internals.
             st.error(
                 "La connexion sécurisée Supabase est indisponible. "
-                "L'accès reste fermé car l'authentification est obligatoire.\n\n"
-                f"Étape : {auth_stage}.\nDiagnostic : {type(exc).__name__} — {detail}"
+                "L'accès reste fermé car l'authentification est obligatoire. "
+                "Veuillez réessayer plus tard."
             )
-            with st.expander("Détails techniques pour le diagnostic"):
-                st.code(trace)
             st.stop()
         st.warning("Supabase ne répond pas correctement : SOW IA continue en mode local temporaire. Les fonctions locales, dont la création de PDF, restent accessibles. Les données locales ne sont pas destinées à un usage partagé.")
-        st.caption(f"Détail technique : {exc}")
+        # Keep provider diagnostics out of the user interface.
         cloud_mode = False
         current_user = None
         supabase_client = None
 
     if current_user is None:
+        # No authenticated identity (including an expired/revoked session):
+        # discard any private data retained by this browser session before
+        # showing the login screen. Keep the Supabase client for the OAuth flow.
+        clear_account_private_state(st.session_state)
         st.markdown(
             '<div class="hero"><h1>SOW IA</h1><p>Votre espace personnel sécurisé.</p></div>',
             unsafe_allow_html=True,
@@ -134,7 +141,7 @@ if cloud_mode:
             st.link_button("Continuer avec GitHub", login_url, type="primary")
         except Exception as exc:
             st.warning("La connexion GitHub attend encore la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
-            st.caption(str(exc))
+            # Technical details stay in server-side logs, not in the browser.
         st.stop()
 
 
@@ -142,16 +149,21 @@ if cloud_mode:
 # The server validates and captures the order before granting any entitlement.
 if cloud_mode and current_user is not None:
     paypal_token = st.query_params.get("token")
-    if paypal_token:
+    if paypal_token and not paypal_payments.payments_enabled():
+        # Ignore stale/external return URLs while checkout is intentionally off.
+        st.info("Les paiements sont volontairement désactivés pendant la finalisation de SOW IA. Aucun paiement ni accès Premium n'a été déclenché.")
+        st.query_params.clear()
+    elif paypal_token:
         try:
+            payment_config = paypal_payments.paypal_configuration()
+            if payment_config is None:
+                raise RuntimeError("La configuration PayPal est incomplète.")
             admin_client = premium_access.create_admin_client()
             if admin_client is None:
                 raise RuntimeError(
-                    "Ajoutez SUPABASE_SERVICE_ROLE_KEY dans les secrets Streamlit "
-                    "avant d'activer la validation des achats."
+                    "La validation sécurisée des achats n'est pas configurée côté serveur."
                 )
             paypal_payments.capture_premium_order(str(paypal_token), str(current_user.id))
-            payment_config = paypal_payments.paypal_configuration()
             premium_access.grant_paypal_entitlement(
                 admin_client, str(current_user.id), str(paypal_token),
                 payment_config["amount"], payment_config["currency"],
@@ -161,7 +173,7 @@ if cloud_mode and current_user is not None:
             st.rerun()
         except Exception as exc:
             st.error("Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.")
-            st.caption(str(exc))
+            # Technical details stay in server-side logs, not in the browser.
     if st.query_params.get("paypal") == "cancel":
         st.info("Le paiement a été annulé. Aucun montant n'a été confirmé par SOW IA.")
         st.query_params.clear()
@@ -208,19 +220,34 @@ with st.sidebar:
         st.success("Espace personnel sécurisé")
         st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
         if st.button("Se déconnecter", use_container_width=True):
+            # Erase local private caches before the network sign-out, so a
+            # transient Supabase error cannot leave the previous account's
+            # PDF or checkout data in this browser session.
+            clear_account_private_state(st.session_state)
             sign_out(supabase_client)
             st.session_state.pop("sowia_supabase_client", None)
-            st.session_state.session_id = str(uuid.uuid4())
             st.rerun()
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
+    workspace_mode = st.selectbox(
+        "Espace de travail",
+        options=WORKSPACE_MODES,
+        key="workspace_mode",
+        help="Choisissez votre contexte. Les droits Premium restent vérifiés séparément côté serveur.",
+    )
+    selected_mode = st.selectbox(
+        "Mode de réponse de l’assistant",
+        options=list(MODE_OPTIONS),
+        key="sowia_user_mode",
+        help="Ce choix adapte les réponses de l’assistant sans modifier votre abonnement.",
+    )
+    st.caption("Espace actif : " + normalize_workspace_mode(workspace_mode))
+    navigation_pages = workspace_navigation(workspace_mode)
+    if st.session_state.get("page_nav") not in navigation_pages:
+        st.session_state.page_nav = "Accueil"
     page = st.radio(
         "Navigation",
-        [
-            "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
-            "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-            "Abonnement", "Paramètres", "Aide",
-        ],
+        navigation_pages,
         key="page_nav",
     )
     st.divider()
@@ -233,20 +260,22 @@ st.markdown(
 st.write("")
 
 if page == "Accueil":
-    st.subheader("Bienvenue sur SOW IA")
-    st.write("Accédez directement à vos outils :")
-    shortcuts = [
-        ("💬", "Assistant IA", "Posez vos questions"),
-        ("🧠", "Ma mémoire", "Enregistrez vos informations utiles"),
-        ("🌐", "Recherche Web", "Recherchez des informations en ligne"),
-        ("📄", "Analyse PDF", "Importez et analysez un PDF"),
-        ("🪄", "Créer un PDF", "Préparez vos futurs documents PDF"),
-        ("📁", "Mes documents", "Retrouvez votre espace documentaire"),
-        ("🕘", "Historique", "Consultez vos conversations"),
-        ("👑", "Abonnement", "Découvrez l’espace Premium"),
-        ("⚙️", "Paramètres", "Vérifiez votre configuration"),
-        ("❓", "Aide", "Consultez les indications d’utilisation"),
-    ]
+    try:
+        premium_entitlement = (
+            premium_access.get_entitlement(supabase_client, current_user)
+            if cloud_mode and current_user is not None else None
+        )
+        premium_active = bool(
+            premium_entitlement and premium_entitlement.get("status") == "active"
+        )
+    except Exception:
+        premium_active = False
+    home = workspace_home_content(workspace_mode, premium_active)
+    st.subheader(home["title"])
+    st.write(home["description"])
+    if home["notice"]:
+        st.info(home["notice"])
+    shortcuts = home["shortcuts"]
     for start in range(0, len(shortcuts), 3):
         cols = st.columns(3)
         for col, (icon, title, desc) in zip(cols, shortcuts[start:start + 3]):
@@ -266,25 +295,42 @@ elif page == "Assistant IA":
     st.subheader("💬 Mon Assistant IA")
     if not API_KEY:
         st.warning("Pour activer les réponses IA, ajoutez votre clé API dans les secrets de l'hébergement. Ne la partagez jamais sur GitHub.")
-    memories = get_app_memories()
+    try:
+        memories = get_app_memories()
+    except Exception:
+        memories = []
+        st.warning("La mémoire est momentanément indisponible. Vous pouvez poursuivre sans les notes enregistrées.")
     if memories:
         st.caption(f"{len(memories)} note(s) mémoire seront disponibles à l'assistant.")
-    for item in get_app_history():
-        with st.chat_message(item["role"]):
-            st.markdown(item["content"])
+    try:
+        chat_history = get_app_history()
+        for item in chat_history:
+            with st.chat_message(item["role"]):
+                st.markdown(item["content"])
+    except Exception:
+        chat_history = None
+        st.error("L'historique est momentanément indisponible. Votre compte et vos données ne sont pas supprimés.")
     prompt = st.chat_input("Écrivez votre message...")
     if prompt:
-        save_app_message("user", prompt)
         with st.chat_message("user"):
             st.markdown(prompt)
+        try:
+            save_app_message("user", prompt)
+        except Exception:
+            st.warning("Le message ne peut pas être enregistré pour le moment. La réponse sera tentée sans historique sauvegardé.")
         with st.chat_message("assistant"):
             try:
+                prior_messages = chat_history if chat_history is not None else []
                 reply = answer(
-                    get_app_history(),
+                    [*prior_messages, {"role": "user", "content": prompt}],
                     memories=[item["content"] for item in memories],
+                    user_mode=st.session_state.get("sowia_user_mode", "Personnel"),
                 )
                 st.markdown(reply)
-                save_app_message("assistant", reply)
+                try:
+                    save_app_message("assistant", reply)
+                except Exception:
+                    st.warning("La réponse est affichée, mais son enregistrement dans l'historique a échoué.")
             except Exception as exc:
                 error_text = str(exc)
                 if "429" in error_text or "insufficient_quota" in error_text or "quota" in error_text.lower():
@@ -293,10 +339,14 @@ elif page == "Assistant IA":
                     st.error("La clé API du fournisseur IA n'est pas reconnue. Vérifiez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit.")
                 else:
                     st.error("Une erreur est survenue pendant la réponse de l'assistant.")
-                    st.caption(error_text)
+                    # Avoid exposing raw provider or network errors to users.
     if st.button("Effacer cette conversation"):
-        clear_app_history()
-        st.rerun()
+        try:
+            clear_app_history()
+            st.success("Cette conversation a été effacée.")
+            st.rerun()
+        except Exception:
+            st.error("Impossible d'effacer l'historique pour le moment. Réessayez plus tard.")
 
 elif page == "Ma mémoire":
     st.subheader("🧠 Ma mémoire")
@@ -321,18 +371,66 @@ elif page == "Ma mémoire":
                 add_app_memory(note)
                 st.success("Note ajoutée à la mémoire.")
                 st.rerun()
-            except (ValueError, PermissionError) as exc:
-                st.error(str(exc))
+            except (ValueError, PermissionError):
+                st.error("Impossible d’enregistrer cette note mémoire. Vérifiez son contenu et réessayez.")
+            except Exception:
+                st.error("Le service mémoire est momentanément indisponible. Réessayez plus tard.")
+
+    st.divider()
+    st.markdown("#### Mémoire étendue — Premium")
+    st.caption("Enregistrez une note plus détaillée, jusqu'à 5 000 caractères. Vos notes restent dans votre espace personnel.")
+    if not cloud_mode or current_user is None:
+        st.caption("La mémoire étendue nécessite une connexion à votre espace SOW IA et un accès Premium actif.")
+    else:
+        try:
+            extended_memory_entitlement = premium_access.get_entitlement(supabase_client, current_user)
+        except Exception:
+            extended_memory_entitlement = None
+        if extended_memory_entitlement and extended_memory_entitlement.get("status") == "active":
+            with st.form("add_extended_memory_form", clear_on_submit=True):
+                extended_note = st.text_area(
+                    "Note mémoire détaillée",
+                    placeholder="Ajoutez un contexte, des préférences ou des consignes durables...",
+                    max_chars=5000,
+                    height=180,
+                )
+                extended_submitted = st.form_submit_button(
+                    "Enregistrer une note étendue",
+                    disabled=not extended_note.strip(),
+                )
+                if extended_submitted:
+                    try:
+                        from premium_memory import add_extended_memory
+
+                        add_extended_memory(supabase_client, current_user, extended_note)
+                        st.success("Note mémoire étendue enregistrée.")
+                        st.rerun()
+                    except (ValueError, PermissionError) as exc:
+                        st.error("La note mémoire n’a pas pu être enregistrée. Vérifiez son contenu et réessayez.")
+                    except Exception:
+                        st.error("Impossible d'enregistrer cette note étendue. Réessayez plus tard.")
+        else:
+            st.caption("Fonction réservée aux comptes disposant d'un accès Premium actif.")
+
     st.markdown("#### Informations mémorisées")
-    memories = get_app_memories()
-    if not memories:
-        st.caption("Aucune note enregistrée pour le moment.")
-    for item in memories:
-        with st.container(border=True):
-            st.write(item["content"])
-            if st.button("Supprimer cette note", key=f"delete_memory_{item['id']}"):
-                delete_app_memory(item["id"])
-                st.rerun()
+    try:
+        memories = get_app_memories()
+    except Exception:
+        memories = None
+        st.error("Impossible de charger vos notes mémoire pour le moment. Réessayez plus tard.")
+
+    if memories is not None:
+        if not memories:
+            st.caption("Aucune note enregistrée pour le moment.")
+        for item in memories:
+            with st.container(border=True):
+                st.write(item["content"])
+                if st.button("Supprimer cette note", key=f"delete_memory_{item['id']}"):
+                    try:
+                        delete_app_memory(item["id"])
+                        st.rerun()
+                    except Exception:
+                        st.error("Impossible de supprimer cette note pour le moment. Réessayez plus tard.")
 
 elif page == "Recherche Web":
     st.subheader("🌐 Recherche Web")
@@ -342,8 +440,8 @@ elif page == "Recherche Web":
             for item in search_web(query):
                 st.markdown(f"**[{item.get('title', 'Résultat')}]({item.get('url', '#')})**")
                 st.write(item.get("content", ""))
-        except Exception as exc:
-            st.error(str(exc))
+        except Exception:
+            st.error("La recherche Web est temporairement indisponible. Réessayez plus tard.")
 
 elif page == "Analyse PDF":
     st.subheader("📄 Analyse PDF")
@@ -352,11 +450,38 @@ elif page == "Analyse PDF":
         try:
             st.session_state.pdf_text = extract_pdf_text(file)
             st.success("Texte extrait.")
-        except Exception as exc:
-            st.error(str(exc))
+        except Exception:
+            st.error("Le PDF n’a pas pu être lu. Vérifiez le fichier et réessayez.")
     if st.session_state.pdf_text:
         st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
         st.download_button("Télécharger le texte", st.session_state.pdf_text, file_name="sowia_extraction.txt")
+
+        st.divider()
+        st.markdown("#### Analyse PDF avancée — Premium")
+        st.write("Obtenez une analyse structurée du document : synthèse, points clés, éléments à vérifier et questions utiles.")
+        if not cloud_mode or current_user is None:
+            st.caption("Cette analyse avancée nécessite une connexion à votre espace SOW IA et un accès Premium actif.")
+        else:
+            if st.button("Lancer l'analyse PDF avancée", type="primary", key="run_advanced_pdf_analysis"):
+                if not API_KEY:
+                    st.warning("Le service IA n'est pas configuré. L'analyse avancée nécessite un fournisseur IA disponible.")
+                else:
+                    with st.spinner("Vérification Premium et analyse du document..."):
+                        try:
+                            from premium_analysis import analyze_pdf_advanced
+
+                            advanced_result = analyze_pdf_advanced(
+                                supabase_client, current_user, st.session_state.pdf_text, answer
+                            )
+                            st.markdown("**Analyse avancée SOW IA**")
+                            st.write(advanced_result)
+                        except PermissionError:
+                            st.error("Cette fonction nécessite un accès Premium actif. Aucun document n'a été envoyé au service IA.")
+                        except ValueError as exc:
+                            st.error(str(exc))
+                        except Exception:
+                            st.error("L'analyse avancée n'a pas abouti. Vérifiez la disponibilité du service IA et réessayez.")
+
         st.markdown("#### Poser une question sur ce PDF")
         st.caption("SOW IA répond à partir du texte extrait. Le document reste dans votre session et n'est pas ajouté à votre historique.")
         pdf_question = st.text_input(
@@ -373,18 +498,86 @@ elif page == "Analyse PDF":
                         response = answer(
                             [{"role": "user", "content": pdf_question.strip()}],
                             document_context=st.session_state.pdf_text,
+                            user_mode=st.session_state.get("sowia_user_mode", "Personnel"),
                         )
                         st.markdown("**Réponse de SOW IA**")
                         st.write(response)
                     except Exception as exc:
                         st.error("L'analyse du document a échoué.")
-                        st.caption(str(exc))
+                        # Technical details stay in server-side logs, not in the browser.
+
+
+    st.divider()
+    st.markdown("#### Analyse de plusieurs PDF — Premium")
+    st.write("Comparez jusqu'à 5 documents dans une seule analyse. Les fichiers sont traités dans votre session et ne sont pas enregistrés automatiquement.")
+    if not cloud_mode or current_user is None:
+        st.caption("Connectez-vous à votre espace SOW IA pour utiliser cette fonction Premium.")
+    else:
+        batch_files = st.file_uploader(
+            "Sélectionner jusqu'à 5 PDF",
+            type=["pdf"],
+            accept_multiple_files=True,
+            key="premium_batch_pdf_files",
+        )
+        if len(batch_files) > 5:
+            st.warning("La limite est de 5 PDF par analyse.")
+        if st.button(
+            "Analyser les PDF ensemble",
+            type="primary",
+            key="run_premium_batch_pdf",
+            disabled=len(batch_files) < 2 or len(batch_files) > 5,
+        ):
+            with st.spinner("Vérification Premium et préparation des documents..."):
+                try:
+                    from feature_access import require_feature_access
+                    from premium_batch_analysis import analyze_pdf_batch, prepare_pdf_batch_uploads
+
+                    # Check Premium before spending CPU on parsing uploaded files.
+                    require_feature_access(
+                        supabase_client, current_user, "batch_pdf_analysis"
+                    )
+                    batch_documents = prepare_pdf_batch_uploads(
+                        batch_files, extract_pdf_text
+                    )
+                    if not API_KEY:
+                        st.warning("Le service IA n'est pas configuré. Aucun appel IA n'a été effectué.")
+                    else:
+                        batch_result = analyze_pdf_batch(
+                            supabase_client, current_user, batch_documents, answer
+                        )
+                        st.markdown("**Comparaison et synthèse des documents**")
+                        st.write(batch_result)
+                except PermissionError:
+                    st.error("Cette fonction nécessite un accès Premium actif. Aucun document n'a été envoyé au service IA.")
+                except ValueError as exc:
+                    st.error(str(exc))
+                except Exception:
+                    st.error("L'analyse groupée n'a pas abouti. Vérifiez les PDF et la disponibilité du service IA.")
 
 elif page == "Créer un PDF":
     st.subheader("🪄 Créer un PDF")
     st.write("Rédigez un document et téléchargez-le au format PDF. Cette fonction ne consomme aucun crédit OpenAI.")
-    pdf_title = st.text_input("Titre du document", value="Mon document")
-    pdf_body = st.text_area("Contenu du document", height=300, placeholder="Écrivez ou collez votre texte ici...")
+    if normalize_workspace_mode(st.session_state.get("workspace_mode")) == "Professionnel":
+        from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
+
+        selected_template = st.selectbox(
+            "Modèle professionnel (facultatif)",
+            PROFESSIONAL_TEMPLATE_NAMES,
+            key="professional_pdf_template",
+        )
+        if st.button("Insérer ce modèle", key="insert_professional_pdf_template"):
+            template = get_professional_template(selected_template)
+            st.session_state["pdf_title"] = template["title"]
+            st.session_state["pdf_body"] = template["body"]
+    st.session_state.setdefault("pdf_title", "Mon document")
+    st.session_state.setdefault("pdf_body", "")
+    pdf_title = st.text_input("Titre du document", key="pdf_title")
+    pdf_body = st.text_area(
+        "Contenu du document",
+        height=300,
+        placeholder="Écrivez ou collez votre texte ici...",
+        key="pdf_body",
+    )
     if st.button("Créer le PDF", type="primary", disabled=not pdf_body.strip()):
         try:
             from io import BytesIO
@@ -412,9 +605,78 @@ elif page == "Créer un PDF":
             st.download_button("Télécharger mon PDF", data=buffer.getvalue(), file_name="document_sow_ia.pdf", mime="application/pdf", type="primary")
         except Exception as exc:
             st.error("La création du PDF a échoué. Vérifiez que les dépendances sont installées.")
-            st.caption(str(exc))
+            # Technical details stay in server-side logs, not in the browser.
+    st.divider()
+    st.markdown("#### Export professionnel Premium")
+    st.write("Créez un PDF professionnel avec page de garde, mise en page soignée et pagination. Cette fonction ne consomme aucun crédit IA.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous à votre espace personnel pour vérifier vos droits Premium.")
+    else:
+        try:
+            premium_entitlement = premium_access.get_entitlement(supabase_client, current_user)
+        except Exception:
+            premium_entitlement = None
+            st.warning("Impossible de vérifier votre accès Premium pour le moment.")
+        if not premium_entitlement or premium_entitlement.get("status") != "active":
+            st.caption("Fonction réservée aux comptes disposant d'un accès Premium actif.")
+        else:
+            with st.form("premium_professional_export_form"):
+                professional_title = st.text_input("Titre professionnel", value="Rapport SOW IA", key="professional_export_title")
+                professional_body = st.text_area(
+                    "Contenu du rapport",
+                    height=220,
+                    placeholder="Rédigez ou collez le contenu de votre rapport...",
+                    key="professional_export_body",
+                )
+                create_professional_export = st.form_submit_button(
+                    "Créer l'export professionnel",
+                    type="primary",
+                    disabled=not professional_body.strip(),
+                )
+            if create_professional_export:
+                try:
+                    from feature_access import require_feature_access
+                    from premium_exports import build_professional_pdf
+
+                    require_feature_access(
+                        supabase_client, current_user, "advanced_professional_exports"
+                    )
+                    professional_pdf = build_professional_pdf(
+                        professional_title, professional_body
+                    )
+                    st.success("Votre export professionnel est prêt.")
+                    st.download_button(
+                        "Télécharger le PDF professionnel",
+                        data=professional_pdf,
+                        file_name="sowia_export_professionnel.pdf",
+                        mime="application/pdf",
+                        type="primary",
+                        key="download_premium_professional_export",
+                    )
+                except PermissionError:
+                    st.error("Votre accès Premium n'est pas actif. Aucun export n'a été créé.")
+                except ValueError as exc:
+                    st.error(str(exc))
+                except Exception:
+                    st.error("La création de l'export professionnel a échoué. Réessayez plus tard.")
+
 elif page == "Mes documents":
     st.subheader("📁 Mes documents")
+    if cloud_mode:
+        # Private document storage is a Premium feature. Verify entitlement on
+        # the server before listing, uploading, downloading or deleting files.
+        try:
+            from feature_access import require_feature_access
+
+            require_feature_access(
+                supabase_client, current_user, "private_document_storage"
+            )
+        except PermissionError:
+            st.info("L’espace documentaire privé est réservé aux comptes SOW IA Premium.")
+            st.stop()
+        except Exception:
+            st.error("Impossible de vérifier votre accès Premium. L’accès aux documents reste fermé par sécurité.")
+            st.stop()
     if not cloud_mode:
         st.warning("Connectez-vous avec votre compte pour utiliser le stockage documentaire privé.")
     else:
@@ -467,12 +729,15 @@ elif page == "Mes documents":
 
 elif page == "Historique":
     st.subheader("🕘 Historique")
-    items = get_app_history(100)
-    if not items:
-        st.caption("Aucun message dans cette session.")
-    for item in items:
-        with st.chat_message(item["role"]):
-            st.write(item["content"])
+    try:
+        items = get_app_history(100)
+        if not items:
+            st.caption("Aucun message dans cette session.")
+        for item in items:
+            with st.chat_message(item["role"]):
+                st.write(item["content"])
+    except Exception:
+        st.error("L'historique est momentanément indisponible. Aucune donnée n'a été supprimée.")
 
 elif page == "Abonnement":
     st.subheader("👑 Version Premium")
@@ -481,10 +746,9 @@ elif page == "Abonnement":
     else:
         try:
             entitlement = premium_access.get_entitlement(supabase_client, current_user)
-        except Exception as exc:
+        except Exception:
             entitlement = None
-            st.error("Impossible de vérifier votre abonnement auprès de Supabase.")
-            st.caption(str(exc))
+            st.error("Impossible de vérifier votre abonnement auprès de Supabase. Réessayez plus tard.")
 
         if entitlement:
             st.success("Votre accès SOW IA Premium est actif.")
@@ -494,32 +758,35 @@ elif page == "Abonnement":
             )
             st.write("Votre droit d'accès est enregistré sur votre compte et sera retrouvé lors de vos prochaines connexions.")
         else:
-            try:
-                payment_config = paypal_payments.paypal_configuration()
-            except ValueError as exc:
-                payment_config = None
-                st.error(str(exc))
-
-            admin_ready = premium_access.create_admin_client() is not None
-            if payment_config is None:
-                st.info("Le paiement PayPal est préparé, mais attend les identifiants Sandbox et le prix Premium dans les secrets Streamlit.")
-            elif not admin_ready:
-                st.warning("Le paiement reste désactivé tant que SUPABASE_SERVICE_ROLE_KEY n'est pas configuré côté serveur.")
+            if not paypal_payments.payments_enabled():
+                st.info("Les paiements PayPal restent volontairement désactivés pendant la finalisation de l'application. Vous pourrez les activer vous-même lorsque SOW IA sera terminé.")
             else:
-                st.write(f"Accès Premium : **{payment_config['amount']} €**")
-                st.caption("Paiement sécurisé PayPal — environnement Sandbox tant que PAYPAL_MODE n'est pas explicitement réglé sur live.")
-                if st.button("Préparer mon paiement PayPal", type="primary"):
-                    try:
-                        order = paypal_payments.create_premium_order(str(current_user.id))
-                        st.session_state["paypal_approval_url"] = order["approval_url"]
-                        st.session_state["paypal_order_id"] = order["id"]
-                    except Exception as exc:
-                        st.error("Impossible de préparer le paiement PayPal.")
-                        st.caption(str(exc))
-                approval_url = st.session_state.get("paypal_approval_url")
-                if approval_url:
-                    st.link_button("Continuer vers PayPal", approval_url, type="primary")
-                    st.caption("Après paiement, revenez automatiquement sur SOW IA. L'accès ne sera activé qu'après confirmation serveur.")
+                try:
+                    payment_config = paypal_payments.paypal_configuration()
+                except ValueError as exc:
+                    payment_config = None
+                    st.error(str(exc))
+
+                admin_ready = premium_access.create_admin_client() is not None
+                if payment_config is None:
+                    st.warning("La configuration PayPal est incomplète. Aucun paiement ne peut être lancé.")
+                elif not admin_ready:
+                    st.warning("La validation sécurisée des achats n'est pas configurée côté serveur.")
+                else:
+                    st.write(f"Accès Premium : **{payment_config['amount']} €**")
+                    st.caption("Paiement sécurisé PayPal — environnement Sandbox tant que PAYPAL_MODE n'est pas explicitement réglé sur live.")
+                    if st.button("Préparer mon paiement PayPal", type="primary"):
+                        try:
+                            order = paypal_payments.create_premium_order(str(current_user.id))
+                            st.session_state["paypal_approval_url"] = order["approval_url"]
+                            st.session_state["paypal_order_id"] = order["id"]
+                        except Exception as exc:
+                            st.error("Impossible de préparer le paiement PayPal.")
+                            # Technical details stay in server-side logs, not in the browser.
+                    approval_url = st.session_state.get("paypal_approval_url")
+                    if approval_url:
+                        st.link_button("Continuer vers PayPal", approval_url, type="primary")
+                        st.caption("Après paiement, revenez automatiquement sur SOW IA. L'accès ne sera activé qu'après confirmation serveur.")
 
 elif page == "Paramètres":
     st.subheader("⚙️ Paramètres")

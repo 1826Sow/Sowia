@@ -1,8 +1,20 @@
 """Tests for private Supabase PDF storage ownership and validation."""
-from types import SimpleNamespace
+from io import BytesIO
 
 import pytest
+from pypdf import PdfWriter
+from reportlab.pdfgen import canvas
+
 import document_storage as docs
+
+
+def _allow_document_access(*args, **kwargs):
+    return None
+
+
+@pytest.fixture(autouse=True)
+def allow_document_access_in_unit_tests(monkeypatch):
+    monkeypatch.setattr(docs, "require_feature_access", _allow_document_access)
 
 
 class User:
@@ -26,7 +38,7 @@ class FakeBucket:
 
     def download(self, path):
         self.downloaded = path
-        return b"%PDF"
+        return make_pdf()
 
     def remove(self, paths):
         self.removed = paths
@@ -43,19 +55,62 @@ class FakeClient:
         return self.bucket
 
 
+def make_pdf():
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer)
+    pdf.drawString(72, 720, "SOW IA test document")
+    pdf.save()
+    return buffer.getvalue()
+
+
+def make_pdf_with_pages(count):
+    buffer = BytesIO()
+    writer = PdfWriter()
+    for _ in range(count):
+        writer.add_blank_page(width=72, height=72)
+    writer.write(buffer)
+    return buffer.getvalue()
+
+
 def test_upload_is_stored_under_authenticated_user_folder():
     client = FakeClient()
-    path = docs.upload_document(client, User(), "Mon rapport.pdf", b"%PDF")
+    content = make_pdf()
+    path = docs.upload_document(client, User(), "Mon rapport.pdf", content)
     assert path.startswith("user-123/")
     assert path.endswith("_Mon_rapport.pdf")
-    assert client.bucket.uploaded[1] == b"%PDF"
+    assert client.bucket.uploaded[1] == content
     assert client.bucket.uploaded[2]["content-type"] == "application/pdf"
+
+
+@pytest.mark.parametrize("filename", [
+    "x" * 140 + ".pdf",
+    ".pdf",
+])
+def test_safe_filename_always_preserves_pdf_extension(filename):
+    safe = docs._safe_filename(filename)
+    assert safe.endswith(".pdf")
+    assert len(safe) <= 100
 
 
 def test_list_documents_uses_only_authenticated_user_folder():
     client = FakeClient()
     docs.list_documents(client, User())
     assert client.bucket.listed == "user-123"
+
+
+def test_download_allows_a_document_in_the_authenticated_users_folder():
+    client = FakeClient()
+    path = "user-123/report.pdf"
+    result = docs.download_document(client, User(), path)
+    assert result.startswith(b"%PDF-")
+    assert client.bucket.downloaded == path
+
+
+def test_delete_allows_a_document_in_the_authenticated_users_folder():
+    client = FakeClient()
+    path = "user-123/report.pdf"
+    docs.delete_document(client, User(), path)
+    assert client.bucket.removed == [path]
 
 
 def test_download_rejects_another_users_path_before_storage_access():
@@ -65,22 +120,151 @@ def test_download_rejects_another_users_path_before_storage_access():
     assert client.bucket.downloaded is None
 
 
-def test_delete_rejects_path_traversal():
+def test_delete_rejects_another_users_path_before_storage_access():
     client = FakeClient()
-    with pytest.raises(ValueError):
-        docs.delete_document(client, User(), "user-123/../private.pdf")
+    with pytest.raises(PermissionError):
+        docs.delete_document(client, User(), "other-user/report.pdf")
     assert client.bucket.removed is None
 
 
-def test_upload_rejects_non_pdf_and_oversized_files_before_storage_access():
+@pytest.mark.parametrize("path", [
+    "user-123/../private.pdf",
+    "user-123/folder/report.pdf",
+    "user-123/",
+    "user-123\\report.pdf",
+    "user-123/report.pdf\x00suffix",
+])
+def test_download_rejects_malformed_owned_paths(path):
+    client = FakeClient()
+    with pytest.raises((PermissionError, ValueError)):
+        docs.download_document(client, User(), path)
+    assert client.bucket.downloaded is None
+
+
+def test_upload_rejects_non_pdf_oversized_and_fake_pdf_before_storage_access():
     client = FakeClient()
     with pytest.raises(ValueError, match="PDF"):
         docs.upload_document(client, User(), "notes.txt", b"hello")
     with pytest.raises(ValueError, match="10 Mo"):
-        docs.upload_document(client, User(), "large.pdf", b"x" * (docs.MAX_DOCUMENT_BYTES + 1))
+        docs.upload_document(client, User(), "large.pdf", b"%PDF-" + b"x" * docs.MAX_DOCUMENT_BYTES)
+    with pytest.raises(ValueError, match="PDF"):
+        docs.upload_document(client, User(), "fake.pdf", b"%PDF-1.7\\nnot really a PDF")
+    with pytest.raises(ValueError, match="vide"):
+        docs.upload_document(client, User(), "empty.pdf", b"")
+    assert client.bucket.uploaded is None
+
+
+def test_upload_rejects_encrypted_pdf():
+    from reportlab.lib.pdfencrypt import StandardEncryption
+
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, encrypt=StandardEncryption("secret"))
+    pdf.drawString(72, 720, "Protected")
+    pdf.save()
+    with pytest.raises(ValueError, match="mot de passe"):
+        docs.upload_document(FakeClient(), User(), "protected.pdf", buffer.getvalue())
+
+
+def test_upload_rejects_pdf_with_more_than_200_pages():
+    client = FakeClient()
+    payload = make_pdf_with_pages(docs.MAX_DOCUMENT_PAGES + 1)
+    with pytest.raises(ValueError, match="200 pages"):
+        docs.upload_document(client, User(), "too-many-pages.pdf", payload)
     assert client.bucket.uploaded is None
 
 
 def test_storage_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         docs.list_documents(FakeClient(), None)
+
+
+@pytest.mark.parametrize("path", [
+    "user-123/../other-user/private.pdf",
+    "user-123/subfolder/private.pdf",
+    "user-123\\\\private.pdf",
+    "user-123/private.pdf\\x00suffix",
+])
+def test_delete_rejects_malformed_owned_paths_before_storage_access(path):
+    client = FakeClient()
+    with pytest.raises((PermissionError, ValueError)):
+        docs.delete_document(client, User(), path)
+    assert client.bucket.removed is None
+
+
+def test_document_path_rejects_prefix_spoofing():
+    client = FakeClient()
+    with pytest.raises(PermissionError):
+        docs.download_document(client, User(), "user-123-evil/private.pdf")
+    assert client.bucket.downloaded is None
+
+
+@pytest.mark.parametrize("operation", ["upload", "download", "delete"])
+def test_document_mutations_and_download_require_authenticated_user(operation):
+    client = FakeClient()
+    if operation == "upload":
+        action = lambda: docs.upload_document(client, None, "report.pdf", make_pdf())
+    elif operation == "download":
+        action = lambda: docs.download_document(client, None, "user-123/report.pdf")
+    else:
+        action = lambda: docs.delete_document(client, None, "user-123/report.pdf")
+
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        action()
+
+    assert client.bucket.uploaded is None
+    assert client.bucket.downloaded is None
+    assert client.bucket.removed is None
+
+
+def test_list_documents_requires_authenticated_user_before_storage_access():
+    client = FakeClient()
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        docs.list_documents(client, None)
+    assert client.bucket.listed is None
+
+
+
+def test_every_storage_operation_checks_premium_at_the_function_boundary(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        docs,
+        "require_feature_access",
+        lambda client, user, feature: calls.append((client, user, feature)),
+    )
+    client = FakeClient()
+    user = User()
+    payload = make_pdf()
+    path = docs.upload_document(client, user, "report.pdf", payload)
+    docs.list_documents(client, user)
+    docs.download_document(client, user, path)
+    docs.delete_document(client, user, path)
+    assert calls == [
+        (client, user, "private_document_storage"),
+        (client, user, "private_document_storage"),
+        (client, user, "private_document_storage"),
+        (client, user, "private_document_storage"),
+    ]
+
+
+@pytest.mark.parametrize("operation", ["upload", "list", "download", "delete"])
+def test_storage_operations_deny_inactive_premium_before_storage_access(monkeypatch, operation):
+    client = FakeClient()
+
+    def deny(*args, **kwargs):
+        raise PermissionError("Premium actif requis")
+
+    monkeypatch.setattr(docs, "require_feature_access", deny)
+    with pytest.raises(PermissionError, match="Premium actif"):
+        if operation == "upload":
+            docs.upload_document(client, User(), "report.pdf", make_pdf())
+        elif operation == "list":
+            docs.list_documents(client, User())
+        elif operation == "download":
+            docs.download_document(client, User(), "user-123/report.pdf")
+        else:
+            docs.delete_document(client, User(), "user-123/report.pdf")
+
+    assert client.bucket.uploaded is None
+    assert client.bucket.listed is None
+    assert client.bucket.downloaded is None
+    assert client.bucket.removed is None

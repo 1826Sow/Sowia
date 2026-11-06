@@ -17,7 +17,7 @@ create index if not exists sowia_messages_user_session_idx
 create table if not exists public.sowia_memory_items (
     id bigint generated always as identity primary key,
     user_id uuid not null references auth.users(id) on delete cascade,
-    content text not null check (char_length(content) between 1 and 1000),
+    content text not null check (char_length(content) between 1 and 5000),
     created_at timestamptz not null default now()
 );
 
@@ -57,9 +57,35 @@ create policy "Users can delete own memory"
     on public.sowia_memory_items for delete to authenticated
     using ((select auth.uid()) = user_id);
 
+-- Restrictive owner guards also neutralize any legacy permissive policies.
+drop policy if exists "SOW IA enforce own messages" on public.sowia_messages;
+create policy "SOW IA enforce own messages"
+    on public.sowia_messages as restrictive for all to public
+    using ((select auth.uid()) = user_id)
+    with check ((select auth.uid()) = user_id);
+
+drop policy if exists "SOW IA enforce own memory" on public.sowia_memory_items;
+create policy "SOW IA enforce own memory"
+    on public.sowia_memory_items as restrictive for all to public
+    using ((select auth.uid()) = user_id)
+    with check ((select auth.uid()) = user_id);
+
+-- Remove any older or inherited client privileges before granting the exact
+-- operations required by SOW IA. RLS then restricts each operation to its owner.
+revoke all on table public.sowia_messages, public.sowia_memory_items
+    from public, anon, authenticated;
 grant select, insert, delete on public.sowia_messages to authenticated;
 grant select, insert, delete on public.sowia_memory_items to authenticated;
-grant usage, select on all sequences in schema public to authenticated;
+
+-- Restrict identity-sequence privileges to the two sequences used above.
+revoke all on sequence
+    public.sowia_messages_id_seq,
+    public.sowia_memory_items_id_seq
+    from public, anon, authenticated;
+grant usage, select on sequence
+    public.sowia_messages_id_seq,
+    public.sowia_memory_items_id_seq
+    to authenticated;
 
 
 -- Premium access is written only by the trusted server using the service-role
@@ -67,7 +93,7 @@ grant usage, select on all sequences in schema public to authenticated;
 -- read only their own entitlement; they cannot grant or edit their own access.
 create table if not exists public.sowia_entitlements (
     user_id uuid primary key references auth.users(id) on delete cascade,
-    status text not null check (status in ('active', 'inactive')),
+    status text not null check (status in ('active', 'inactive', 'cancelled')),
     provider text not null check (provider in ('paypal')),
     paypal_order_id text not null unique,
     amount numeric(10, 2) not null check (amount > 0),
@@ -82,4 +108,15 @@ create policy "Users can read own Premium entitlement"
     on public.sowia_entitlements for select to authenticated
     using ((select auth.uid()) = user_id);
 
+-- Restrictive owner guard prevents legacy permissive policies from exposing
+-- another account's entitlement row.
+drop policy if exists "SOW IA enforce own Premium entitlement" on public.sowia_entitlements;
+create policy "SOW IA enforce own Premium entitlement"
+    on public.sowia_entitlements as restrictive for all to public
+    using ((select auth.uid()) = user_id)
+    with check ((select auth.uid()) = user_id);
+
+-- Explicitly remove inherited/default client privileges before allowing
+-- authenticated users to read only their own row through the RLS policy.
+revoke all on public.sowia_entitlements from public, anon, authenticated;
 grant select on public.sowia_entitlements to authenticated;

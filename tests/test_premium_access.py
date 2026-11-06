@@ -61,3 +61,27 @@ def test_entitlement_grant_uses_admin_upsert_and_user_id():
 def test_entitlement_grant_rejects_missing_admin_client():
     with pytest.raises(RuntimeError):
         premium_access.grant_paypal_entitlement(None, "user-123", "ORDER-1", "12.90", "EUR")
+
+
+@pytest.mark.parametrize("status", ["inactive", "cancelled", None])
+def test_only_active_entitlement_grants_premium_access(status):
+    data = {"status": status} if status is not None else None
+    assert premium_access.get_entitlement(Client(data), User()) is None
+
+
+@pytest.mark.parametrize(
+    "amount",
+    ["0", "-1.00", "12.901", "NaN", "Infinity", "10000.00", "not-a-number"],
+)
+def test_entitlement_grant_rejects_invalid_or_out_of_range_amounts(amount):
+    with pytest.raises(ValueError):
+        premium_access.grant_paypal_entitlement(
+            Client([]), "user-123", "ORDER-INVALID", amount, "EUR"
+        )
+
+
+def test_entitlement_grant_rejects_non_eur_currency():
+    with pytest.raises(ValueError):
+        premium_access.grant_paypal_entitlement(
+            Client([]), "user-123", "ORDER-USD", "12.90", "USD"
+        )
