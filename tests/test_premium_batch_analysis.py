@@ -198,4 +198,4 @@ def test_batch_upload_preparation_caps_aggregate_file_size():
         premium_batch_analysis.prepare_pdf_batch_uploads(
             files, lambda uploaded, max_chars: extracted.append(uploaded.name) or "texte"
         )
-    assert extracted == ["a.pdf", "b.pdf"]
+    assert extracted == []
