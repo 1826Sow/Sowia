@@ -57,9 +57,18 @@ create policy "Users can delete own memory"
     on public.sowia_memory_items for delete to authenticated
     using ((select auth.uid()) = user_id);
 
+-- Remove any older or inherited client privileges before granting the exact
+-- operations required by SOW IA. RLS then restricts each operation to its owner.
+revoke all on table public.sowia_messages, public.sowia_memory_items
+    from public, anon, authenticated;
 grant select, insert, delete on public.sowia_messages to authenticated;
 grant select, insert, delete on public.sowia_memory_items to authenticated;
--- Restrict sequence privileges to the two identity sequences used above.
+
+-- Restrict identity-sequence privileges to the two sequences used above.
+revoke all on sequence
+    public.sowia_messages_id_seq,
+    public.sowia_memory_items_id_seq
+    from public, anon, authenticated;
 grant usage, select on sequence
     public.sowia_messages_id_seq,
     public.sowia_memory_items_id_seq
