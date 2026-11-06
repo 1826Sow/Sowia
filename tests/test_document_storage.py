@@ -1,4 +1,4 @@
-""""Tests for private Supabase PDF storage ownership and validation."""
+"""Tests for private Supabase PDF storage ownership and validation."""
 from io import BytesIO
 
 import pytest
