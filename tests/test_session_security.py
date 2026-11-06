@@ -16,6 +16,8 @@ def test_cleanup_removes_private_pdf_checkout_and_mode_state():
         "paypal_purchase_confirmed": True,
         "sowia_user_mode": "Professionnel",
         "pdf_question": "question privée",
+        "premium_batch_pdf_files": [b"document privé"],
+        "private_pdf_upload": b"autre document privé",
         "pdf_text": "texte PDF privé",
         "session_id": "old-account-session",
         "sowia_supabase_client": object(),
@@ -32,6 +34,8 @@ def test_cleanup_removes_private_pdf_checkout_and_mode_state():
         "paypal_purchase_confirmed",
         "sowia_user_mode",
         "pdf_question",
+        "premium_batch_pdf_files",
+        "private_pdf_upload",
     ):
         assert key not in state
     assert state["pdf_text"] == ""
