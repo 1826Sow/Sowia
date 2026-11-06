@@ -83,3 +83,15 @@ def test_validation_guide_requires_isolated_project_and_two_accounts():
     assert "Utilisateur A" in guide
     assert "Utilisateur B" in guide
     assert "Ne pas exécuter le SQL de cette PR sur le projet actuellement utilisé" in guide
+
+
+def test_restrictive_owner_guards_neutralize_legacy_permissive_policies():
+    for table, policy in (
+        ("sowia_messages", "SOW IA enforce own messages"),
+        ("sowia_memory_items", "SOW IA enforce own memory"),
+        ("sowia_entitlements", "SOW IA enforce own Premium entitlement"),
+    ):
+        assert f'drop policy if exists "{policy}" on public.{table};' in BASE_SCHEMA
+        assert f'create policy "{policy}"' in BASE_SCHEMA
+    assert BASE_SCHEMA.count("as restrictive for all to public") >= 3
+    assert BASE_SCHEMA.count("with check ((select auth.uid()) = user_id)") >= 5
