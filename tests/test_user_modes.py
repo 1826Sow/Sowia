@@ -11,7 +11,7 @@ def test_supported_modes_are_preserved(mode):
     assert mode in mode_system_instruction(mode)
 
 
-@pytest.mark.parametrize("value", [None, "", "premium", "Admin", 42])
+@pytest.mark.parametrize("value", [None, "", "premium", "Admin", 42, []])
 def test_unknown_mode_falls_back_to_personnel(value):
     assert normalize_user_mode(value) == "Personnel"
     assert "MODE DE TRAVAIL ACTIF : Personnel" in mode_system_instruction(value)
