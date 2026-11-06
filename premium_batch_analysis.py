@@ -13,6 +13,7 @@ MAX_BATCH_DOCUMENT_CHARS = 7000
 
 MAX_BATCH_FILE_BYTES = 10 * 1024 * 1024
 MAX_BATCH_TOTAL_BYTES = 20 * 1024 * 1024
+MAX_BATCH_DOCUMENT_PAGES = 200
 PDF_SIGNATURE = b"%PDF-"
 
 
@@ -39,8 +40,11 @@ def prepare_pdf_batch_uploads(uploaded_files, extract_text):
             reader = PdfReader(BytesIO(payload), strict=True)
             if reader.is_encrypted:
                 raise ValueError("Les PDF protégés par mot de passe ne sont pas acceptés.")
-            if len(reader.pages) < 1:
+            page_count = len(reader.pages)
+            if page_count < 1:
                 raise ValueError("Un des PDF ne contient aucune page.")
+            if page_count > MAX_BATCH_DOCUMENT_PAGES:
+                raise ValueError("Un des PDF dépasse la limite de 200 pages.")
         except ValueError:
             raise
         except Exception as exc:
