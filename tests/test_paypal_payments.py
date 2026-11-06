@@ -74,3 +74,42 @@ def test_capture_refuses_order_belonging_to_another_user(monkeypatch):
 def test_paypal_remains_disabled_even_when_credentials_are_present(monkeypatch):
     _settings(monkeypatch, PAYPAL_ENABLED="false")
     assert paypal.paypal_configuration() is None
+
+
+
+def test_completed_order_requires_a_verified_capture_with_exact_amount():
+    order = {
+        "purchase_units": [{
+            "payments": {"captures": [{
+                "status": "COMPLETED",
+                "amount": {"currency_code": "EUR", "value": "12.90"},
+            }]}
+        }]
+    }
+    assert paypal._has_confirmed_capture(order, "EUR", "12.90") is True
+
+
+def test_completed_order_without_capture_is_not_accepted():
+    order = {"purchase_units": [{"payments": {"captures": []}}]}
+    assert paypal._has_confirmed_capture(order, "EUR", "12.90") is False
+
+
+def test_capture_with_wrong_amount_is_not_accepted():
+    order = {
+        "purchase_units": [{
+            "payments": {"captures": [{
+                "status": "COMPLETED",
+                "amount": {"currency_code": "EUR", "value": "0.01"},
+            }]}
+        }]
+    }
+    assert paypal._has_confirmed_capture(order, "EUR", "12.90") is False
+
+
+def test_multiple_captures_are_not_accepted():
+    capture = {
+        "status": "COMPLETED",
+        "amount": {"currency_code": "EUR", "value": "12.90"},
+    }
+    order = {"purchase_units": [{"payments": {"captures": [capture, capture]}}]}
+    assert paypal._has_confirmed_capture(order, "EUR", "12.90") is False
