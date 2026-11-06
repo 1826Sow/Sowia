@@ -143,16 +143,22 @@ def _validate_order_id(order_id):
     return value
 
 
-def _validate_completed_capture(payload, config, expected_order_id=None):
-    """Require a completed capture for the exact configured amount and currency."""
+def _validate_completed_capture(
+    payload, config, expected_order_id=None, expected_user_id=None
+):
+    """Require the exact SOW IA order, owner, and completed configured capture."""
     if expected_order_id is not None and payload.get("id") != expected_order_id:
         raise PermissionError("La réponse PayPal ne correspond pas à la commande demandée.")
     units = payload.get("purchase_units") or []
-    captures = [
-        capture
-        for unit in units
-        for capture in ((unit.get("payments") or {}).get("captures") or [])
-    ]
+    if len(units) != 1:
+        raise PermissionError("La commande PayPal est absente ou ambiguë.")
+    unit = units[0]
+    if expected_user_id is not None and (
+        unit.get("custom_id") != str(expected_user_id)
+        or unit.get("reference_id") != "sowia-premium"
+    ):
+        raise PermissionError("La capture PayPal ne correspond pas à cet utilisateur SOW IA.")
+    captures = (unit.get("payments") or {}).get("captures") or []
     if len(captures) != 1:
         raise PermissionError("La capture PayPal est absente ou ambiguë.")
     capture = captures[0]
@@ -199,7 +205,7 @@ def capture_premium_order(order_id: str, user_id: str):
     ):
         raise PermissionError("La commande PayPal ne correspond pas à cet achat SOW IA.")
     if details.get("status") == "COMPLETED":
-        return _validate_completed_capture(details, config, expected_order_id=order_id)
+        return _validate_completed_capture(\n            details, config, expected_order_id=order_id, expected_user_id=user_id\n        )
     capture_response = requests.post(
         f"{base}/v2/checkout/orders/{order_id}/capture",
         json={},
@@ -210,4 +216,4 @@ def capture_premium_order(order_id: str, user_id: str):
     result = capture_response.json()
     if result.get("status") != "COMPLETED":
         raise RuntimeError("PayPal n'a pas confirmé le paiement.")
-    return _validate_completed_capture(result, config, expected_order_id=order_id)
+    return _validate_completed_capture(\n        result, config, expected_order_id=order_id, expected_user_id=user_id\n    )
