@@ -9,13 +9,14 @@ import premium_access
 
 def has_premium_access(user_client, user):
     """Return True only when the authenticated account has an active entitlement."""
-    return premium_access.get_entitlement(user_client, user) is not None
+    entitlement = premium_access.get_entitlement(user_client, user)
+    return bool(entitlement and entitlement.get("status") == "active")
 
 
 def require_premium_access(user_client, user, feature_name="cette fonctionnalité"):
     """Raise before a protected operation unless the account is Premium-active."""
     entitlement = premium_access.get_entitlement(user_client, user)
-    if entitlement is None:
+    if not entitlement or entitlement.get("status") != "active":
         raise PermissionError(
             f"L'accès à {feature_name} nécessite un abonnement SOW IA Premium actif."
         )
