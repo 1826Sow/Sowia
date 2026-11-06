@@ -600,11 +600,12 @@ elif page == "Créer un PDF":
             st.caption("Fonction réservée aux comptes disposant d'un accès Premium actif.")
         else:
             with st.form("premium_professional_export_form"):
-                professional_title = st.text_input("Titre professionnel", value="Rapport SOW IA")
+                professional_title = st.text_input("Titre professionnel", value="Rapport SOW IA", key="professional_export_title")
                 professional_body = st.text_area(
                     "Contenu du rapport",
                     height=220,
                     placeholder="Rédigez ou collez le contenu de votre rapport...",
+                    key="professional_export_body",
                 )
                 create_professional_export = st.form_submit_button(
                     "Créer l'export professionnel",
