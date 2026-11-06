@@ -102,4 +102,5 @@ def test_grant_normalizes_amount_and_uses_user_scoped_upsert():
     assert client.query.payload["user_id"] == "user-123"
     assert client.query.payload["paypal_order_id"] == "ORDER-1"
     assert client.query.payload["amount"] == "12.90"
-    assert client.query["currency"] if False else client.query.conflict == "user_id"
+    assert client.query.payload["currency"] == "EUR"
+    assert client.query.conflict == "user_id"
