@@ -105,9 +105,9 @@ where id = 'sowia-private-documents';
 
 ## Contrôle complémentaire des tables de mémoire et d'historique
 
-L'application utilise également les tables existantes `public.sowia_memory_items` et `public.sowia_messages`. Le script SQL de cette PR ne les crée pas et ne modifie pas leurs politiques : elles doivent donc être contrôlées séparément dans le projet isolé avant de considérer l'isolation des comptes comme validée.
+Le fichier `supabase/schema.sql` crée les tables `public.sowia_memory_items` et `public.sowia_messages` si elles sont absentes, active RLS et ajoute des politiques propriétaire, dont des garde-fous restrictifs contre les anciennes politiques permissives. Si ces tables existent déjà, `CREATE TABLE IF NOT EXISTS` ne répare pas leur schéma ni leurs anciennes politiques : le précontrôle ci-dessous reste donc obligatoire dans le projet isolé, avant et après l'application du script.
 
-Ajouter au précontrôle, toujours en lecture seule :
+Effectuer ce contrôle en lecture seule avant le script pour inventorier l'état hérité, puis le répéter après le script pour confirmer l'activation RLS et les politiques finales :
 
 ```sql
 -- Vérifier l'existence et l'activation de RLS sur les deux tables.
@@ -137,7 +137,7 @@ where table_schema = 'public'
 order by table_name, grantee, privilege_type;
 ```
 
-Résultats attendus : les deux tables existent, RLS est activé, et les politiques/privilèges ne permettent à aucun compte de lire, modifier ou supprimer les données d'un autre utilisateur. Si RLS est désactivé, si une politique permissive est trop large, ou si les privilèges sont inattendus, arrêter les essais et analyser avant toute modification.
+Avant le script, les tables peuvent être absentes dans un projet neuf. Après le script, les deux tables doivent exister, RLS doit être activé et les politiques doivent inclure les garde-fous restrictifs `SOW IA enforce own messages` et `SOW IA enforce own memory`. Vérifier également les privilèges SQL. Si une table existante présente une politique ou un privilège inattendu, arrêter et analyser avant toute modification ; ne pas considérer le simple succès du script comme une preuve d'isolation. Si RLS est désactivé, si une politique permissive est trop large, ou si les privilèges sont inattendus, arrêter les essais et analyser avant toute modification.
 
 Ajouter ensuite ces essais avec les comptes A et B :
 
