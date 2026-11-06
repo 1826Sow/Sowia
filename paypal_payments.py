@@ -8,6 +8,7 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 import re
 from uuid import uuid4
+from urllib.parse import urlsplit
 
 import requests
 
@@ -125,13 +126,31 @@ def create_premium_order(user_id: str):
     )
     response.raise_for_status()
     order = response.json()
+    if order.get("status") != "CREATED":
+        raise RuntimeError("PayPal n'a pas confirmé la création de la commande.")
     approval_url = next(
         (item.get("href") for item in order.get("links", [])
          if item.get("rel") in {"approve", "payer-action"}),
         None,
     )
-    if not order.get("id") or not approval_url:
-        raise RuntimeError("PayPal n'a pas retourné le lien d'approbation.")
+    expected_host = (
+        "www.sandbox.paypal.com"
+        if config["mode"] == "sandbox"
+        else "www.paypal.com"
+    )
+    try:
+        parsed_url = urlsplit(str(approval_url or ""))
+        valid_approval_url = (
+            parsed_url.scheme == "https"
+            and parsed_url.hostname == expected_host
+            and parsed_url.port in (None, 443)
+            and parsed_url.username is None
+            and parsed_url.password is None
+        )
+    except ValueError:
+        valid_approval_url = False
+    if not order.get("id") or not valid_approval_url:
+        raise RuntimeError("PayPal n'a pas retourné un lien d'approbation sécurisé.")
     return {"id": order["id"], "approval_url": approval_url}
 
 
