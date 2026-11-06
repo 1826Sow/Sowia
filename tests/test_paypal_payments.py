@@ -92,6 +92,8 @@ def test_completed_capture_requires_exact_amount_and_currency():
     config = {"currency": "EUR", "amount": "12.90"}
     payload = {
         "purchase_units": [{
+            "custom_id": "user-123",
+            "reference_id": "sowia-premium",
             "payments": {"captures": [{
                 "status": "COMPLETED",
                 "amount": {"currency_code": "EUR", "value": "12.90"},
@@ -125,6 +127,40 @@ def test_completed_capture_rejects_missing_or_ambiguous_capture():
     payload = {"purchase_units": [{"payments": {"captures": [capture, capture]}}]}
     with pytest.raises(PermissionError, match="absente ou ambiguë"):
         paypal._validate_completed_capture(payload, config)
+
+
+
+@pytest.mark.parametrize(
+    "unit",
+    [
+        {"custom_id": "another-user", "reference_id": "sowia-premium",
+         "payments": {"captures": [{"status": "COMPLETED",
+          "amount": {"currency_code": "EUR", "value": "12.90"}}]}},
+        {"custom_id": "user-123", "reference_id": "another-product",
+         "payments": {"captures": [{"status": "COMPLETED",
+          "amount": {"currency_code": "EUR", "value": "12.90"}}]}},
+    ],
+)
+def test_completed_capture_rejects_wrong_owner_or_product(unit):
+    config = {"currency": "EUR", "amount": "12.90"}
+    with pytest.raises(PermissionError, match="utilisateur SOW IA"):
+        paypal._validate_completed_capture(
+            {"id": "ORDER-1", "purchase_units": [unit]},
+            config,
+            expected_order_id="ORDER-1",
+            expected_user_id="user-123",
+        )
+
+
+def test_completed_capture_rejects_multiple_purchase_units():
+    config = {"currency": "EUR", "amount": "12.90"}
+    with pytest.raises(PermissionError, match="absente ou ambiguë"):
+        paypal._validate_completed_capture(
+            {"id": "ORDER-1", "purchase_units": [{}, {}]},
+            config,
+            expected_order_id="ORDER-1",
+            expected_user_id="user-123",
+        )
 
 
 def test_payments_enabled_requires_explicit_owner_switch(monkeypatch):
