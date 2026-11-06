@@ -95,7 +95,8 @@ where id = 'sowia-private-documents';
 - Examiner chaque politique retournée, notamment celles accordant `SELECT`, `INSERT`, `UPDATE` ou `DELETE` à `anon`, `authenticated` ou `public`.
 - Ne supprimer aucune politique inconnue ou préexistante automatiquement.
 - Si une politique générale autorise un accès large, arrêter la procédure et analyser son origine et ses dépendances avant toute modification.
-- Vérifier que le bucket existant, s'il existe, n'est pas utilisé par une autre application avant toute mise à jour de ses paramètres.
+- Si le bucket n'existe pas, le script peut le créer avec les paramètres attendus.
+- Si le bucket existe déjà, le script ne modifie désormais aucun de ses paramètres. Vérifier qu'il est privé, limité à 10 485 760 octets et au MIME `application/pdf`. En cas d'écart, arrêter la migration et examiner l'usage du bucket avant toute correction manuelle dans le projet de test.
 - Conserver les résultats expurgés, sans identifiants personnels ni secrets.
 
 Ce précontrôle ne remplace pas les scénarios S1 à S8 ni les essais RLS Premium. Il réduit le risque qu'une politique héritée ou un bucket déjà utilisé fausse la validation.
