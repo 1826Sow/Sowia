@@ -17,7 +17,7 @@ create index if not exists sowia_messages_user_session_idx
 create table if not exists public.sowia_memory_items (
     id bigint generated always as identity primary key,
     user_id uuid not null references auth.users(id) on delete cascade,
-    content text not null check (char_length(content) between 1 and 1000),
+    content text not null check (char_length(content) between 1 and 5000),
     created_at timestamptz not null default now()
 );
 
