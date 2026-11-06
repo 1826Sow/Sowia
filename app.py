@@ -384,6 +384,33 @@ elif page == "Analyse PDF":
     if st.session_state.pdf_text:
         st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
         st.download_button("Télécharger le texte", st.session_state.pdf_text, file_name="sowia_extraction.txt")
+
+        st.divider()
+        st.markdown("#### Analyse PDF avancée — Premium")
+        st.write("Obtenez une analyse structurée du document : synthèse, points clés, éléments à vérifier et questions utiles.")
+        if not cloud_mode or current_user is None:
+            st.caption("Cette analyse avancée nécessite une connexion à votre espace SOW IA et un accès Premium actif.")
+        else:
+            if st.button("Lancer l'analyse PDF avancée", type="primary", key="run_advanced_pdf_analysis"):
+                if not API_KEY:
+                    st.warning("Le service IA n'est pas configuré. L'analyse avancée nécessite un fournisseur IA disponible.")
+                else:
+                    with st.spinner("Vérification Premium et analyse du document..."):
+                        try:
+                            from premium_analysis import analyze_pdf_advanced
+
+                            advanced_result = analyze_pdf_advanced(
+                                supabase_client, current_user, st.session_state.pdf_text, answer
+                            )
+                            st.markdown("**Analyse avancée SOW IA**")
+                            st.write(advanced_result)
+                        except PermissionError:
+                            st.error("Cette fonction nécessite un accès Premium actif. Aucun document n'a été envoyé au service IA.")
+                        except ValueError as exc:
+                            st.error(str(exc))
+                        except Exception:
+                            st.error("L'analyse avancée n'a pas abouti. Vérifiez la disponibilité du service IA et réessayez.")
+
         st.markdown("#### Poser une question sur ce PDF")
         st.caption("SOW IA répond à partir du texte extrait. Le document reste dans votre session et n'est pas ajouté à votre historique.")
         pdf_question = st.text_input(
