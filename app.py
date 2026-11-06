@@ -29,6 +29,7 @@ import cloud_storage
 import paypal_payments
 import premium_access
 from document_storage import upload_document, list_documents, download_document, delete_document
+from session_security import clear_account_private_state
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
@@ -91,20 +92,9 @@ if cloud_mode:
             document_owner_id = str(current_user.id)
             previous_document_owner = st.session_state.get("private_document_owner_id")
             if previous_document_owner != document_owner_id:
-                st.session_state.pop("prepared_document_path", None)
-                st.session_state.pop("prepared_document_bytes", None)
-                # Clear account-scoped checkout state as well as private documents.
-                for key in (
-                    "paypal_approval_url",
-                    "paypal_order_id",
-                    "paypal_purchase_confirmed",
-                ):
-                    st.session_state.pop(key, None)
-                # Reset the work-mode preference so accounts do not inherit
-                # another user's session context.
-                st.session_state.pop("sowia_user_mode", None)
-                # Extracted PDF text is also private: never carry it across accounts.
-                st.session_state.pdf_text = ""
+                # Clear every account-scoped cache, upload and preference before
+                # attaching this browser session to the newly authenticated user.
+                clear_account_private_state(st.session_state)
                 st.session_state["private_document_owner_id"] = document_owner_id
 
             # Reuse one private conversation history for this authenticated account.
@@ -147,8 +137,6 @@ if cloud_mode:
         # No authenticated identity (including an expired/revoked session):
         # discard any private data retained by this browser session before
         # showing the login screen. Keep the Supabase client for the OAuth flow.
-        from session_security import clear_account_private_state
-
         clear_account_private_state(st.session_state)
         st.markdown(
             '<div class="hero"><h1>SOW IA</h1><p>Votre espace personnel sécurisé.</p></div>',
@@ -242,23 +230,10 @@ with st.sidebar:
         st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
         if st.button("Se déconnecter", use_container_width=True):
             sign_out(supabase_client)
+            # Use the same complete cleanup path as account switching and
+            # expired sessions, then discard the authenticated client.
+            clear_account_private_state(st.session_state)
             st.session_state.pop("sowia_supabase_client", None)
-            # Clear private document cache before ending this account session.
-            st.session_state.pop("prepared_document_path", None)
-            st.session_state.pop("prepared_document_bytes", None)
-            st.session_state.pop("private_document_owner_id", None)
-            # Clear any account-scoped checkout state when ending this session.
-            for key in (
-                "paypal_approval_url",
-                "paypal_order_id",
-                "paypal_purchase_confirmed",
-            ):
-                st.session_state.pop(key, None)
-            # Reset the work-mode preference with the rest of account context.
-            st.session_state.pop("sowia_user_mode", None)
-            # Clear extracted PDF text as well as cached private document bytes.
-            st.session_state.pdf_text = ""
-            st.session_state.session_id = str(uuid.uuid4())
             st.rerun()
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
