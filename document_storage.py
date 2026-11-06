@@ -41,10 +41,10 @@ def upload_document(client, user, filename, content):
     payload = bytes(content or b"")
     if not payload:
         raise ValueError("Le fichier PDF est vide.")
-    if not payload.startswith(b"%PDF-"):
-        raise ValueError("Le contenu du fichier n'est pas un PDF valide.")
     if len(payload) > MAX_DOCUMENT_BYTES:
         raise ValueError("Le fichier dépasse la limite de 10 Mo.")
+    if not payload.startswith(b"%PDF-"):
+        raise ValueError("Le contenu du fichier n'est pas un PDF valide.")
     object_name = f"{uuid4().hex}_{safe_name}"
     path = f"{prefix}/{object_name}"
     client.storage.from_(BUCKET_NAME).upload(
