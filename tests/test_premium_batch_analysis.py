@@ -156,3 +156,20 @@ def test_app_checks_batch_entitlement_before_pdf_parsing():
     )
     parsing = batch_section.index("prepare_pdf_batch_uploads(")
     assert guard < parsing
+
+
+
+def test_batch_upload_preparation_caps_aggregate_file_size():
+    base = valid_pdf_bytes()
+    payload = base + (b" " * (7 * 1024 * 1024 - len(base)))
+    files = [
+        FakeUploadedFile("a.pdf", payload),
+        FakeUploadedFile("b.pdf", payload),
+        FakeUploadedFile("c.pdf", payload),
+    ]
+    extracted = []
+    with pytest.raises(ValueError, match="totale.*20 Mo"):
+        premium_batch_analysis.prepare_pdf_batch_uploads(
+            files, lambda uploaded, max_chars: extracted.append(uploaded.name) or "texte"
+        )
+    assert extracted == ["a.pdf", "b.pdf"]
