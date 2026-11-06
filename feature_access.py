@@ -57,7 +57,7 @@ def workspace_home_content(mode, premium_active=False):
         )
         return {
             "title": "Votre espace Professionnel",
-            "description": "Un point de départ pour préparer, analyser et organiser vos travaux.",
+            "description": "Un espace pour préparer, analyser et organiser vos travaux et documents professionnels.",
             "notice": notice,
             "shortcuts": shortcuts,
         }
