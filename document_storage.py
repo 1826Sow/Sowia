@@ -51,7 +51,7 @@ def _owned_path(user, path):
     if not isinstance(path, str) or not path.startswith(prefix):
         raise PermissionError("Accès refusé à ce document.")
     relative = path[len(prefix):]
-    if not relative or "/" in relative or "\\\\" in relative or ".." in relative or "\\x00" in relative:
+    if not relative or "/" in relative or "\\" in relative or ".." in relative or "\x00" in relative:
         raise ValueError("Chemin de document invalide.")
     return path
 
