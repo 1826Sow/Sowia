@@ -104,3 +104,43 @@ def test_grant_normalizes_amount_and_uses_user_scoped_upsert():
     assert client.query.payload["amount"] == "12.90"
     assert client.query.payload["currency"] == "EUR"
     assert client.query.conflict == "user_id"
+
+def test_server_guard_rejects_missing_premium_entitlement(monkeypatch):
+    import access_control
+
+    monkeypatch.setattr(premium_access, "get_entitlement", lambda client, user: None)
+    with pytest.raises(PermissionError, match="Premium actif"):
+        access_control.require_premium_access(object(), User(), "analyse PDF")
+
+
+def test_server_guard_allows_only_active_entitlement(monkeypatch):
+    import access_control
+
+    active = {"status": "active", "provider": "paypal"}
+    monkeypatch.setattr(premium_access, "get_entitlement", lambda client, user: active)
+    assert access_control.require_premium_access(object(), User()) == active
+
+
+def test_feature_policy_checks_premium_before_protected_operation(monkeypatch):
+    import feature_access
+
+    calls = []
+    def deny(client, user, feature_name=""):
+        calls.append(feature_name)
+        raise PermissionError("Premium requis")
+
+    monkeypatch.setattr("access_control.require_premium_access", deny)
+    with pytest.raises(PermissionError, match="Premium requis"):
+        feature_access.require_feature_access(object(), User(), "advanced_pdf_analysis")
+    assert calls == ["advanced pdf analysis"]
+
+
+def test_standard_feature_does_not_require_premium(monkeypatch):
+    import feature_access
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError("Aucune vérification Premium ne doit bloquer une fonction standard.")
+
+    monkeypatch.setattr("access_control.require_premium_access", unexpected)
+    assert feature_access.require_feature_access(object(), User(), "pdf_creation") is None
+
