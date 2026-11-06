@@ -2,7 +2,7 @@
 
 ## État et périmètre
 
-Conception plus prototype initial présents dans la branche `sowia-shared-rate-limiter`. Une migration SQL isolée, un client Python fail-closed et des tests unitaires ont été ajoutés. Ils ne sont pas intégrés aux points d'appel de l'application, non exécutés sur Supabase et aucun quota n'est actif. Aucun SQL ni aucune donnée de production n'a été modifié.
+Prototype et premiers raccordements présents dans la branche `sowia-shared-rate-limiter`. Une migration SQL candidate, un client Python fail-closed, des tests unitaires et des contrôles avant appels coûteux dans `app.py`, `premium_analysis.py`, `premium_batch_analysis.py` et `document_storage.py` ont été ajoutés. Le SQL n'a pas été exécuté sur Supabase, la CI de cette branche n'a pas encore fourni de résultat vérifiable et aucun quota n'est actif en production. Aucun SQL ni aucune donnée de production n'a été modifié.
 
 Le besoin est de compter les opérations par **utilisateur authentifié et catégorie d'opération**, de façon atomique et partagée entre onglets, appareils et workers. Un compteur dans `st.session_state`, un dictionnaire Python, un cache local ou un fichier local ne répond pas à ce besoin.
 
@@ -32,7 +32,7 @@ Les analyses Premium vérifient déjà le droit Premium côté serveur avant l'a
 
 ### Migration prototype — non exécutée
 
-Le fichier `supabase/migrations/202611060001_shared_rate_limits.sql` contient la première migration candidate. Elle doit être relue et testée dans un projet Supabase isolé avant toute utilisation. La fonction RPC n'accepte que la clé de compartiment ; les quotas sont définis côté SQL. Le module `rate_limiter.py` refuse l'opération si la RPC échoue ou renvoie une réponse invalide. Les tests unitaires correspondants sont dans `tests/test_rate_limiter.py`.
+Le fichier `supabase/migrations/202611060001_shared_rate_limits.sql` contient la première migration candidate. Elle doit être relue et testée dans un projet Supabase isolé avant toute utilisation. La fonction RPC n'accepte que la clé de compartiment ; les quotas sont définis côté SQL. Le module `rate_limiter.py` refuse l'opération si la RPC échoue ou renvoie une réponse invalide. Les appels Assistant IA, question PDF, recherche Web, analyses PDF Premium et opérations documentaires upload/download/delete sont raccordés au contrôle. Les tests unitaires correspondants sont dans `tests/test_rate_limiter.py` et les suites existantes des modules concernés.
 
 ### Esquisse SQL — non exécutable / non déployée
 
