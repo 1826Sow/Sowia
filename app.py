@@ -536,7 +536,11 @@ elif page == "Abonnement":
 
             admin_ready = premium_access.create_admin_client() is not None
             if payment_config is None:
-                st.info("Le paiement PayPal est préparé, mais attend les identifiants Sandbox et le prix Premium dans les secrets Streamlit.")
+                st.info(
+                    "Les paiements sont actuellement désactivés. "
+                    "Ils resteront inactifs pendant la finalisation de SOW IA ; "
+                    "leur activation sera faite par le propriétaire uniquement lorsque l’application sera prête."
+                )
             elif not admin_ready:
                 st.warning("Le paiement reste désactivé tant que SUPABASE_SERVICE_ROLE_KEY n'est pas configuré côté serveur.")
             else:
