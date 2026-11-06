@@ -82,3 +82,21 @@ def test_app_guards_assistant_web_and_pdf_calls_before_external_requests():
 
     pdf_section = source.split('elif page == "Analyse PDF":', 1)[1].split('st.markdown("#### Analyse de plusieurs PDF — Premium")', 1)[0]
     assert pdf_section.index('require_shared_quota("pdf_question")') < pdf_section.index("response = answer(")
+
+
+
+def test_app_displays_shared_quota_errors_in_web_pdf_and_document_flows():
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    web_section = source.split('elif page == "Recherche Web":', 1)[1].split('elif page == "Analyse PDF":', 1)[0]
+    assert "except RateLimitExceeded as exc:" in web_section
+    assert "except RateLimitUnavailable as exc:" in web_section
+
+    pdf_section = source.split('elif page == "Analyse PDF":', 1)[1].split('st.markdown("#### Analyse de plusieurs PDF — Premium")', 1)[0]
+    assert "except RateLimitExceeded as exc:" in pdf_section
+    assert "except RateLimitUnavailable as exc:" in pdf_section
+
+    document_section = source.split('elif page == "Mes documents":', 1)[1].split('elif page == "Historique":', 1)[0]
+    assert "except RateLimitExceeded as exc:" in document_section
+    assert "except RateLimitUnavailable as exc:" in document_section
