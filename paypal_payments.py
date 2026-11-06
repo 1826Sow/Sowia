@@ -19,11 +19,16 @@ def _setting(name: str, default: str = "") -> str:
     return str(get_setting(name, default) or "").strip()
 
 
+def payments_enabled() -> bool:
+    """Return whether the owner has explicitly enabled PayPal checkout."""
+    return _setting("SOWIA_PAYMENTS_ENABLED", "false").lower() in {"1", "true", "yes"}
+
+
 def paypal_configuration():
     """Return checkout configuration only after an explicit enable switch."""
     # Payments stay completely inactive by default until the owner explicitly
     # enables them after the application is finished and verified.
-    if _setting("SOWIA_PAYMENTS_ENABLED", "false").lower() not in {"1", "true", "yes"}:
+    if not payments_enabled():
         return None
     client_id = _setting("PAYPAL_CLIENT_ID")
     client_secret = _setting("PAYPAL_CLIENT_SECRET")
