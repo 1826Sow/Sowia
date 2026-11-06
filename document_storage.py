@@ -6,6 +6,8 @@ from uuid import uuid4
 
 from pypdf import PdfReader
 
+from feature_access import require_feature_access
+
 BUCKET_NAME = "sowia-private-documents"
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
 MAX_DOCUMENT_PAGES = 200
@@ -62,6 +64,7 @@ def _owned_path(user, path):
 
 def upload_document(client, user, filename, content):
     prefix = _user_prefix(user)
+    require_feature_access(client, user, "private_document_storage")
     safe_name = _safe_filename(filename)
     payload = bytes(content or b"")
     if not payload:
@@ -81,14 +84,17 @@ def upload_document(client, user, filename, content):
 
 def list_documents(client, user):
     prefix = _user_prefix(user)
+    require_feature_access(client, user, "private_document_storage")
     return client.storage.from_(BUCKET_NAME).list(prefix)
 
 
 def download_document(client, user, path):
     owned_path = _owned_path(user, path)
+    require_feature_access(client, user, "private_document_storage")
     return client.storage.from_(BUCKET_NAME).download(owned_path)
 
 
 def delete_document(client, user, path):
     owned_path = _owned_path(user, path)
+    require_feature_access(client, user, "private_document_storage")
     return client.storage.from_(BUCKET_NAME).remove([owned_path])
