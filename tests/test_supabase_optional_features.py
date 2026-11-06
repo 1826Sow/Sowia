@@ -75,3 +75,11 @@ def test_memory_and_history_sequence_grants_are_narrowly_scoped():
 def test_memory_schema_allows_the_documented_premium_note_limit():
     sql = SCHEMA_PATH.read_text(encoding="utf-8").lower()
     assert "content text not null check (char_length(content) between 1 and 5000)" in sql
+
+
+def test_entitlement_statuses_match_in_both_sql_setup_paths():
+    canonical = SCHEMA_PATH.read_text(encoding="utf-8").lower()
+    optional = _sql()
+    expected = "status text not null check (status in ('active', 'inactive', 'cancelled'))"
+    assert expected in canonical
+    assert expected in optional
