@@ -2,24 +2,24 @@
 
 ## État et périmètre
 
-Prototype et premiers raccordements présents dans la branche `sowia-shared-rate-limiter`. Une migration SQL candidate, un client Python fail-closed, des tests unitaires et des contrôles avant appels coûteux dans `app.py`, `premium_analysis.py`, `premium_batch_analysis.py` et `document_storage.py` ont été ajoutés. Le SQL n'a pas été exécuté sur Supabase, la CI de cette branche n'a pas encore fourni de résultat vérifiable et aucun quota n'est actif en production. Aucun SQL ni aucune donnée de production n'a été modifié.
+Prototype et premiers raccordements présents dans la branche `sowia-shared-rate-limiter`. Une migration SQL candidate, un client Python fail-closed, des tests unitaires et des contrôles avant appels coûteux dans `app.py`, `premium_analysis.py`, `premium_batch_analysis.py` et `document_storage.py` ont été ajoutés. GitHub Actions a confirmé la réussite de la syntaxe Python et des tests automatisés sur une révision précédente de cette branche ; chaque nouveau commit déclenche une nouvelle exécution à vérifier avant validation finale. Le SQL n'a pas été exécuté sur Supabase et aucun quota n'est actif en production. Aucun SQL ni aucune donnée de production n'a été modifié.
 
 Le besoin est de compter les opérations par **utilisateur authentifié et catégorie d'opération**, de façon atomique et partagée entre onglets, appareils et workers. Un compteur dans `st.session_state`, un dictionnaire Python, un cache local ou un fichier local ne répond pas à ce besoin.
 
 ## Points d'entrée recensés dans `app.py`
 
-| Opération | Point d'appel | Catégorie proposée |
+| Opération | Emplacement | Catégorie proposée |
 |---|---:|---|
-| Assistant IA | 311 | `assistant` |
-| Question/analyse PDF via IA | 467 | `pdf_question` |
-| Analyse PDF avancée Premium | 442 | `advanced_pdf` |
-| Analyse groupée PDF Premium | 514 | `batch_pdf` |
-| Recherche Web | 409 | `web_search` |
-| Téléversement document privé | 656 | `document_upload` |
-| Téléchargement document privé | 687 | `document_download` |
-| Suppression document privé | 691 | `document_delete` |
+| Assistant IA | `app.py` — réponse de conversation | `assistant` |
+| Question/analyse PDF via IA | `app.py` — question sur le PDF extrait | `pdf_question` |
+| Analyse PDF avancée Premium | `premium_analysis.py` | `advanced_pdf` |
+| Analyse groupée PDF Premium | `premium_batch_analysis.py` | `batch_pdf` |
+| Recherche Web | `app.py` — recherche externe | `web_search` |
+| Téléversement document privé | `document_storage.py` | `document_upload` |
+| Téléchargement document privé | `document_storage.py` | `document_download` |
+| Suppression document privé | `document_storage.py` | `document_delete` |
 
-Les analyses Premium vérifient déjà le droit Premium côté serveur avant l'appel IA. Le limiteur devra être appelé après l'identification authentifiée, et avant tout appel fournisseur, écriture, lecture coûteuse ou suppression. La préparation locale des PDF doit conserver ses limites de taille même si le quota réseau est refusé.
+Les analyses Premium vérifient le droit Premium côté serveur avant l'appel IA. Le limiteur est appelé après l'identification authentifiée et avant les appels fournisseurs, les mutations documentaires et les téléchargements. La liste des documents reste non limitée à ce stade ; elle est protégée par le contrôle Premium et le périmètre RLS. La préparation locale des PDF conserve ses limites de taille même si le quota réseau est refusé.
 
 ## Architecture retenue à valider sur un projet Supabase isolé
 
