@@ -19,7 +19,7 @@ def _user_prefix(user):
 
 
 def _safe_filename(filename):
-    original = os.path.basename(str(filename or "").replace("\\\\", "/"))
+    original = os.path.basename(str(filename or "").replace("\\", "/"))
     if not original.lower().endswith(".pdf"):
         raise ValueError("Seuls les fichiers PDF sont acceptés.")
     cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", original)
