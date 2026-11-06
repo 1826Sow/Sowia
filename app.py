@@ -295,26 +295,42 @@ elif page == "Assistant IA":
     st.subheader("💬 Mon Assistant IA")
     if not API_KEY:
         st.warning("Pour activer les réponses IA, ajoutez votre clé API dans les secrets de l'hébergement. Ne la partagez jamais sur GitHub.")
-    memories = get_app_memories()
+    try:
+        memories = get_app_memories()
+    except Exception:
+        memories = []
+        st.warning("La mémoire est momentanément indisponible. Vous pouvez poursuivre sans les notes enregistrées.")
     if memories:
         st.caption(f"{len(memories)} note(s) mémoire seront disponibles à l'assistant.")
-    for item in get_app_history():
-        with st.chat_message(item["role"]):
-            st.markdown(item["content"])
+    try:
+        chat_history = get_app_history()
+        for item in chat_history:
+            with st.chat_message(item["role"]):
+                st.markdown(item["content"])
+    except Exception:
+        chat_history = None
+        st.error("L'historique est momentanément indisponible. Votre compte et vos données ne sont pas supprimés.")
     prompt = st.chat_input("Écrivez votre message...")
     if prompt:
-        save_app_message("user", prompt)
         with st.chat_message("user"):
             st.markdown(prompt)
+        try:
+            save_app_message("user", prompt)
+        except Exception:
+            st.warning("Le message ne peut pas être enregistré pour le moment. La réponse sera tentée sans historique sauvegardé.")
         with st.chat_message("assistant"):
             try:
+                prior_messages = chat_history if chat_history is not None else []
                 reply = answer(
-                    get_app_history(),
+                    [*prior_messages, {"role": "user", "content": prompt}],
                     memories=[item["content"] for item in memories],
                     user_mode=st.session_state.get("sowia_user_mode", "Personnel"),
                 )
                 st.markdown(reply)
-                save_app_message("assistant", reply)
+                try:
+                    save_app_message("assistant", reply)
+                except Exception:
+                    st.warning("La réponse est affichée, mais son enregistrement dans l'historique a échoué.")
             except Exception as exc:
                 error_text = str(exc)
                 if "429" in error_text or "insufficient_quota" in error_text or "quota" in error_text.lower():
@@ -325,8 +341,12 @@ elif page == "Assistant IA":
                     st.error("Une erreur est survenue pendant la réponse de l'assistant.")
                     # Avoid exposing raw provider or network errors to users.
     if st.button("Effacer cette conversation"):
-        clear_app_history()
-        st.rerun()
+        try:
+            clear_app_history()
+            st.success("Cette conversation a été effacée.")
+            st.rerun()
+        except Exception:
+            st.error("Impossible d'effacer l'historique pour le moment. Réessayez plus tard.")
 
 elif page == "Ma mémoire":
     st.subheader("🧠 Ma mémoire")
@@ -709,12 +729,15 @@ elif page == "Mes documents":
 
 elif page == "Historique":
     st.subheader("🕘 Historique")
-    items = get_app_history(100)
-    if not items:
-        st.caption("Aucun message dans cette session.")
-    for item in items:
-        with st.chat_message(item["role"]):
-            st.write(item["content"])
+    try:
+        items = get_app_history(100)
+        if not items:
+            st.caption("Aucun message dans cette session.")
+        for item in items:
+            with st.chat_message(item["role"]):
+                st.write(item["content"])
+    except Exception:
+        st.error("L'historique est momentanément indisponible. Aucune donnée n'a été supprimée.")
 
 elif page == "Abonnement":
     st.subheader("👑 Version Premium")
