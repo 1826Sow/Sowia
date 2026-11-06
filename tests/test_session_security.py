@@ -58,7 +58,7 @@ def test_cleanup_removes_private_pdf_checkout_and_mode_state():
 
 def test_app_uses_the_same_private_state_cleanup_on_switch_logout_and_expiry():
     app_source = (ROOT / "app.py").read_text(encoding="utf-8")
-    assert app_source.count("clear_account_private_state(st.session_state)") == 4
+    assert app_source.count("clear_account_private_state(st.session_state)") == 5
     assert "from session_security import clear_account_private_state" in app_source
 
 
@@ -83,3 +83,13 @@ def test_required_authentication_failure_clears_private_state_before_stopping():
         "clear_account_private_state(st.session_state)" in failure_block
     )
 
+
+
+def test_required_authentication_without_supabase_configuration_clears_private_state_before_stopping():
+    app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+    config_failure = app_source.split(
+        "if auth_required and not supabase_enabled:", 1
+    )[1].split("# Supabase ne doit être utilisé", 1)[0]
+    assert config_failure.index(
+        "clear_account_private_state(st.session_state)"
+    ) < config_failure.index("st.stop()")
