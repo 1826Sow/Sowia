@@ -82,3 +82,16 @@ Cette migration est préparée dans la branche
 `security/private-document-storage` ; elle n'est pas encore appliquée au projet
 Supabase ni fusionnée dans `main`. Après son exécution, tester les opérations
 avec deux comptes distincts avant d'ouvrir l'accès public.
+
+### Tables Premium et stockage privé
+
+Pour une installation déjà en place, exécuter aussi dans Supabase > SQL Editor,
+dans cet ordre :
+1. `supabase/migrations/002_private_document_storage.sql` pour le bucket PDF privé et ses règles RLS ;
+2. `supabase/migrations/003_premium_entitlements.sql` pour la table des droits Premium et ses règles RLS.
+
+Ces migrations sont préparées sur la branche `security/private-document-storage`.
+Elles ne sont pas encore appliquées au projet Supabase ni fusionnées dans `main`.
+Ne pas ajouter la clé `SUPABASE_SERVICE_ROLE_KEY` au dépôt GitHub ; elle reste
+uniquement dans les secrets serveur, et PayPal reste désactivé tant que tu ne
+décides pas de le configurer.
