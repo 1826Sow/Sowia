@@ -68,3 +68,17 @@ Une action GitHub exécute ces contrôles automatiquement sur les modifications.
 ## État de mise en production
 
 Le dépôt contient l'intégration Supabase et les tests de sécurité associés. Le déploiement effectif, les secrets de l'hébergeur, les URL OAuth autorisées et les tests de bout en bout sur l'URL publique restent à effectuer. Ne pas annoncer l'application comme publiée avant ces vérifications.
+
+### Sécuriser les PDF privés
+
+Après avoir exécuté `supabase_schema.sql`, exécuter également
+`supabase/migrations/002_private_document_storage.sql` dans Supabase > SQL Editor.
+Ce script crée (ou rend privé) le bucket `sowia-private-documents`, limite les
+fichiers PDF à 10 Mo et applique des politiques RLS qui autorisent chaque compte
+authentifié à lister, téléverser, télécharger et supprimer uniquement les objets
+rangés dans son propre dossier UUID. Ne rendez jamais ce bucket public.
+
+Cette migration est préparée dans la branche
+`security/private-document-storage` ; elle n'est pas encore appliquée au projet
+Supabase ni fusionnée dans `main`. Après son exécution, tester les opérations
+avec deux comptes distincts avant d'ouvrir l'accès public.
