@@ -116,3 +116,19 @@ def test_batch_upload_preparation_rejects_invalid_or_oversized_files(payload, me
     ]
     with pytest.raises(ValueError, match=message):
         premium_batch_analysis.prepare_pdf_batch_uploads(files, lambda *a, **k: "texte")
+
+
+def test_batch_upload_preparation_rejects_malformed_pdf_before_extraction():
+    files = [
+        FakeUploadedFile("a.pdf", b"%PDF-1.7\\nnot a valid PDF structure"),
+        FakeUploadedFile("b.pdf", b"%PDF-1.7 valid"),
+    ]
+    extraction_calls = []
+
+    def extract(*args, **kwargs):
+        extraction_calls.append(True)
+        return "texte"
+
+    with pytest.raises(ValueError, match="PDF illisible ou mal formé"):
+        premium_batch_analysis.prepare_pdf_batch_uploads(files, extract)
+    assert extraction_calls == []
