@@ -523,7 +523,11 @@ elif page == "Analyse PDF":
                         )
                         st.markdown("**Réponse de SOW IA**")
                         st.write(response)
-                    except Exception as exc:
+                    except RateLimitExceeded as exc:
+                        st.warning(str(exc))
+                    except RateLimitUnavailable as exc:
+                        st.error(str(exc))
+                    except Exception:
                         st.error("L'analyse du document a échoué.")
                         # Technical details stay in server-side logs, not in the browser.
 
