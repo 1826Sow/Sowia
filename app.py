@@ -28,6 +28,7 @@ import cloud_storage
 import paypal_payments
 import premium_access
 from document_storage import upload_document, list_documents, download_document, delete_document
+from session_security import clear_private_session_state
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
@@ -84,7 +85,18 @@ if cloud_mode:
 
         auth_stage = "vérification de la session Supabase"
         current_user = authenticated_user(supabase_client)
-        if current_user is not None:
+        if current_user is None:
+            # An expired or missing login must not leave the previous account's
+            # private PDF content or cached downloads in this browser session.
+            clear_private_session_state(st.session_state)
+            st.session_state.pop("sowia_authenticated_user_id", None)
+        else:
+            authenticated_user_id = str(current_user.id)
+            if st.session_state.get("sowia_authenticated_user_id") != authenticated_user_id:
+                # A different account (or the first authenticated login) starts
+                # with a clean slate for private document and payment state.
+                clear_private_session_state(st.session_state)
+                st.session_state["sowia_authenticated_user_id"] = authenticated_user_id
             # Reuse one private conversation history for this authenticated account.
             st.session_state.session_id = str(
                 uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
@@ -94,6 +106,8 @@ if cloud_mode:
         # unavailable. Never bypass authentication when the deployment
         # explicitly requires it.
         st.session_state.pop("sowia_supabase_client", None)
+        clear_private_session_state(st.session_state)
+        st.session_state.pop("sowia_authenticated_user_id", None)
         if auth_required:
             # Show a compact diagnostic directly in the main error box so it
             # remains visible on small mobile screens.
@@ -210,6 +224,8 @@ with st.sidebar:
         if st.button("Se déconnecter", use_container_width=True):
             sign_out(supabase_client)
             st.session_state.pop("sowia_supabase_client", None)
+            clear_private_session_state(st.session_state)
+            st.session_state.pop("sowia_authenticated_user_id", None)
             st.session_state.session_id = str(uuid.uuid4())
             st.rerun()
     else:
