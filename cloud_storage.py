@@ -22,10 +22,10 @@ def list_memories(client, user):
     )
 
 
-def add_memory(client, user, content):
+def add_memory(client, user, content, max_chars=1000):
     cleaned = (content or "").strip()
-    if not cleaned or len(cleaned) > 1000:
-        raise ValueError("La note doit contenir entre 1 et 1 000 caractères.")
+    if not cleaned or len(cleaned) > max_chars:
+        raise ValueError(f"La note doit contenir entre 1 et {max_chars:,} caractères.")
     return (
         client.table("sowia_memory_items")
         .insert({"user_id": _user_id(user), "content": cleaned})
