@@ -53,7 +53,8 @@ def complete_github_login(client, authorization_code):
     """Exchange the one-time PKCE code using the same session's client."""
     if not authorization_code:
         raise ValueError("Code de connexion manquant.")
-    return client.auth.exchange_code_for_session(authorization_code)
+    # supabase-py v2 expects a credentials dictionary, not the raw code string.
+    return client.auth.exchange_code_for_session({"auth_code": authorization_code})
 
 
 def authenticated_user(client):
