@@ -108,3 +108,12 @@ def test_upload_rejects_encrypted_pdf():
 def test_storage_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         docs.list_documents(FakeClient(), None)
+
+def test_optional_sql_has_restrictive_guard_for_existing_storage_policies():
+    from pathlib import Path
+
+    sql = (Path(__file__).resolve().parents[1] / "supabase_optional_features.sql").read_text()
+    assert 'as restrictive' in sql.lower()
+    assert '"SOW IA enforce private PDF folder isolation"' in sql
+    assert "bucket_id <> 'sowia-private-documents'" in sql
+    assert "(select auth.uid())::text" in sql
