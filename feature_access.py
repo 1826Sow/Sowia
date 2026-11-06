@@ -11,7 +11,6 @@ STANDARD_FEATURES = frozenset({
     "pdf_text_extraction",
     "pdf_creation",
     "conversation_history",
-    "private_document_storage",
     "account_settings",
 })
 
@@ -20,6 +19,7 @@ PREMIUM_FEATURES = frozenset({
     "batch_pdf_analysis",
     "advanced_professional_exports",
     "extended_memory",
+    "private_document_storage",
 })
 
 
