@@ -8,6 +8,11 @@ from pypdf import PdfWriter
 import premium_batch_analysis
 
 
+@pytest.fixture(autouse=True)
+def allow_shared_quota_by_default(monkeypatch):
+    monkeypatch.setattr(premium_batch_analysis, "consume_rate_limit", lambda *args, **kwargs: None)
+
+
 def test_batch_analysis_checks_entitlement_before_ai(monkeypatch):
     calls = []
 
@@ -199,3 +204,27 @@ def test_batch_upload_preparation_caps_aggregate_file_size():
             files, lambda uploaded, max_chars: extracted.append(uploaded.name) or "texte"
         )
     assert extracted == []
+
+
+def test_batch_analysis_consumes_quota_before_ai(monkeypatch):
+    calls = []
+    monkeypatch.setattr(premium_batch_analysis, "require_feature_access", lambda *a, **k: calls.append("premium"))
+    monkeypatch.setattr(premium_batch_analysis, "consume_rate_limit", lambda client, user, bucket: calls.append(bucket))
+    result = premium_batch_analysis.analyze_pdf_batch(
+        "client", "user", [("a.pdf", "Texte A"), ("b.pdf", "Texte B")],
+        lambda *a, **k: calls.append("ai") or "ok",
+    )
+    assert result == "ok"
+    assert calls == ["premium", "batch_pdf", "ai"]
+
+
+def test_batch_analysis_does_not_call_ai_when_quota_is_denied(monkeypatch):
+    monkeypatch.setattr(premium_batch_analysis, "require_feature_access", lambda *a, **k: None)
+    def deny(*args, **kwargs):
+        raise PermissionError("quota reached")
+    monkeypatch.setattr(premium_batch_analysis, "consume_rate_limit", deny)
+    with pytest.raises(PermissionError, match="quota reached"):
+        premium_batch_analysis.analyze_pdf_batch(
+            "client", "user", [("a.pdf", "secret A"), ("b.pdf", "secret B")],
+            lambda *a, **k: (_ for _ in ()).throw(AssertionError("AI must not run")),
+        )
