@@ -8,7 +8,7 @@ from premium_exports import build_professional_pdf
 
 
 def test_professional_export_creates_cover_and_readable_report():
-    payload = build_professional_pdf("Rapport de test", "Première section\\n\\nDeuxième section")
+    payload = build_professional_pdf("Rapport de test", "Première section\n\nDeuxième section")
     assert payload.startswith(b"%PDF-")
     reader = PdfReader(BytesIO(payload))
     assert len(reader.pages) == 2
