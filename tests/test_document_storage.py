@@ -8,6 +8,15 @@ from reportlab.pdfgen import canvas
 import document_storage as docs
 
 
+def _allow_document_access(*args, **kwargs):
+    return None
+
+
+@pytest.fixture(autouse=True)
+def allow_document_access_in_unit_tests(monkeypatch):
+    monkeypatch.setattr(docs, "require_feature_access", _allow_document_access)
+
+
 class User:
     id = "user-123"
 
@@ -213,3 +222,49 @@ def test_list_documents_requires_authenticated_user_before_storage_access():
         docs.list_documents(client, None)
     assert client.bucket.listed is None
 
+
+
+def test_every_storage_operation_checks_premium_at_the_function_boundary(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        docs,
+        "require_feature_access",
+        lambda client, user, feature: calls.append((client, user, feature)),
+    )
+    client = FakeClient()
+    user = User()
+    payload = make_pdf()
+    path = docs.upload_document(client, user, "report.pdf", payload)
+    docs.list_documents(client, user)
+    docs.download_document(client, user, path)
+    docs.delete_document(client, user, path)
+    assert calls == [
+        (client, user, "private_document_storage"),
+        (client, user, "private_document_storage"),
+        (client, user, "private_document_storage"),
+        (client, user, "private_document_storage"),
+    ]
+
+
+@pytest.mark.parametrize("operation", ["upload", "list", "download", "delete"])
+def test_storage_operations_deny_inactive_premium_before_storage_access(monkeypatch, operation):
+    client = FakeClient()
+
+    def deny(*args, **kwargs):
+        raise PermissionError("Premium actif requis")
+
+    monkeypatch.setattr(docs, "require_feature_access", deny)
+    with pytest.raises(PermissionError, match="Premium actif"):
+        if operation == "upload":
+            docs.upload_document(client, User(), "report.pdf", make_pdf())
+        elif operation == "list":
+            docs.list_documents(client, User())
+        elif operation == "download":
+            docs.download_document(client, User(), "user-123/report.pdf")
+        else:
+            docs.delete_document(client, User(), "user-123/report.pdf")
+
+    assert client.bucket.uploaded is None
+    assert client.bucket.listed is None
+    assert client.bucket.downloaded is None
+    assert client.bucket.removed is None
