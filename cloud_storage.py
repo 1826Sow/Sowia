@@ -1,6 +1,9 @@
 """User-scoped Supabase storage operations protected by database RLS."""
 from datetime import datetime, timezone
 
+MAX_STORED_MESSAGE_CHARS = 30000
+MAX_SESSION_ID_CHARS = 64
+
 
 def _user_id(user):
     value = getattr(user, "id", None)
@@ -76,6 +79,12 @@ def save_message(client, user, session_id, role, content):
     user_id = _user_id(user)
     if role not in {"user", "assistant"}:
         raise ValueError("Rôle de message invalide.")
+    if not isinstance(session_id, str) or not session_id.strip() or len(session_id) > MAX_SESSION_ID_CHARS:
+        raise ValueError("Identifiant de conversation invalide.")
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError("Le message doit contenir du texte.")
+    if len(content) > MAX_STORED_MESSAGE_CHARS:
+        raise ValueError("Le message dépasse la limite autorisée de 30 000 caractères.")
     return (
         client.table("sowia_messages")
         .insert(
@@ -83,7 +92,7 @@ def save_message(client, user, session_id, role, content):
                 "user_id": user_id,
                 "session_id": str(session_id),
                 "role": role,
-                "content": str(content),
+                "content": content,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             }
         )
