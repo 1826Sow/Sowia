@@ -393,15 +393,24 @@ elif page == "Ma mémoire":
             st.caption("Fonction réservée aux comptes disposant d'un accès Premium actif.")
 
     st.markdown("#### Informations mémorisées")
-    memories = get_app_memories()
-    if not memories:
-        st.caption("Aucune note enregistrée pour le moment.")
-    for item in memories:
-        with st.container(border=True):
-            st.write(item["content"])
-            if st.button("Supprimer cette note", key=f"delete_memory_{item['id']}"):
-                delete_app_memory(item["id"])
-                st.rerun()
+    try:
+        memories = get_app_memories()
+    except Exception:
+        memories = None
+        st.error("Impossible de charger vos notes mémoire pour le moment. Réessayez plus tard.")
+
+    if memories is not None:
+        if not memories:
+            st.caption("Aucune note enregistrée pour le moment.")
+        for item in memories:
+            with st.container(border=True):
+                st.write(item["content"])
+                if st.button("Supprimer cette note", key=f"delete_memory_{item['id']}"):
+                    try:
+                        delete_app_memory(item["id"])
+                        st.rerun()
+                    except Exception:
+                        st.error("Impossible de supprimer cette note pour le moment. Réessayez plus tard.")
 
 elif page == "Recherche Web":
     st.subheader("🌐 Recherche Web")
