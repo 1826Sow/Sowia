@@ -1,4 +1,4 @@
-""""Private, user-scoped PDF storage using Supabase Storage."""
+"""Private, user-scoped PDF storage using Supabase Storage."""
 from io import BytesIO
 import os
 import re
