@@ -210,32 +210,32 @@ if cloud_mode and current_user is not None:
 def get_app_history(limit=30):
     if cloud_mode:
         return cloud_storage.get_history(supabase_client, current_user, st.session_state.session_id, limit, st.session_state.get("workspace_id", "personal"))
-    return local_get_history(st.session_state.session_id, limit)
+    return local_get_history(st.session_state.session_id, limit, st.session_state.get("workspace_id", "personal"))
 
 def save_app_message(role, content):
     if cloud_mode:
         return cloud_storage.save_message(supabase_client, current_user, st.session_state.session_id, role, content, st.session_state.get("workspace_id", "personal"))
-    return local_save_message(st.session_state.session_id, role, content)
+    return local_save_message(st.session_state.session_id, role, content, st.session_state.get("workspace_id", "personal"))
 
 def clear_app_history():
     if cloud_mode:
         return cloud_storage.clear_history(supabase_client, current_user, st.session_state.session_id, st.session_state.get("workspace_id", "personal"))
-    return local_clear_history(st.session_state.session_id)
+    return local_clear_history(st.session_state.session_id, st.session_state.get("workspace_id", "personal"))
 
 def get_app_memories():
     if cloud_mode:
         return cloud_storage.list_memories(supabase_client, current_user, st.session_state.get("workspace_id", "personal"))
-    return local_get_memories()
+    return local_get_memories(workspace_id=st.session_state.get("workspace_id", "personal"))
 
 def add_app_memory(content):
     if cloud_mode:
         return cloud_storage.add_memory(supabase_client, current_user, content, st.session_state.get("workspace_id", "personal"))
-    return local_add_memory(content)
+    return local_add_memory(content, st.session_state.get("workspace_id", "personal"))
 
 def delete_app_memory(memory_id):
     if cloud_mode:
         return cloud_storage.delete_memory(supabase_client, current_user, memory_id, st.session_state.get("workspace_id", "personal"))
-    return local_delete_memory(memory_id)
+    return local_delete_memory(memory_id, st.session_state.get("workspace_id", "personal"))
 
 def go_to_page(page_name):
     st.session_state.page_nav = page_name
