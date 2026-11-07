@@ -152,7 +152,7 @@ if cloud_mode:
             # L'URL OAuth et le mécanisme PKCE restent inchangés.
             safe_login_url = html.escape(login_url, quote=True)
             st.markdown(
-                f'<a href="{safe_login_url}" target="_self" '
+                f'<a href="{safe_login_url}" target="_top" '
                 'rel="noopener noreferrer" '
                 'style="display:block;text-align:center;padding:0.65rem 1rem;'
                 'border-radius:0.6rem;background:#2563eb;color:white;'
