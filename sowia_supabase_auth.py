@@ -299,9 +299,10 @@ def request_password_reset(client, email, redirect_to):
     parts = urlsplit(redirect_to)
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
     query["sowia_recovery"] = "1"
-    recovery_url = urlunsplit(
-        (parts.scheme, parts.netloc, parts.path or "/", urlencode(query), parts.fragment)
-    )
+    recovery_path = parts.path or "/"
+    recovery_url = f"{parts.scheme}://{parts.netloc}{recovery_path}?{urlencode(query)}"
+    if parts.fragment:
+        recovery_url += f"#{parts.fragment}"
     return client.auth.reset_password_for_email(
         str(email).strip(), options={"redirect_to": recovery_url}
     )
