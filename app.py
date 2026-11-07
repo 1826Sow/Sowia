@@ -19,6 +19,7 @@ from documents import extract_pdf_text
 from websearch import search_web
 from sowia_supabase_auth import (
     authenticated_user,
+    browser_storage_id,
     complete_github_login,
     configuration_ready,
     create_user_client,
@@ -72,8 +73,14 @@ if cloud_mode:
     auth_stage = "initialisation du client Supabase"
     try:
         if "sowia_supabase_client" not in st.session_state:
+            # Streamlit Cloud WebSocket requests may not expose browser cookies.
+            # Obtain a persistent random browser scope through a v2 component.
+            browser_id = browser_storage_id()
+            if not browser_id:
+                st.info("Initialisation sécurisée du navigateur…")
+                st.stop()
             # Keep this PKCE client in this browser session; never use a global cache.
-            st.session_state.sowia_supabase_client = create_user_client()
+            st.session_state.sowia_supabase_client = create_user_client(browser_id)
         supabase_client = st.session_state.sowia_supabase_client
 
         auth_stage = "échange du code de retour GitHub avec Supabase"
