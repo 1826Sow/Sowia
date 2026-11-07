@@ -30,7 +30,7 @@ import cloud_storage
 import paypal_payments
 import premium_access
 from document_storage import upload_document, list_documents, download_document, delete_document
-from session_security import clear_private_session_state
+from session_security import clear_private_session_state, clear_workspace_session_state
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
@@ -246,6 +246,10 @@ with st.sidebar:
     st.caption("Intelligence artificielle")
     workspace_choice = st.radio("Espace de travail", ["Personnel", "Professionnel"], key="workspace_choice", horizontal=True)
     workspace_id = "professional" if workspace_choice == "Professionnel" else "personal"
+    previous_workspace_id = st.session_state.get("active_workspace_id")
+    if previous_workspace_id is not None and previous_workspace_id != workspace_id:
+        clear_workspace_session_state(st.session_state)
+    st.session_state.active_workspace_id = workspace_id
     if cloud_mode and current_user is not None:
         st.session_state.session_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}:{workspace_id}"))
     st.session_state.workspace_id = workspace_id
