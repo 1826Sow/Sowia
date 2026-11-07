@@ -263,3 +263,52 @@ def authenticated_user(client):
 
 def sign_out(client):
     client.auth.sign_out()
+
+
+def sign_up_with_email(client, email, password, redirect_to):
+    """Create an account with email/password; confirmation uses the app callback."""
+    if not email or not password:
+        raise ValueError("Renseignez votre adresse e-mail et votre mot de passe.")
+    if not redirect_to or not redirect_to.startswith("https://"):
+        raise ValueError("L'adresse de retour publique HTTPS n'est pas configurée.")
+    return client.auth.sign_up({
+        "email": str(email).strip(),
+        "password": str(password),
+        "options": {"email_redirect_to": redirect_to},
+    })
+
+
+def sign_in_with_email(client, email, password):
+    """Authenticate an existing account using email and password."""
+    if not email or not password:
+        raise ValueError("Renseignez votre adresse e-mail et votre mot de passe.")
+    return client.auth.sign_in_with_password({
+        "email": str(email).strip(),
+        "password": str(password),
+    })
+
+
+def request_password_reset(client, email, redirect_to):
+    """Send a recovery link that returns to the app's dedicated recovery state."""
+    from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+
+    if not email:
+        raise ValueError("Renseignez votre adresse e-mail.")
+    if not redirect_to or not redirect_to.startswith("https://"):
+        raise ValueError("L'adresse de retour publique HTTPS n'est pas configurée.")
+    parts = urlsplit(redirect_to)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query["sowia_recovery"] = "1"
+    recovery_url = urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment)
+    )
+    return client.auth.reset_password_for_email(
+        str(email).strip(), options={"redirect_to": recovery_url}
+    )
+
+
+def update_account_password(client, password):
+    """Set a new password for the currently authenticated recovery session."""
+    if not password or len(str(password)) < 8:
+        raise ValueError("Le nouveau mot de passe doit contenir au moins 8 caractères.")
+    return client.auth.update_user({"password": str(password)})
