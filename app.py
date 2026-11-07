@@ -134,7 +134,7 @@ if cloud_mode:
             login_url = github_authorization_url(supabase_client, redirect_to)
             safe_login_url = html.escape(login_url, quote=True)
             st.markdown(
-                f'<a href="{safe_login_url}" target="_self" rel="noopener noreferrer" '
+                f'<a href="{safe_login_url}" target="_top" rel="noopener noreferrer" '
                 'style="display:inline-block;padding:0.55rem 1rem;border-radius:0.5rem;'
                 'background:#ff4b4b;color:white;text-decoration:none;font-weight:600;">'
                 'Continuer avec GitHub</a>',
