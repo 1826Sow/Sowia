@@ -71,13 +71,13 @@ def build_system_prompt(memories=None, document_context=None):
 def answer(messages, memories=None, document_context=None):
     if not API_KEY:
         raise RuntimeError(
-            "Aucune clé API IA n'est configurée. Ajoutez GROQ_API_KEY ou OPENAI_API_KEY dans Streamlit > Secrets. Ne partagez jamais cette clé. "
-            ""
+            "Aucune clé API IA n'est configurée. Ajoutez GROQ_API_KEY ou OPENAI_API_KEY dans Streamlit > Secrets. Ne partagez jamais cette clé."
         )
 
     system_prompt = build_system_prompt(memories=memories, document_context=document_context)
 
-    client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
+    # Bound network waits so the Streamlit chat cannot appear to hang indefinitely.
+    client = OpenAI(api_key=API_KEY, base_url=BASE_URL, timeout=45.0)
     try:
         response = client.chat.completions.create(
             model=MODEL,
@@ -95,4 +95,10 @@ def answer(messages, memories=None, document_context=None):
     except RateLimitError:
         return _offline_reply(messages)
 
-    return response.choices[0].message.content or ""
+    content = response.choices[0].message.content
+    if not isinstance(content, str) or not content.strip():
+        raise RuntimeError(
+            "Le fournisseur IA a répondu sans contenu. Réessayez dans quelques instants ; "
+            "si le problème persiste, vérifiez le modèle et le fournisseur configurés."
+        )
+    return content
