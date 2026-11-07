@@ -90,11 +90,30 @@ class _BrowserScopedOAuthStorage(SyncSupportedStorage):
 
 
 def _browser_storage_id():
-    """Derive a non-reversible browser scope from Streamlit's XSRF cookie."""
-    import streamlit as st
+    """Derive a non-reversible browser scope from Streamlit's XSRF cookie.
 
-    cookies = st.context.cookies
-    xsrf_cookie = cookies.get("_streamlit_xsrf")
+    Streamlit exposes cookies through st.context.cookies. Some hosted/mobile
+    request paths may expose the same initial-request cookie only in the
+    Cookie header, so inspect that header as a safe fallback. Never substitute
+    a session-state or URL value: the scope must be browser-bound.
+    """
+    import streamlit as st
+    from http.cookies import SimpleCookie
+
+    xsrf_cookie = st.context.cookies.get("_streamlit_xsrf")
+    if not xsrf_cookie:
+        headers = st.context.headers
+        cookie_header = headers.get("Cookie") or headers.get("cookie") or ""
+        if cookie_header:
+            parsed = SimpleCookie()
+            try:
+                parsed.load(cookie_header)
+                morsel = parsed.get("_streamlit_xsrf")
+                if morsel:
+                    xsrf_cookie = morsel.value
+            except Exception:
+                xsrf_cookie = None
+
     if not xsrf_cookie:
         return None
     return hashlib.sha256(str(xsrf_cookie).encode("utf-8")).hexdigest()
