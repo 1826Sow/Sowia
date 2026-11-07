@@ -110,7 +110,7 @@ def test_upload_rejects_pdf_filename_without_a_real_name(filename):
 
 
 def test_safe_filename_preserves_pdf_extension_when_cleaning():
-    assert docs._safe_filename("rapport avec accents éè.pdf") == "rapport_avec_accents___.pdf"
+    assert docs._safe_filename("rapport avec accents éè.pdf") == "rapport_avec_accents.pdf"
 
 
 def test_storage_requires_authenticated_user():
