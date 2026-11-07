@@ -23,10 +23,10 @@ def _safe_filename(filename):
     original = os.path.basename(str(filename or "").replace("\\", "/"))
     if not original.lower().endswith(".pdf"):
         raise ValueError("Seuls les fichiers PDF sont acceptés.")
-    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", original).strip("._")
-    if not cleaned:
+    stem = re.sub(r"[^A-Za-z0-9._-]", "_", original[:-4]).strip("._")
+    if not stem:
         raise ValueError("Nom de fichier invalide.")
-    return cleaned[:100]
+    return f"{stem[:96]}.pdf"
 
 def _owned_path(user, path, workspace_id="personal"):
     prefix = _user_prefix(user) + "/"
@@ -51,6 +51,8 @@ def upload_document(client, user, filename, content, workspace_id="personal"):
         raise ValueError("Le fichier PDF est vide.")
     if len(payload) > MAX_DOCUMENT_BYTES:
         raise ValueError("Le fichier dépasse la limite de 10 Mo.")
+    if b"%PDF-" not in payload[:1024]:
+        raise ValueError("Le contenu du fichier n'est pas un PDF valide.")
     object_name = f"{uuid4().hex}_{safe_name}"
     path = f"{prefix}/{workspace}/{object_name}"
     client.storage.from_(BUCKET_NAME).upload(path, payload, file_options={"content-type": "application/pdf", "upsert": "false"})
