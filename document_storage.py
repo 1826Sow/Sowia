@@ -3,7 +3,7 @@ import os
 import re
 from uuid import uuid4
 
-BUCKET_NAME = "sowia-private-documents"
+BUCKET_NAME = "sowia-files"
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
 WORKSPACES = {"personal", "professional"}
 
