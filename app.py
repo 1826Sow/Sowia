@@ -20,11 +20,14 @@ from websearch import search_web
 from sowia_supabase_auth import (
     authenticated_user,
     browser_storage_id,
-    complete_github_login,
+    complete_pkce_code_exchange,
     configuration_ready,
     create_user_client,
-    github_authorization_url,
+    request_password_reset,
+    sign_in_with_email,
     sign_out,
+    sign_up_with_email,
+    update_account_password,
 )
 import cloud_storage
 import paypal_payments
@@ -83,11 +86,12 @@ if cloud_mode:
             st.session_state.sowia_supabase_client = create_user_client(browser_id)
         supabase_client = st.session_state.sowia_supabase_client
 
-        auth_stage = "échange du code de retour GitHub avec Supabase"
+        auth_stage = "échange du lien sécurisé e-mail avec Supabase"
         authorization_code = st.query_params.get("code")
         if authorization_code:
-            complete_github_login(supabase_client, authorization_code)
-            st.session_state.pop("sowia_github_login_url", None)
+            if st.query_params.get("sowia_recovery") == "1":
+                st.session_state.sowia_password_recovery = True
+            complete_pkce_code_exchange(supabase_client, authorization_code)
             st.query_params.clear()
             st.rerun()
 
@@ -136,34 +140,132 @@ if cloud_mode:
             unsafe_allow_html=True,
         )
         st.subheader("Connexion à SOW IA")
-        st.write("Connectez-vous avec votre compte GitHub pour accéder à votre mémoire et à votre historique privés.")
-        try:
-            redirect_to = str(get_setting("SOWIA_PUBLIC_URL", "")).strip()
-            # Keep one OAuth URL per Streamlit session. Each call to
-            # sign_in_with_oauth creates a new PKCE verifier; generating a
-            # fresh URL on every rerun can overwrite the verifier for the
-            # GitHub redirect currently in progress.
-            login_url = st.session_state.get("sowia_github_login_url")
-            if not login_url:
-                login_url = github_authorization_url(supabase_client, redirect_to)
-                st.session_state.sowia_github_login_url = login_url
-            # Use Streamlit's native external-navigation control rather than
-            # an HTML anchor embedded in the app document.
-            st.link_button(
-                "Continuer avec GitHub",
-                login_url,
-                type="primary",
-                use_container_width=True,
-            )
-            if st.button("Recommencer la connexion", use_container_width=True):
-                st.session_state.pop("sowia_github_login_url", None)
-                st.rerun()
-        except Exception as exc:
-            st.session_state.pop("sowia_github_login_url", None)
-            st.warning("La connexion GitHub attend encore la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
-            st.caption(str(exc))
+        st.write("Connectez-vous avec votre adresse e-mail ou créez votre compte personnel.")
+
+        redirect_to = str(get_setting("SOWIA_PUBLIC_URL", "")).strip()
+        login_tab, signup_tab, reset_tab = st.tabs(
+            ["Se connecter", "Créer un compte", "Mot de passe oublié"]
+        )
+
+        with login_tab:
+            with st.form("sowia_email_login"):
+                login_email = st.text_input("Adresse e-mail", key="sowia_login_email")
+                login_password = st.text_input(
+                    "Mot de passe", type="password", key="sowia_login_password"
+                )
+                login_submitted = st.form_submit_button(
+                    "Se connecter", type="primary", use_container_width=True
+                )
+            if login_submitted:
+                try:
+                    sign_in_with_email(supabase_client, login_email, login_password)
+                    st.session_state.pop("sowia_password_recovery", None)
+                    st.rerun()
+                except Exception as exc:
+                    st.error("Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.")
+                    st.caption(str(exc))
+
+        with signup_tab:
+            with st.form("sowia_email_signup"):
+                signup_email = st.text_input("Votre adresse e-mail", key="sowia_signup_email")
+                signup_password = st.text_input(
+                    "Choisissez un mot de passe (8 caractères minimum)",
+                    type="password",
+                    key="sowia_signup_password",
+                )
+                signup_confirm = st.text_input(
+                    "Confirmez le mot de passe",
+                    type="password",
+                    key="sowia_signup_confirm",
+                )
+                signup_submitted = st.form_submit_button(
+                    "Créer mon compte", type="primary", use_container_width=True
+                )
+            if signup_submitted:
+                if signup_password != signup_confirm:
+                    st.error("Les deux mots de passe ne correspondent pas.")
+                elif len(signup_password) < 8:
+                    st.error("Le mot de passe doit contenir au moins 8 caractères.")
+                else:
+                    try:
+                        response = sign_up_with_email(
+                            supabase_client, signup_email, signup_password, redirect_to
+                        )
+                        signup_data = getattr(response, "user", None)
+                        if signup_data is None:
+                            signup_data = getattr(getattr(response, "data", None), "user", None)
+                        if signup_data is not None:
+                            st.success(
+                                "Compte créé. Si la confirmation par e-mail est activée, "
+                                "ouvrez le lien reçu pour terminer l'inscription."
+                            )
+                        else:
+                            st.success(
+                                "Demande de création envoyée. Consultez votre boîte e-mail "
+                                "pour confirmer l'inscription."
+                            )
+                    except Exception as exc:
+                        st.error("La création du compte n'a pas abouti.")
+                        st.caption(str(exc))
+
+        with reset_tab:
+            with st.form("sowia_password_reset"):
+                reset_email = st.text_input(
+                    "Adresse e-mail du compte", key="sowia_reset_email"
+                )
+                reset_submitted = st.form_submit_button(
+                    "Recevoir un lien de réinitialisation",
+                    use_container_width=True,
+                )
+            if reset_submitted:
+                try:
+                    request_password_reset(supabase_client, reset_email, redirect_to)
+                    st.success(
+                        "Si un compte correspond à cette adresse, un e-mail de "
+                        "réinitialisation va être envoyé."
+                    )
+                except Exception as exc:
+                    st.error("Impossible d'envoyer le lien de réinitialisation.")
+                    st.caption(str(exc))
         st.stop()
 
+
+
+# Password recovery is completed only after Supabase has exchanged the one-time
+# PKCE code and validated the resulting user session.
+if cloud_mode and current_user is not None and st.session_state.get("sowia_password_recovery"):
+    st.markdown(
+        '<div class="hero"><h1>SOW IA</h1><p>Réinitialisation sécurisée du mot de passe.</p></div>',
+        unsafe_allow_html=True,
+    )
+    st.subheader("Choisir un nouveau mot de passe")
+    with st.form("sowia_set_new_password"):
+        new_password = st.text_input(
+            "Nouveau mot de passe (8 caractères minimum)", type="password"
+        )
+        confirm_password = st.text_input("Confirmer le nouveau mot de passe", type="password")
+        password_submitted = st.form_submit_button(
+            "Enregistrer le nouveau mot de passe", type="primary", use_container_width=True
+        )
+    if password_submitted:
+        if new_password != confirm_password:
+            st.error("Les deux mots de passe ne correspondent pas.")
+        elif len(new_password) < 8:
+            st.error("Le mot de passe doit contenir au moins 8 caractères.")
+        else:
+            try:
+                update_account_password(supabase_client, new_password)
+                st.session_state.pop("sowia_password_recovery", None)
+                st.success("Mot de passe mis à jour. Votre compte est prêt.")
+                st.rerun()
+            except Exception as exc:
+                st.error("La mise à jour du mot de passe a échoué.")
+                st.caption(str(exc))
+    if st.button("Annuler la réinitialisation et se déconnecter"):
+        sign_out(supabase_client)
+        st.session_state.pop("sowia_password_recovery", None)
+        st.rerun()
+    st.stop()
 
 # PayPal returns the buyer to this server URL with the order ID in ?token=...
 # The server validates and captures the order before granting any entitlement.
