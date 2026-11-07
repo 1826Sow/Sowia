@@ -10,6 +10,7 @@ import inspect
 import sqlite3
 import time
 from pathlib import Path
+from supabase_auth import SyncSupportedStorage
 
 
 _OAUTH_DB = Path("data/sowia_oauth.db")
@@ -17,7 +18,7 @@ _VERIFIER_SUFFIX = "-code-verifier"
 _VERIFIER_TTL_SECONDS = 600
 
 
-class _BrowserScopedOAuthStorage:
+class _BrowserScopedOAuthStorage(SyncSupportedStorage):
     """Supabase storage adapter: persist only short-lived PKCE verifiers."""
 
     def __init__(self, browser_id):
