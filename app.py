@@ -454,7 +454,7 @@ elif page == "Mes documents":
         uploaded_pdf = st.file_uploader("Ajouter un PDF à mes documents", type=["pdf"], key="private_pdf_upload")
         if uploaded_pdf and st.button("Enregistrer dans mes documents", type="primary"):
             try:
-                upload_document(supabase_client, current_user, uploaded_pdf.name, uploaded_pdf.getvalue())
+                upload_document(supabase_client, current_user, uploaded_pdf.name, uploaded_pdf.getvalue(), st.session_state.get("workspace_id", "personal"))
                 st.success("Document enregistré dans votre espace privé.")
                 st.rerun()
             except (ValueError, PermissionError) as exc:
@@ -464,14 +464,16 @@ elif page == "Mes documents":
         st.divider()
         st.markdown("#### Mes fichiers")
         try:
-            stored_documents = list_documents(supabase_client, current_user)
+            stored_documents = list_documents(supabase_client, current_user, st.session_state.get("workspace_id", "personal"))
             if not stored_documents:
                 st.caption("Aucun document enregistré pour le moment.")
             for stored in stored_documents:
                 stored_name = stored.get("name", "")
                 if not stored_name or stored_name in {".", ".."}:
                     continue
-                stored_path = f"{current_user.id}/{stored_name}"
+                stored_path = stored.get("path", "")
+                if not stored_path:
+                    continue
                 display_name = stored_name.split("_", 1)[-1] if "_" in stored_name else stored_name
                 with st.container(border=True):
                     st.write(f"📄 {display_name}")
@@ -485,11 +487,11 @@ elif page == "Mes documents":
                             key=f"download_private_{stored_name}",
                         )
                     if st.button("Préparer le téléchargement", key=f"prepare_private_{stored_name}"):
-                        st.session_state["prepared_document_bytes"] = download_document(supabase_client, current_user, stored_path)
+                        st.session_state["prepared_document_bytes"] = download_document(supabase_client, current_user, stored_path, st.session_state.get("workspace_id", "personal"))
                         st.session_state["prepared_document_path"] = stored_path
                         st.rerun()
                     if st.button("Supprimer", key=f"delete_private_{stored_name}"):
-                        delete_document(supabase_client, current_user, stored_path)
+                        delete_document(supabase_client, current_user, stored_path, st.session_state.get("workspace_id", "personal"))
                         if st.session_state.get("prepared_document_path") == stored_path:
                             st.session_state.pop("prepared_document_path", None)
                             st.session_state.pop("prepared_document_bytes", None)
