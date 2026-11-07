@@ -1,4 +1,4 @@
-"""Supabase GitHub OAuth helpers for SOW IA.
+"""Supabase GitHub OAuth helpers for SOW IA (deployment refresh check).
 
 PKCE verifiers are kept briefly in server-side storage, scoped to a random
 browser identifier persisted in localStorage by a Streamlit component. User
