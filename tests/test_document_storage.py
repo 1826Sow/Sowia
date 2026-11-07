@@ -3,7 +3,7 @@ import pytest
 import document_storage as docs
 
 
-VALID_PDF = b"%PDF-1.7\\n% test fixture\\n"
+VALID_PDF = b"%PDF-1.7\n% test fixture\n"
 
 
 class User:
