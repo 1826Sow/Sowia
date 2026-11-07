@@ -53,9 +53,9 @@ L'application utilise `SOWIA_PUBLIC_URL` comme destination des liens de confirma
 
 ### 3. Données et sécurité
 
-Dans Supabase **SQL Editor**, exécuter le script `supabase_schema.sql` du dépôt si ce n'est pas déjà fait. Vérifier ensuite les tables `sowia_memory_items` et `sowia_messages` ainsi que leurs politiques RLS.
+Dans Supabase **SQL Editor**, exécuter le script `supabase_schema.sql` du dépôt si ce n'est pas déjà fait. Il crée les tables `sowia_memory_items` et `sowia_messages`, active leurs politiques RLS, crée le bucket privé `sowia-private-documents` et limite la lecture, l'envoi et la suppression des PDF au dossier correspondant à l'identifiant de chaque utilisateur.
 
-Le stockage documentaire privé nécessite également un bucket privé et ses règles d'accès. Ne pas considérer cette partie comme validée tant qu'un test avec deux comptes distincts n'a pas confirmé l'isolation des fichiers.
+Le script peut être réexécuté pour remettre à jour les politiques qu'il gère. Après exécution, tester avec deux comptes distincts que chaque compte ne peut ni lister, ni télécharger, ni supprimer les documents de l'autre.
 
 ## Déploiement Streamlit
 
