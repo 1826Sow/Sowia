@@ -273,7 +273,10 @@ if page == "Accueil":
 elif page == "Assistant IA":
     st.subheader("💬 Mon Assistant IA")
     if not API_KEY:
-        st.warning("Pour activer les réponses IA, ajoutez votre clé API dans les secrets de l'hébergement. Ne la partagez jamais sur GitHub.")
+        st.warning(
+            "Le moteur IA n'est pas encore configuré. Ajoutez GROQ_API_KEY (option gratuite selon les limites du fournisseur) "
+            "ou OPENAI_API_KEY dans les secrets Streamlit. Ne partagez jamais votre clé."
+        )
     memories = get_app_memories()
     if memories:
         st.caption(f"{len(memories)} note(s) mémoire seront disponibles à l'assistant.")
@@ -287,10 +290,11 @@ elif page == "Assistant IA":
             st.markdown(prompt)
         with st.chat_message("assistant"):
             try:
-                reply = answer(
-                    get_app_history(),
-                    memories=[item["content"] for item in memories],
-                )
+                with st.spinner("SOW IA prépare sa réponse..."):
+                    reply = answer(
+                        get_app_history(),
+                        memories=[item["content"] for item in memories],
+                    )
                 st.markdown(reply)
                 save_app_message("assistant", reply)
             except Exception as exc:
@@ -301,7 +305,7 @@ elif page == "Assistant IA":
                     st.error("La clé API du fournisseur IA n'est pas reconnue. Vérifiez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit.")
                 else:
                     st.error("Une erreur est survenue pendant la réponse de l'assistant.")
-                    st.caption(error_text)
+                    st.caption(redact_secrets(error_text))
     if st.button("Effacer cette conversation"):
         clear_app_history()
         st.rerun()
