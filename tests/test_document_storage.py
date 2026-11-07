@@ -24,7 +24,7 @@ class FakeBucket:
 
     def download(self, path):
         self.downloaded = path
-        return b"%PDF"
+        return b"%PDF-1.4"
 
     def remove(self, paths):
         self.removed = paths
@@ -44,10 +44,10 @@ class FakeClient:
 @pytest.mark.parametrize("workspace", ["personal", "professional"])
 def test_upload_is_stored_under_user_and_workspace_folder(workspace):
     client = FakeClient()
-    path = docs.upload_document(client, User(), "Mon rapport.pdf", b"%PDF", workspace)
+    path = docs.upload_document(client, User(), "Mon rapport.pdf", b"%PDF-1.4", workspace)
     assert path.startswith(f"user-123/{workspace}/")
     assert path.endswith("_Mon_rapport.pdf")
-    assert client.bucket.uploaded[1] == b"%PDF"
+    assert client.bucket.uploaded[1] == b"%PDF-1.4"
     assert client.bucket.uploaded[2]["content-type"] == "application/pdf"
 
 
@@ -94,6 +94,23 @@ def test_upload_rejects_non_pdf_and_oversized_files_before_storage_access():
     with pytest.raises(ValueError, match="10 Mo"):
         docs.upload_document(client, User(), "large.pdf", b"x" * (docs.MAX_DOCUMENT_BYTES + 1))
     assert client.bucket.uploaded is None
+
+
+def test_upload_rejects_invalid_pdf_content_before_storage_access():
+    client = FakeClient()
+    with pytest.raises(ValueError, match="PDF valide"):
+        docs.upload_document(client, User(), "fake.pdf", b"ceci n'est pas un PDF")
+    assert client.bucket.uploaded is None
+
+
+@pytest.mark.parametrize("filename", [".pdf", "....pdf", "___ .pdf"])
+def test_upload_rejects_pdf_filename_without_a_real_name(filename):
+    with pytest.raises(ValueError, match="Nom de fichier invalide"):
+        docs.upload_document(FakeClient(), User(), filename, b"%PDF-1.4")
+
+
+def test_safe_filename_preserves_pdf_extension_when_cleaning():
+    assert docs._safe_filename("rapport avec accents éè.pdf") == "rapport_avec_accents__.pdf"
 
 
 def test_storage_requires_authenticated_user():
