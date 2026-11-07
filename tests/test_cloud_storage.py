@@ -1,4 +1,4 @@
-"""Tests for cloud-storage ownership guards and user-scoped queries."""
+"""Tests for user- and workspace-scoped Supabase operations."""
 from types import SimpleNamespace
 
 import pytest
@@ -21,11 +21,9 @@ class FakeQuery:
 
     def insert(self, payload):
         self.inserted = payload
-        self.operations.append(("insert", payload))
         return self
 
     def delete(self):
-        self.operations.append(("delete",))
         return self
 
     def eq(self, field, value):
@@ -57,8 +55,29 @@ def test_storage_requires_authenticated_user():
         cloud_storage._user_id(None)
 
 
-def test_storage_uses_authenticated_subject_id():
-    assert cloud_storage._user_id(User()) == "user-123"
+def test_invalid_workspace_is_rejected():
+    with pytest.raises(ValueError, match="Espace de travail invalide"):
+        cloud_storage.list_memories(FakeClient(), User(), "shared")
+
+
+@pytest.mark.parametrize("workspace", ["personal", "professional"])
+def test_memory_queries_are_scoped_to_user_and_workspace(workspace):
+    client = FakeClient()
+    cloud_storage.list_memories(client, User(), workspace)
+    filters = client.tables["sowia_memory_items"].filters
+    assert ("user_id", "user-123") in filters
+    assert ("workspace_id", workspace) in filters
+
+
+@pytest.mark.parametrize("workspace", ["personal", "professional"])
+def test_add_memory_writes_user_and_workspace(workspace):
+    client = FakeClient()
+    cloud_storage.add_memory(client, User(), "Ma note", workspace)
+    assert client.tables["sowia_memory_items"].inserted == {
+        "user_id": "user-123",
+        "workspace_id": workspace,
+        "content": "Ma note",
+    }
 
 
 def test_memory_input_is_validated_before_database_write():
@@ -72,49 +91,40 @@ def test_memory_input_is_validated_before_database_write():
         cloud_storage.add_memory(Client(), User(), "x" * 1001)
 
 
-def test_list_memories_is_scoped_to_authenticated_user():
+def test_delete_memory_is_scoped_to_user_memory_and_workspace():
     client = FakeClient()
-    cloud_storage.list_memories(client, User())
-    assert ("user_id", "user-123") in client.tables["sowia_memory_items"].filters
+    cloud_storage.delete_memory(client, User(), 42, "professional")
+    filters = client.tables["sowia_memory_items"].filters
+    assert ("id", 42) in filters
+    assert ("user_id", "user-123") in filters
+    assert ("workspace_id", "professional") in filters
 
 
-def test_add_memory_writes_authenticated_user_id():
+def test_history_is_scoped_to_user_session_and_workspace():
     client = FakeClient()
-    cloud_storage.add_memory(client, User(), "Ma note")
-    assert client.tables["sowia_memory_items"].inserted == {
-        "user_id": "user-123",
-        "content": "Ma note",
-    }
-
-
-def test_delete_memory_is_scoped_to_memory_and_authenticated_user():
-    client = FakeClient()
-    cloud_storage.delete_memory(client, User(), 42)
-    assert ("id", 42) in client.tables["sowia_memory_items"].filters
-    assert ("user_id", "user-123") in client.tables["sowia_memory_items"].filters
-
-
-def test_get_history_is_scoped_to_user_and_conversation():
-    client = FakeClient()
-    cloud_storage.get_history(client, User(), "private-session")
+    cloud_storage.get_history(client, User(), "private-session", workspace_id="professional")
     filters = client.tables["sowia_messages"].filters
     assert ("user_id", "user-123") in filters
     assert ("session_id", "private-session") in filters
+    assert ("workspace_id", "professional") in filters
 
 
-def test_clear_history_is_scoped_to_user_and_conversation():
+def test_clear_history_is_scoped_to_user_session_and_workspace():
     client = FakeClient()
-    cloud_storage.clear_history(client, User(), "private-session")
+    cloud_storage.clear_history(client, User(), "private-session", "professional")
     filters = client.tables["sowia_messages"].filters
     assert ("user_id", "user-123") in filters
     assert ("session_id", "private-session") in filters
+    assert ("workspace_id", "professional") in filters
 
 
-def test_save_message_writes_authenticated_user_and_conversation():
+@pytest.mark.parametrize("workspace", ["personal", "professional"])
+def test_save_message_writes_user_session_and_workspace(workspace):
     client = FakeClient()
-    cloud_storage.save_message(client, User(), "private-session", "user", "Bonjour")
+    cloud_storage.save_message(client, User(), "private-session", "user", "Bonjour", workspace)
     assert client.tables["sowia_messages"].inserted == {
         "user_id": "user-123",
+        "workspace_id": workspace,
         "session_id": "private-session",
         "role": "user",
         "content": "Bonjour",
