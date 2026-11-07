@@ -1,8 +1,9 @@
 """Supabase GitHub OAuth helpers for SOW IA.
 
-PKCE verifiers are kept briefly in server-side storage, scoped to the
-browser's Streamlit XSRF cookie. User access/refresh tokens remain in the
-per-session client memory and are never written to this SQLite store.
+PKCE verifiers are kept briefly in server-side storage, scoped to a random
+browser identifier persisted in localStorage by a Streamlit component. User
+access/refresh tokens remain in per-session client memory and are never
+written to this SQLite store.
 """
 from settings import get_setting
 import hashlib
@@ -89,60 +90,84 @@ class _BrowserScopedOAuthStorage(SyncSupportedStorage):
             )
 
 
-def _browser_storage_id():
-    """Derive a non-reversible browser scope from Streamlit's XSRF cookie.
+def browser_storage_id():
+    """Read a random, persistent browser scope through a Streamlit v2 component.
 
-    Streamlit exposes cookies through st.context.cookies. Some hosted/mobile
-    request paths may expose the same initial-request cookie only in the
-    Cookie header, so inspect that header as a safe fallback. Never substitute
-    a session-state or URL value: the scope must be browser-bound.
+    The identifier is not an authentication credential. It is generated with
+    the browser cryptographic RNG and used only to locate that browser's
+    short-lived server-side PKCE verifier after the OAuth redirect.
     """
     import streamlit as st
-    from http.cookies import SimpleCookie
 
-    xsrf_cookie = st.context.cookies.get("_streamlit_xsrf")
-    if not xsrf_cookie:
-        headers = st.context.headers
-        cookie_header = headers.get("Cookie") or headers.get("cookie") or ""
-        if cookie_header:
-            parsed = SimpleCookie()
-            try:
-                parsed.load(cookie_header)
-                morsel = parsed.get("_streamlit_xsrf")
-                if morsel:
-                    xsrf_cookie = morsel.value
-            except Exception:
-                xsrf_cookie = None
+    component = st.components.v2.component(
+        name="sowia_browser_scope",
+        html='<span aria-hidden="true"></span>',
+        js="""
+        const STORAGE_KEY = "sowia.browser_scope.v1";
+        function newBrowserId() {
+            const bytes = new Uint8Array(32);
+            crypto.getRandomValues(bytes);
+            let binary = "";
+            for (const byte of bytes) binary += String.fromCharCode(byte);
+            return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+        }
+        export default function({ data, setStateValue }) {
+            let browserId = null;
+            try {
+                browserId = window.localStorage.getItem(STORAGE_KEY);
+                if (!browserId || !/^[A-Za-z0-9_-]{40,64}$/.test(browserId)) {
+                    browserId = newBrowserId();
+                    window.localStorage.setItem(STORAGE_KEY, browserId);
+                }
+            } catch (error) {
+                setStateValue("storage_error", "Le stockage sécurisé du navigateur est indisponible.");
+                return;
+            }
+            if (data?.browser_id !== browserId) {
+                setStateValue("browser_id", browserId);
+            }
+        }
+        """,
+    )
+    key = "sowia_browser_scope"
+    previous = st.session_state.get(key, {})
+    known_id = previous.get("browser_id") if isinstance(previous, dict) else None
+    result = component(
+        data={"browser_id": known_id},
+        default={"browser_id": None, "storage_error": None},
+        on_browser_id_change=lambda: None,
+        on_storage_error_change=lambda: None,
+        key=key,
+        width="content",
+        height=1,
+    )
+    browser_id = getattr(result, "browser_id", None)
+    storage_error = getattr(result, "storage_error", None)
+    if storage_error:
+        raise RuntimeError(str(storage_error))
+    if not isinstance(browser_id, str) or not __import__("re").fullmatch(
+        r"[A-Za-z0-9_-]{40,64}", browser_id
+    ):
+        return None
+    return browser_id
 
-    if not xsrf_cookie:
-        cookie_names = sorted(str(name) for name in st.context.cookies.keys())
-        header_names = sorted(str(name) for name in st.context.headers.keys())
-        header_cookie_names = []
-        if cookie_header:
-            parsed_names = SimpleCookie()
-            try:
-                parsed_names.load(cookie_header)
-                header_cookie_names = sorted(parsed_names.keys())
-            except Exception:
-                header_cookie_names = ["[en-tête Cookie illisible]"]
-        diagnostic = (
-            f"Cookies visibles={cookie_names or 'aucun'} ; "
-            f"cookies dans l'en-tête={header_cookie_names or 'aucun'} ; "
-            f"en-têtes HTTP disponibles={header_names or 'aucun'} ; "
-            f"version Streamlit={getattr(st, '__version__', 'inconnue')}"
-        )
-        raise RuntimeError(
-            "Aucun cookie navigateur exploitable n'est transmis à SOW IA. "
-            + diagnostic
-        )
-    return hashlib.sha256(str(xsrf_cookie).encode("utf-8")).hexdigest()
+
+def _browser_storage_id(browser_id):
+    """Hash the browser-generated random scope before using it in server storage."""
+    import re
+
+    if not isinstance(browser_id, str) or not re.fullmatch(
+        r"[A-Za-z0-9_-]{40,64}", browser_id
+    ):
+        return None
+    return hashlib.sha256(browser_id.encode("ascii")).hexdigest()
 
 
 def configuration_ready():
     return bool(get_setting("SUPABASE_URL") and get_setting("SUPABASE_ANON_KEY"))
 
 
-def create_user_client():
+def create_user_client(browser_id):
     """Create a per-session PKCE client; service-role keys are never accepted."""
     url = str(get_setting("SUPABASE_URL", "")).strip()
     key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
@@ -158,7 +183,7 @@ def create_user_client():
     # redirect. Session tokens remain in memory in this browser session.
     from supabase import ClientOptions, create_client
 
-    storage = _BrowserScopedOAuthStorage(_browser_storage_id())
+    storage = _BrowserScopedOAuthStorage(_browser_storage_id(browser_id))
     options = ClientOptions(
         storage=storage,
         flow_type="pkce",
