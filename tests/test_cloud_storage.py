@@ -83,6 +83,7 @@ def test_add_memory_writes_authenticated_user_id():
     cloud_storage.add_memory(client, User(), "Ma note")
     assert client.tables["sowia_memory_items"].inserted == {
         "user_id": "user-123",
+        "workspace_id": "personal",
         "content": "Ma note",
     }
 
@@ -115,6 +116,7 @@ def test_save_message_writes_authenticated_user_and_conversation():
     cloud_storage.save_message(client, User(), "private-session", "user", "Bonjour")
     assert client.tables["sowia_messages"].inserted == {
         "user_id": "user-123",
+        "workspace_id": "personal",
         "session_id": "private-session",
         "role": "user",
         "content": "Bonjour",
