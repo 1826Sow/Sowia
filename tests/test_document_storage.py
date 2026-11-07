@@ -12,7 +12,7 @@ class User:
 class FakeBucket:
     def __init__(self):
         self.uploaded = None
-        self.listed = None
+        self.listed = []
         self.downloaded = None
         self.removed = None
 
@@ -21,7 +21,7 @@ class FakeBucket:
         return {"path": path}
 
     def list(self, prefix):
-        self.listed = prefix
+        self.listed.append(prefix)
         return [{"name": "report.pdf"}]
 
     def download(self, path):
@@ -54,8 +54,11 @@ def test_upload_is_stored_under_authenticated_user_folder():
 
 def test_list_documents_uses_only_authenticated_user_folder():
     client = FakeClient()
-    docs.list_documents(client, User())
-    assert client.bucket.listed == "user-123"
+    result = docs.list_documents(client, User())
+    assert client.bucket.listed == ["user-123", "user-123/personal"]
+    assert len(result) == 2
+    assert result[0]["path"] == "user-123/report.pdf"
+    assert result[1]["path"] == "user-123/personal/report.pdf"
 
 
 def test_download_rejects_another_users_path_before_storage_access():
