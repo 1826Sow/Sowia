@@ -99,3 +99,25 @@ def test_pkce_verifier_can_be_removed_after_exchange(monkeypatch, tmp_path):
     storage.remove_item(key)
 
     assert storage.get_item(key) is None
+
+
+def test_component_state_value_supports_mapping_state():
+    state = {"browser_id": "browser-token", "storage_error": None}
+
+    assert supabase_auth._component_state_value(state, "browser_id") == "browser-token"
+    assert supabase_auth._component_state_value(state, "missing") is None
+
+
+def test_component_state_value_supports_get_based_state():
+    class State:
+        def get(self, name):
+            return {"browser_id": "browser-token"}.get(name)
+
+    assert supabase_auth._component_state_value(State(), "browser_id") == "browser-token"
+
+
+def test_component_state_value_supports_attribute_state():
+    class State:
+        browser_id = "browser-token"
+
+    assert supabase_auth._component_state_value(State(), "browser_id") == "browser-token"
