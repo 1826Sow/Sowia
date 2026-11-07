@@ -13,3 +13,10 @@ def get_setting(name, default=""):
         return default if value is None else value
     except Exception:
         return default
+
+
+def is_auth_required():
+    """Fail closed by default; local development must explicitly opt out."""
+    return str(get_setting("SOWIA_REQUIRE_AUTH", "true")).strip().lower() in {
+        "1", "true", "yes"
+    }
