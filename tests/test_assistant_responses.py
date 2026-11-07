@@ -55,3 +55,23 @@ def test_answer_explains_missing_api_key_without_network(monkeypatch):
 
     with pytest.raises(RuntimeError, match="Aucune clé API IA"):
         assistant.answer([{"role": "user", "content": "Bonjour"}])
+
+
+def test_answer_rejects_provider_response_without_choices(monkeypatch):
+    monkeypatch.setattr(assistant, "API_KEY", "test-key")
+    monkeypatch.setattr(assistant, "BASE_URL", None)
+    monkeypatch.setattr(assistant, "MODEL", "test-model")
+    monkeypatch.setattr(
+        assistant,
+        "OpenAI",
+        lambda **kwargs: SimpleNamespace(
+            chat=SimpleNamespace(
+                completions=SimpleNamespace(
+                    create=lambda **call_kwargs: SimpleNamespace(choices=[])
+                )
+            )
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="aucun choix de réponse"):
+        assistant.answer([{"role": "user", "content": "Bonjour"}])
