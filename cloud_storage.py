@@ -32,19 +32,19 @@ def delete_memory(client, user, memory_id, workspace_id="personal"):
     return (client.table("sowia_memory_items").delete().eq("id", memory_id)
         .eq("user_id", _user_id(user)).eq("workspace_id", _workspace_id(workspace_id)).execute())
 
-def get_history(client, user, session_id, limit=30):
+def get_history(client, user, session_id, limit=30, workspace_id="personal"):
     return (client.table("sowia_messages").select("role, content")
-        .eq("user_id", _user_id(user)).eq("session_id", session_id)
+        .eq("user_id", _user_id(user)).eq("workspace_id", _workspace_id(workspace_id)).eq("session_id", session_id)
         .order("id", desc=True).limit(min(max(int(limit), 1), 100)).execute().data[::-1])
 
-def clear_history(client, user, session_id):
+def clear_history(client, user, session_id, workspace_id="personal"):
     return (client.table("sowia_messages").delete().eq("user_id", _user_id(user))
-        .eq("session_id", str(session_id)).execute())
+        .eq("workspace_id", _workspace_id(workspace_id)).eq("session_id", str(session_id)).execute())
 
-def save_message(client, user, session_id, role, content):
+def save_message(client, user, session_id, role, content, workspace_id="personal"):
     if role not in {"user", "assistant"}:
         raise ValueError("Rôle de message invalide.")
     return (client.table("sowia_messages").insert({
-        "user_id": _user_id(user), "session_id": str(session_id), "role": role,
+        "user_id": _user_id(user), "workspace_id": _workspace_id(workspace_id), "session_id": str(session_id), "role": role,
         "content": str(content), "created_at": datetime.now(timezone.utc).isoformat()
     }).execute().data)
