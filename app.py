@@ -196,32 +196,32 @@ if cloud_mode and current_user is not None:
 
 def get_app_history(limit=30):
     if cloud_mode:
-        return cloud_storage.get_history(supabase_client, current_user, st.session_state.session_id, limit)
+        return cloud_storage.get_history(supabase_client, current_user, st.session_state.session_id, limit, st.session_state.get("workspace_id", "personal"))
     return local_get_history(st.session_state.session_id, limit)
 
 def save_app_message(role, content):
     if cloud_mode:
-        return cloud_storage.save_message(supabase_client, current_user, st.session_state.session_id, role, content)
+        return cloud_storage.save_message(supabase_client, current_user, st.session_state.session_id, role, content, st.session_state.get("workspace_id", "personal"))
     return local_save_message(st.session_state.session_id, role, content)
 
 def clear_app_history():
     if cloud_mode:
-        return cloud_storage.clear_history(supabase_client, current_user, st.session_state.session_id)
+        return cloud_storage.clear_history(supabase_client, current_user, st.session_state.session_id, st.session_state.get("workspace_id", "personal"))
     return local_clear_history(st.session_state.session_id)
 
 def get_app_memories():
     if cloud_mode:
-        return cloud_storage.list_memories(supabase_client, current_user)
+        return cloud_storage.list_memories(supabase_client, current_user, st.session_state.get("workspace_id", "personal"))
     return local_get_memories()
 
 def add_app_memory(content):
     if cloud_mode:
-        return cloud_storage.add_memory(supabase_client, current_user, content)
+        return cloud_storage.add_memory(supabase_client, current_user, content, st.session_state.get("workspace_id", "personal"))
     return local_add_memory(content)
 
 def delete_app_memory(memory_id):
     if cloud_mode:
-        return cloud_storage.delete_memory(supabase_client, current_user, memory_id)
+        return cloud_storage.delete_memory(supabase_client, current_user, memory_id, st.session_state.get("workspace_id", "personal"))
     return local_delete_memory(memory_id)
 
 def go_to_page(page_name):
@@ -231,8 +231,13 @@ def go_to_page(page_name):
 with st.sidebar:
     st.markdown("## 🧠 SOW IA")
     st.caption("Intelligence artificielle")
+    workspace_choice = st.radio("Espace de travail", ["Personnel", "Professionnel"], key="workspace_choice", horizontal=True)
+    workspace_id = "professional" if workspace_choice == "Professionnel" else "personal"
+    if cloud_mode and current_user is not None:
+        st.session_state.session_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}:{workspace_id}"))
+    st.session_state.workspace_id = workspace_id
     if cloud_mode:
-        st.success("Espace personnel sécurisé")
+        st.success(f"Espace {workspace_choice.lower()} sécurisé")
         st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
         if st.button("Se déconnecter", use_container_width=True):
             sign_out(supabase_client)
@@ -449,7 +454,7 @@ elif page == "Mes documents":
         uploaded_pdf = st.file_uploader("Ajouter un PDF à mes documents", type=["pdf"], key="private_pdf_upload")
         if uploaded_pdf and st.button("Enregistrer dans mes documents", type="primary"):
             try:
-                upload_document(supabase_client, current_user, uploaded_pdf.name, uploaded_pdf.getvalue())
+                upload_document(supabase_client, current_user, uploaded_pdf.name, uploaded_pdf.getvalue(), st.session_state.get("workspace_id", "personal"))
                 st.success("Document enregistré dans votre espace privé.")
                 st.rerun()
             except (ValueError, PermissionError) as exc:
@@ -459,14 +464,16 @@ elif page == "Mes documents":
         st.divider()
         st.markdown("#### Mes fichiers")
         try:
-            stored_documents = list_documents(supabase_client, current_user)
+            stored_documents = list_documents(supabase_client, current_user, st.session_state.get("workspace_id", "personal"))
             if not stored_documents:
                 st.caption("Aucun document enregistré pour le moment.")
             for stored in stored_documents:
                 stored_name = stored.get("name", "")
                 if not stored_name or stored_name in {".", ".."}:
                     continue
-                stored_path = f"{current_user.id}/{stored_name}"
+                stored_path = stored.get("path", "")
+                if not stored_path:
+                    continue
                 display_name = stored_name.split("_", 1)[-1] if "_" in stored_name else stored_name
                 with st.container(border=True):
                     st.write(f"📄 {display_name}")
@@ -480,11 +487,11 @@ elif page == "Mes documents":
                             key=f"download_private_{stored_name}",
                         )
                     if st.button("Préparer le téléchargement", key=f"prepare_private_{stored_name}"):
-                        st.session_state["prepared_document_bytes"] = download_document(supabase_client, current_user, stored_path)
+                        st.session_state["prepared_document_bytes"] = download_document(supabase_client, current_user, stored_path, st.session_state.get("workspace_id", "personal"))
                         st.session_state["prepared_document_path"] = stored_path
                         st.rerun()
                     if st.button("Supprimer", key=f"delete_private_{stored_name}"):
-                        delete_document(supabase_client, current_user, stored_path)
+                        delete_document(supabase_client, current_user, stored_path, st.session_state.get("workspace_id", "personal"))
                         if st.session_state.get("prepared_document_path") == stored_path:
                             st.session_state.pop("prepared_document_path", None)
                             st.session_state.pop("prepared_document_bytes", None)
