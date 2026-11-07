@@ -87,6 +87,7 @@ if cloud_mode:
         authorization_code = st.query_params.get("code")
         if authorization_code:
             complete_github_login(supabase_client, authorization_code)
+            st.session_state.pop("sowia_github_login_url", None)
             st.query_params.clear()
             st.rerun()
 
@@ -138,7 +139,14 @@ if cloud_mode:
         st.write("Connectez-vous avec votre compte GitHub pour accéder à votre mémoire et à votre historique privés.")
         try:
             redirect_to = str(get_setting("SOWIA_PUBLIC_URL", "")).strip()
-            login_url = github_authorization_url(supabase_client, redirect_to)
+            # Keep one OAuth URL per Streamlit session. Each call to
+            # sign_in_with_oauth creates a new PKCE verifier; generating a
+            # fresh URL on every rerun can overwrite the verifier for the
+            # GitHub redirect currently in progress.
+            login_url = st.session_state.get("sowia_github_login_url")
+            if not login_url:
+                login_url = github_authorization_url(supabase_client, redirect_to)
+                st.session_state.sowia_github_login_url = login_url
             # Utiliser le bouton de lien natif Streamlit : il est mieux pris
             # en charge par les navigateurs mobiles et les WebView Android.
             # L'URL OAuth et le mécanisme PKCE restent inchangés.
@@ -147,7 +155,11 @@ if cloud_mode:
                 login_url,
                 use_container_width=True,
             )
+            if st.button("Recommencer la connexion", use_container_width=True):
+                st.session_state.pop("sowia_github_login_url", None)
+                st.rerun()
         except Exception as exc:
+            st.session_state.pop("sowia_github_login_url", None)
             st.warning("La connexion GitHub attend encore la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
             st.caption(str(exc))
         st.stop()
