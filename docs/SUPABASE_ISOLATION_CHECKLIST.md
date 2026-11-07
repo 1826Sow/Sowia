@@ -16,7 +16,8 @@ the live project as a first test.
 - Confirm the test deployment authenticates A and B independently.
 - Run `supabase/schema.sql` once in the isolated project's SQL Editor. It also
   creates the private PDF bucket and its policies. Do not run this against
-  production as part of this checklist.
+  production as part of this checklist. Then run the read-only inspection queries
+  in `supabase/verify_security.sql` to review RLS, grants, policies and bucket settings.
 
 ## Account A / Account B test matrix
 
