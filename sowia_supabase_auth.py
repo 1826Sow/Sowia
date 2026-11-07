@@ -248,12 +248,17 @@ def complete_github_login(client, authorization_code):
 
 
 def authenticated_user(client):
-    """Validate an existing session and return its authenticated user, if any."""
+    """Validate an existing session and return its authenticated user, if any.
+
+    supabase-py versions expose get_session() as either a Session directly
+    or a response wrapper containing .session. Accept both shapes.
+    """
     session_response = client.auth.get_session()
-    if not getattr(session_response, "session", None):
+    session = getattr(session_response, "session", session_response)
+    if session is None:
         return None
     response = client.auth.get_user()
-    return getattr(response, "user", None)
+    return getattr(response, "user", response)
 
 
 def sign_out(client):
