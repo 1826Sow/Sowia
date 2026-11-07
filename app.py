@@ -147,13 +147,18 @@ if cloud_mode:
             if not login_url:
                 login_url = github_authorization_url(supabase_client, redirect_to)
                 st.session_state.sowia_github_login_url = login_url
-            # Utiliser le bouton de lien natif Streamlit : il est mieux pris
-            # en charge par les navigateurs mobiles et les WebView Android.
+            # Naviguer dans l'onglet courant : les WebView Android bloquent
+            # parfois l'ouverture d'un nouvel onglet par st.link_button.
             # L'URL OAuth et le mécanisme PKCE restent inchangés.
-            st.link_button(
-                "Continuer avec GitHub",
-                login_url,
-                use_container_width=True,
+            safe_login_url = html.escape(login_url, quote=True)
+            st.markdown(
+                f'<a href="{safe_login_url}" target="_self" '
+                'rel="noopener noreferrer" '
+                'style="display:block;text-align:center;padding:0.65rem 1rem;'
+                'border-radius:0.6rem;background:#2563eb;color:white;'
+                'font-weight:600;text-decoration:none;margin:.5rem 0 1rem;">'
+                'Continuer avec GitHub</a>',
+                unsafe_allow_html=True,
             )
             if st.button("Recommencer la connexion", use_container_width=True):
                 st.session_state.pop("sowia_github_login_url", None)
