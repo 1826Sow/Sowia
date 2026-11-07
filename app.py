@@ -1,5 +1,6 @@
 """SOW IA — application web Streamlit."""
 import uuid
+import html
 import traceback
 import streamlit as st
 from settings import get_setting
@@ -131,7 +132,14 @@ if cloud_mode:
         try:
             redirect_to = str(get_setting("SOWIA_PUBLIC_URL", "")).strip()
             login_url = github_authorization_url(supabase_client, redirect_to)
-            st.link_button("Continuer avec GitHub", login_url, type="primary")
+            safe_login_url = html.escape(login_url, quote=True)
+            st.markdown(
+                f'<a href="{safe_login_url}" target="_self" rel="noopener noreferrer" '
+                'style="display:inline-block;padding:0.55rem 1rem;border-radius:0.5rem;'
+                'background:#ff4b4b;color:white;text-decoration:none;font-weight:600;">'
+                'Continuer avec GitHub</a>',
+                unsafe_allow_html=True,
+            )
         except Exception as exc:
             st.warning("La connexion GitHub attend encore la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
             st.caption(str(exc))
