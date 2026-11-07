@@ -211,17 +211,17 @@ def clear_app_history():
 
 def get_app_memories():
     if cloud_mode:
-        return cloud_storage.list_memories(supabase_client, current_user)
+        return cloud_storage.list_memories(supabase_client, current_user, st.session_state.get("workspace_id", "personal"))
     return local_get_memories()
 
 def add_app_memory(content):
     if cloud_mode:
-        return cloud_storage.add_memory(supabase_client, current_user, content)
+        return cloud_storage.add_memory(supabase_client, current_user, content, st.session_state.get("workspace_id", "personal"))
     return local_add_memory(content)
 
 def delete_app_memory(memory_id):
     if cloud_mode:
-        return cloud_storage.delete_memory(supabase_client, current_user, memory_id)
+        return cloud_storage.delete_memory(supabase_client, current_user, memory_id, st.session_state.get("workspace_id", "personal"))
     return local_delete_memory(memory_id)
 
 def go_to_page(page_name):
@@ -231,6 +231,11 @@ def go_to_page(page_name):
 with st.sidebar:
     st.markdown("## 🧠 SOW IA")
     st.caption("Intelligence artificielle")
+    workspace_choice = st.radio("Espace de travail", ["Personnel", "Professionnel"], key="workspace_choice", horizontal=True)
+    workspace_id = "professional" if workspace_choice == "Professionnel" else "personal"
+    if cloud_mode and current_user is not None:
+        st.session_state.session_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}:{workspace_id}"))
+    st.session_state.workspace_id = workspace_id
     if cloud_mode:
         st.success("Espace personnel sécurisé")
         st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
