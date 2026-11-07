@@ -1,6 +1,4 @@
 """Tests for private Supabase PDF storage ownership and validation."""
-from types import SimpleNamespace
-
 import pytest
 import document_storage as docs
 
@@ -46,10 +44,17 @@ class FakeClient:
 def test_upload_is_stored_under_authenticated_user_folder():
     client = FakeClient()
     path = docs.upload_document(client, User(), "Mon rapport.pdf", b"%PDF")
-    assert path.startswith("user-123/")
+    assert path.startswith("user-123/personal/")
     assert path.endswith("_Mon_rapport.pdf")
     assert client.bucket.uploaded[1] == b"%PDF"
     assert client.bucket.uploaded[2]["content-type"] == "application/pdf"
+
+
+def test_long_pdf_filename_keeps_pdf_extension_and_length_limit():
+    filename = "a" * 140 + ".pdf"
+    safe = docs._safe_filename(filename)
+    assert len(safe) == 100
+    assert safe.endswith(".pdf")
 
 
 def test_list_documents_uses_only_authenticated_user_folder():
@@ -65,6 +70,13 @@ def test_download_rejects_another_users_path_before_storage_access():
     client = FakeClient()
     with pytest.raises(PermissionError):
         docs.download_document(client, User(), "other-user/report.pdf")
+    assert client.bucket.downloaded is None
+
+
+def test_professional_workspace_cannot_access_personal_document():
+    client = FakeClient()
+    with pytest.raises(ValueError, match="Chemin de document invalide"):
+        docs.download_document(client, User(), "user-123/personal/report.pdf", "professional")
     assert client.bucket.downloaded is None
 
 
