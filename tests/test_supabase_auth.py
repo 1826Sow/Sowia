@@ -68,7 +68,7 @@ def test_pkce_verifier_survives_a_new_client_for_same_browser(monkeypatch, tmp_p
     second_client_storage = supabase_auth._BrowserScopedOAuthStorage(
         supabase_auth._browser_storage_id(browser_scope)
     )
-    key = "sb-project-auth-token-code-verifier"
+    key = "supabase.auth.token-code-verifier"
 
     first_client_storage.set_item(key, "one-time-pkce-verifier")
 
@@ -83,7 +83,7 @@ def test_pkce_verifier_is_isolated_between_browsers(monkeypatch, tmp_path):
     second_browser = supabase_auth._BrowserScopedOAuthStorage(
         supabase_auth._browser_storage_id("b" * 64)
     )
-    key = "sb-project-auth-token-code-verifier"
+    key = "supabase.auth.token-code-verifier"
 
     first_browser.set_item(key, "private-verifier")
 
@@ -93,7 +93,7 @@ def test_pkce_verifier_is_isolated_between_browsers(monkeypatch, tmp_path):
 def test_pkce_verifier_can_be_removed_after_exchange(monkeypatch, tmp_path):
     monkeypatch.setattr(supabase_auth, "_OAUTH_DB", tmp_path / "oauth-test.db")
     storage = supabase_auth._BrowserScopedOAuthStorage("browser-hash")
-    key = "sb-project-auth-token-code-verifier"
+    key = "supabase.auth.token-code-verifier"
     storage.set_item(key, "one-time-verifier")
 
     storage.remove_item(key)
