@@ -1,11 +1,102 @@
 """Supabase GitHub OAuth helpers for SOW IA.
 
-Create and retain one client per Streamlit browser session. Never cache a
-user-authenticated client globally: it contains authentication state and PKCE
-verification material.
+PKCE verifiers are kept briefly in server-side storage, scoped to the
+browser's Streamlit XSRF cookie. User access/refresh tokens remain in the
+per-session client memory and are never written to this SQLite store.
 """
 from settings import get_setting
+import hashlib
 import inspect
+import sqlite3
+import time
+from pathlib import Path
+
+
+_OAUTH_DB = Path("data/sowia_oauth.db")
+_VERIFIER_SUFFIX = "-code-verifier"
+_VERIFIER_TTL_SECONDS = 600
+
+
+class _BrowserScopedOAuthStorage:
+    """Supabase storage adapter: persist only short-lived PKCE verifiers."""
+
+    def __init__(self, browser_id):
+        if not browser_id:
+            raise RuntimeError(
+                "Le navigateur ne fournit pas l'identifiant de session sécurisé "
+                "nécessaire à la connexion. Rechargez SOW IA puis réessayez."
+            )
+        self.browser_id = browser_id
+        self.memory = {}
+
+    def _connect(self):
+        _OAUTH_DB.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(_OAUTH_DB, timeout=10)
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS oauth_pkce_verifiers (
+                browser_id TEXT NOT NULL,
+                storage_key TEXT NOT NULL,
+                verifier TEXT NOT NULL,
+                expires_at INTEGER NOT NULL,
+                PRIMARY KEY (browser_id, storage_key)
+            )"""
+        )
+        conn.execute(
+            "DELETE FROM oauth_pkce_verifiers WHERE expires_at < ?",
+            (int(time.time()),),
+        )
+        return conn
+
+    def get_item(self, key):
+        if not str(key).endswith(_VERIFIER_SUFFIX):
+            return self.memory.get(key)
+        with self._connect() as conn:
+            row = conn.execute(
+                """SELECT verifier FROM oauth_pkce_verifiers
+                   WHERE browser_id=? AND storage_key=? AND expires_at>=?""",
+                (self.browser_id, str(key), int(time.time())),
+            ).fetchone()
+        return row[0] if row else None
+
+    def set_item(self, key, value):
+        if not str(key).endswith(_VERIFIER_SUFFIX):
+            self.memory[key] = value
+            return
+        with self._connect() as conn:
+            conn.execute(
+                """INSERT INTO oauth_pkce_verifiers
+                   (browser_id, storage_key, verifier, expires_at)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT(browser_id, storage_key) DO UPDATE SET
+                   verifier=excluded.verifier, expires_at=excluded.expires_at""",
+                (
+                    self.browser_id,
+                    str(key),
+                    str(value),
+                    int(time.time()) + _VERIFIER_TTL_SECONDS,
+                ),
+            )
+
+    def remove_item(self, key):
+        if not str(key).endswith(_VERIFIER_SUFFIX):
+            self.memory.pop(key, None)
+            return
+        with self._connect() as conn:
+            conn.execute(
+                "DELETE FROM oauth_pkce_verifiers WHERE browser_id=? AND storage_key=?",
+                (self.browser_id, str(key)),
+            )
+
+
+def _browser_storage_id():
+    """Derive a non-reversible browser scope from Streamlit's XSRF cookie."""
+    import streamlit as st
+
+    cookies = st.context.cookies
+    xsrf_cookie = cookies.get("_streamlit_xsrf")
+    if not xsrf_cookie:
+        return None
+    return hashlib.sha256(str(xsrf_cookie).encode("utf-8")).hexdigest()
 
 
 def configuration_ready():
@@ -23,11 +114,19 @@ def create_user_client():
         )
     if not url.startswith("https://"):
         raise RuntimeError("SUPABASE_URL doit utiliser HTTPS.")
-    # Use the public factory with its supported defaults. Avoid importing
-    # ClientOptions directly: this extra internal import has caused package
-    # resolution conflicts on some hosted Python environments.
-    from supabase import create_client
-    return create_client(url, key)
+
+    # Persist only the one-time PKCE verifier across the external GitHub
+    # redirect. Session tokens remain in memory in this browser session.
+    from supabase import ClientOptions, create_client
+
+    storage = _BrowserScopedOAuthStorage(_browser_storage_id())
+    options = ClientOptions(
+        storage=storage,
+        flow_type="pkce",
+        persist_session=False,
+        auto_refresh_token=True,
+    )
+    return create_client(url, key, options=options)
 
 
 def github_authorization_url(client, redirect_to):
@@ -40,10 +139,8 @@ def github_authorization_url(client, redirect_to):
             "options": {"redirect_to": redirect_to},
         }
     )
-    # supabase-py returns an OAuthResponse whose URL is exposed as .url.
     url = getattr(response, "url", None)
     if not url:
-        # Keep compatibility with response wrappers exposing a nested data object.
         url = getattr(getattr(response, "data", None), "url", None)
     if not url:
         raise RuntimeError("Supabase n'a pas retourné l'adresse de connexion.")
@@ -51,16 +148,14 @@ def github_authorization_url(client, redirect_to):
 
 
 def complete_github_login(client, authorization_code):
-    """Exchange the one-time PKCE code using the same session's client."""
+    """Exchange the one-time PKCE code using the browser-scoped verifier."""
     if not authorization_code:
         raise ValueError("Code de connexion manquant.")
-    # Keep the Python SDK's documented credentials-dictionary format.
     credentials = {"auth_code": str(authorization_code)}
     method = client.auth.exchange_code_for_session
     try:
         return method(credentials)
     except AttributeError as exc:
-        # Safe runtime diagnostics: never include the one-time OAuth code or secrets.
         try:
             signature = str(inspect.signature(method))
         except Exception:
