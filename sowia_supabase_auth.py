@@ -225,8 +225,8 @@ def github_authorization_url(client, redirect_to):
     return url
 
 
-def complete_github_login(client, authorization_code):
-    """Exchange the one-time PKCE code using the browser-scoped verifier."""
+def complete_pkce_code_exchange(client, authorization_code):
+    """Exchange a one-time email/OAuth PKCE code using the browser-scoped verifier."""
     if not authorization_code:
         raise ValueError("Code de connexion manquant.")
     credentials = {"auth_code": str(authorization_code)}
@@ -312,3 +312,7 @@ def update_account_password(client, password):
     if not password or len(str(password)) < 8:
         raise ValueError("Le nouveau mot de passe doit contenir au moins 8 caractères.")
     return client.auth.update_user({"password": str(password)})
+
+
+# Backward-compatible alias for deployments or tests using the previous helper name.
+complete_github_login = complete_pkce_code_exchange
