@@ -225,6 +225,19 @@ def github_authorization_url(client, redirect_to):
     return url
 
 
+def pkce_verifier_available(client):
+    """Check for the pending PKCE verifier without exposing its value."""
+    auth = getattr(client, "auth", None)
+    storage = getattr(auth, "_storage", None)
+    storage_key = getattr(auth, "_storage_key", None)
+    if storage is None or not storage_key:
+        return False
+    try:
+        return bool(storage.get_item(f"{storage_key}{_VERIFIER_SUFFIX}"))
+    except Exception:
+        return False
+
+
 def complete_github_login(client, authorization_code):
     """Exchange the one-time PKCE code using the browser-scoped verifier."""
     if not authorization_code:
