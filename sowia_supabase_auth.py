@@ -8,6 +8,7 @@ written to this SQLite store.
 from settings import get_setting
 import hashlib
 import inspect
+import re
 import sqlite3
 import time
 from pathlib import Path
@@ -130,8 +131,8 @@ def browser_storage_id():
         """,
     )
     key = "sowia_browser_scope"
-    previous = st.session_state.get(key, {})
-    known_id = previous.get("browser_id") if isinstance(previous, dict) else None
+    previous = st.session_state.get(key)
+    known_id = getattr(previous, "browser_id", None) if previous is not None else None
     result = component(
         data={"browser_id": known_id},
         default={"browser_id": None, "storage_error": None},
@@ -145,7 +146,7 @@ def browser_storage_id():
     storage_error = getattr(result, "storage_error", None)
     if storage_error:
         raise RuntimeError(str(storage_error))
-    if not isinstance(browser_id, str) or not __import__("re").fullmatch(
+    if not isinstance(browser_id, str) or not re.fullmatch(
         r"[A-Za-z0-9_-]{40,64}", browser_id
     ):
         return None
