@@ -121,3 +121,46 @@ def test_component_state_value_supports_attribute_state():
         browser_id = "browser-token"
 
     assert supabase_auth._component_state_value(State(), "browser_id") == "browser-token"
+
+
+
+def test_authenticated_user_accepts_direct_supabase_session():
+    expected_user = object()
+
+    class Auth:
+        def get_session(self):
+            return object()
+
+        def get_user(self):
+            return type("UserResponse", (), {"user": expected_user})()
+
+    client = type("Client", (), {"auth": Auth()})()
+    assert supabase_auth.authenticated_user(client) is expected_user
+
+
+def test_authenticated_user_accepts_session_response_wrapper():
+    expected_user = object()
+
+    class Auth:
+        def get_session(self):
+            return type("SessionResponse", (), {"session": object()})()
+
+        def get_user(self):
+            return type("UserResponse", (), {"user": expected_user})()
+
+    client = type("Client", (), {"auth": Auth()})()
+    assert supabase_auth.authenticated_user(client) is expected_user
+
+
+def test_authenticated_user_accepts_direct_user_response():
+    expected_user = object()
+
+    class Auth:
+        def get_session(self):
+            return object()
+
+        def get_user(self):
+            return expected_user
+
+    client = type("Client", (), {"auth": Auth()})()
+    assert supabase_auth.authenticated_user(client) is expected_user
