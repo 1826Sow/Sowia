@@ -2,7 +2,7 @@
 import uuid
 import traceback
 import streamlit as st
-from settings import get_setting
+from settings import get_setting, authentication_required, redact_secrets
 
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
@@ -28,6 +28,7 @@ import cloud_storage
 import paypal_payments
 import premium_access
 from document_storage import upload_document, list_documents, download_document, delete_document
+from session_security import clear_private_session_state
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
@@ -56,7 +57,7 @@ if "pdf_text" not in st.session_state:
     st.session_state.pdf_text = ""
 
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
-auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "false")).strip().lower() in {"1", "true", "yes"}
+auth_required = authentication_required()
 supabase_enabled = configuration_ready()
 if auth_required and not supabase_enabled:
     st.error("SOW IA est en mode protégé, mais Supabase n'est pas encore configuré. L'accès est fermé jusqu'à la configuration de l'authentification.")
@@ -84,7 +85,18 @@ if cloud_mode:
 
         auth_stage = "vérification de la session Supabase"
         current_user = authenticated_user(supabase_client)
-        if current_user is not None:
+        if current_user is None:
+            # An expired or missing login must not leave the previous account's
+            # private PDF content or cached downloads in this browser session.
+            clear_private_session_state(st.session_state)
+            st.session_state.pop("sowia_authenticated_user_id", None)
+        else:
+            authenticated_user_id = str(current_user.id)
+            if st.session_state.get("sowia_authenticated_user_id") != authenticated_user_id:
+                # A different account (or the first authenticated login) starts
+                # with a clean slate for private document and payment state.
+                clear_private_session_state(st.session_state)
+                st.session_state["sowia_authenticated_user_id"] = authenticated_user_id
             # Reuse one private conversation history for this authenticated account.
             st.session_state.session_id = str(
                 uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
@@ -94,19 +106,13 @@ if cloud_mode:
         # unavailable. Never bypass authentication when the deployment
         # explicitly requires it.
         st.session_state.pop("sowia_supabase_client", None)
+        clear_private_session_state(st.session_state)
+        st.session_state.pop("sowia_authenticated_user_id", None)
         if auth_required:
             # Show a compact diagnostic directly in the main error box so it
             # remains visible on small mobile screens.
-            detail = str(exc)
-            for secret_name in ("SUPABASE_URL", "SUPABASE_ANON_KEY"):
-                secret_value = str(get_setting(secret_name, "")).strip()
-                if secret_value:
-                    detail = detail.replace(secret_value, "[valeur masquée]")
-            trace = traceback.format_exc()
-            for secret_name in ("SUPABASE_URL", "SUPABASE_ANON_KEY"):
-                secret_value = str(get_setting(secret_name, "")).strip()
-                if secret_value:
-                    trace = trace.replace(secret_value, "[valeur masquée]")
+            detail = redact_secrets(str(exc))
+            trace = redact_secrets(traceback.format_exc())
             st.error(
                 "La connexion sécurisée Supabase est indisponible. "
                 "L'accès reste fermé car l'authentification est obligatoire.\n\n"
@@ -210,6 +216,8 @@ with st.sidebar:
         if st.button("Se déconnecter", use_container_width=True):
             sign_out(supabase_client)
             st.session_state.pop("sowia_supabase_client", None)
+            clear_private_session_state(st.session_state)
+            st.session_state.pop("sowia_authenticated_user_id", None)
             st.session_state.session_id = str(uuid.uuid4())
             st.rerun()
     else:
@@ -265,7 +273,10 @@ if page == "Accueil":
 elif page == "Assistant IA":
     st.subheader("💬 Mon Assistant IA")
     if not API_KEY:
-        st.warning("Pour activer les réponses IA, ajoutez votre clé API dans les secrets de l'hébergement. Ne la partagez jamais sur GitHub.")
+        st.warning(
+            "Le moteur IA n'est pas encore configuré. Ajoutez GROQ_API_KEY (option gratuite selon les limites du fournisseur) "
+            "ou OPENAI_API_KEY dans les secrets Streamlit. Ne partagez jamais votre clé."
+        )
     memories = get_app_memories()
     if memories:
         st.caption(f"{len(memories)} note(s) mémoire seront disponibles à l'assistant.")
@@ -279,21 +290,22 @@ elif page == "Assistant IA":
             st.markdown(prompt)
         with st.chat_message("assistant"):
             try:
-                reply = answer(
-                    get_app_history(),
-                    memories=[item["content"] for item in memories],
-                )
+                with st.spinner("SOW IA prépare sa réponse..."):
+                    reply = answer(
+                        get_app_history(),
+                        memories=[item["content"] for item in memories],
+                    )
                 st.markdown(reply)
                 save_app_message("assistant", reply)
             except Exception as exc:
                 error_text = str(exc)
                 if "429" in error_text or "insufficient_quota" in error_text or "quota" in error_text.lower():
-                    st.warning("Le service IA est temporairement indisponible : le crédit API OpenAI est épuisé ou le quota est atteint. Vous pouvez continuer à créer et télécharger des PDF sans utiliser l'IA.")
+                    st.warning("Le service IA est temporairement indisponible : le quota du fournisseur configuré (Groq ou OpenAI) est peut-être atteint. Vérifiez les limites de votre fournisseur. Vous pouvez continuer à utiliser les fonctions locales de SOW IA.")
                 elif "401" in error_text or "invalid_api_key" in error_text:
                     st.error("La clé API du fournisseur IA n'est pas reconnue. Vérifiez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit.")
                 else:
                     st.error("Une erreur est survenue pendant la réponse de l'assistant.")
-                    st.caption(error_text)
+                    st.caption(redact_secrets(error_text))
     if st.button("Effacer cette conversation"):
         clear_app_history()
         st.rerun()
@@ -502,7 +514,7 @@ elif page == "Abonnement":
 
             admin_ready = premium_access.create_admin_client() is not None
             if payment_config is None:
-                st.info("Le paiement PayPal est préparé, mais attend les identifiants Sandbox et le prix Premium dans les secrets Streamlit.")
+                st.info("Le paiement PayPal est volontairement désactivé. Seul le propriétaire pourra l’activer après la finalisation de SOW IA.")
             elif not admin_ready:
                 st.warning("Le paiement reste désactivé tant que SUPABASE_SERVICE_ROLE_KEY n'est pas configuré côté serveur.")
             else:

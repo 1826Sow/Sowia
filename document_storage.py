@@ -18,10 +18,11 @@ def _safe_filename(filename):
     original = os.path.basename(str(filename or "").replace("\\", "/"))
     if not original.lower().endswith(".pdf"):
         raise ValueError("Seuls les fichiers PDF sont acceptés.")
-    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", original).strip("._")
-    if not cleaned:
+    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", original)
+    stem = cleaned[:-4].strip("._")
+    if not stem:
         raise ValueError("Nom de fichier invalide.")
-    return cleaned[:100]
+    return f"{stem[:96]}{cleaned[-4:]}"
 
 
 def _owned_path(user, path):
@@ -29,7 +30,7 @@ def _owned_path(user, path):
     if not isinstance(path, str) or not path.startswith(prefix):
         raise PermissionError("Accès refusé à ce document.")
     relative = path[len(prefix):]
-    if not relative or "/" in relative or ".." in relative:
+    if not relative or "/" in relative or "\\" in relative or ".." in relative:
         raise ValueError("Chemin de document invalide.")
     return path
 
@@ -42,6 +43,8 @@ def upload_document(client, user, filename, content):
         raise ValueError("Le fichier PDF est vide.")
     if len(payload) > MAX_DOCUMENT_BYTES:
         raise ValueError("Le fichier dépasse la limite de 10 Mo.")
+    if not payload.startswith(b"%PDF-"):
+        raise ValueError("Le contenu du fichier n'est pas un PDF valide.")
     object_name = f"{uuid4().hex}_{safe_name}"
     path = f"{prefix}/{object_name}"
     client.storage.from_(BUCKET_NAME).upload(

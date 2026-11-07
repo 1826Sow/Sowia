@@ -13,24 +13,24 @@ set public = false,
     file_size_limit = 10485760,
     allowed_mime_types = array['application/pdf'];
 
-drop policy if exists "SOW IA users read own documents" on storage.objects;
-create policy "SOW IA users read own documents"
+drop policy if exists "SOW IA users read own PDFs" on storage.objects;
+create policy "SOW IA users read own PDFs"
 on storage.objects for select to authenticated
 using (
     bucket_id = 'sowia-private-documents'
     and (storage.foldername(name))[1] = (select auth.uid())::text
 );
 
-drop policy if exists "SOW IA users upload own documents" on storage.objects;
-create policy "SOW IA users upload own documents"
+drop policy if exists "SOW IA users upload own PDFs" on storage.objects;
+create policy "SOW IA users upload own PDFs"
 on storage.objects for insert to authenticated
 with check (
     bucket_id = 'sowia-private-documents'
     and (storage.foldername(name))[1] = (select auth.uid())::text
 );
 
-drop policy if exists "SOW IA users delete own documents" on storage.objects;
-create policy "SOW IA users delete own documents"
+drop policy if exists "SOW IA users delete own PDFs" on storage.objects;
+create policy "SOW IA users delete own PDFs"
 on storage.objects for delete to authenticated
 using (
     bucket_id = 'sowia-private-documents'

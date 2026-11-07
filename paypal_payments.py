@@ -21,6 +21,9 @@ def _setting(name: str, default: str = "") -> str:
 
 def paypal_configuration():
     """Return non-secret checkout configuration, or None if not ready."""
+    # Checkout is disabled unless the account owner explicitly opts in.
+    if _setting("PAYPAL_ENABLED", "false").lower() not in {"1", "true", "yes"}:
+        return None
     client_id = _setting("PAYPAL_CLIENT_ID")
     client_secret = _setting("PAYPAL_CLIENT_SECRET")
     price = _setting("PAYPAL_PREMIUM_PRICE")
@@ -124,6 +127,23 @@ def create_premium_order(user_id: str):
     return {"id": order["id"], "approval_url": approval_url}
 
 
+def _has_confirmed_capture(order: dict, currency: str, amount: str) -> bool:
+    """Require one completed capture whose amount matches the server price."""
+    units = order.get("purchase_units") or []
+    if len(units) != 1:
+        return False
+    captures = ((units[0].get("payments") or {}).get("captures") or [])
+    if len(captures) != 1:
+        return False
+    capture = captures[0]
+    captured_amount = capture.get("amount") or {}
+    return (
+        capture.get("status") == "COMPLETED"
+        and captured_amount.get("currency_code") == currency
+        and captured_amount.get("value") == amount
+    )
+
+
 def capture_premium_order(order_id: str, user_id: str):
     """Capture only an order whose server-side details match this user and price."""
     config = paypal_configuration()
@@ -156,6 +176,8 @@ def capture_premium_order(order_id: str, user_id: str):
     ):
         raise PermissionError("La commande PayPal ne correspond pas à cet achat SOW IA.")
     if details.get("status") == "COMPLETED":
+        if not _has_confirmed_capture(details, config["currency"], config["amount"]):
+            raise RuntimeError("PayPal indique une commande terminée sans capture vérifiable du montant attendu.")
         return details
     capture_response = requests.post(
         f"{base}/v2/checkout/orders/{order_id}/capture",
@@ -165,6 +187,8 @@ def capture_premium_order(order_id: str, user_id: str):
     )
     capture_response.raise_for_status()
     result = capture_response.json()
-    if result.get("status") != "COMPLETED":
-        raise RuntimeError("PayPal n'a pas confirmé le paiement.")
+    if result.get("status") != "COMPLETED" or not _has_confirmed_capture(
+        result, config["currency"], config["amount"]
+    ):
+        raise RuntimeError("PayPal n'a pas confirmé une capture complète du montant attendu.")
     return result
