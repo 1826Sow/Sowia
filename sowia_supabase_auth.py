@@ -91,6 +91,19 @@ class _BrowserScopedOAuthStorage(SyncSupportedStorage):
             )
 
 
+def _component_state_value(state, name):
+    """Read Streamlit component state across mapping and attribute-style versions."""
+    if isinstance(state, dict):
+        return state.get(name)
+    getter = getattr(state, "get", None)
+    if callable(getter):
+        try:
+            return getter(name)
+        except (KeyError, TypeError):
+            pass
+    return getattr(state, name, None)
+
+
 def browser_storage_id():
     """Read a random, persistent browser scope through a Streamlit v2 component.
 
@@ -132,7 +145,7 @@ def browser_storage_id():
     )
     key = "sowia_browser_scope"
     previous = st.session_state.get(key)
-    known_id = getattr(previous, "browser_id", None) if previous is not None else None
+    known_id = _component_state_value(previous, "browser_id") if previous is not None else None
     result = component(
         data={"browser_id": known_id},
         default={"browser_id": None, "storage_error": None},
@@ -142,8 +155,8 @@ def browser_storage_id():
         width="content",
         height=1,
     )
-    browser_id = getattr(result, "browser_id", None)
-    storage_error = getattr(result, "storage_error", None)
+    browser_id = _component_state_value(result, "browser_id")
+    storage_error = _component_state_value(result, "storage_error")
     if storage_error:
         raise RuntimeError(str(storage_error))
     if not isinstance(browser_id, str) or not re.fullmatch(
