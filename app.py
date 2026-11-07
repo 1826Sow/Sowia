@@ -20,7 +20,7 @@ from websearch import search_web
 from sowia_supabase_auth import (
     authenticated_user,
     browser_storage_id,
-    complete_github_login,
+    complete_pkce_code_exchange,
     configuration_ready,
     create_user_client,
     request_password_reset,
@@ -91,7 +91,7 @@ if cloud_mode:
         if authorization_code:
             if st.query_params.get("sowia_recovery") == "1":
                 st.session_state.sowia_password_recovery = True
-            complete_github_login(supabase_client, authorization_code)
+            complete_pkce_code_exchange(supabase_client, authorization_code)
             st.query_params.clear()
             st.rerun()
 
