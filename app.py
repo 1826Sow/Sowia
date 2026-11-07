@@ -196,17 +196,17 @@ if cloud_mode and current_user is not None:
 
 def get_app_history(limit=30):
     if cloud_mode:
-        return cloud_storage.get_history(supabase_client, current_user, st.session_state.session_id, limit)
+        return cloud_storage.get_history(supabase_client, current_user, st.session_state.session_id, limit, st.session_state.get("workspace_id", "personal"))
     return local_get_history(st.session_state.session_id, limit)
 
 def save_app_message(role, content):
     if cloud_mode:
-        return cloud_storage.save_message(supabase_client, current_user, st.session_state.session_id, role, content)
+        return cloud_storage.save_message(supabase_client, current_user, st.session_state.session_id, role, content, st.session_state.get("workspace_id", "personal"))
     return local_save_message(st.session_state.session_id, role, content)
 
 def clear_app_history():
     if cloud_mode:
-        return cloud_storage.clear_history(supabase_client, current_user, st.session_state.session_id)
+        return cloud_storage.clear_history(supabase_client, current_user, st.session_state.session_id, st.session_state.get("workspace_id", "personal"))
     return local_clear_history(st.session_state.session_id)
 
 def get_app_memories():
