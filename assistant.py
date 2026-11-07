@@ -95,7 +95,13 @@ def answer(messages, memories=None, document_context=None):
     except RateLimitError:
         return _offline_reply(messages)
 
-    content = response.choices[0].message.content
+    choices = getattr(response, "choices", None)
+    if not choices:
+        raise RuntimeError(
+            "Le fournisseur IA n'a renvoyé aucun choix de réponse. "
+            "Réessayez ; si le problème persiste, vérifiez le modèle configuré."
+        )
+    content = getattr(getattr(choices[0], "message", None), "content", None)
     if not isinstance(content, str) or not content.strip():
         raise RuntimeError(
             "Le fournisseur IA a répondu sans contenu. Réessayez dans quelques instants ; "
