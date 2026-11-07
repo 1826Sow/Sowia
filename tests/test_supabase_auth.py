@@ -164,3 +164,70 @@ def test_authenticated_user_accepts_direct_user_response():
 
     client = type("Client", (), {"auth": Auth()})()
     assert supabase_auth.authenticated_user(client) is expected_user
+
+
+
+def test_email_signup_uses_confirmation_redirect():
+    class Auth:
+        def sign_up(self, credentials):
+            assert credentials == {
+                "email": "personne@example.com",
+                "password": "motdepasse-solide",
+                "options": {"email_redirect_to": "https://sowia.example"},
+            }
+            return "created"
+
+    client = type("Client", (), {"auth": Auth()})()
+    assert supabase_auth.sign_up_with_email(
+        client, " personne@example.com ", "motdepasse-solide", "https://sowia.example"
+    ) == "created"
+
+
+def test_email_signin_passes_credentials():
+    class Auth:
+        def sign_in_with_password(self, credentials):
+            assert credentials == {
+                "email": "personne@example.com",
+                "password": "motdepasse-solide",
+            }
+            return "signed-in"
+
+    client = type("Client", (), {"auth": Auth()})()
+    assert supabase_auth.sign_in_with_email(
+        client, "personne@example.com", "motdepasse-solide"
+    ) == "signed-in"
+
+
+def test_password_reset_redirect_is_marked_for_recovery():
+    class Auth:
+        def reset_password_for_email(self, email, options):
+            assert email == "personne@example.com"
+            assert options == {
+                "redirect_to": "https://sowia.example/?sowia_recovery=1"
+            }
+            return "sent"
+
+    client = type("Client", (), {"auth": Auth()})()
+    assert supabase_auth.request_password_reset(
+        client, "personne@example.com", "https://sowia.example"
+    ) == "sent"
+
+
+def test_password_reset_requires_https_redirect():
+    with pytest.raises(ValueError, match="HTTPS"):
+        supabase_auth.request_password_reset(object(), "a@b.com", "http://sowia.example")
+
+
+def test_password_update_requires_eight_characters():
+    with pytest.raises(ValueError, match="8 caractères"):
+        supabase_auth.update_account_password(object(), "court")
+
+
+def test_password_update_calls_supabase():
+    class Auth:
+        def update_user(self, attributes):
+            assert attributes == {"password": "nouveau-mot-de-passe"}
+            return "updated"
+
+    client = type("Client", (), {"auth": Auth()})()
+    assert supabase_auth.update_account_password(client, "nouveau-mot-de-passe") == "updated"
