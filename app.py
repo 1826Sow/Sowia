@@ -334,7 +334,7 @@ elif page == "Ma mémoire":
     st.subheader("🧠 Ma mémoire")
     st.write("Ajoutez les informations que SOW IA pourra réutiliser dans ses prochaines réponses.")
     if cloud_mode:
-        st.success("Vos notes sont enregistrées dans votre espace personnel Supabase.")
+        st.success(f"Vos notes sont enregistrées dans votre espace {workspace_choice.lower()} Supabase.")
     else:
         st.info(
             "Cette mémoire est stockée dans la base SQLite de cette installation. "
