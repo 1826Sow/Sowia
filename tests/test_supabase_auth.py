@@ -13,7 +13,7 @@ def test_client_fails_closed_when_not_configured(monkeypatch):
     monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
     with pytest.raises(RuntimeError, match="pas configuré"):
-        supabase_auth.create_user_client()
+        supabase_auth.create_user_client("browser-scope-placeholder-01234567890123456789")
 
 
 def test_oauth_redirect_must_be_https():
@@ -24,7 +24,6 @@ def test_oauth_redirect_must_be_https():
 def test_missing_authorization_code_is_rejected():
     with pytest.raises(ValueError, match="manquant"):
         supabase_auth.complete_github_login(object(), "")
-
 
 
 def test_oauth_url_reads_supabase_py_url_attribute():
@@ -38,10 +37,10 @@ def test_oauth_url_reads_supabase_py_url_attribute():
     ) == "https://github.com/login/oauth"
 
 
-def test_oauth_code_is_passed_as_string():
+def test_oauth_code_is_passed_as_auth_code_parameter():
     class Auth:
-        def exchange_code_for_session(self, code):
-            assert code == "one-time-code"
+        def exchange_code_for_session(self, credentials):
+            assert credentials == {"auth_code": "one-time-code"}
             return "exchanged"
 
     client = type("Client", (), {"auth": Auth()})()
