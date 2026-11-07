@@ -115,7 +115,26 @@ def _browser_storage_id():
                 xsrf_cookie = None
 
     if not xsrf_cookie:
-        return None
+        cookie_names = sorted(str(name) for name in st.context.cookies.keys())
+        header_names = sorted(str(name) for name in st.context.headers.keys())
+        header_cookie_names = []
+        if cookie_header:
+            parsed_names = SimpleCookie()
+            try:
+                parsed_names.load(cookie_header)
+                header_cookie_names = sorted(parsed_names.keys())
+            except Exception:
+                header_cookie_names = ["[en-tête Cookie illisible]"]
+        diagnostic = (
+            f"Cookies visibles={cookie_names or 'aucun'} ; "
+            f"cookies dans l'en-tête={header_cookie_names or 'aucun'} ; "
+            f"en-têtes HTTP disponibles={header_names or 'aucun'} ; "
+            f"version Streamlit={getattr(st, '__version__', 'inconnue')}"
+        )
+        raise RuntimeError(
+            "Aucun cookie navigateur exploitable n'est transmis à SOW IA. "
+            + diagnostic
+        )
     return hashlib.sha256(str(xsrf_cookie).encode("utf-8")).hexdigest()
 
 
