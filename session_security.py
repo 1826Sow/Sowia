@@ -13,6 +13,9 @@ PRIVATE_SESSION_KEYS = (
 
 
 def clear_private_session_state(session_state):
-    """Remove cached document/payment data when authentication changes."""
+    """Clear private caches while keeping the PDF page's initialized state valid."""
     for key in PRIVATE_SESSION_KEYS:
         session_state.pop(key, None)
+    # app.py reads this key on every render after authentication is checked.
+    # Keep it initialized to avoid a KeyError after an account switch.
+    session_state["pdf_text"] = ""
