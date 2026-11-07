@@ -7,17 +7,20 @@ BUCKET_NAME = "sowia-private-documents"
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
 WORKSPACES = {"personal", "professional"}
 
+
 def _user_prefix(user):
     user_id = getattr(user, "id", None)
     if not user_id:
         raise PermissionError("Connexion requise.")
     return str(user_id)
 
+
 def _workspace(workspace_id):
     value = str(workspace_id or "personal")
     if value not in WORKSPACES:
         raise ValueError("Espace de travail invalide.")
     return value
+
 
 def _safe_filename(filename):
     original = os.path.basename(str(filename or "").replace("\\", "/"))
@@ -26,7 +29,11 @@ def _safe_filename(filename):
     cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", original).strip("._")
     if not cleaned:
         raise ValueError("Nom de fichier invalide.")
-    return cleaned[:100]
+    # Keep the .pdf extension even when the original filename is very long.
+    if len(cleaned) > 100:
+        cleaned = cleaned[:-4][:96] + ".pdf"
+    return cleaned
+
 
 def _owned_path(user, path, workspace_id="personal"):
     prefix = _user_prefix(user) + "/"
@@ -42,6 +49,7 @@ def _owned_path(user, path, workspace_id="personal"):
         raise ValueError("Chemin de document invalide.")
     return path
 
+
 def upload_document(client, user, filename, content, workspace_id="personal"):
     prefix = _user_prefix(user)
     workspace = _workspace(workspace_id)
@@ -53,8 +61,12 @@ def upload_document(client, user, filename, content, workspace_id="personal"):
         raise ValueError("Le fichier dépasse la limite de 10 Mo.")
     object_name = f"{uuid4().hex}_{safe_name}"
     path = f"{prefix}/{workspace}/{object_name}"
-    client.storage.from_(BUCKET_NAME).upload(path, payload, file_options={"content-type": "application/pdf", "upsert": "false"})
+    client.storage.from_(BUCKET_NAME).upload(
+        path, payload,
+        file_options={"content-type": "application/pdf", "upsert": "false"},
+    )
     return path
+
 
 def list_documents(client, user, workspace_id="personal"):
     prefix = _user_prefix(user)
@@ -73,9 +85,11 @@ def list_documents(client, user, workspace_id="personal"):
             documents.append({**item, "path": f"{prefix}/{workspace}/{name}"})
     return documents
 
+
 def download_document(client, user, path, workspace_id="personal"):
     owned_path = _owned_path(user, path, workspace_id)
     return client.storage.from_(BUCKET_NAME).download(owned_path)
+
 
 def delete_document(client, user, path, workspace_id="personal"):
     owned_path = _owned_path(user, path, workspace_id)
