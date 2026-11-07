@@ -3,6 +3,9 @@ import pytest
 import document_storage as docs
 
 
+VALID_PDF = b"%PDF-1.7\n% test fixture\n"
+
+
 class User:
     id = "user-123"
 
@@ -44,10 +47,10 @@ class FakeClient:
 @pytest.mark.parametrize("workspace", ["personal", "professional"])
 def test_upload_is_stored_under_user_and_workspace_folder(workspace):
     client = FakeClient()
-    path = docs.upload_document(client, User(), "Mon rapport.pdf", b"%PDF", workspace)
+    path = docs.upload_document(client, User(), "Mon rapport.pdf", VALID_PDF, workspace)
     assert path.startswith(f"user-123/{workspace}/")
     assert path.endswith("_Mon_rapport.pdf")
-    assert client.bucket.uploaded[1] == b"%PDF"
+    assert client.bucket.uploaded[1] == VALID_PDF
     assert client.bucket.uploaded[2]["content-type"] == "application/pdf"
 
 

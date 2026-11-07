@@ -30,6 +30,7 @@ import cloud_storage
 import paypal_payments
 import premium_access
 from document_storage import upload_document, list_documents, download_document, delete_document
+from session_security import clear_private_session_state
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
@@ -93,7 +94,17 @@ if cloud_mode:
 
         auth_stage = "vérification de la session Supabase"
         current_user = authenticated_user(supabase_client)
-        if current_user is not None:
+        if current_user is None:
+            # Never keep the previous account's private PDF or payment cache after
+            # a missing/expired login.
+            clear_private_session_state(st.session_state)
+            st.session_state.pop("sowia_authenticated_user_id", None)
+        else:
+            authenticated_user_id = str(current_user.id)
+            if st.session_state.get("sowia_authenticated_user_id") != authenticated_user_id:
+                # A new or different account starts without cached private data.
+                clear_private_session_state(st.session_state)
+                st.session_state["sowia_authenticated_user_id"] = authenticated_user_id
             # Reuse one private conversation history for this authenticated account.
             st.session_state.session_id = str(
                 uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
@@ -103,6 +114,8 @@ if cloud_mode:
         # unavailable. Never bypass authentication when the deployment
         # explicitly requires it.
         st.session_state.pop("sowia_supabase_client", None)
+        clear_private_session_state(st.session_state)
+        st.session_state.pop("sowia_authenticated_user_id", None)
         if auth_required:
             # Show a compact diagnostic directly in the main error box so it
             # remains visible on small mobile screens.
@@ -197,32 +210,32 @@ if cloud_mode and current_user is not None:
 def get_app_history(limit=30):
     if cloud_mode:
         return cloud_storage.get_history(supabase_client, current_user, st.session_state.session_id, limit, st.session_state.get("workspace_id", "personal"))
-    return local_get_history(st.session_state.session_id, limit)
+    return local_get_history(st.session_state.session_id, limit, st.session_state.get("workspace_id", "personal"))
 
 def save_app_message(role, content):
     if cloud_mode:
         return cloud_storage.save_message(supabase_client, current_user, st.session_state.session_id, role, content, st.session_state.get("workspace_id", "personal"))
-    return local_save_message(st.session_state.session_id, role, content)
+    return local_save_message(st.session_state.session_id, role, content, st.session_state.get("workspace_id", "personal"))
 
 def clear_app_history():
     if cloud_mode:
         return cloud_storage.clear_history(supabase_client, current_user, st.session_state.session_id, st.session_state.get("workspace_id", "personal"))
-    return local_clear_history(st.session_state.session_id)
+    return local_clear_history(st.session_state.session_id, st.session_state.get("workspace_id", "personal"))
 
 def get_app_memories():
     if cloud_mode:
         return cloud_storage.list_memories(supabase_client, current_user, st.session_state.get("workspace_id", "personal"))
-    return local_get_memories()
+    return local_get_memories(workspace_id=st.session_state.get("workspace_id", "personal"))
 
 def add_app_memory(content):
     if cloud_mode:
         return cloud_storage.add_memory(supabase_client, current_user, content, st.session_state.get("workspace_id", "personal"))
-    return local_add_memory(content)
+    return local_add_memory(content, st.session_state.get("workspace_id", "personal"))
 
 def delete_app_memory(memory_id):
     if cloud_mode:
         return cloud_storage.delete_memory(supabase_client, current_user, memory_id, st.session_state.get("workspace_id", "personal"))
-    return local_delete_memory(memory_id)
+    return local_delete_memory(memory_id, st.session_state.get("workspace_id", "personal"))
 
 def go_to_page(page_name):
     st.session_state.page_nav = page_name
@@ -242,6 +255,8 @@ with st.sidebar:
         if st.button("Se déconnecter", use_container_width=True):
             sign_out(supabase_client)
             st.session_state.pop("sowia_supabase_client", None)
+            clear_private_session_state(st.session_state)
+            st.session_state.pop("sowia_authenticated_user_id", None)
             st.session_state.session_id = str(uuid.uuid4())
             st.rerun()
     else:
