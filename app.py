@@ -132,16 +132,13 @@ if cloud_mode:
         try:
             redirect_to = str(get_setting("SOWIA_PUBLIC_URL", "")).strip()
             login_url = github_authorization_url(supabase_client, redirect_to)
-            # Important: keep OAuth in the same browser tab/session so the
-            # PKCE verifier stored by the per-session Supabase client survives.
-            st.markdown(
-                f'<a href="{html.escape(login_url, quote=True)}" target="_top" '
-                'rel="noopener noreferrer" class="sowia-github-login">'
-                'Continuer avec GitHub</a>'
-                '<style>.sowia-github-login{display:inline-block;padding:.65rem 1rem;'
-                'border-radius:.6rem;background:#2563eb;color:white!important;'
-                'font-weight:600;text-decoration:none!important}</style>',
-                unsafe_allow_html=True,
+            # Utiliser le bouton de lien natif Streamlit : il est mieux pris
+            # en charge par les navigateurs mobiles et les WebView Android.
+            # L'URL OAuth et le mécanisme PKCE restent inchangés.
+            st.link_button(
+                "Continuer avec GitHub",
+                login_url,
+                use_container_width=True,
             )
         except Exception as exc:
             st.warning("La connexion GitHub attend encore la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
