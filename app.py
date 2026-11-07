@@ -132,13 +132,11 @@ if cloud_mode:
         try:
             redirect_to = str(get_setting("SOWIA_PUBLIC_URL", "")).strip()
             login_url = github_authorization_url(supabase_client, redirect_to)
-            safe_login_url = html.escape(login_url, quote=True)
-            st.markdown(
-                f'<a href="{safe_login_url}" target="_top" rel="noopener noreferrer" '
-                'style="display:inline-block;padding:0.55rem 1rem;border-radius:0.5rem;'
-                'background:#ff4b4b;color:white;text-decoration:none;font-weight:600;">'
-                'Continuer avec GitHub</a>',
-                unsafe_allow_html=True,
+            st.link_button(
+                "Continuer avec GitHub",
+                login_url,
+                type="primary",
+                help="Ouvrir la connexion sécurisée GitHub dans un nouvel onglet.",
             )
         except Exception as exc:
             st.warning("La connexion GitHub attend encore la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
