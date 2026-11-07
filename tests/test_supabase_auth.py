@@ -57,3 +57,45 @@ def test_authenticated_user_returns_none_without_session():
 
     client = type("Client", (), {"auth": Auth()})()
     assert supabase_auth.authenticated_user(client) is None
+
+
+def test_pkce_verifier_survives_a_new_client_for_same_browser(monkeypatch, tmp_path):
+    monkeypatch.setattr(supabase_auth, "_OAUTH_DB", tmp_path / "oauth-test.db")
+    browser_scope = "a" * 64
+    first_client_storage = supabase_auth._BrowserScopedOAuthStorage(
+        supabase_auth._browser_storage_id(browser_scope)
+    )
+    second_client_storage = supabase_auth._BrowserScopedOAuthStorage(
+        supabase_auth._browser_storage_id(browser_scope)
+    )
+    key = "sb-project-auth-token-code-verifier"
+
+    first_client_storage.set_item(key, "one-time-pkce-verifier")
+
+    assert second_client_storage.get_item(key) == "one-time-pkce-verifier"
+
+
+def test_pkce_verifier_is_isolated_between_browsers(monkeypatch, tmp_path):
+    monkeypatch.setattr(supabase_auth, "_OAUTH_DB", tmp_path / "oauth-test.db")
+    first_browser = supabase_auth._BrowserScopedOAuthStorage(
+        supabase_auth._browser_storage_id("a" * 64)
+    )
+    second_browser = supabase_auth._BrowserScopedOAuthStorage(
+        supabase_auth._browser_storage_id("b" * 64)
+    )
+    key = "sb-project-auth-token-code-verifier"
+
+    first_browser.set_item(key, "private-verifier")
+
+    assert second_browser.get_item(key) is None
+
+
+def test_pkce_verifier_can_be_removed_after_exchange(monkeypatch, tmp_path):
+    monkeypatch.setattr(supabase_auth, "_OAUTH_DB", tmp_path / "oauth-test.db")
+    storage = supabase_auth._BrowserScopedOAuthStorage("browser-hash")
+    key = "sb-project-auth-token-code-verifier"
+    storage.set_item(key, "one-time-verifier")
+
+    storage.remove_item(key)
+
+    assert storage.get_item(key) is None
