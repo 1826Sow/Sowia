@@ -196,3 +196,35 @@ def test_active_premium_entitlement_keeps_cached_outputs():
 
     assert clear_premium_results_without_entitlement(state, True) is False
     assert state["premium_professional_pdf_result"] == b"private export"
+
+
+
+def test_inactive_private_storage_entitlement_clears_cached_document_content():
+    from session_security import clear_private_document_cache_without_entitlement
+
+    state = {
+        "prepared_document_bytes": b"private pdf",
+        "prepared_document_path": "user/personal/file.pdf",
+        "pending_document_delete_path": "user/personal/file.pdf",
+        "selected_saved_pdf_path": "user/personal/file.pdf",
+        "selected_saved_pdf_name": "file.pdf",
+        "selected_saved_pdf_text": "private extracted text",
+        "selected_saved_pdf_question": "private question",
+        "saved_pdf_answer": "private answer",
+        "saved_pdf_answer_path": "user/personal/file.pdf",
+        "unrelated_preference": "keep-me",
+    }
+
+    assert clear_private_document_cache_without_entitlement(state, False) is True
+    assert not any(key.startswith(("prepared_document", "selected_saved_pdf", "saved_pdf")) for key in state)
+    assert "pending_document_delete_path" not in state
+    assert state["unrelated_preference"] == "keep-me"
+
+
+def test_active_private_storage_entitlement_keeps_document_cache():
+    from session_security import clear_private_document_cache_without_entitlement
+
+    state = {"selected_saved_pdf_text": "authorized private text"}
+
+    assert clear_private_document_cache_without_entitlement(state, True) is False
+    assert state["selected_saved_pdf_text"] == "authorized private text"
