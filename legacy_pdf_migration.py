@@ -22,6 +22,21 @@ def _is_pdf_object(item):
     )
 
 
+def _list_all(bucket, prefix, page_size=100):
+    """Fetch every Storage listing page instead of silently stopping at 100."""
+    items = []
+    offset = 0
+    while True:
+        page = bucket.list(prefix, {"limit": page_size, "offset": offset})
+        if not page:
+            break
+        items.extend(page)
+        if len(page) < page_size:
+            break
+        offset += len(page)
+    return items
+
+
 def plan_legacy_pdf_migration(client, user):
     """List legacy root PDFs and identify safe Personal destinations.
 
@@ -30,8 +45,8 @@ def plan_legacy_pdf_migration(client, user):
     """
     user_prefix = _user_prefix(user)
     bucket = client.storage.from_(BUCKET_NAME)
-    legacy_items = bucket.list(user_prefix)
-    personal_items = bucket.list(f"{user_prefix}/personal")
+    legacy_items = _list_all(bucket, user_prefix)
+    personal_items = _list_all(bucket, f"{user_prefix}/personal")
     existing_names = {
         item.get("name")
         for item in personal_items
