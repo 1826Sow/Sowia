@@ -638,18 +638,31 @@ elif page == "Mes documents":
                         st.session_state["prepared_document_bytes"] = download_document(supabase_client, current_user, stored_path, st.session_state.get("workspace_id", "personal"))
                         st.session_state["prepared_document_path"] = stored_path
                         st.rerun()
-                    if st.button("Supprimer", key=f"delete_private_{stored_name}"):
-                        delete_document(supabase_client, current_user, stored_path, st.session_state.get("workspace_id", "personal"))
-                        if st.session_state.get("prepared_document_path") == stored_path:
-                            st.session_state.pop("prepared_document_path", None)
-                            st.session_state.pop("prepared_document_bytes", None)
-                        if st.session_state.get("selected_saved_pdf_path") == stored_path:
-                            for key in (
-                                "selected_saved_pdf_path", "selected_saved_pdf_name",
-                                "selected_saved_pdf_text", "selected_saved_pdf_question",
-                                "saved_pdf_answer", "saved_pdf_answer_path",
-                            ):
-                                st.session_state.pop(key, None)
+                    pending_delete_path = st.session_state.get("pending_document_delete_path")
+                    if pending_delete_path == stored_path:
+                        st.warning(f"Confirmer la suppression de « {display_name} » ? Cette action est définitive.")
+                        confirm_col, cancel_col = st.columns(2)
+                        with confirm_col:
+                            if st.button("Confirmer la suppression", key=f"confirm_delete_private_{stored_name}", type="primary"):
+                                delete_document(supabase_client, current_user, stored_path, st.session_state.get("workspace_id", "personal"))
+                                st.session_state.pop("pending_document_delete_path", None)
+                                if st.session_state.get("prepared_document_path") == stored_path:
+                                    st.session_state.pop("prepared_document_path", None)
+                                    st.session_state.pop("prepared_document_bytes", None)
+                                if st.session_state.get("selected_saved_pdf_path") == stored_path:
+                                    for key in (
+                                        "selected_saved_pdf_path", "selected_saved_pdf_name",
+                                        "selected_saved_pdf_text", "selected_saved_pdf_question",
+                                        "saved_pdf_answer", "saved_pdf_answer_path",
+                                    ):
+                                        st.session_state.pop(key, None)
+                                st.rerun()
+                        with cancel_col:
+                            if st.button("Annuler", key=f"cancel_delete_private_{stored_name}"):
+                                st.session_state.pop("pending_document_delete_path", None)
+                                st.rerun()
+                    elif st.button("Supprimer", key=f"delete_private_{stored_name}"):
+                        st.session_state["pending_document_delete_path"] = stored_path
                         st.rerun()
         except Exception:
             st.error("Impossible de charger vos documents. Vérifiez que le bucket privé et ses règles de sécurité sont installés dans Supabase.")
