@@ -30,7 +30,7 @@ import cloud_storage
 import paypal_payments
 import premium_access
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
-from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name
+from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
 from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
@@ -584,6 +584,9 @@ elif page == "Mes documents":
                 display_name = display_document_name(stored_name)
                 with st.container(border=True):
                     st.write(f"📄 {display_name}")
+                    upload_label = document_upload_label(stored)
+                    if upload_label:
+                        st.caption(upload_label)
                     if st.button("Analyser ce PDF", key=f"analyze_private_{stored_name}"):
                         try:
                             from io import BytesIO
