@@ -128,3 +128,18 @@ def test_rls_and_storage_diagnostic_is_read_only_and_covers_security_metadata():
             "revoke ", "insert into", "delete from", "update "
         )
     )
+
+
+def test_legacy_root_paths_are_readable_and_deletable_but_not_uploadable():
+    # One folder component means <user_id>/<legacy-file.pdf>.
+    # Keep this compatibility for existing Personal files only.
+    assert "array_length(storage.foldername(name), 1) = 1" in POLICIES
+    assert "on storage.objects for select to authenticated" in POLICIES
+    assert "on storage.objects for delete to authenticated" in POLICIES
+
+    # New uploads must always include a workspace folder.
+    insert_policy = POLICIES.split(
+        'on storage.objects for insert to authenticated', 1
+    )[1].split(";", 1)[0]
+    assert "array_length(storage.foldername(name), 1) = 2" in insert_policy
+    assert "(storage.foldername(name))[2] in ('personal', 'professional')" in insert_policy
