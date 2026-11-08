@@ -186,9 +186,10 @@ if cloud_mode and current_user is not None:
                     "Ajoutez SUPABASE_SERVICE_ROLE_KEY dans les secrets Streamlit "
                     "avant d'activer la validation des achats."
                 )
-            paypal_payments.capture_premium_order(str(paypal_token), str(current_user.id))
+            normalized_order_id = str(paypal_token).strip()
+            paypal_payments.capture_premium_order(normalized_order_id, str(current_user.id))
             premium_access.grant_paypal_entitlement(
-                admin_client, str(current_user.id), str(paypal_token),
+                admin_client, str(current_user.id), normalized_order_id,
                 payment_config["amount"], payment_config["currency"],
             )
             st.query_params.clear()
