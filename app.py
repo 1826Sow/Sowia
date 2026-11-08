@@ -177,6 +177,9 @@ if cloud_mode and current_user is not None:
     paypal_token = st.query_params.get("token")
     if paypal_token:
         try:
+            payment_config = paypal_payments.paypal_configuration()
+            if payment_config is None:
+                raise RuntimeError("Les paiements Premium sont désactivés.")
             admin_client = premium_access.create_admin_client()
             if admin_client is None:
                 raise RuntimeError(
@@ -184,7 +187,6 @@ if cloud_mode and current_user is not None:
                     "avant d'activer la validation des achats."
                 )
             paypal_payments.capture_premium_order(str(paypal_token), str(current_user.id))
-            payment_config = paypal_payments.paypal_configuration()
             premium_access.grant_paypal_entitlement(
                 admin_client, str(current_user.id), str(paypal_token),
                 payment_config["amount"], payment_config["currency"],
