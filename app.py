@@ -287,6 +287,49 @@ st.write("")
 
 if page == "Accueil":
     st.subheader("Bienvenue sur SOW IA")
+    if st.session_state.get("workspace_id") == "professional":
+        st.markdown("### Tableau de bord professionnel")
+        st.caption("Vue d'ensemble de votre espace professionnel. Les indicateurs affichent uniquement les données de cet espace.")
+        memories = get_app_memories()
+        history = get_app_history(100)
+        document_count = None
+        if cloud_mode:
+            try:
+                document_count = len(
+                    list_documents(
+                        supabase_client,
+                        current_user,
+                        st.session_state.get("workspace_id", "professional"),
+                    )
+                )
+            except Exception:
+                st.warning("Le nombre de documents n'a pas pu être chargé. Vos fichiers ne sont pas modifiés.")
+        metric_cols = st.columns(3)
+        with metric_cols[0]:
+            st.metric("PDF enregistrés", document_count if document_count is not None else "Connexion requise")
+        with metric_cols[1]:
+            st.metric("Notes mémoire", len(memories))
+        with metric_cols[2]:
+            st.metric("Messages de cette session", len(history))
+        action_cols = st.columns(4)
+        dashboard_actions = [
+            ("Créer un document", "Créer un PDF"),
+            ("Consulter mes PDF", "Mes documents"),
+            ("Ouvrir ma mémoire", "Ma mémoire"),
+            ("Utiliser l'assistant", "Assistant IA"),
+        ]
+        for col, (label, destination) in zip(action_cols, dashboard_actions):
+            with col:
+                st.button(
+                    label,
+                    key=f"professional_dashboard_{destination}",
+                    use_container_width=True,
+                    on_click=go_to_page,
+                    args=(destination,),
+                )
+        if not cloud_mode:
+            st.info("Connectez-vous à votre espace sécurisé pour consulter et gérer vos PDF privés. Les paiements restent désactivés.")
+        st.divider()
     st.write("Accédez directement à vos outils :")
     shortcuts = [
         ("💬", "Assistant IA", "Posez vos questions"),
