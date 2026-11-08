@@ -32,6 +32,8 @@ def clear_private_session_state(session_state):
 WORKSPACE_PRIVATE_SESSION_KEYS = (
     "pdf_text",
     "pdf_question",
+    "pdf_title",
+    "pdf_body",
     "prepared_document_bytes",
     "prepared_document_path",
     "private_pdf_upload",
