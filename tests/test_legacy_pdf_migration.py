@@ -14,7 +14,7 @@ class FakeBucket:
         self.uploaded = []
         self.removed = []
 
-    def list(self, prefix):
+    def list(self, prefix, options=None):
         prefix = prefix.rstrip("/")
         results = []
         for path, payload in self.objects.items():
@@ -26,7 +26,10 @@ class FakeBucket:
                     "name": remainder,
                     "id": "object-id" if payload is not None else None,
                 })
-        return results
+        options = options or {}
+        offset = options.get("offset", 0)
+        limit = options.get("limit", 100)
+        return results[offset:offset + limit]
 
     def download(self, path):
         return self.objects[path]
@@ -140,3 +143,17 @@ def test_repeated_apply_is_idempotent_and_reports_destination_collision():
 def test_user_must_be_authenticated_before_migration_planning():
     with pytest.raises(PermissionError, match="Connexion requise"):
         plan_legacy_pdf_migration(FakeClient(), None)
+
+
+def test_plan_paginates_through_more_than_one_hundred_legacy_objects():
+    objects = {
+        f"user-123/legacy-{index:03}.pdf": b"%PDF-1.7 content"
+        for index in range(205)
+    }
+    client = FakeClient(objects)
+
+    plan = plan_legacy_pdf_migration(client, User())
+
+    assert len(plan) == 205
+    assert plan[0]["source"] == "user-123/legacy-000.pdf"
+    assert plan[-1]["source"] == "user-123/legacy-204.pdf"
