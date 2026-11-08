@@ -174,6 +174,23 @@ def capture_premium_order(order_id: str, user_id: str):
     )
     capture_response.raise_for_status()
     result = capture_response.json()
-    if result.get("status") != "COMPLETED":
-        raise RuntimeError("PayPal n'a pas confirmé le paiement.")
+    result_units = result.get("purchase_units") or []
+    if result.get("id") != normalized_order_id or result.get("status") != "COMPLETED":
+        raise RuntimeError("La réponse de capture PayPal ne confirme pas la commande attendue.")
+    if len(result_units) != 1:
+        raise RuntimeError("La réponse de capture PayPal est incomplète.")
+    result_unit = result_units[0]
+    result_amount = result_unit.get("amount") or {}
+    captures = (result_unit.get("payments") or {}).get("captures") or []
+    if (
+        result_unit.get("custom_id") != str(user_id)
+        or result_unit.get("reference_id") != "sowia-premium"
+        or result_amount.get("currency_code") != config["currency"]
+        or result_amount.get("value") != config["amount"]
+        or len(captures) != 1
+        or captures[0].get("status") != "COMPLETED"
+        or (captures[0].get("amount") or {}).get("currency_code") != config["currency"]
+        or (captures[0].get("amount") or {}).get("value") != config["amount"]
+    ):
+        raise RuntimeError("Les détails de la capture PayPal ne correspondent pas à l'achat Premium.")
     return result
