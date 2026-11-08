@@ -545,9 +545,11 @@ elif page == "Créer un PDF":
             document.build(story)
             st.success("Votre PDF est prêt.")
             st.download_button("Télécharger mon PDF", data=buffer.getvalue(), file_name="document_sow_ia.pdf", mime="application/pdf", type="primary")
-        except Exception as exc:
-            st.error("La création du PDF a échoué. Vérifiez que les dépendances sont installées.")
-            st.caption(str(exc))
+        except Exception:
+            st.error(
+                "La création du PDF a échoué. Vérifiez le contenu du document "
+                "et réessayez. Si le problème persiste, contactez l'assistance."
+            )
 elif page == "Mes documents":
     st.subheader("📁 Mes documents")
     if not cloud_mode:
