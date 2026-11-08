@@ -21,6 +21,7 @@ create policy "SOW IA users can read own workspace PDFs"
 on storage.objects for select to authenticated
 using (
     bucket_id = 'sowia-files'
+    and lower(name) like '%.pdf'
     and (storage.foldername(name))[1] = (select auth.uid())::text
     and (
         array_length(storage.foldername(name), 1) = 1
@@ -36,6 +37,7 @@ create policy "SOW IA users can upload own workspace PDFs"
 on storage.objects for insert to authenticated
 with check (
     bucket_id = 'sowia-files'
+    and lower(name) like '%.pdf'
     and (storage.foldername(name))[1] = (select auth.uid())::text
     and array_length(storage.foldername(name), 1) = 2
     and (storage.foldername(name))[2] in ('personal', 'professional')
@@ -46,6 +48,7 @@ create policy "SOW IA users can delete own workspace PDFs"
 on storage.objects for delete to authenticated
 using (
     bucket_id = 'sowia-files'
+    and lower(name) like '%.pdf'
     and (storage.foldername(name))[1] = (select auth.uid())::text
     and (
         array_length(storage.foldername(name), 1) = 1
