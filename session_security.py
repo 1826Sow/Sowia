@@ -86,6 +86,14 @@ PREMIUM_RESULT_KEYS = (
 )
 
 
+def clear_premium_batch_upload_without_entitlement(session_state, entitlement_active):
+    """Remove uploaded batch PDFs when Premium access is not confirmed."""
+    if entitlement_active:
+        return False
+    session_state.pop("premium_pdf_batch_upload", None)
+    return True
+
+
 def clear_premium_results_without_entitlement(session_state, entitlement_active):
     """Remove cached Premium outputs whenever current access is not confirmed."""
     if entitlement_active:
