@@ -7,7 +7,6 @@ written to this SQLite store.
 """
 from settings import get_setting
 import hashlib
-import inspect
 import re
 import sqlite3
 import time
@@ -229,22 +228,9 @@ def complete_github_login(client, authorization_code):
     """Exchange the one-time PKCE code using the browser-scoped verifier."""
     if not authorization_code:
         raise ValueError("Code de connexion manquant.")
-    credentials = {"auth_code": str(authorization_code)}
-    method = client.auth.exchange_code_for_session
-    try:
-        return method(credentials)
-    except AttributeError as exc:
-        try:
-            signature = str(inspect.signature(method))
-        except Exception:
-            signature = "signature indisponible"
-        raise RuntimeError(
-            "Diagnostic SDK Supabase : "
-            f"méthode={getattr(method, '__qualname__', type(method).__name__)} ; "
-            f"signature={signature} ; "
-            f"type_transmis={type(credentials).__name__} ; "
-            f"module={getattr(method, '__module__', 'inconnu')}"
-        ) from exc
+    # supabase-py expects the authorization code as a string, not the
+    # GoTrue JSON payload shape used by sign_in_with_oauth.
+    return client.auth.exchange_code_for_session(str(authorization_code))
 
 
 def authenticated_user(client):
