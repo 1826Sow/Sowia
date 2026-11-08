@@ -56,7 +56,8 @@ jobs:
           fi
       - name: Report safely that live RLS tests are not configured
         if: steps.credentials.outputs.configured != 'true'
-        run: echo "Live Supabase RLS tests skipped: configure the six dedicated test-project secrets described in tests/integration/README.md."
+        run: |
+          echo "Live Supabase RLS tests skipped: configure the six dedicated test-project secrets described in tests/integration/README.md."
       - name: Check out repository
         if: steps.credentials.outputs.configured == 'true'
         uses: actions/checkout@v4
