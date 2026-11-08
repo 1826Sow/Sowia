@@ -28,6 +28,8 @@ from sowia_supabase_auth import (
 import cloud_storage
 import paypal_payments
 import premium_access
+from premium_analysis import analyze_pdf_advanced
+from premium_batch_analysis import analyze_pdf_batch, prepare_pdf_batch_uploads
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
 from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation
@@ -496,6 +498,67 @@ elif page == "Analyse PDF":
                             "L'analyse du document a échoué. Vérifiez la disponibilité du service IA "
                             "et réessayez plus tard."
                         )
+
+    st.divider()
+    st.markdown("### Analyse avancée Premium")
+    st.caption("Synthèse structurée, points de vigilance et questions utiles. L'accès est vérifié côté serveur avant l'appel à l'IA.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous à votre compte sécurisé pour vérifier vos droits Premium.")
+    else:
+        if st.button("Lancer l'analyse avancée Premium", key="run_advanced_pdf_analysis", disabled=not bool(st.session_state.pdf_text)):
+            if not API_KEY:
+                st.warning("Le service IA n'est pas configuré. L'analyse avancée n'a pas été lancée.")
+            else:
+                with st.spinner("Vérification Premium et analyse du document..."):
+                    try:
+                        st.session_state["premium_pdf_analysis_result"] = analyze_pdf_advanced(
+                            supabase_client, current_user, st.session_state.pdf_text, answer
+                        )
+                    except PermissionError as exc:
+                        st.warning(str(exc))
+                    except ValueError as exc:
+                        st.warning(str(exc))
+                    except Exception:
+                        st.error("L'analyse avancée a échoué. Aucun changement n'a été apporté à votre document.")
+        if st.session_state.get("premium_pdf_analysis_result"):
+            st.markdown("#### Résultat de l'analyse avancée")
+            st.markdown(st.session_state["premium_pdf_analysis_result"])
+
+        st.markdown("### Comparer plusieurs PDF")
+        st.caption("Sélectionnez 2 à 5 PDF. Chaque fichier est limité à 10 Mo, et tous les fichiers sont validés avant extraction.")
+        batch_files = st.file_uploader(
+            "Importer 2 à 5 PDF à comparer",
+            type=["pdf"],
+            accept_multiple_files=True,
+            max_upload_size=10,
+            key="premium_pdf_batch_upload",
+        )
+        if st.button(
+            "Comparer les PDF avec Premium",
+            key="run_premium_pdf_batch",
+            disabled=not (batch_files and 2 <= len(batch_files) <= 5),
+        ):
+            if not API_KEY:
+                st.warning("Le service IA n'est pas configuré. La comparaison n'a pas été lancée.")
+            else:
+                with st.spinner("Validation des fichiers, vérification Premium et comparaison..."):
+                    try:
+                        prepared_documents = prepare_pdf_batch_uploads(
+                            batch_files, extract_pdf_text
+                        )
+                        st.session_state["premium_pdf_batch_result"] = analyze_pdf_batch(
+                            supabase_client, current_user, prepared_documents, answer
+                        )
+                    except PermissionError as exc:
+                        st.warning(str(exc))
+                    except ValueError as exc:
+                        st.warning(str(exc))
+                    except Exception:
+                        st.error("La comparaison des PDF a échoué. Vérifiez que les fichiers sont lisibles.")
+
+        if st.session_state.get("premium_pdf_batch_result"):
+            st.markdown("#### Résultat de la comparaison")
+            st.markdown(st.session_state["premium_pdf_batch_result"])
 
 elif page == "Créer un PDF":
     st.subheader("🪄 Créer un PDF")
