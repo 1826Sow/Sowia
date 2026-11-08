@@ -39,7 +39,9 @@ def get_entitlement(user_client, user):
 def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
     if admin_client is None:
         raise RuntimeError("Le stockage sécurisé des abonnements n'est pas configuré.")
-    if not all((user_id, order_id, amount)):
+    normalized_user_id = str(user_id or "").strip()
+    normalized_order_id = str(order_id or "").strip()
+    if not normalized_user_id or not normalized_order_id or amount is None:
         raise ValueError("Informations de paiement Premium incomplètes.")
     try:
         normalized_amount = Decimal(str(amount)).quantize(Decimal("0.01"))
@@ -53,10 +55,10 @@ def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
     ):
         raise ValueError("Le montant Premium ou la devise ne sont pas valides.")
     payload = {
-        "user_id": str(user_id).strip(),
+        "user_id": normalized_user_id,
         "status": "active",
         "provider": "paypal",
-        "paypal_order_id": str(order_id).strip(),
+        "paypal_order_id": normalized_order_id,
         "amount": f"{normalized_amount:.2f}",
         "currency": "EUR",
         "updated_at": datetime.now(timezone.utc).isoformat(),
