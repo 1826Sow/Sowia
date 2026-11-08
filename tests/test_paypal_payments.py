@@ -197,6 +197,10 @@ def test_completed_order_is_not_captured_twice(monkeypatch):
                 "custom_id": "current-user",
                 "reference_id": "sowia-premium",
                 "amount": {"currency_code": "EUR", "value": "12.90"},
+                "payments": {"captures": [{
+                    "status": "COMPLETED",
+                    "amount": {"currency_code": "EUR", "value": "12.90"},
+                }]},
             }],
         })
 
@@ -360,3 +364,47 @@ def test_capture_rejects_incomplete_or_mismatched_capture_response(
 
     with pytest.raises(RuntimeError, match="capture PayPal"):
         paypal.capture_premium_order("ORDER123", "current-user")
+
+
+@pytest.mark.parametrize(
+    "capture_data",
+    [
+        None,
+        {"status": "PENDING", "amount": {"currency_code": "EUR", "value": "12.90"}},
+        {"status": "COMPLETED", "amount": {"currency_code": "USD", "value": "12.90"}},
+        {"status": "COMPLETED", "amount": {"currency_code": "EUR", "value": "10.00"}},
+    ],
+)
+def test_completed_order_requires_matching_completed_capture(monkeypatch, capture_data):
+    _settings(monkeypatch)
+
+    class Response:
+        def __init__(self, data):
+            self.data = data
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.data
+
+    monkeypatch.setattr(paypal, "_access_token", lambda config: "test-token")
+    monkeypatch.setattr(paypal.requests, "get", lambda url, **kwargs: Response({
+        "id": "ORDER1",
+        "intent": "CAPTURE",
+        "status": "COMPLETED",
+        "purchase_units": [{
+            "custom_id": "current-user",
+            "reference_id": "sowia-premium",
+            "amount": {"currency_code": "EUR", "value": "12.90"},
+            "payments": {"captures": [capture_data] if capture_data else []},
+        }],
+    }))
+    monkeypatch.setattr(
+        paypal.requests,
+        "post",
+        lambda *args, **kwargs: pytest.fail("Une commande déjà terminée ne doit pas être recapturée."),
+    )
+
+    with pytest.raises(PermissionError, match="capture PayPal existante"):
+        paypal.capture_premium_order("ORDER1", "current-user")
