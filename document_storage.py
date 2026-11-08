@@ -7,6 +7,7 @@ import re
 
 from pypdf import PdfReader
 from uuid import uuid4
+from feature_access import require_feature_access
 
 BUCKET_NAME = "sowia-files"
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
@@ -68,6 +69,7 @@ def _validate_pdf(payload):
         raise ValueError("Le contenu du fichier n'est pas un PDF valide ou lisible.") from exc
 
 def upload_document(client, user, filename, content, workspace_id="personal"):
+    require_feature_access(client, user, "private_document_storage")
     prefix = _user_prefix(user)
     workspace = _workspace(workspace_id)
     safe_name = _safe_filename(filename)
@@ -83,6 +85,7 @@ def upload_document(client, user, filename, content, workspace_id="personal"):
     return path
 
 def list_documents(client, user, workspace_id="personal"):
+    require_feature_access(client, user, "private_document_storage")
     prefix = _user_prefix(user)
     workspace = _workspace(workspace_id)
     bucket = client.storage.from_(BUCKET_NAME)
@@ -100,10 +103,12 @@ def list_documents(client, user, workspace_id="personal"):
     return documents
 
 def download_document(client, user, path, workspace_id="personal"):
+    require_feature_access(client, user, "private_document_storage")
     owned_path = _owned_path(user, path, workspace_id)
     return client.storage.from_(BUCKET_NAME).download(owned_path)
 
 def delete_document(client, user, path, workspace_id="personal"):
+    require_feature_access(client, user, "private_document_storage")
     owned_path = _owned_path(user, path, workspace_id)
     return client.storage.from_(BUCKET_NAME).remove([owned_path])
 
