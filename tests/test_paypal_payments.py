@@ -5,6 +5,7 @@ import paypal_payments as paypal
 
 def _settings(monkeypatch, **overrides):
     values = {
+        "SOWIA_PAYMENTS_ENABLED": "true",
         "PAYPAL_CLIENT_ID": "sandbox-client",
         "PAYPAL_CLIENT_SECRET": "sandbox-secret",
         "PAYPAL_PREMIUM_PRICE": "12.90",
@@ -68,3 +69,8 @@ def test_capture_refuses_order_belonging_to_another_user(monkeypatch):
     with pytest.raises(PermissionError, match="ne correspond pas"):
         paypal.capture_premium_order("ORDER-1", "current-user")
     assert [kind for kind, _ in calls] == ["post", "get"]
+
+
+def test_payments_remain_disabled_without_explicit_enable_flag(monkeypatch):
+    _settings(monkeypatch, SOWIA_PAYMENTS_ENABLED="false")
+    assert paypal.paypal_configuration() is None
