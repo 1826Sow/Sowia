@@ -59,7 +59,8 @@ if "pdf_text" not in st.session_state:
     st.session_state.pdf_text = ""
 
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
-auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "false")).strip().lower() in {"1", "true", "yes"}
+# Fail closed by default on hosted deployments; local development must opt out explicitly.
+auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "true")).strip().lower() in {"1", "true", "yes"}
 supabase_enabled = configuration_ready()
 if auth_required and not supabase_enabled:
     st.error("SOW IA est en mode protégé, mais Supabase n'est pas encore configuré. L'accès est fermé jusqu'à la configuration de l'authentification.")
