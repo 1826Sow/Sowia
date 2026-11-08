@@ -96,6 +96,7 @@ def clear_premium_results_without_entitlement(session_state, entitlement_active)
 
 
 PRIVATE_DOCUMENT_CACHE_KEYS = (
+    "private_pdf_upload",
     "prepared_document_bytes",
     "prepared_document_path",
     "pending_document_delete_path",
