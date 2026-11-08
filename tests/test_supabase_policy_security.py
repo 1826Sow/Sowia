@@ -104,3 +104,15 @@ def test_legacy_and_canonical_storage_scripts_use_matching_workspace_rules():
     )
     for name in policy_names:
         assert _policy_block(STORAGE, name) == _policy_block(LEGACY_STORAGE, name)
+
+
+
+def test_all_storage_policies_restrict_access_to_pdf_objects():
+    policy_names = (
+        "SOW IA users can read own workspace PDFs",
+        "SOW IA users can upload own workspace PDFs",
+        "SOW IA users can delete own workspace PDFs",
+    )
+    for sql in (STORAGE, LEGACY_STORAGE):
+        for name in policy_names:
+            assert "lower(name) like '%.pdf'" in _policy_block(sql, name)
