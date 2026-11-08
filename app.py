@@ -402,6 +402,7 @@ elif page == "Assistant IA":
                 reply = answer(
                     get_app_history(),
                     memories=[item["content"] for item in memories],
+                    work_mode=st.session_state.get("workspace_choice", "Personnel"),
                 )
                 st.markdown(reply)
                 save_app_message("assistant", reply)
@@ -512,6 +513,7 @@ elif page == "Analyse PDF":
                         response = answer(
                             [{"role": "user", "content": pdf_question.strip()}],
                             document_context=st.session_state.pdf_text,
+                            work_mode=st.session_state.get("workspace_choice", "Personnel"),
                         )
                         st.markdown("**Réponse de SOW IA**")
                         st.write(response)
@@ -781,6 +783,7 @@ elif page == "Mes documents":
                                         response = answer(
                                             [{"role": "user", "content": saved_pdf_question.strip()}],
                                             document_context=st.session_state.get("selected_saved_pdf_text", ""),
+                                            work_mode=st.session_state.get("workspace_choice", "Personnel"),
                                         )
                                         st.session_state["saved_pdf_answer"] = response
                                         st.session_state["saved_pdf_answer_path"] = stored_path
