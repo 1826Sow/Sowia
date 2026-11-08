@@ -40,14 +40,7 @@ select
     split_part(name, '/', 1) as owner_user_id,
     name as legacy_object_path,
     case
-        when (metadata ->> 'size') ~ '^[0-9]+
-    created_at
-from storage.objects
-where bucket_id = 'sowia-files'
-  and cardinality(storage.foldername(name)) = 1
-  and lower(name) like '%.pdf'
-order by owner_user_id, legacy_object_path;
-
+        when (metadata ->> 'size') ~ '^[0-9]+$'
             then (metadata ->> 'size')::bigint
         else null
     end as size_bytes,
