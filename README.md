@@ -27,6 +27,8 @@ Application web d'intelligence artificielle construite avec Streamlit.
 7. Dans Supabase > Authentication > Providers, vérifier que GitHub est activé et que les identifiants OAuth sont corrects.
 8. Tester la connexion GitHub, l'enregistrement d'une conversation, la mémoire, les documents PDF et la déconnexion avec un compte de test.
 
+Après exécution, lancer le diagnostic en lecture seule `supabase_storage_diagnostics.sql`. Il affiche la configuration du bucket et **toutes** les politiques de `storage.objects`, y compris d'éventuelles anciennes règles qui pourraient élargir les accès. Ce diagnostic ne modifie aucune donnée ni configuration. Conserver le résultat pour vérifier l'installation réelle.
+
 Le script `supabase_storage_policies.sql` est le script canonique pour sécuriser le bucket privé. Il peut être réexécuté sans supprimer les fichiers existants. Il retire également les anciennes politiques plus permissives avant de créer les règles par utilisateur et espace de travail. `supabase/storage.sql` est conservé uniquement pour compatibilité avec les anciennes installations.
 
 ### Secrets requis
