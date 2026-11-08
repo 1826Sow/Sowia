@@ -1,38 +1,57 @@
--- SOW IA private document library.
--- Run once in Supabase SQL Editor. The bucket is private; no public URLs are created.
+-- DEPRECATED COMPATIBILITY PATH:
+-- Keep this legacy file safe for installations that still reference it.
+-- The canonical setup instructions use /supabase_storage_policies.sql.
+-- This script is workspace-aware and safe to re-run; it does not delete objects.
+
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values (
-    'sowia-files',
-    'sowia-files',
-    false,
-    10485760,
-    array['application/pdf']
-)
+values ('sowia-files', 'sowia-files', false, 10485760, array['application/pdf'])
 on conflict (id) do update
 set public = false,
     file_size_limit = 10485760,
     allowed_mime_types = array['application/pdf'];
 
+-- Remove policy names from both historical versions. Permissive policies
+-- combine with OR, so old broad policies must not remain alongside these.
 drop policy if exists "SOW IA users read own documents" on storage.objects;
-create policy "SOW IA users read own documents"
+drop policy if exists "SOW IA users upload own documents" on storage.objects;
+drop policy if exists "SOW IA users delete own documents" on storage.objects;
+
+drop policy if exists "SOW IA users can read own workspace PDFs" on storage.objects;
+create policy "SOW IA users can read own workspace PDFs"
 on storage.objects for select to authenticated
 using (
     bucket_id = 'sowia-files'
     and (storage.foldername(name))[1] = (select auth.uid())::text
+    and (
+        array_length(storage.foldername(name), 1) = 1
+        or (
+            array_length(storage.foldername(name), 1) = 2
+            and (storage.foldername(name))[2] in ('personal', 'professional')
+        )
+    )
 );
 
-drop policy if exists "SOW IA users upload own documents" on storage.objects;
-create policy "SOW IA users upload own documents"
+drop policy if exists "SOW IA users can upload own workspace PDFs" on storage.objects;
+create policy "SOW IA users can upload own workspace PDFs"
 on storage.objects for insert to authenticated
 with check (
     bucket_id = 'sowia-files'
     and (storage.foldername(name))[1] = (select auth.uid())::text
+    and array_length(storage.foldername(name), 1) = 2
+    and (storage.foldername(name))[2] in ('personal', 'professional')
 );
 
-drop policy if exists "SOW IA users delete own documents" on storage.objects;
-create policy "SOW IA users delete own documents"
+drop policy if exists "SOW IA users can delete own workspace PDFs" on storage.objects;
+create policy "SOW IA users can delete own workspace PDFs"
 on storage.objects for delete to authenticated
 using (
     bucket_id = 'sowia-files'
     and (storage.foldername(name))[1] = (select auth.uid())::text
+    and (
+        array_length(storage.foldername(name), 1) = 1
+        or (
+            array_length(storage.foldername(name), 1) = 2
+            and (storage.foldername(name))[2] in ('personal', 'professional')
+        )
+    )
 );
