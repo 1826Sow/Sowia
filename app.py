@@ -26,6 +26,7 @@ from sowia_supabase_auth import (
     sign_out,
 )
 import cloud_storage
+from workspace_access import workspace_navigation
 import paypal_payments
 import premium_access
 from feature_access import has_feature_access
@@ -290,13 +291,12 @@ with st.sidebar:
             st.rerun()
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
+    navigation_pages = workspace_navigation(workspace_choice)
+    if st.session_state.get("page_nav") not in navigation_pages:
+        st.session_state.page_nav = "Accueil"
     page = st.radio(
         "Navigation",
-        [
-            "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
-            "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-            "Abonnement", "Paramètres", "Aide",
-        ],
+        navigation_pages,
         key="page_nav",
     )
     st.divider()
@@ -338,7 +338,6 @@ if page == "Accueil":
         dashboard_actions = [
             ("Créer un document", "Créer un PDF"),
             ("Consulter mes PDF", "Mes documents"),
-            ("Ouvrir ma mémoire", "Ma mémoire"),
             ("Utiliser l'assistant", "Assistant IA"),
         ]
         for col, (label, destination) in zip(action_cols, dashboard_actions):
@@ -366,6 +365,8 @@ if page == "Accueil":
         ("⚙️", "Paramètres", "Vérifiez votre configuration"),
         ("❓", "Aide", "Consultez les indications d’utilisation"),
     ]
+    if st.session_state.get("workspace_id") == "professional":
+        shortcuts = [item for item in shortcuts if item[1] != "Ma mémoire"]
     for start in range(0, len(shortcuts), 3):
         cols = st.columns(3)
         for col, (icon, title, desc) in zip(cols, shortcuts[start:start + 3]):
