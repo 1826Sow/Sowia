@@ -222,7 +222,7 @@ def test_filter_documents_sorts_without_mutating_original_listing():
 
 def test_filter_documents_rejects_unknown_sort_order():
     with pytest.raises(ValueError, match="Ordre de tri invalide"):
-        docs.filter_documents([], sort_order="newest")
+        docs.filter_documents([], sort_order="uploaded")
 
 
 def test_filter_documents_sorts_by_upload_date_and_keeps_unknown_dates_last():
