@@ -259,3 +259,15 @@ def test_filter_documents_treats_naive_storage_dates_as_utc():
 def test_filter_documents_rejects_unknown_date_sort_order():
     with pytest.raises(ValueError, match="Ordre de tri invalide"):
         docs.filter_documents([], sort_order="uploaded")
+
+
+
+def test_document_upload_label_formats_storage_timestamp_in_paris_time():
+    assert docs.document_upload_label(
+        {"created_at": "2026-01-15T11:30:00Z"}
+    ) == "Ajouté le 15/01/2026 à 12:30"
+
+
+def test_document_upload_label_returns_none_for_missing_or_invalid_timestamp():
+    assert docs.document_upload_label({}) is None
+    assert docs.document_upload_label({"created_at": "not-a-date"}) is None
