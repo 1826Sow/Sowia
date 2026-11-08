@@ -1,4 +1,4 @@
-""""Regression tests for assistant prompt context boundaries."""
+"""Regression tests for assistant prompt context boundaries."""
 from assistant import (
     MAX_DOCUMENT_CONTEXT_CHARS,
     MAX_MEMORY_CONTEXT_CHARS,
@@ -48,4 +48,3 @@ def test_uploaded_document_context_is_bounded():
     )[1]
     assert document_payload.count("d") <= MAX_DOCUMENT_CONTEXT_CHARS
     assert document_payload.count("d") >= MAX_DOCUMENT_CONTEXT_CHARS - 2
-"
