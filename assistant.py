@@ -1,5 +1,12 @@
 """LLM assistant adapter with a transparent no-credit fallback."""
-from openai import OpenAI, AuthenticationError, RateLimitError
+from openai import (
+    OpenAI,
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    AuthenticationError,
+    RateLimitError,
+)
 from config import API_KEY, BASE_URL, MODEL, SYSTEM_PROMPT
 
 
@@ -109,5 +116,17 @@ def answer(messages, memories=None, document_context=None):
         ) from exc
     except RateLimitError:
         return _offline_reply(messages)
+    except APITimeoutError as exc:
+        raise RuntimeError(
+            "Le fournisseur IA met trop de temps à répondre. Vérifiez votre connexion et réessayez dans quelques instants."
+        ) from exc
+    except APIConnectionError as exc:
+        raise RuntimeError(
+            "SOW IA ne parvient pas à joindre le fournisseur IA. Vérifiez votre connexion ou réessayez plus tard."
+        ) from exc
+    except APIStatusError as exc:
+        raise RuntimeError(
+            "Le fournisseur IA a rencontré un problème temporaire. Réessayez plus tard."
+        ) from exc
 
     return response.choices[0].message.content or ""
