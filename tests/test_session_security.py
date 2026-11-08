@@ -96,3 +96,29 @@ def test_account_switch_clears_saved_pdf_analysis_cache():
         )
     )
     assert state["sowia_authenticated_user_id"] == "new-account"
+
+
+def test_account_switch_clears_pending_document_deletion_confirmation():
+    state = {
+        "pending_document_delete_path": "user/personal/file.pdf",
+        "sowia_authenticated_user_id": "new-account",
+    }
+
+    clear_private_session_state(state)
+
+    assert "pending_document_delete_path" not in state
+    assert state["sowia_authenticated_user_id"] == "new-account"
+
+
+def test_workspace_switch_clears_pending_document_deletion_confirmation():
+    from session_security import clear_workspace_session_state
+
+    state = {
+        "pending_document_delete_path": "user/personal/file.pdf",
+        "sowia_authenticated_user_id": "account-id",
+    }
+
+    clear_workspace_session_state(state)
+
+    assert "pending_document_delete_path" not in state
+    assert state["sowia_authenticated_user_id"] == "account-id"
