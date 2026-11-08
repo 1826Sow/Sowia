@@ -6,7 +6,7 @@ def analyze_pdf_advanced(user_client,user,pdf_text,answer_function):
     """Check entitlement first, then request a structured analysis of PDF text."""
     text=str(pdf_text or "").strip()
     if not text: raise ValueError("Importez un PDF et extrayez son texte avant l'analyse avancée.")
-    if len(text)>MAX_ADVANCED_PDF_CHARS: text=text[:MAX_ADVANCED_PDF_CHARS]+"\\n[Fin du contenu transmis : limite de contexte atteinte.]"
+    if len(text)>MAX_ADVANCED_PDF_CHARS: text=text[:MAX_ADVANCED_PDF_CHARS]+"\n[Fin du contenu transmis : limite de contexte atteinte.]"
     require_feature_access(user_client,user,"advanced_pdf_analysis")
     prompt=("Réalise une analyse professionnelle et structurée du document fourni. "
       "Présente : 1) une synthèse fidèle, 2) les idées et données essentielles, "
