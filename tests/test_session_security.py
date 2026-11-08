@@ -160,3 +160,36 @@ def test_pending_delete_confirmation_is_cleared_when_search_has_no_results():
     clear_stale_document_delete_confirmation(state, [])
 
     assert "pending_document_delete_path" not in state
+
+
+
+def test_logout_clears_account_client_oauth_and_private_caches():
+    from session_security import clear_authenticated_session_state
+
+    state = {
+        **{key: f"private-{key}" for key in PRIVATE_SESSION_KEYS},
+        "sowia_supabase_client": object(),
+        "sowia_authenticated_user_id": "account-123",
+        "sowia_github_login_url": "https://github.example/oauth",
+        "active_workspace_id": "professional",
+        "workspace_id": "professional",
+        "sowia_browser_scope": {"browser_id": "retained-browser-scope"},
+        "unrelated_preference": "keep-me",
+    }
+
+    clear_authenticated_session_state(state)
+
+    assert state["pdf_text"] == ""
+    assert all(key not in state for key in PRIVATE_SESSION_KEYS if key != "pdf_text")
+    assert all(
+        key not in state
+        for key in (
+            "sowia_supabase_client",
+            "sowia_authenticated_user_id",
+            "sowia_github_login_url",
+            "active_workspace_id",
+            "workspace_id",
+        )
+    )
+    assert state["sowia_browser_scope"] == {"browser_id": "retained-browser-scope"}
+    assert state["unrelated_preference"] == "keep-me"
