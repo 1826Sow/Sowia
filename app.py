@@ -152,14 +152,22 @@ if cloud_mode:
         st.subheader("Connexion à SOW IA")
         st.write("Connectez-vous avec votre compte GitHub pour accéder à votre mémoire et à votre historique privés.")
         callback_code_present = bool(st.query_params.get("code"))
-        callback_error_present = bool(st.query_params.get("error"))
+        callback_error = str(st.query_params.get("error", "")).strip()
+        callback_error_description = str(st.query_params.get("error_description", "")).strip()
         st.caption(
             "Diagnostic de retour : "
             + ("code GitHub reçu" if callback_code_present else "aucun code GitHub reçu")
-            + (" · erreur OAuth renvoyée" if callback_error_present else "")
+            + (f" · erreur OAuth : {callback_error}" if callback_error else "")
         )
+        if callback_error_description:
+            st.warning("Motif communiqué par le fournisseur : " + callback_error_description[:300])
         try:
-            redirect_to = str(get_setting("SOWIA_PUBLIC_URL", "")).strip()
+            # Canonical public URL of this Streamlit deployment. An explicit
+            # secret still takes precedence when the deployment URL changes.
+            redirect_to = str(
+                get_setting("SOWIA_PUBLIC_URL", "https://sowia-test.streamlit.app")
+            ).strip() or "https://sowia-test.streamlit.app"
+            st.caption("Adresse de retour utilisée : " + redirect_to)
             # Keep one OAuth URL per Streamlit session. Each call to
             # sign_in_with_oauth creates a new PKCE verifier; generating a
             # fresh URL on every rerun can overwrite the verifier for the
