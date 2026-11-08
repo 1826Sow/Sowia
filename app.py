@@ -29,6 +29,7 @@ from sowia_supabase_auth import (
 import cloud_storage
 import paypal_payments
 import premium_access
+from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from document_storage import upload_document, list_documents, download_document, delete_document
 from session_security import clear_private_session_state, clear_workspace_session_state
 
@@ -434,9 +435,25 @@ elif page == "Analyse PDF":
 
 elif page == "Créer un PDF":
     st.subheader("🪄 Créer un PDF")
-    st.write("Rédigez un document et téléchargez-le au format PDF. Cette fonction ne consomme aucun crédit OpenAI.")
-    pdf_title = st.text_input("Titre du document", value="Mon document")
-    pdf_body = st.text_area("Contenu du document", height=300, placeholder="Écrivez ou collez votre texte ici...")
+    st.write("Rédigez un document et téléchargez-le au format PDF. Cette fonction ne consomme aucun crédit IA.")
+    if st.session_state.get("workspace_id") == "professional":
+        st.markdown("#### Modèles professionnels")
+        selected_template = st.selectbox(
+            "Choisir un modèle (facultatif)",
+            PROFESSIONAL_TEMPLATE_NAMES,
+            key="professional_pdf_template",
+        )
+        if st.button("Insérer le modèle", key="insert_professional_pdf_template"):
+            template = get_professional_template(selected_template)
+            st.session_state["pdf_title"] = template["title"]
+            st.session_state["pdf_body"] = template["body"]
+    pdf_title = st.text_input("Titre du document", value="Mon document", key="pdf_title")
+    pdf_body = st.text_area(
+        "Contenu du document",
+        height=300,
+        placeholder="Écrivez ou collez votre texte ici...",
+        key="pdf_body",
+    )
     if st.button("Créer le PDF", type="primary", disabled=not pdf_body.strip()):
         try:
             from io import BytesIO
