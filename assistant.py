@@ -98,7 +98,11 @@ def answer(messages, memories=None, document_context=None, work_mode="Personnel"
             ""
         )
 
-    system_prompt = build_system_prompt(\n        memories=memories,\n        document_context=document_context,\n        work_mode=work_mode,\n    )
+    system_prompt = build_system_prompt(
+        memories=memories,
+        document_context=document_context,
+        work_mode=work_mode,
+    )
 
     client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
     try:
