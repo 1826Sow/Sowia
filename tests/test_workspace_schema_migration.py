@@ -79,3 +79,21 @@ def test_upgrade_migration_enforces_workspace_values_and_query_indexes():
         "on public.sowia_messages "
         "(user_id, workspace_id, session_id, id desc)" in normalized
     )
+
+
+BASE_SCHEMA = (
+    ROOT / "supabase" / "schema.sql"
+).read_text(encoding="utf-8").lower()
+
+
+def test_both_schema_installation_paths_grant_only_the_required_identity_sequences():
+    expected_sequences = (
+        "public.sowia_messages_id_seq",
+        "public.sowia_memory_items_id_seq",
+    )
+    for sql in (BASE_SCHEMA, SCHEMA):
+        normalized = " ".join(sql.split())
+        assert "grant usage, select on all sequences in schema public" not in normalized
+        assert "grant usage, select on sequence" in normalized
+        for sequence in expected_sequences:
+            assert sequence in normalized
