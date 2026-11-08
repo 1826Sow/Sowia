@@ -115,14 +115,21 @@ if cloud_mode:
         # unavailable. Never bypass authentication when the deployment
         # explicitly requires it.
         st.session_state.pop("sowia_supabase_client", None)
+        # An OAuth callback code is single-use. If its exchange fails, discard
+        # it and the cached authorization URL so the next attempt creates a
+        # fresh PKCE verifier and a fresh GitHub authorization request.
+        st.session_state.pop("sowia_github_login_url", None)
+        if st.query_params.get("code"):
+            st.query_params.pop("code", None)
         clear_private_session_state(st.session_state)
         st.session_state.pop("sowia_authenticated_user_id", None)
         if auth_required:
             # Keep diagnostics useful without rendering raw exception text or
             # tracebacks, which may contain credentials, OAuth codes or tokens.
             st.error(
-                "La connexion sécurisée Supabase est indisponible. "
-                "L'accès reste fermé car l'authentification est obligatoire.\n\n"
+                "La connexion sécurisée Supabase n'a pas abouti. "
+                "L'accès reste fermé par sécurité. Rechargez cette page pour "
+                "générer une nouvelle tentative GitHub.\n\n"
                 f"Étape : {auth_stage}.\nCode technique : {type(exc).__name__}"
             )
             with st.expander("Détails techniques pour le diagnostic"):
