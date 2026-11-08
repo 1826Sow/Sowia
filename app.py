@@ -259,11 +259,20 @@ with st.sidebar:
         st.success(f"Espace {workspace_choice.lower()} sécurisé")
         st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
         if st.button("Se déconnecter", use_container_width=True):
-            sign_out(supabase_client)
-            st.session_state.pop("sowia_supabase_client", None)
-            clear_private_session_state(st.session_state)
-            st.session_state.pop("sowia_authenticated_user_id", None)
-            st.session_state.session_id = str(uuid.uuid4())
+            try:
+                sign_out(supabase_client)
+            except Exception:
+                # Always clear this browser session locally, even if the
+                # remote sign-out endpoint is temporarily unavailable.
+                st.warning(
+                    "La déconnexion distante n'a pas pu être confirmée. "
+                    "Les données privées locales ont tout de même été effacées."
+                )
+            finally:
+                st.session_state.pop("sowia_supabase_client", None)
+                clear_private_session_state(st.session_state)
+                st.session_state.pop("sowia_authenticated_user_id", None)
+                st.session_state.session_id = str(uuid.uuid4())
             st.rerun()
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
