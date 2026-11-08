@@ -6,6 +6,11 @@ from pypdf import PdfWriter
 import document_storage as docs
 
 
+@pytest.fixture(autouse=True)
+def allow_premium_for_existing_storage_unit_tests(monkeypatch):
+    monkeypatch.setattr(docs, "require_feature_access", lambda *args, **kwargs: None)
+
+
 def valid_pdf(page_count=1, password=None):
     writer = PdfWriter()
     for _ in range(page_count):
@@ -271,3 +276,46 @@ def test_document_upload_label_formats_storage_timestamp_in_paris_time():
 def test_document_upload_label_returns_none_for_missing_or_invalid_timestamp():
     assert docs.document_upload_label({}) is None
     assert docs.document_upload_label({"created_at": "not-a-date"}) is None
+
+
+def test_private_storage_checks_premium_before_upload(monkeypatch):
+    client = FakeClient()
+    calls = []
+    monkeypatch.setattr(
+        docs, "require_feature_access",
+        lambda *args: (_ for _ in ()).throw(PermissionError("Premium requis")),
+    )
+
+    with pytest.raises(PermissionError, match="Premium requis"):
+        docs.upload_document(client, User(), "report.pdf", valid_pdf())
+
+    assert client.bucket.uploaded is None
+
+
+def test_private_storage_checks_premium_before_listing(monkeypatch):
+    client = FakeClient()
+    monkeypatch.setattr(
+        docs, "require_feature_access",
+        lambda *args: (_ for _ in ()).throw(PermissionError("Premium requis")),
+    )
+
+    with pytest.raises(PermissionError, match="Premium requis"):
+        docs.list_documents(client, User())
+
+    assert client.bucket.listed == []
+
+
+def test_private_storage_checks_premium_before_download_or_delete(monkeypatch):
+    client = FakeClient()
+    monkeypatch.setattr(
+        docs, "require_feature_access",
+        lambda *args: (_ for _ in ()).throw(PermissionError("Premium requis")),
+    )
+
+    with pytest.raises(PermissionError, match="Premium requis"):
+        docs.download_document(client, User(), "user-123/personal/report.pdf")
+    with pytest.raises(PermissionError, match="Premium requis"):
+        docs.delete_document(client, User(), "user-123/personal/report.pdf")
+
+    assert client.bucket.downloaded is None
+    assert client.bucket.removed is None
