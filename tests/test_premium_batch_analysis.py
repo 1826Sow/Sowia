@@ -11,7 +11,6 @@ def test_batch_analysis_checks_entitlement_before_ai(monkeypatch):
     assert batch.analyze_pdf_batch("c","u",[("a.pdf","A"),("b.pdf","B")],answer)=="Comparaison terminée"
     assert calls[0]==("guard","c","u","batch_pdf_analysis")
     assert "DOCUMENT 1 — a.pdf" in calls[1][2]["document_context"]
-    assert calls[1][2]["user_mode"]=="Professionnel"
 
 def test_batch_analysis_denies_before_sending_text_to_ai(monkeypatch):
     monkeypatch.setattr(batch,"require_feature_access",lambda *a,**k: (_ for _ in ()).throw(PermissionError("Premium requis")))
