@@ -29,7 +29,7 @@ import cloud_storage
 import paypal_payments
 import premium_access
 from premium_analysis import analyze_pdf_advanced
-from premium_batch_analysis import analyze_pdf_batch, prepare_pdf_batch_uploads
+from premium_batch_analysis import analyze_pdf_batch, prepare_authorized_pdf_batch_uploads
 from premium_exports import create_premium_professional_pdf
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -564,8 +564,8 @@ elif page == "Analyse PDF":
             else:
                 with st.spinner("Validation des fichiers, vérification Premium et comparaison..."):
                     try:
-                        prepared_documents = prepare_pdf_batch_uploads(
-                            batch_files, extract_pdf_text
+                        prepared_documents = prepare_authorized_pdf_batch_uploads(
+                            supabase_client, current_user, batch_files, extract_pdf_text
                         )
                         st.session_state["premium_pdf_batch_result"] = analyze_pdf_batch(
                             supabase_client, current_user, prepared_documents, answer
