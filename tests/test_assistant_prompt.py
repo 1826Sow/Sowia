@@ -47,4 +47,4 @@ def test_uploaded_document_context_is_bounded():
         1,
     )[1]
     assert document_payload.count("§") <= MAX_DOCUMENT_CONTEXT_CHARS
-    assert document_payload.count("d") >= MAX_DOCUMENT_CONTEXT_CHARS - 2
+    assert document_payload.count("§") >= MAX_DOCUMENT_CONTEXT_CHARS - 2
