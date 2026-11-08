@@ -40,7 +40,7 @@ def test_pdf_with_too_many_pages_is_rejected(monkeypatch):
         pages = [Page(), Page(), Page()]
 
     monkeypatch.setattr(documents, "PdfReader", lambda _file: Reader())
-    with pytest.raises(ValueError, match="3 pages"):
+    with pytest.raises(ValueError, match="limite de 2 pages"):
         extract_pdf_text(BytesIO(b"pdf"), max_pages=2)
 
 
