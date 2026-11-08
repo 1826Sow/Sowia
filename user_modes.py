@@ -21,5 +21,5 @@ def mode_system_instruction(value):
         f"MODE DE TRAVAIL ACTIF : {mode}. "
         f"{MODE_OPTIONS[mode]} "
         "Adapte le ton, les exemples et le niveau de structuration à ce contexte. "
-        "Ne prétends jamais que ce mode modifie les droits d'abonnement ou les accès."
+        "Ce mode ne modifie pas les droits d'abonnement et ne donne aucun accès supplémentaire."
     )
