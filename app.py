@@ -30,6 +30,7 @@ import paypal_payments
 import premium_access
 from premium_analysis import analyze_pdf_advanced
 from premium_batch_analysis import analyze_pdf_batch, prepare_pdf_batch_uploads
+from premium_exports import create_premium_professional_pdf
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
 from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation
@@ -576,12 +577,18 @@ elif page == "Créer un PDF":
             template = get_professional_template(selected_template)
             st.session_state["pdf_title"] = template["title"]
             st.session_state["pdf_body"] = template["body"]
-    pdf_title = st.text_input("Titre du document", value="Mon document", key="pdf_title")
+    pdf_title = st.text_input(
+        "Titre du document",
+        value="Mon document",
+        key="pdf_title",
+        on_change=lambda: st.session_state.pop("premium_professional_pdf_result", None),
+    )
     pdf_body = st.text_area(
         "Contenu du document",
         height=300,
         placeholder="Écrivez ou collez votre texte ici...",
         key="pdf_body",
+        on_change=lambda: st.session_state.pop("premium_professional_pdf_result", None),
     )
     if st.button("Créer le PDF", type="primary", disabled=not pdf_body.strip()):
         try:
@@ -612,6 +619,39 @@ elif page == "Créer un PDF":
             st.error(
                 "La création du PDF a échoué. Vérifiez le contenu du document "
                 "et réessayez. Si le problème persiste, contactez l'assistance."
+            )
+
+    if st.session_state.get("workspace_id") == "professional":
+        st.divider()
+        st.markdown("### Export professionnel Premium")
+        st.caption("Génère un rapport avec page de couverture, mise en page professionnelle et pagination. L'accès Premium est contrôlé côté serveur.")
+        if not cloud_mode or current_user is None:
+            st.info("Connectez-vous à votre compte sécurisé pour vérifier vos droits Premium.")
+        elif st.button(
+            "Générer l'export professionnel Premium",
+            key="generate_premium_professional_pdf",
+            disabled=not (pdf_title.strip() and pdf_body.strip()),
+        ):
+            st.session_state.pop("premium_professional_pdf_result", None)
+            try:
+                st.session_state["premium_professional_pdf_result"] = create_premium_professional_pdf(
+                    supabase_client, current_user, pdf_title, pdf_body
+                )
+                st.success("Votre rapport professionnel Premium est prêt.")
+            except PermissionError as exc:
+                st.warning(str(exc))
+            except ValueError as exc:
+                st.warning(str(exc))
+            except Exception:
+                st.error("L'export professionnel a échoué. Aucun fichier n'a été créé.")
+        if st.session_state.get("premium_professional_pdf_result"):
+            st.download_button(
+                "Télécharger le rapport professionnel Premium",
+                data=st.session_state["premium_professional_pdf_result"],
+                file_name="rapport_professionnel_sow_ia.pdf",
+                mime="application/pdf",
+                type="primary",
+                key="download_premium_professional_pdf",
             )
 elif page == "Mes documents":
     st.subheader("📁 Mes documents")
