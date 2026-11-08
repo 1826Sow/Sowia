@@ -103,3 +103,28 @@ def test_sequence_privilege_diagnostic_is_read_only_and_checks_effective_access(
         statement in SEQUENCE_DIAGNOSTICS
         for statement in ("grant ", "revoke ", "alter ", "drop ", "delete from", "update ")
     )
+
+
+RLS_STORAGE_DIAGNOSTICS = (
+    ROOT / "supabase_rls_storage_diagnostics.sql"
+).read_text(encoding="utf-8").lower()
+
+
+def test_rls_and_storage_diagnostic_is_read_only_and_covers_security_metadata():
+    assert "from pg_class" in RLS_STORAGE_DIAGNOSTICS
+    assert "relrowsecurity" in RLS_STORAGE_DIAGNOSTICS
+    assert "from pg_policies" in RLS_STORAGE_DIAGNOSTICS
+    assert "sowia_messages" in RLS_STORAGE_DIAGNOSTICS
+    assert "sowia_memory_items" in RLS_STORAGE_DIAGNOSTICS
+    assert "sowia_entitlements" in RLS_STORAGE_DIAGNOSTICS
+    assert "from storage.buckets" in RLS_STORAGE_DIAGNOSTICS
+    assert "where id = 'sowia-files'" in RLS_STORAGE_DIAGNOSTICS
+    assert "where schemaname = 'storage'" in RLS_STORAGE_DIAGNOSTICS
+    assert "and tablename = 'objects'" in RLS_STORAGE_DIAGNOSTICS
+    assert not any(
+        statement in RLS_STORAGE_DIAGNOSTICS
+        for statement in (
+            "create policy", "drop policy", "alter table", "grant ",
+            "revoke ", "insert into", "delete from", "update "
+        )
+    )
