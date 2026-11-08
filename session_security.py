@@ -18,6 +18,8 @@ PRIVATE_SESSION_KEYS = (
     "paypal_approval_url",
     "paypal_order_id",
     "paypal_purchase_confirmed",
+    "document_upload_error",
+    "document_upload_notice",
 )
 
 
@@ -47,6 +49,8 @@ WORKSPACE_PRIVATE_SESSION_KEYS = (
     "saved_pdf_answer_path",
     "paypal_approval_url",
     "paypal_order_id",
+    "document_upload_error",
+    "document_upload_notice",
 )
 
 
