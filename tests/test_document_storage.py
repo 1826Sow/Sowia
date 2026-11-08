@@ -99,6 +99,21 @@ def test_upload_rejects_non_pdf_and_oversized_files_before_storage_access():
     assert client.bucket.uploaded is None
 
 
+def test_upload_rejects_pdf_extension_without_pdf_signature():
+    client = FakeClient()
+    with pytest.raises(ValueError, match="PDF valide"):
+        docs.upload_document(client, User(), "fake.pdf", b"this is not a PDF")
+    assert client.bucket.uploaded is None
+
+
+def test_upload_sanitizes_path_and_special_characters_in_filename():
+    client = FakeClient()
+    path = docs.upload_document(client, User(), "../../rapport confidentiel.pdf", VALID_PDF)
+    assert path.startswith("user-123/personal/")
+    assert path.endswith("_rapport_confidentiel.pdf")
+    assert ".." not in path
+
+
 def test_storage_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         docs.list_documents(FakeClient(), None)
