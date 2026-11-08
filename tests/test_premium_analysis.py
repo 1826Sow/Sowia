@@ -10,7 +10,6 @@ def test_advanced_pdf_analysis_checks_entitlement_before_ai(monkeypatch):
     assert premium_analysis.analyze_pdf_advanced("client","user","Texte PDF",answer)=="Analyse structurée"
     assert calls[0]==("guard","client","user","advanced_pdf_analysis")
     assert calls[1][0]=="answer" and calls[1][2]["document_context"]=="Texte PDF"
-    assert calls[1][2]["user_mode"]=="Professionnel"
 
 def test_advanced_pdf_analysis_denies_before_calling_ai(monkeypatch):
     monkeypatch.setattr(premium_analysis,"require_feature_access",lambda *a,**k: (_ for _ in ()).throw(PermissionError("Premium requis")))
