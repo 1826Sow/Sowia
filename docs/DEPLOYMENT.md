@@ -10,14 +10,22 @@ Le parcours de connexion et les accès à la mémoire/historique cloud sont main
 
 ## 2. Base de données et authentification
 
-Créer un projet Supabase, puis exécuter le fichier `supabase/schema.sql` dans le SQL Editor. Ce schéma crée les tables de messages et de mémoire avec des politiques RLS qui interdisent l'accès aux données d'un autre compte.
+Pour une nouvelle installation, exécuter les scripts SQL dans cet ordre, depuis le SQL Editor du projet Supabase :
+
+1. `supabase/schema.sql` — crée les tables de mémoire, de messages et de droits Premium, ainsi que leurs politiques RLS.
+2. `supabase_workspaces.sql` — ajoute `workspace_id` aux tables de mémoire et de messages. Les données déjà présentes sont conservées dans l'espace Personnel.
+3. `supabase_storage_policies.sql` — crée ou met à jour le bucket privé `sowia-files` et ses règles d'accès par utilisateur et espace de travail.
+
+Les scripts 2 et 3 peuvent être réexécutés sans supprimer les données existantes. Le script Storage conserve les anciens fichiers directement sous le dossier de l'utilisateur comme documents de l'espace Personnel. Pour la configuration actuelle, utiliser `supabase_storage_policies.sql` (à la racine du dépôt), et non l'ancien script de compatibilité `supabase/storage.sql`.
+
+**Important pour une installation déjà existante :** ne pas réexécuter une configuration au hasard et ne pas supprimer/recréer les tables ou le bucket. Vérifier d'abord quels scripts ont déjà été exécutés. La migration `supabase_workspaces.sql` doit être appliquée avant que l'application utilise les espaces Personnel et Professionnel ; les règles Storage doivent être appliquées pour sécuriser les documents PDF.
 
 Dans Supabase, relever l'URL du projet et la clé publishable/anon. Les ajouter aux secrets de l'hébergeur sous les noms :
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SOWIA_PUBLIC_URL` (URL HTTPS de l'application après déploiement)
 
-La clé `service_role` ne doit jamais être envoyée au navigateur, affichée dans l'interface ou commitée dans Git. Pour l'écriture serveur des droits Premium, elle peut être stockée exclusivement dans les secrets privés de Streamlit sous `SUPABASE_SERVICE_ROLE_KEY`.
+La clé `service_role` ne doit jamais être envoyée au navigateur, affichée dans l'interface ou commitée dans Git. Pour l'écriture serveur des droits Premium, elle peut être stockée exclusivement dans les secrets privés de Streamlit sous `SUPABASE_SERVICE_ROLE_KEY`, uniquement au moment de l'activation future des paiements.
 
 ## 3. Connexion GitHub dans Supabase
 
@@ -49,7 +57,6 @@ Le bouton de connexion GitHub, le callback PKCE et les appels de mémoire/histor
 
 Aucune clé, aucun mot de passe et aucun secret n'est requis dans ce dépôt.
 
-
 ## 6. Préparer PayPal Premium (mode test uniquement au départ)
 
 Le module `paypal_payments.py` prépare les appels serveur à l'API PayPal Orders v2. Le secret PayPal et le jeton OAuth restent côté serveur ; le navigateur ne reçoit que le lien d'approbation. Le serveur revérifie le compte SOW IA, le produit, le montant et la devise avant de capturer une commande. Voir la documentation officielle : https://developer.paypal.com/api/rest/integration/orders-api
@@ -66,6 +73,6 @@ PAYPAL_RETURN_URL = "https://<adresse-deploiement>/?paypal=return"
 PAYPAL_CANCEL_URL = "https://<adresse-deploiement>/?paypal=cancel"
 ```
 
-**État actuel : les paiements sont volontairement désactivés.** Le réglage serveur `SOWIA_PAYMENTS_ENABLED` vaut `false` par défaut ; en son absence, aucune commande PayPal ne peut être créée ni capturée, même si des identifiants PayPal existent. Ne pas ajouter de secrets PayPal ni activer ce réglage pendant la phase actuelle du projet. L’interface indique que les paiements sont désactivés.
+**État actuel : les paiements sont volontairement désactivés.** Le réglage serveur `SOWIA_PAYMENTS_ENABLED` vaut `false` par défaut ; en son absence, aucune commande PayPal ne peut être créée ni capturée, même si des identifiants PayPal existent. Ne pas ajouter de secrets PayPal ni activer ce réglage pendant la phase actuelle du projet. L'interface indique que les paiements sont désactivés.
 
 Lorsque l’application sera terminée et que l’administrateur décidera explicitement d’ouvrir les paiements, il faudra alors seulement préparer les identifiants PayPal, vérifier la table `sowia_entitlements` créée par `supabase/schema.sql`, stocker `SUPABASE_SERVICE_ROLE_KEY` exclusivement dans les secrets privés de Streamlit et activer `SOWIA_PAYMENTS_ENABLED=true`. Le service-role reste côté serveur. Le serveur vérifie le compte, le produit, le montant et la devise avant capture ; une redirection seule ne donne jamais accès. Commencer par Sandbox et ne passer en Live qu’après validation des achats et remboursements. Cette activation future est une étape distincte et n’est pas effectuée par cette modification.
