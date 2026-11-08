@@ -16,6 +16,6 @@ def test_storage_diagnostic_reads_only_expected_bucket_and_policy_catalog():
 
 
 def test_storage_diagnostic_contains_no_mutating_sql_statements():
-    statements = re.sub(r"--[^\\n]*", "", SQL)
+    statements = re.sub(r"--[^\n]*", "", SQL)
     statements = re.sub(r"'(?:''|[^'])*'", "''", statements)
-    assert not re.search(r"\\b(insert|update|delete|drop|create|alter|truncate|grant|revoke)\\b", statements)
+    assert not re.search(r"\b(insert|update|delete|drop|create|alter|truncate|grant|revoke)\b", statements)
