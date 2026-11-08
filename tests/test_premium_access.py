@@ -89,3 +89,16 @@ def test_entitlement_grant_rejects_non_euro_currency():
             client, "user-123", "ORDER-1", "12.90", "USD"
         )
     assert client.query.payload is None
+
+
+@pytest.mark.parametrize(
+    "user_id, order_id",
+    [(" ", "ORDER-1"), ("user-123", " ")],
+)
+def test_entitlement_grant_rejects_blank_identity_fields(user_id, order_id):
+    client = Client([])
+    with pytest.raises(ValueError):
+        premium_access.grant_paypal_entitlement(
+            client, user_id, order_id, "12.90", "EUR"
+        )
+    assert client.query.payload is None
