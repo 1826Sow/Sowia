@@ -27,6 +27,8 @@ WORKSPACE_PRIVATE_SESSION_KEYS = (
     "prepared_document_bytes",
     "prepared_document_path",
     "private_pdf_upload",
+    "paypal_approval_url",
+    "paypal_order_id",
 )
 
 

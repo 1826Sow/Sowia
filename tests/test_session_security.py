@@ -30,6 +30,8 @@ def test_workspace_switch_clears_pdf_caches_but_keeps_account_state():
         "prepared_document_bytes": b"private PDF",
         "prepared_document_path": "user/personal/file.pdf",
         "private_pdf_upload": "upload object",
+        "paypal_approval_url": "https://paypal.example/approve",
+        "paypal_order_id": "pending-order",
         "paypal_purchase_confirmed": True,
         "sowia_authenticated_user_id": "account-id",
         "unrelated_preference": "keep-me",
@@ -45,6 +47,8 @@ def test_workspace_switch_clears_pdf_caches_but_keeps_account_state():
             "prepared_document_bytes",
             "prepared_document_path",
             "private_pdf_upload",
+            "paypal_approval_url",
+            "paypal_order_id",
         )
     )
     assert state["paypal_purchase_confirmed"] is True
