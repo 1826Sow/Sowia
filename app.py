@@ -675,28 +675,51 @@ elif page == "Mes documents":
                             key=f"download_private_{stored_name}",
                         )
                     if st.button("Préparer le téléchargement", key=f"prepare_private_{stored_name}"):
-                        st.session_state["prepared_document_bytes"] = download_document(supabase_client, current_user, stored_path, st.session_state.get("workspace_id", "personal"))
-                        st.session_state["prepared_document_path"] = stored_path
-                        st.rerun()
+                        try:
+                            prepared_bytes = download_document(
+                                supabase_client,
+                                current_user,
+                                stored_path,
+                                st.session_state.get("workspace_id", "personal"),
+                            )
+                            st.session_state["prepared_document_bytes"] = prepared_bytes
+                            st.session_state["prepared_document_path"] = stored_path
+                            st.rerun()
+                        except Exception:
+                            st.error(
+                                "Impossible de préparer le téléchargement. "
+                                "Vérifiez que le document est toujours accessible et réessayez."
+                            )
                     pending_delete_path = st.session_state.get("pending_document_delete_path")
                     if pending_delete_path == stored_path:
                         st.warning(f"Confirmer la suppression de « {display_name} » ? Cette action est définitive.")
                         confirm_col, cancel_col = st.columns(2)
                         with confirm_col:
                             if st.button("Confirmer la suppression", key=f"confirm_delete_private_{stored_name}", type="primary"):
-                                delete_document(supabase_client, current_user, stored_path, st.session_state.get("workspace_id", "personal"))
-                                st.session_state.pop("pending_document_delete_path", None)
-                                if st.session_state.get("prepared_document_path") == stored_path:
-                                    st.session_state.pop("prepared_document_path", None)
-                                    st.session_state.pop("prepared_document_bytes", None)
-                                if st.session_state.get("selected_saved_pdf_path") == stored_path:
-                                    for key in (
-                                        "selected_saved_pdf_path", "selected_saved_pdf_name",
-                                        "selected_saved_pdf_text", "selected_saved_pdf_question",
-                                        "saved_pdf_answer", "saved_pdf_answer_path",
-                                    ):
-                                        st.session_state.pop(key, None)
-                                st.rerun()
+                                try:
+                                    delete_document(
+                                        supabase_client,
+                                        current_user,
+                                        stored_path,
+                                        st.session_state.get("workspace_id", "personal"),
+                                    )
+                                    st.session_state.pop("pending_document_delete_path", None)
+                                    if st.session_state.get("prepared_document_path") == stored_path:
+                                        st.session_state.pop("prepared_document_path", None)
+                                        st.session_state.pop("prepared_document_bytes", None)
+                                    if st.session_state.get("selected_saved_pdf_path") == stored_path:
+                                        for key in (
+                                            "selected_saved_pdf_path", "selected_saved_pdf_name",
+                                            "selected_saved_pdf_text", "selected_saved_pdf_question",
+                                            "saved_pdf_answer", "saved_pdf_answer_path",
+                                        ):
+                                            st.session_state.pop(key, None)
+                                    st.rerun()
+                                except Exception:
+                                    st.error(
+                                        "Impossible de supprimer ce document. "
+                                        "La suppression n'a pas pu être confirmée ; réessayez."
+                                    )
                         with cancel_col:
                             if st.button("Annuler", key=f"cancel_delete_private_{stored_name}"):
                                 st.session_state.pop("pending_document_delete_path", None)
