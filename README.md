@@ -92,3 +92,17 @@ Une action GitHub exécute ces contrôles automatiquement sur les modifications.
 ## État de mise en production
 
 Le dépôt contient l'intégration Supabase et les tests de sécurité associés. Le déploiement effectif, l'exécution des scripts SQL dans le projet Supabase, les secrets de l'hébergeur, les URL OAuth autorisées et les tests de bout en bout sur l'URL publique restent à vérifier. Ne pas annoncer l'application comme entièrement sécurisée ou finalisée avant ces vérifications.
+
+
+### Migration prudente des anciens PDF
+
+Le module `legacy_pdf_migration.py` prépare la reprise des anciens PDF enregistrés sous `<user_id>/<fichier.pdf>` vers `<user_id>/personal/<fichier.pdf>`.
+
+- Par défaut, `migrate_legacy_pdfs(client, user)` effectue uniquement un **dry-run** (inventaire sans écriture).
+- Le mode `apply=True` copie les fichiers sans écraser une destination existante, puis compare les empreintes SHA-256 de la source et de la copie.
+- Les fichiers sources ne sont **jamais supprimés** par ce module.
+- Les collisions, PDF invalides et erreurs sont signalés individuellement.
+- Utiliser uniquement un client Supabase authentifié avec les droits de l'utilisateur concerné ; ne jamais utiliser ni exposer la clé `service_role`.
+- Ce module n'est pas déclenché automatiquement par l'application et n'a pas été exécuté sur le projet Supabase de production.
+
+La suppression éventuelle des anciens objets est une opération distincte, qui nécessitera une vérification indépendante et une autorisation explicite après sauvegarde et validation des copies.
