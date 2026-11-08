@@ -167,9 +167,9 @@ def capture_premium_order(order_id: str, user_id: str):
     if details.get("status") == "COMPLETED":
         return details
     capture_response = requests.post(
-        f"{base}/v2/checkout/orders/{order_id}/capture",
+        f"{base}/v2/checkout/orders/{normalized_order_id}/capture",
         json={},
-        headers={**headers, "PayPal-Request-Id": f"sowia-capture-{order_id}"},
+        headers={**headers, "PayPal-Request-Id": f"sowia-capture-{normalized_order_id}"},
         timeout=TIMEOUT_SECONDS,
     )
     capture_response.raise_for_status()
