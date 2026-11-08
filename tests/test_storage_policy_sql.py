@@ -165,3 +165,10 @@ def test_legacy_pdf_inventory_diagnostic_is_read_only_and_reports_workspace_coun
             "create ", "grant ", "revoke ", "storage.from_"
         )
     )
+
+
+
+def test_legacy_pdf_inventory_handles_missing_or_malformed_size_metadata_safely():
+    assert "case" in LEGACY_PDF_INVENTORY
+    assert "when (metadata ->> 'size') ~ '^[0-9]+$'" in LEGACY_PDF_INVENTORY
+    assert "else null" in LEGACY_PDF_INVENTORY
