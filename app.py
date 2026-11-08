@@ -395,13 +395,18 @@ elif page == "Assistant IA":
         st.rerun()
 
 elif page == "Ma mémoire":
-    st.subheader("🧠 Ma mémoire")
+    workspace_label = (
+        "professionnel"
+        if st.session_state.get("workspace_id") == "professional"
+        else "personnel"
+    )
+    st.subheader(f"🧠 Ma mémoire — espace {workspace_label}")
     st.write("Ajoutez les informations que SOW IA pourra réutiliser dans ses prochaines réponses.")
     if cloud_mode:
-        st.success("Vos notes sont enregistrées dans votre espace personnel Supabase.")
+        st.success(f"Vos notes sont enregistrées dans votre espace {workspace_label} Supabase.")
     else:
         st.info(
-            "Cette mémoire est stockée dans la base SQLite de cette installation. "
+            f"Cette mémoire correspond à l'espace {workspace_label} et est stockée dans la base SQLite de cette installation. "
             "Elle convient au développement local, pas à une utilisation publique multi-utilisateur. "
             "N'y enregistrez pas de données sensibles."
         )
