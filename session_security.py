@@ -8,6 +8,7 @@ PRIVATE_SESSION_KEYS = (
     "prepared_document_bytes",
     "prepared_document_path",
     "private_pdf_upload",
+    "pending_document_delete_path",
     "selected_saved_pdf_path",
     "selected_saved_pdf_name",
     "selected_saved_pdf_text",
