@@ -454,8 +454,13 @@ elif page == "Recherche Web":
             for item in search_web(query):
                 st.markdown(f"**[{item.get('title', 'Résultat')}]({item.get('url', '#')})**")
                 st.write(item.get("content", ""))
-        except Exception as exc:
+        except (RuntimeError, ValueError) as exc:
             st.error(str(exc))
+        except Exception:
+            st.error(
+                "Une erreur inattendue a interrompu la recherche Web. "
+                "Réessayez dans quelques instants."
+            )
 
 elif page == "Analyse PDF":
     st.subheader("📄 Analyse PDF")
