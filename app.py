@@ -34,7 +34,7 @@ from premium_batch_analysis import analyze_pdf_batch, prepare_authorized_pdf_bat
 from premium_exports import create_premium_professional_pdf
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
-from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_premium_results_without_entitlement, clear_private_document_cache_without_entitlement
+from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_premium_results_without_entitlement, clear_private_document_cache_without_entitlement, clear_premium_batch_upload_without_entitlement
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
@@ -548,7 +548,7 @@ elif page == "Analyse PDF":
 
         st.markdown("### Comparer plusieurs PDF")
         if not has_feature_access(supabase_client, current_user, "batch_pdf_analysis"):
-            st.session_state.pop("premium_pdf_batch_upload", None)
+            clear_premium_batch_upload_without_entitlement(st.session_state, False)
             st.info("🔒 La comparaison de plusieurs PDF est réservée à un abonnement Premium actif. Les fichiers sélectionnés ont été effacés de cette session.")
         else:
             st.caption("Sélectionnez 2 à 5 PDF. Chaque fichier est limité à 10 Mo, et tous les fichiers sont validés avant extraction.")
