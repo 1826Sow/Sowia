@@ -6,6 +6,7 @@ PayPal client secret or access token to browser-side code.
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+import re
 from uuid import uuid4
 
 import requests
@@ -134,16 +135,21 @@ def capture_premium_order(order_id: str, user_id: str):
         raise RuntimeError("La configuration PayPal n'est pas encore complète.")
     if not order_id or not user_id:
         raise PermissionError("Commande ou utilisateur manquant.")
+    normalized_order_id = str(order_id).strip()
+    if not re.fullmatch(r"[A-Z0-9]{1,50}", normalized_order_id):
+        raise PermissionError("Identifiant de commande PayPal invalide.")
     token = _access_token(config)
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     base = config["base_url"]
     details_response = requests.get(
-        f"{base}/v2/checkout/orders/{order_id}",
+        f"{base}/v2/checkout/orders/{normalized_order_id}",
         headers=headers,
         timeout=TIMEOUT_SECONDS,
     )
     details_response.raise_for_status()
     details = details_response.json()
+    if details.get("id") != normalized_order_id:
+        raise PermissionError("La commande PayPal retournée ne correspond pas à la demande.")
     units = details.get("purchase_units") or []
     if len(units) != 1:
         raise PermissionError("Commande PayPal non reconnue.")
