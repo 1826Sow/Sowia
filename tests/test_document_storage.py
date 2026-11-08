@@ -117,3 +117,34 @@ def test_upload_sanitizes_path_and_special_characters_in_filename():
 def test_storage_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         docs.list_documents(FakeClient(), None)
+
+
+def test_delete_rejects_another_users_path_before_storage_access():
+    client = FakeClient()
+    with pytest.raises(PermissionError):
+        docs.delete_document(client, User(), "other-user/personal/report.pdf", "personal")
+    assert client.bucket.removed is None
+
+
+def test_workspace_path_cannot_be_deleted_from_other_workspace():
+    client = FakeClient()
+    with pytest.raises(ValueError, match="Chemin de document invalide"):
+        docs.delete_document(client, User(), "user-123/professional/report.pdf", "personal")
+    assert client.bucket.removed is None
+
+
+def test_legacy_flat_file_cannot_be_deleted_from_professional_workspace():
+    client = FakeClient()
+    with pytest.raises(ValueError, match="Chemin de document invalide"):
+        docs.delete_document(client, User(), "user-123/report.pdf", "professional")
+    assert client.bucket.removed is None
+
+
+def test_upload_rejects_missing_user_and_invalid_workspace_before_storage_access():
+    client = FakeClient()
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        docs.upload_document(client, None, "report.pdf", VALID_PDF, "personal")
+    with pytest.raises(ValueError, match="Espace de travail invalide"):
+        docs.upload_document(client, User(), "report.pdf", VALID_PDF, "shared")
+    assert client.bucket.uploaded is None
+
