@@ -1,9 +1,20 @@
 """Tests for private PDF storage ownership and workspace isolation."""
+from io import BytesIO
+
 import pytest
+from pypdf import PdfWriter
 import document_storage as docs
 
 
-VALID_PDF = b"%PDF-1.7\n% test fixture\n"
+def valid_pdf(page_count=1, password=None):
+    writer = PdfWriter()
+    for _ in range(page_count):
+        writer.add_blank_page(width=72, height=72)
+    if password:
+        writer.encrypt(password)
+    output = BytesIO()
+    writer.write(output)
+    return output.getvalue()
 
 
 class User:
@@ -47,10 +58,11 @@ class FakeClient:
 @pytest.mark.parametrize("workspace", ["personal", "professional"])
 def test_upload_is_stored_under_user_and_workspace_folder(workspace):
     client = FakeClient()
-    path = docs.upload_document(client, User(), "Mon rapport.pdf", VALID_PDF, workspace)
+    payload = valid_pdf()
+    path = docs.upload_document(client, User(), "Mon rapport.pdf", payload, workspace)
     assert path.startswith(f"user-123/{workspace}/")
     assert path.endswith("_Mon_rapport.pdf")
-    assert client.bucket.uploaded[1] == VALID_PDF
+    assert client.bucket.uploaded[1] == payload
     assert client.bucket.uploaded[2]["content-type"] == "application/pdf"
 
 
@@ -108,7 +120,7 @@ def test_upload_rejects_pdf_extension_without_pdf_signature():
 
 def test_upload_sanitizes_path_and_special_characters_in_filename():
     client = FakeClient()
-    path = docs.upload_document(client, User(), "../../rapport confidentiel.pdf", VALID_PDF)
+    path = docs.upload_document(client, User(), "../../rapport confidentiel.pdf", valid_pdf())
     assert path.startswith("user-123/personal/")
     assert path.endswith("_rapport_confidentiel.pdf")
     assert ".." not in path
@@ -143,8 +155,38 @@ def test_legacy_flat_file_cannot_be_deleted_from_professional_workspace():
 def test_upload_rejects_missing_user_and_invalid_workspace_before_storage_access():
     client = FakeClient()
     with pytest.raises(PermissionError, match="Connexion requise"):
-        docs.upload_document(client, None, "report.pdf", VALID_PDF, "personal")
+        docs.upload_document(client, None, "report.pdf", valid_pdf(), "personal")
     with pytest.raises(ValueError, match="Espace de travail invalide"):
-        docs.upload_document(client, User(), "report.pdf", VALID_PDF, "shared")
+        docs.upload_document(client, User(), "report.pdf", valid_pdf(), "shared")
     assert client.bucket.uploaded is None
 
+
+
+def test_upload_rejects_malformed_pdf_with_a_pdf_header():
+    client = FakeClient()
+    with pytest.raises(ValueError, match="PDF valide ou lisible"):
+        docs.upload_document(client, User(), "broken.pdf", b"%PDF-1.7\nnot a real PDF")
+    assert client.bucket.uploaded is None
+
+
+def test_upload_rejects_encrypted_pdf():
+    client = FakeClient()
+    with pytest.raises(ValueError, match="mot de passe"):
+        docs.upload_document(client, User(), "encrypted.pdf", valid_pdf(password="secret"))
+    assert client.bucket.uploaded is None
+
+
+def test_upload_rejects_pdf_over_page_limit():
+    client = FakeClient()
+    payload = valid_pdf(docs.MAX_DOCUMENT_PAGES + 1)
+    with pytest.raises(ValueError, match="500 pages"):
+        docs.upload_document(client, User(), "too-many-pages.pdf", payload)
+    assert client.bucket.uploaded is None
+
+
+def test_upload_accepts_a_structurally_valid_pdf():
+    client = FakeClient()
+    payload = valid_pdf()
+    path = docs.upload_document(client, User(), "valid.pdf", payload)
+    assert path.startswith("user-123/personal/")
+    assert client.bucket.uploaded[1] == payload
