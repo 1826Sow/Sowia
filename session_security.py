@@ -73,3 +73,21 @@ def clear_stale_document_delete_confirmation(session_state, visible_documents):
     }
     if pending_path not in visible_paths:
         session_state.pop("pending_document_delete_path", None)
+
+
+def clear_authenticated_session_state(session_state):
+    """Remove all account-bound caches and client references after logout.
+
+    This cleanup is local and must run even when remote sign-out fails.
+    The browser scope itself is intentionally retained so a fresh PKCE flow
+    can be initialized for the same browser.
+    """
+    clear_private_session_state(session_state)
+    for key in (
+        "sowia_supabase_client",
+        "sowia_authenticated_user_id",
+        "sowia_github_login_url",
+        "active_workspace_id",
+        "workspace_id",
+    ):
+        session_state.pop(key, None)
