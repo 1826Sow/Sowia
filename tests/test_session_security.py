@@ -41,6 +41,8 @@ def test_workspace_switch_clears_pdf_caches_but_keeps_account_state():
         "paypal_approval_url": "https://paypal.example/approve",
         "paypal_order_id": "pending-order",
         "paypal_purchase_confirmed": True,
+        "document_upload_error": "private backend error",
+        "document_upload_notice": "private document name",
         "sowia_authenticated_user_id": "account-id",
         "unrelated_preference": "keep-me",
     }
@@ -65,6 +67,8 @@ def test_workspace_switch_clears_pdf_caches_but_keeps_account_state():
             "saved_pdf_answer_path",
             "paypal_approval_url",
             "paypal_order_id",
+            "document_upload_error",
+            "document_upload_notice",
         )
     )
     assert state["paypal_purchase_confirmed"] is True
