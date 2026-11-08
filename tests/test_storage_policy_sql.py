@@ -43,3 +43,20 @@ def test_storage_diagnostic_is_read_only_and_reports_all_object_policies():
         statement in DIAGNOSTICS
         for statement in ("create policy", "drop policy", "alter table", "delete from", "update ")
     )
+
+SCHEMA = (ROOT / "supabase" / "schema.sql").read_text(encoding="utf-8").lower()
+WORKSPACES = (ROOT / "supabase_workspaces.sql").read_text(encoding="utf-8").lower()
+
+
+def test_authenticated_sequence_grants_are_limited_to_required_identity_sequences():
+    assert "grant usage, select on sequence" in SCHEMA
+    assert "public.sowia_messages_id_seq" in SCHEMA
+    assert "public.sowia_memory_items_id_seq" in SCHEMA
+    assert "on all sequences in schema public" not in SCHEMA
+
+
+def test_workspace_migration_adds_and_constrains_workspace_columns():
+    for table in ("sowia_messages", "sowia_memory_items"):
+        assert f"alter table public.{table} add column if not exists workspace_id text not null default 'personal'" in WORKSPACES
+        assert f"alter table public.{table} add constraint {table}_workspace_id_check" in WORKSPACES
+    assert "check (workspace_id in ('personal', 'professional'))" in WORKSPACES
