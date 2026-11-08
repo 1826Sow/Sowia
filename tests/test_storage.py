@@ -58,3 +58,45 @@ def test_memory_rejects_empty_and_oversized_notes(tmp_path, monkeypatch):
         storage.add_memory("   ")
     with pytest.raises(ValueError, match="1 000"):
         storage.add_memory("x" * 1001)
+
+
+
+def test_history_isolated_between_workspaces_even_with_same_session(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "sowia-test.db")
+    storage.save_message("same-session", "user", "Message personnel", "personal")
+    storage.save_message("same-session", "user", "Message professionnel", "professional")
+
+    assert [item["content"] for item in storage.get_history(
+        "same-session", workspace_id="personal"
+    )] == ["Message personnel"]
+    assert [item["content"] for item in storage.get_history(
+        "same-session", workspace_id="professional"
+    )] == ["Message professionnel"]
+
+
+def test_clearing_history_in_one_workspace_keeps_the_other(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "sowia-test.db")
+    storage.save_message("same-session", "user", "À effacer", "personal")
+    storage.save_message("same-session", "user", "À conserver", "professional")
+
+    storage.clear_history("same-session", "personal")
+
+    assert storage.get_history("same-session", workspace_id="personal") == []
+    assert [item["content"] for item in storage.get_history(
+        "same-session", workspace_id="professional"
+    )] == ["À conserver"]
+
+
+def test_memory_isolated_between_workspaces_and_delete_is_scoped(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "sowia-test.db")
+    personal_id = storage.add_memory("Note personnelle", "personal")
+    storage.add_memory("Note professionnelle", "professional")
+
+    storage.delete_memory(personal_id, "professional")
+
+    assert [item["content"] for item in storage.get_memories(
+        workspace_id="personal"
+    )] == ["Note personnelle"]
+    assert [item["content"] for item in storage.get_memories(
+        workspace_id="professional"
+    )] == ["Note professionnelle"]
