@@ -754,7 +754,12 @@ elif page == "Abonnement":
                 payment_config = None
                 st.error(str(exc))
 
-            admin_ready = premium_access.create_admin_client() is not None
+            # Do not initialize a service-role client while payments are disabled.
+            admin_ready = (
+                premium_access.create_admin_client() is not None
+                if payment_config is not None
+                else False
+            )
             if payment_config is None:
                 st.info("Les paiements sont volontairement désactivés pour le moment. Ils ne seront activés qu’une fois SOW IA terminé, sur décision de l’administrateur.")
             elif not admin_ready:
