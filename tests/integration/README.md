@@ -1,6 +1,6 @@
 # Tests d'intégration Supabase (schéma actuel)
 
-Le test `test_supabase_two_user_isolation.py` vérifie les politiques RLS réellement appliquées aux deux tables utilisées par le code actuel : `public.sowia_messages` et `public.sowia_memory_items`.
+Les tests d'intégration vérifient les politiques RLS réellement appliquées aux tables `public.sowia_messages` et `public.sowia_memory_items`, ainsi que l'isolation du bucket privé `sowia-files` pour les PDF.
 
 ## Préparation sûre
 
@@ -25,7 +25,7 @@ Utiliser uniquement la clé publique anon/publishable. Ne jamais utiliser une cl
 Depuis la racine du dépôt :
 
 ```bash
-pytest -q tests/integration/test_supabase_two_user_isolation.py
+pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py
 ```
 
 ## Exécution automatique dans GitHub Actions
@@ -36,6 +36,6 @@ L'action GitHub lance alors les tests réels entre les deux comptes à chaque pu
 
 Avec les six variables, deux sessions authentifiées vérifient pour chaque table que le compte A peut lire ses propres lignes, que le compte B ne peut pas les lire, qu'il ne peut pas insérer une ligne au nom de A et qu'il ne peut pas supprimer la ligne de A. Les lignes témoins créées sont supprimées par le compte A dans un bloc `finally`.
 
-Les tests ciblent uniquement les tables réellement créées par le schéma courant. Ils ne prétendent pas valider le stockage PDF Supabase Storage, qui dispose de son propre diagnostic en lecture seule.
+Le test Storage utilise les mêmes six secrets, vérifie que le compte A peut déposer et télécharger son PDF, que B ne peut ni le télécharger, ni déposer un fichier dans le dossier de A, ni supprimer le PDF de A. Le propriétaire supprime le fichier temporaire dans un bloc `finally`. Il cible le bucket `sowia-files` et les chemins `<user_id>/personal/<fichier>`.
 
 Un test ignoré ne constitue pas une validation RLS réelle. La validation exige un projet de test configuré et un résultat d'exécution réussi.
