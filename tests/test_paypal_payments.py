@@ -247,3 +247,47 @@ def test_capture_rejects_response_with_different_order_id(monkeypatch):
     with pytest.raises(PermissionError, match="ne correspond pas"):
         paypal.capture_premium_order("ORDER123", "current-user")
     assert len(calls) == 1
+
+
+def test_capture_uses_normalized_order_id_for_capture_request(monkeypatch):
+    _settings(monkeypatch)
+
+    class Response:
+        def __init__(self, data):
+            self.data = data
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.data
+
+    calls = []
+    monkeypatch.setattr(paypal, "_access_token", lambda config: "test-token")
+
+    def fake_get(url, **kwargs):
+        calls.append(("get", url, kwargs))
+        return Response({
+            "id": "ORDER123",
+            "intent": "CAPTURE",
+            "status": "APPROVED",
+            "purchase_units": [{
+                "custom_id": "current-user",
+                "reference_id": "sowia-premium",
+                "amount": {"currency_code": "EUR", "value": "12.90"},
+            }],
+        })
+
+    def fake_post(url, **kwargs):
+        calls.append(("post", url, kwargs))
+        return Response({"status": "COMPLETED"})
+
+    monkeypatch.setattr(paypal.requests, "get", fake_get)
+    monkeypatch.setattr(paypal.requests, "post", fake_post)
+
+    result = paypal.capture_premium_order(" ORDER123 ", "current-user")
+
+    assert result["status"] == "COMPLETED"
+    assert calls[0][1].endswith("/v2/checkout/orders/ORDER123")
+    assert calls[1][1].endswith("/v2/checkout/orders/ORDER123/capture")
+    assert calls[1][2]["headers"]["PayPal-Request-Id"] == "sowia-capture-ORDER123"
