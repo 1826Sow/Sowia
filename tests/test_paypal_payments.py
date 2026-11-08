@@ -74,3 +74,95 @@ def test_capture_refuses_order_belonging_to_another_user(monkeypatch):
 def test_payments_remain_disabled_without_explicit_enable_flag(monkeypatch):
     _settings(monkeypatch, SOWIA_PAYMENTS_ENABLED="false")
     assert paypal.paypal_configuration() is None
+
+
+@pytest.mark.parametrize(
+    "details, expected_message",
+    [
+        (
+            {
+                "id": "ORDER-1",
+                "intent": "CAPTURE",
+                "status": "APPROVED",
+                "purchase_units": [{
+                    "custom_id": "current-user",
+                    "reference_id": "sowia-premium",
+                    "amount": {"currency_code": "EUR", "value": "99.00"},
+                }],
+            },
+            "ne correspond pas",
+        ),
+        (
+            {
+                "id": "ORDER-1",
+                "intent": "CAPTURE",
+                "status": "APPROVED",
+                "purchase_units": [{
+                    "custom_id": "current-user",
+                    "reference_id": "sowia-premium",
+                    "amount": {"currency_code": "USD", "value": "12.90"},
+                }],
+            },
+            "ne correspond pas",
+        ),
+        (
+            {
+                "id": "ORDER-1",
+                "intent": "AUTHORIZE",
+                "status": "APPROVED",
+                "purchase_units": [{
+                    "custom_id": "current-user",
+                    "reference_id": "sowia-premium",
+                    "amount": {"currency_code": "EUR", "value": "12.90"},
+                }],
+            },
+            "ne correspond pas",
+        ),
+        (
+            {
+                "id": "ORDER-1",
+                "intent": "CAPTURE",
+                "status": "CREATED",
+                "purchase_units": [{
+                    "custom_id": "current-user",
+                    "reference_id": "sowia-premium",
+                    "amount": {"currency_code": "EUR", "value": "12.90"},
+                }],
+            },
+            "ne correspond pas",
+        ),
+    ],
+)
+def test_capture_refuses_order_with_wrong_amount_currency_intent_or_status(
+    monkeypatch, details, expected_message
+):
+    _settings(monkeypatch)
+
+    class Response:
+        def __init__(self, data):
+            self.data = data
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.data
+
+    calls = []
+
+    def fake_post(url, **kwargs):
+        calls.append(("post", url))
+        return Response({"access_token": "test-token"})
+
+    def fake_get(url, **kwargs):
+        calls.append(("get", url))
+        return Response(details)
+
+    monkeypatch.setattr(paypal.requests, "post", fake_post)
+    monkeypatch.setattr(paypal.requests, "get", fake_get)
+
+    with pytest.raises(PermissionError, match=expected_message):
+        paypal.capture_premium_order("ORDER-1", "current-user")
+
+    # Only the OAuth token request is allowed; no capture request is sent.
+    assert [kind for kind, _ in calls] == ["post", "get"]
