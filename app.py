@@ -1,7 +1,6 @@
 """SOW IA — application web Streamlit."""
 import uuid
 import html
-import traceback
 import streamlit as st
 from settings import get_setting
 
@@ -119,25 +118,18 @@ if cloud_mode:
         clear_private_session_state(st.session_state)
         st.session_state.pop("sowia_authenticated_user_id", None)
         if auth_required:
-            # Show a compact diagnostic directly in the main error box so it
-            # remains visible on small mobile screens.
-            detail = str(exc)
-            for secret_name in ("SUPABASE_URL", "SUPABASE_ANON_KEY"):
-                secret_value = str(get_setting(secret_name, "")).strip()
-                if secret_value:
-                    detail = detail.replace(secret_value, "[valeur masquée]")
-            trace = traceback.format_exc()
-            for secret_name in ("SUPABASE_URL", "SUPABASE_ANON_KEY"):
-                secret_value = str(get_setting(secret_name, "")).strip()
-                if secret_value:
-                    trace = trace.replace(secret_value, "[valeur masquée]")
+            # Keep diagnostics useful without rendering raw exception text or
+            # tracebacks, which may contain credentials, OAuth codes or tokens.
             st.error(
                 "La connexion sécurisée Supabase est indisponible. "
                 "L'accès reste fermé car l'authentification est obligatoire.\n\n"
-                f"Étape : {auth_stage}.\nDiagnostic : {type(exc).__name__} — {detail}"
+                f"Étape : {auth_stage}.\nCode technique : {type(exc).__name__}"
             )
             with st.expander("Détails techniques pour le diagnostic"):
-                st.code(trace)
+                st.caption(
+                    "Les détails sensibles sont masqués. Communiquez le code "
+                    "technique et l'étape indiquée au support."
+                )
             st.stop()
         st.warning("Supabase ne répond pas correctement : SOW IA continue en mode local temporaire. Les fonctions locales, dont la création de PDF, restent accessibles. Les données locales ne sont pas destinées à un usage partagé.")
         st.caption(f"Détail technique : {exc}")
