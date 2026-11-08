@@ -190,3 +190,36 @@ def test_upload_accepts_a_structurally_valid_pdf():
     path = docs.upload_document(client, User(), "valid.pdf", payload)
     assert path.startswith("user-123/personal/")
     assert client.bucket.uploaded[1] == payload
+
+
+def test_display_document_name_hides_only_a_32_character_hex_prefix():
+    assert docs.display_document_name("a" * 32 + "_rapport.pdf") == "rapport.pdf"
+    assert docs.display_document_name("rapport_final.pdf") == "rapport_final.pdf"
+    assert docs.display_document_name("badprefix_rapport.pdf") == "badprefix_rapport.pdf"
+
+
+def test_filter_documents_searches_case_insensitively_by_display_name():
+    documents = [
+        {"name": "a" * 32 + "_Facture_2026.pdf", "path": "u/p/a"},
+        {"name": "b" * 32 + "_Compte_Rendu.pdf", "path": "u/p/b"},
+    ]
+    result = docs.filter_documents(documents, query="facture")
+    assert [item["path"] for item in result] == ["u/p/a"]
+
+
+def test_filter_documents_sorts_without_mutating_original_listing():
+    documents = [
+        {"name": "b" * 32 + "_Zulu.pdf"},
+        {"name": "a" * 32 + "_alpha.pdf"},
+    ]
+    original = list(documents)
+    ascending = docs.filter_documents(documents, sort_order="name_asc")
+    descending = docs.filter_documents(documents, sort_order="name_desc")
+    assert [docs.display_document_name(item["name"]) for item in ascending] == ["alpha.pdf", "Zulu.pdf"]
+    assert [docs.display_document_name(item["name"]) for item in descending] == ["Zulu.pdf", "alpha.pdf"]
+    assert documents == original
+
+
+def test_filter_documents_rejects_unknown_sort_order():
+    with pytest.raises(ValueError, match="Ordre de tri invalide"):
+        docs.filter_documents([], sort_order="newest")

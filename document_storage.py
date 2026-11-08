@@ -104,3 +104,34 @@ def download_document(client, user, path, workspace_id="personal"):
 def delete_document(client, user, path, workspace_id="personal"):
     owned_path = _owned_path(user, path, workspace_id)
     return client.storage.from_(BUCKET_NAME).remove([owned_path])
+
+
+def display_document_name(filename):
+    """Hide the random storage identifier from a stored PDF's display name."""
+    name = str(filename or "")
+    prefix, separator, remainder = name.partition("_")
+    if separator and len(prefix) == 32 and all(char in "0123456789abcdefABCDEF" for char in prefix):
+        return remainder
+    return name
+
+
+def filter_documents(documents, query="", sort_order="name_asc"):
+    """Return a sorted, filtered copy without mutating the storage listing."""
+    if sort_order not in {"name_asc", "name_desc"}:
+        raise ValueError("Ordre de tri invalide.")
+    search = str(query or "").strip().casefold()
+    results = []
+    for document in documents or []:
+        if not isinstance(document, dict):
+            continue
+        name = str(document.get("name", "") or "")
+        if not name:
+            continue
+        if search and search not in display_document_name(name).casefold():
+            continue
+        results.append(document)
+    return sorted(
+        results,
+        key=lambda item: display_document_name(item.get("name", "")).casefold(),
+        reverse=(sort_order == "name_desc"),
+    )
