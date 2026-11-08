@@ -230,3 +230,26 @@ def test_active_private_storage_entitlement_keeps_document_cache():
 
     assert clear_private_document_cache_without_entitlement(state, True) is False
     assert state["selected_saved_pdf_text"] == "authorized private text"
+
+
+
+def test_inactive_premium_entitlement_clears_batch_pdf_upload():
+    from session_security import clear_premium_batch_upload_without_entitlement
+
+    state = {
+        "premium_pdf_batch_upload": ["private uploaded PDF"],
+        "unrelated_preference": "keep-me",
+    }
+
+    assert clear_premium_batch_upload_without_entitlement(state, False) is True
+    assert "premium_pdf_batch_upload" not in state
+    assert state["unrelated_preference"] == "keep-me"
+
+
+def test_active_premium_entitlement_keeps_batch_pdf_upload():
+    from session_security import clear_premium_batch_upload_without_entitlement
+
+    state = {"premium_pdf_batch_upload": ["authorized uploaded PDF"]}
+
+    assert clear_premium_batch_upload_without_entitlement(state, True) is False
+    assert state["premium_pdf_batch_upload"] == ["authorized uploaded PDF"]
