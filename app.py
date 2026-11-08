@@ -162,11 +162,10 @@ if cloud_mode:
         if callback_error_description:
             st.warning("Motif communiqué par le fournisseur : " + callback_error_description[:300])
         try:
-            # Canonical public URL of this Streamlit deployment. An explicit
-            # secret still takes precedence when the deployment URL changes.
-            redirect_to = str(
-                get_setting("SOWIA_PUBLIC_URL", "https://sowia-test.streamlit.app")
-            ).strip() or "https://sowia-test.streamlit.app"
+            # Pin the OAuth return address to this active test deployment.
+            # This avoids a stale SOWIA_PUBLIC_URL secret sending users back
+            # to an older Streamlit app URL.
+            redirect_to = "https://sowia-test.streamlit.app"
             st.caption("Adresse de retour utilisée : " + redirect_to)
             # Keep one OAuth URL per Streamlit session. Each call to
             # sign_in_with_oauth creates a new PKCE verifier; generating a
