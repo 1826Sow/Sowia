@@ -34,7 +34,7 @@ from premium_batch_analysis import analyze_pdf_batch, prepare_authorized_pdf_bat
 from premium_exports import create_premium_professional_pdf
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
-from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_premium_results_without_entitlement
+from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_premium_results_without_entitlement, clear_private_document_cache_without_entitlement
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
@@ -679,6 +679,7 @@ elif page == "Mes documents":
     if not cloud_mode:
         st.warning("Connectez-vous avec votre compte pour utiliser le stockage documentaire privé.")
     elif not has_feature_access(supabase_client, current_user, "private_document_storage"):
+        clear_private_document_cache_without_entitlement(st.session_state, False)
         st.info("🔒 Le stockage documentaire privé est réservé à un abonnement Premium actif. Vos documents restent protégés.")
     else:
         st.caption("Vos PDF sont conservés dans un espace privé Supabase, séparé de celui des autres utilisateurs. Taille maximale : 10 Mo par fichier.")
