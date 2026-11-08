@@ -89,4 +89,7 @@ create policy "Users can delete their own SOW IA messages"
 
 grant select, insert, delete on public.sowia_memory_items to authenticated;
 grant select, insert, delete on public.sowia_messages to authenticated;
-grant usage, select on all sequences in schema public to authenticated;
+grant usage, select on sequence
+    public.sowia_messages_id_seq,
+    public.sowia_memory_items_id_seq
+    to authenticated;
