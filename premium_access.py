@@ -69,3 +69,15 @@ def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
         .execute()
         .data
     )
+
+
+def require_active_entitlement(user_client, user):
+    """Fail closed before executing any Premium-only server-side operation.
+
+    Call this guard inside the trusted server path of every paid feature.
+    A missing, inactive, or unreadable entitlement must never grant access.
+    """
+    entitlement = get_entitlement(user_client, user)
+    if entitlement is None:
+        raise PermissionError("Un accès SOW IA Premium actif est nécessaire.")
+    return entitlement

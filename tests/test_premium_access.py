@@ -102,3 +102,29 @@ def test_entitlement_grant_rejects_blank_identity_fields(user_id, order_id):
             client, user_id, order_id, "12.90", "EUR"
         )
     assert client.query.payload is None
+
+
+
+@pytest.mark.parametrize(
+    "entitlement",
+    [None, {"status": "inactive"}, {"status": "pending"}],
+)
+def test_premium_guard_denies_missing_or_inactive_entitlement(entitlement):
+    client = Client(entitlement)
+    with pytest.raises(PermissionError, match="accès SOW IA Premium actif"):
+        premium_access.require_active_entitlement(client, User())
+
+
+def test_premium_guard_returns_active_entitlement():
+    active = {
+        "status": "active",
+        "provider": "paypal",
+        "amount": "12.90",
+        "currency": "EUR",
+    }
+    assert premium_access.require_active_entitlement(Client(active), User()) == active
+
+
+def test_premium_guard_requires_authenticated_user():
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        premium_access.require_active_entitlement(Client(), None)
