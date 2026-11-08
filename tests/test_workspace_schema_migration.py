@@ -41,3 +41,41 @@ def test_workspace_queries_have_composite_indexes():
 def test_workspace_migration_keeps_row_level_security_enabled():
     for table in ("sowia_memory_items", "sowia_messages"):
         assert f"alter table public.{table} enable row level security" in SCHEMA
+
+
+WORKSPACE_MIGRATION = (
+    ROOT / "supabase_workspaces.sql"
+).read_text(encoding="utf-8").lower()
+README = (ROOT / "README.md").read_text(encoding="utf-8").lower()
+
+
+def test_documented_deployment_runs_workspace_migration_after_base_schema():
+    base_position = README.index("`supabase/schema.sql`")
+    migration_position = README.index("`supabase_workspaces.sql`")
+    assert base_position < migration_position
+
+
+def test_upgrade_migration_preserves_existing_rows_and_adds_workspace_defaults():
+    normalized = " ".join(WORKSPACE_MIGRATION.split())
+    for table in ("sowia_memory_items", "sowia_messages"):
+        assert (
+            f"alter table public.{table} add column if not exists "
+            "workspace_id text not null default 'personal'"
+        ) in normalized
+    assert "drop table" not in WORKSPACE_MIGRATION
+    assert "delete from public.sowia_memory_items" not in WORKSPACE_MIGRATION
+    assert "delete from public.sowia_messages" not in WORKSPACE_MIGRATION
+
+
+def test_upgrade_migration_enforces_workspace_values_and_query_indexes():
+    normalized = " ".join(WORKSPACE_MIGRATION.split())
+    for table in ("sowia_memory_items", "sowia_messages"):
+        assert f"add constraint {table}_workspace_id_check" in normalized
+    assert (
+        "on public.sowia_memory_items "
+        "(user_id, workspace_id, created_at desc)" in normalized
+    )
+    assert (
+        "on public.sowia_messages "
+        "(user_id, workspace_id, session_id, id desc)" in normalized
+    )
