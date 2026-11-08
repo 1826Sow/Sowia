@@ -208,3 +208,42 @@ def test_completed_order_is_not_captured_twice(monkeypatch):
     assert result["status"] == "COMPLETED"
     # Token request + order lookup only; no duplicate capture POST.
     assert [kind for kind, _ in calls] == ["post", "get"]
+
+@pytest.mark.parametrize("order_id", ["../capture", "ORDER/1", "order-1", "ORDER 1", "?token=x", "A" * 51])
+def test_capture_rejects_malformed_order_id_before_network_calls(monkeypatch, order_id):
+    _settings(monkeypatch)
+    calls = []
+    monkeypatch.setattr(
+        paypal,
+        "_access_token",
+        lambda config: calls.append("token") or "test-token",
+    )
+    with pytest.raises(PermissionError, match="Identifiant de commande"):
+        paypal.capture_premium_order(order_id, "current-user")
+    assert calls == []
+
+
+def test_capture_rejects_response_with_different_order_id(monkeypatch):
+    _settings(monkeypatch)
+
+    class Response:
+        def __init__(self, data):
+            self.data = data
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.data
+
+    calls = []
+    monkeypatch.setattr(paypal, "_access_token", lambda config: "test-token")
+
+    def fake_get(url, **kwargs):
+        calls.append(url)
+        return Response({"id": "OTHER-ORDER", "purchase_units": []})
+
+    monkeypatch.setattr(paypal.requests, "get", fake_get)
+    with pytest.raises(PermissionError, match="ne correspond pas"):
+        paypal.capture_premium_order("ORDER123", "current-user")
+    assert len(calls) == 1
