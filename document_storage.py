@@ -1,5 +1,6 @@
 """Private, user-scoped PDF storage using Supabase Storage."""
 from io import BytesIO
+from datetime import datetime, timezone
 import os
 import re
 
@@ -115,9 +116,24 @@ def display_document_name(filename):
     return name
 
 
+def _document_created_timestamp(document):
+    """Return a UTC timestamp for a Storage created_at value, or None."""
+    value = document.get("created_at") if isinstance(document, dict) else None
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        created = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        return created.timestamp()
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
 def filter_documents(documents, query="", sort_order="name_asc"):
     """Return a sorted, filtered copy without mutating the storage listing."""
-    if sort_order not in {"name_asc", "name_desc"}:
+    valid_orders = {"name_asc", "name_desc", "newest", "oldest"}
+    if sort_order not in valid_orders:
         raise ValueError("Ordre de tri invalide.")
     search = str(query or "").strip().casefold()
     results = []
@@ -130,8 +146,20 @@ def filter_documents(documents, query="", sort_order="name_asc"):
         if search and search not in display_document_name(name).casefold():
             continue
         results.append(document)
-    return sorted(
-        results,
-        key=lambda item: display_document_name(item.get("name", "")).casefold(),
-        reverse=(sort_order == "name_desc"),
-    )
+    if sort_order in {"name_asc", "name_desc"}:
+        return sorted(
+            results,
+            key=lambda item: display_document_name(item.get("name", "")).casefold(),
+            reverse=(sort_order == "name_desc"),
+        )
+
+    dated = []
+    undated = []
+    for document in results:
+        timestamp = _document_created_timestamp(document)
+        if timestamp is None:
+            undated.append(document)
+        else:
+            dated.append((timestamp, document))
+    dated.sort(key=lambda pair: pair[0], reverse=(sort_order == "newest"))
+    return [document for _, document in dated] + undated

@@ -222,4 +222,40 @@ def test_filter_documents_sorts_without_mutating_original_listing():
 
 def test_filter_documents_rejects_unknown_sort_order():
     with pytest.raises(ValueError, match="Ordre de tri invalide"):
-        docs.filter_documents([], sort_order="newest")
+        docs.filter_documents([], sort_order="uploaded")
+
+
+def test_filter_documents_sorts_by_upload_date_and_keeps_unknown_dates_last():
+    documents = [
+        {"name": "old.pdf", "created_at": "2026-01-01T10:00:00Z"},
+        {"name": "new.pdf", "created_at": "2026-03-01T10:00:00+00:00"},
+        {"name": "middle.pdf", "created_at": "2026-02-01T10:00:00Z"},
+        {"name": "unknown.pdf"},
+        {"name": "invalid.pdf", "created_at": "not-a-date"},
+    ]
+
+    newest = docs.filter_documents(documents, sort_order="newest")
+    oldest = docs.filter_documents(documents, sort_order="oldest")
+
+    assert [item["name"] for item in newest] == [
+        "new.pdf", "middle.pdf", "old.pdf", "unknown.pdf", "invalid.pdf"
+    ]
+    assert [item["name"] for item in oldest] == [
+        "old.pdf", "middle.pdf", "new.pdf", "unknown.pdf", "invalid.pdf"
+    ]
+
+
+def test_filter_documents_treats_naive_storage_dates_as_utc():
+    documents = [
+        {"name": "later.pdf", "created_at": "2026-02-01T10:00:00"},
+        {"name": "earlier.pdf", "created_at": "2026-01-01T10:00:00Z"},
+    ]
+
+    result = docs.filter_documents(documents, sort_order="oldest")
+
+    assert [item["name"] for item in result] == ["earlier.pdf", "later.pdf"]
+
+
+def test_filter_documents_rejects_unknown_date_sort_order():
+    with pytest.raises(ValueError, match="Ordre de tri invalide"):
+        docs.filter_documents([], sort_order="uploaded")
