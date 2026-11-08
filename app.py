@@ -547,36 +547,40 @@ elif page == "Analyse PDF":
             st.markdown(st.session_state["premium_pdf_analysis_result"])
 
         st.markdown("### Comparer plusieurs PDF")
-        st.caption("Sélectionnez 2 à 5 PDF. Chaque fichier est limité à 10 Mo, et tous les fichiers sont validés avant extraction.")
-        batch_files = st.file_uploader(
-            "Importer 2 à 5 PDF à comparer",
-            type=["pdf"],
-            accept_multiple_files=True,
-            max_upload_size=10,
-            key="premium_pdf_batch_upload",
-        )
-        if st.button(
-            "Comparer les PDF avec Premium",
-            key="run_premium_pdf_batch",
-            disabled=not (batch_files and 2 <= len(batch_files) <= 5),
-        ):
-            if not API_KEY:
-                st.warning("Le service IA n'est pas configuré. La comparaison n'a pas été lancée.")
-            else:
-                with st.spinner("Validation des fichiers, vérification Premium et comparaison..."):
-                    try:
-                        prepared_documents = prepare_authorized_pdf_batch_uploads(
-                            supabase_client, current_user, batch_files, extract_pdf_text
-                        )
-                        st.session_state["premium_pdf_batch_result"] = analyze_pdf_batch(
-                            supabase_client, current_user, prepared_documents, answer
-                        )
-                    except PermissionError as exc:
-                        st.warning(str(exc))
-                    except ValueError as exc:
-                        st.warning(str(exc))
-                    except Exception:
-                        st.error("La comparaison des PDF a échoué. Vérifiez que les fichiers sont lisibles.")
+        if not has_feature_access(supabase_client, current_user, "batch_pdf_analysis"):
+            st.session_state.pop("premium_pdf_batch_upload", None)
+            st.info("🔒 La comparaison de plusieurs PDF est réservée à un abonnement Premium actif. Les fichiers sélectionnés ont été effacés de cette session.")
+        else:
+            st.caption("Sélectionnez 2 à 5 PDF. Chaque fichier est limité à 10 Mo, et tous les fichiers sont validés avant extraction.")
+            batch_files = st.file_uploader(
+                "Importer 2 à 5 PDF à comparer",
+                type=["pdf"],
+                accept_multiple_files=True,
+                max_upload_size=10,
+                key="premium_pdf_batch_upload",
+            )
+            if st.button(
+                "Comparer les PDF avec Premium",
+                key="run_premium_pdf_batch",
+                disabled=not (batch_files and 2 <= len(batch_files) <= 5),
+            ):
+                if not API_KEY:
+                    st.warning("Le service IA n'est pas configuré. La comparaison n'a pas été lancée.")
+                else:
+                    with st.spinner("Validation des fichiers, vérification Premium et comparaison..."):
+                        try:
+                            prepared_documents = prepare_authorized_pdf_batch_uploads(
+                                supabase_client, current_user, batch_files, extract_pdf_text
+                            )
+                            st.session_state["premium_pdf_batch_result"] = analyze_pdf_batch(
+                                supabase_client, current_user, prepared_documents, answer
+                            )
+                        except PermissionError as exc:
+                            st.warning(str(exc))
+                        except ValueError as exc:
+                            st.warning(str(exc))
+                        except Exception:
+                            st.error("La comparaison des PDF a échoué. Vérifiez que les fichiers sont lisibles.")
 
         clear_cached_premium_results_if_unentitled()
         if st.session_state.get("premium_pdf_batch_result"):
