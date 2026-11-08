@@ -30,7 +30,7 @@ import cloud_storage
 import paypal_payments
 import premium_access
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
-from document_storage import upload_document, list_documents, download_document, delete_document
+from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name
 from session_security import clear_private_session_state, clear_workspace_session_state
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
@@ -547,14 +547,34 @@ elif page == "Mes documents":
             stored_documents = list_documents(supabase_client, current_user, st.session_state.get("workspace_id", "personal"))
             if not stored_documents:
                 st.caption("Aucun document enregistré pour le moment.")
-            for stored in stored_documents:
+            else:
+                search_col, sort_col = st.columns([2, 1])
+                document_query = search_col.text_input(
+                    "Rechercher un PDF",
+                    placeholder="Saisissez le nom du document…",
+                    key="private_pdf_search",
+                )
+                sort_choice = sort_col.selectbox(
+                    "Trier par",
+                    ["Nom (A à Z)", "Nom (Z à A)"],
+                    key="private_pdf_sort",
+                )
+                filtered_documents = filter_documents(
+                    stored_documents,
+                    query=document_query,
+                    sort_order="name_desc" if sort_choice == "Nom (Z à A)" else "name_asc",
+                )
+                st.caption(f"{len(filtered_documents)} document(s) affiché(s) sur {len(stored_documents)}")
+                if not filtered_documents:
+                    st.info("Aucun PDF ne correspond à cette recherche.")
+            for stored in (filtered_documents if stored_documents else []):
                 stored_name = stored.get("name", "")
                 if not stored_name or stored_name in {".", ".."}:
                     continue
                 stored_path = stored.get("path", "")
                 if not stored_path:
                     continue
-                display_name = stored_name.split("_", 1)[-1] if "_" in stored_name else stored_name
+                display_name = display_document_name(stored_name)
                 with st.container(border=True):
                     st.write(f"📄 {display_name}")
                     if st.button("Analyser ce PDF", key=f"analyze_private_{stored_name}"):
