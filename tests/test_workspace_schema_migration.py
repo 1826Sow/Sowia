@@ -22,7 +22,8 @@ def test_existing_rows_are_migrated_to_personal_without_deletion():
 def test_workspace_values_are_limited_to_supported_workspaces():
     for table in ("sowia_memory_items", "sowia_messages"):
         assert f"add constraint {table}_workspace_id_check" in SCHEMA
-    assert SCHEMA.count("check (workspace_id in ('personal', 'professional'))") == 2
+    # Each table has a CREATE TABLE constraint and an idempotent migration guard.
+    assert SCHEMA.count("check (workspace_id in ('personal', 'professional'))") == 4
 
 
 def test_workspace_queries_have_composite_indexes():
