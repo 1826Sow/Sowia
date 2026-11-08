@@ -197,6 +197,28 @@ def test_upload_accepts_a_structurally_valid_pdf():
     assert client.bucket.uploaded[1] == payload
 
 
+@pytest.mark.parametrize("operation", ["download", "delete"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "user-123/personal/private.txt",
+        "user-123/professional/private.docx",
+        "user-123/personal/",
+    ],
+)
+def test_document_operations_reject_non_pdf_or_empty_paths_before_storage_access(operation, path):
+    client = FakeClient()
+
+    with pytest.raises(ValueError, match="Chemin de document invalide"):
+        if operation == "download":
+            docs.download_document(client, User(), path, "personal" if "/personal/" in path else "professional")
+        else:
+            docs.delete_document(client, User(), path, "personal" if "/personal/" in path else "professional")
+
+    assert client.bucket.downloaded is None
+    assert client.bucket.removed is None
+
+
 def test_display_document_name_hides_only_a_32_character_hex_prefix():
     assert docs.display_document_name("a" * 32 + "_rapport.pdf") == "rapport.pdf"
     assert docs.display_document_name("rapport_final.pdf") == "rapport_final.pdf"
