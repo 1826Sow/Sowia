@@ -9,6 +9,13 @@ set public = false,
     file_size_limit = 10485760,
     allowed_mime_types = array['application/pdf'];
 
+-- Remove both current policy names and names from the earlier compatibility
+-- script. PostgreSQL permissive policies are combined with OR, so leaving an
+-- older broader policy in place would weaken the workspace restrictions below.
+drop policy if exists "SOW IA users read own documents" on storage.objects;
+drop policy if exists "SOW IA users upload own documents" on storage.objects;
+drop policy if exists "SOW IA users delete own documents" on storage.objects;
+
 drop policy if exists "SOW IA users can read own workspace PDFs" on storage.objects;
 create policy "SOW IA users can read own workspace PDFs"
 on storage.objects for select to authenticated
