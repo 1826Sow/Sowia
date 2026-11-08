@@ -170,3 +170,50 @@ def test_history_query_keeps_requested_user_session_and_workspace_together():
         ("workspace_id", "professional"),
         ("session_id", "professional-session"),
     ]
+
+
+def test_two_accounts_cannot_read_each_others_history_with_same_session_id():
+    first_client = FakeClient()
+    second_client = FakeClient()
+    first_user = SimpleNamespace(id="account-a")
+    second_user = SimpleNamespace(id="account-b")
+
+    cloud_storage.get_history(first_client, first_user, "same-browser-session", workspace_id="personal")
+    cloud_storage.get_history(second_client, second_user, "same-browser-session", workspace_id="personal")
+
+    first_filters = first_client.tables["sowia_messages"].filters
+    second_filters = second_client.tables["sowia_messages"].filters
+    assert ("user_id", "account-a") in first_filters
+    assert ("user_id", "account-b") in second_filters
+    assert ("session_id", "same-browser-session") in first_filters
+    assert ("session_id", "same-browser-session") in second_filters
+
+
+def test_two_accounts_cannot_read_each_others_memories_in_same_workspace():
+    first_client = FakeClient()
+    second_client = FakeClient()
+    first_user = SimpleNamespace(id="account-a")
+    second_user = SimpleNamespace(id="account-b")
+
+    cloud_storage.list_memories(first_client, first_user, "professional")
+    cloud_storage.list_memories(second_client, second_user, "professional")
+
+    first_filters = first_client.tables["sowia_memory_items"].filters
+    second_filters = second_client.tables["sowia_memory_items"].filters
+    assert ("user_id", "account-a") in first_filters
+    assert ("user_id", "account-b") in second_filters
+    assert ("workspace_id", "professional") in first_filters
+    assert ("workspace_id", "professional") in second_filters
+
+
+def test_two_accounts_cannot_delete_each_others_memory():
+    first_client = FakeClient()
+    second_user = SimpleNamespace(id="account-b")
+
+    cloud_storage.delete_memory(first_client, second_user, 77, "personal")
+
+    filters = first_client.tables["sowia_memory_items"].filters
+    assert ("id", 77) in filters
+    assert ("user_id", "account-b") in filters
+    assert ("workspace_id", "personal") in filters
+

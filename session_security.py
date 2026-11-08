@@ -2,6 +2,10 @@
 
 PRIVATE_SESSION_KEYS = (
     "pdf_text",
+    "premium_pdf_analysis_result",
+    "premium_pdf_batch_result",
+    "premium_pdf_batch_upload",
+    "premium_professional_pdf_result",
     "pdf_question",
     "pdf_title",
     "pdf_body",
@@ -32,6 +36,10 @@ def clear_private_session_state(session_state):
 
 WORKSPACE_PRIVATE_SESSION_KEYS = (
     "pdf_text",
+    "premium_professional_pdf_result",
+    "premium_pdf_analysis_result",
+    "premium_pdf_batch_result",
+    "premium_pdf_batch_upload",
     "pdf_question",
     "pdf_title",
     "pdf_body",
@@ -69,3 +77,50 @@ def clear_stale_document_delete_confirmation(session_state, visible_documents):
     }
     if pending_path not in visible_paths:
         session_state.pop("pending_document_delete_path", None)
+
+
+PREMIUM_RESULT_KEYS = (
+    "premium_pdf_analysis_result",
+    "premium_pdf_batch_result",
+    "premium_professional_pdf_result",
+)
+
+
+def clear_premium_batch_upload_without_entitlement(session_state, entitlement_active):
+    """Remove uploaded batch PDFs when Premium access is not confirmed."""
+    if entitlement_active:
+        return False
+    session_state.pop("premium_pdf_batch_upload", None)
+    return True
+
+
+def clear_premium_results_without_entitlement(session_state, entitlement_active):
+    """Remove cached Premium outputs whenever current access is not confirmed."""
+    if entitlement_active:
+        return False
+    for key in PREMIUM_RESULT_KEYS:
+        session_state.pop(key, None)
+    return True
+
+
+PRIVATE_DOCUMENT_CACHE_KEYS = (
+    "private_pdf_upload",
+    "prepared_document_bytes",
+    "prepared_document_path",
+    "pending_document_delete_path",
+    "selected_saved_pdf_path",
+    "selected_saved_pdf_name",
+    "selected_saved_pdf_text",
+    "selected_saved_pdf_question",
+    "saved_pdf_answer",
+    "saved_pdf_answer_path",
+)
+
+
+def clear_private_document_cache_without_entitlement(session_state, entitlement_active):
+    """Clear cached private-document content when storage access is not confirmed."""
+    if entitlement_active:
+        return False
+    for key in PRIVATE_DOCUMENT_CACHE_KEYS:
+        session_state.pop(key, None)
+    return True

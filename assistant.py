@@ -8,6 +8,7 @@ from openai import (
     RateLimitError,
 )
 from config import API_KEY, BASE_URL, MODEL, SYSTEM_PROMPT
+from user_modes import mode_system_instruction
 
 
 def _offline_reply(messages):
@@ -54,9 +55,9 @@ MAX_DOCUMENT_CONTEXT_CHARS = 24000
 MAX_MEMORY_CONTEXT_CHARS = 12000
 
 
-def build_system_prompt(memories=None, document_context=None):
+def build_system_prompt(memories=None, document_context=None, work_mode="Personnel"):
     """Build a bounded prompt; user memories and uploaded documents are untrusted data."""
-    system_prompt = SYSTEM_PROMPT
+    system_prompt = SYSTEM_PROMPT + "\n\n" + mode_system_instruction(work_mode)
     saved_memories = [item.strip() for item in (memories or []) if item and item.strip()]
     if saved_memories:
         memory_lines = []
@@ -90,14 +91,18 @@ def build_system_prompt(memories=None, document_context=None):
     return system_prompt
 
 
-def answer(messages, memories=None, document_context=None):
+def answer(messages, memories=None, document_context=None, work_mode="Personnel"):
     if not API_KEY:
         raise RuntimeError(
             "Aucune clé API IA n'est configurée. Ajoutez GROQ_API_KEY ou OPENAI_API_KEY dans Streamlit > Secrets. Ne partagez jamais cette clé. "
             ""
         )
 
-    system_prompt = build_system_prompt(memories=memories, document_context=document_context)
+    system_prompt = build_system_prompt(
+        memories=memories,
+        document_context=document_context,
+        work_mode=work_mode,
+    )
 
     client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
     try:

@@ -6,6 +6,11 @@ from pypdf import PdfWriter
 import document_storage as docs
 
 
+@pytest.fixture(autouse=True)
+def allow_premium_for_existing_storage_unit_tests(monkeypatch):
+    monkeypatch.setattr(docs, "require_feature_access", lambda *args, **kwargs: None)
+
+
 def valid_pdf(page_count=1, password=None):
     writer = PdfWriter()
     for _ in range(page_count):
@@ -93,6 +98,30 @@ def test_workspace_path_cannot_be_read_from_other_workspace():
     with pytest.raises(ValueError, match="Chemin de document invalide"):
         docs.download_document(client, User(), "user-123/professional/report.pdf", "personal")
     assert client.bucket.downloaded is None
+
+
+
+@pytest.mark.parametrize(
+    ("active_workspace", "document_path"),
+    [
+        ("personal", "user-123/professional/report.pdf"),
+        ("professional", "user-123/personal/report.pdf"),
+    ],
+)
+@pytest.mark.parametrize("operation", ["download", "delete"])
+def test_document_cannot_be_accessed_or_deleted_from_the_other_workspace(
+    active_workspace, document_path, operation
+):
+    client = FakeClient()
+
+    with pytest.raises(ValueError, match="Chemin de document invalide"):
+        if operation == "download":
+            docs.download_document(client, User(), document_path, active_workspace)
+        else:
+            docs.delete_document(client, User(), document_path, active_workspace)
+
+    assert client.bucket.downloaded is None
+    assert client.bucket.removed is None
 
 
 def test_delete_rejects_path_traversal():
@@ -192,6 +221,28 @@ def test_upload_accepts_a_structurally_valid_pdf():
     assert client.bucket.uploaded[1] == payload
 
 
+@pytest.mark.parametrize("operation", ["download", "delete"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "user-123/personal/private.txt",
+        "user-123/professional/private.docx",
+        "user-123/personal/",
+    ],
+)
+def test_document_operations_reject_non_pdf_or_empty_paths_before_storage_access(operation, path):
+    client = FakeClient()
+
+    with pytest.raises(ValueError, match="Chemin de document invalide"):
+        if operation == "download":
+            docs.download_document(client, User(), path, "personal" if "/personal/" in path else "professional")
+        else:
+            docs.delete_document(client, User(), path, "personal" if "/personal/" in path else "professional")
+
+    assert client.bucket.downloaded is None
+    assert client.bucket.removed is None
+
+
 def test_display_document_name_hides_only_a_32_character_hex_prefix():
     assert docs.display_document_name("a" * 32 + "_rapport.pdf") == "rapport.pdf"
     assert docs.display_document_name("rapport_final.pdf") == "rapport_final.pdf"
@@ -271,3 +322,67 @@ def test_document_upload_label_formats_storage_timestamp_in_paris_time():
 def test_document_upload_label_returns_none_for_missing_or_invalid_timestamp():
     assert docs.document_upload_label({}) is None
     assert docs.document_upload_label({"created_at": "not-a-date"}) is None
+
+
+def test_private_storage_checks_premium_before_upload(monkeypatch):
+    client = FakeClient()
+    calls = []
+    monkeypatch.setattr(
+        docs, "require_feature_access",
+        lambda *args: (_ for _ in ()).throw(PermissionError("Premium requis")),
+    )
+
+    with pytest.raises(PermissionError, match="Premium requis"):
+        docs.upload_document(client, User(), "report.pdf", valid_pdf())
+
+    assert client.bucket.uploaded is None
+
+
+def test_private_storage_checks_premium_before_listing(monkeypatch):
+    client = FakeClient()
+    monkeypatch.setattr(
+        docs, "require_feature_access",
+        lambda *args: (_ for _ in ()).throw(PermissionError("Premium requis")),
+    )
+
+    with pytest.raises(PermissionError, match="Premium requis"):
+        docs.list_documents(client, User())
+
+    assert client.bucket.listed == []
+
+
+def test_private_storage_checks_premium_before_download_or_delete(monkeypatch):
+    client = FakeClient()
+    monkeypatch.setattr(
+        docs, "require_feature_access",
+        lambda *args: (_ for _ in ()).throw(PermissionError("Premium requis")),
+    )
+
+    with pytest.raises(PermissionError, match="Premium requis"):
+        docs.download_document(client, User(), "user-123/personal/report.pdf")
+    with pytest.raises(PermissionError, match="Premium requis"):
+        docs.delete_document(client, User(), "user-123/personal/report.pdf")
+
+    assert client.bucket.downloaded is None
+    assert client.bucket.removed is None
+
+
+
+def test_legacy_flat_pdf_can_be_downloaded_and_deleted_only_from_personal():
+    client = FakeClient()
+    legacy_path = "user-123/old-report.pdf"
+
+    assert docs.download_document(client, User(), legacy_path, "personal") == b"%PDF"
+    assert client.bucket.downloaded == legacy_path
+
+    docs.delete_document(client, User(), legacy_path, "personal")
+    assert client.bucket.removed == [legacy_path]
+
+
+def test_legacy_flat_pdf_cannot_be_downloaded_from_professional_workspace():
+    client = FakeClient()
+    with pytest.raises(ValueError, match="Chemin de document invalide"):
+        docs.download_document(
+            client, User(), "user-123/old-report.pdf", "professional"
+        )
+    assert client.bucket.downloaded is None

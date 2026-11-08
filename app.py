@@ -26,11 +26,16 @@ from sowia_supabase_auth import (
     sign_out,
 )
 import cloud_storage
+from workspace_access import workspace_navigation
 import paypal_payments
 import premium_access
+from feature_access import has_feature_access
+from premium_analysis import analyze_pdf_advanced
+from premium_batch_analysis import analyze_pdf_batch, prepare_authorized_pdf_batch_uploads
+from premium_exports import create_premium_professional_pdf
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
-from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation
+from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_premium_results_without_entitlement, clear_private_document_cache_without_entitlement, clear_premium_batch_upload_without_entitlement
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
@@ -232,6 +237,23 @@ def delete_app_memory(memory_id):
         return cloud_storage.delete_memory(supabase_client, current_user, memory_id, st.session_state.get("workspace_id", "personal"))
     return local_delete_memory(memory_id, st.session_state.get("workspace_id", "personal"))
 
+def clear_cached_premium_results_if_unentitled():
+    """Recheck the signed-in user's entitlement before showing cached Premium output."""
+    entitlement_active = False
+    if cloud_mode and current_user is not None:
+        try:
+            entitlement_active = premium_access.get_entitlement(
+                supabase_client, current_user
+            ) is not None
+        except Exception:
+            # Fail closed: a temporary entitlement lookup failure must not expose
+            # a previously generated Premium result or download.
+            entitlement_active = False
+    return clear_premium_results_without_entitlement(
+        st.session_state, entitlement_active
+    )
+
+
 def go_to_page(page_name):
     st.session_state.page_nav = page_name
 
@@ -269,13 +291,12 @@ with st.sidebar:
             st.rerun()
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
+    navigation_pages = workspace_navigation(workspace_choice)
+    if st.session_state.get("page_nav") not in navigation_pages:
+        st.session_state.page_nav = "Accueil"
     page = st.radio(
         "Navigation",
-        [
-            "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
-            "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-            "Abonnement", "Paramètres", "Aide",
-        ],
+        navigation_pages,
         key="page_nav",
     )
     st.divider()
@@ -317,7 +338,6 @@ if page == "Accueil":
         dashboard_actions = [
             ("Créer un document", "Créer un PDF"),
             ("Consulter mes PDF", "Mes documents"),
-            ("Ouvrir ma mémoire", "Ma mémoire"),
             ("Utiliser l'assistant", "Assistant IA"),
         ]
         for col, (label, destination) in zip(action_cols, dashboard_actions):
@@ -345,6 +365,8 @@ if page == "Accueil":
         ("⚙️", "Paramètres", "Vérifiez votre configuration"),
         ("❓", "Aide", "Consultez les indications d’utilisation"),
     ]
+    if st.session_state.get("workspace_id") == "professional":
+        shortcuts = [item for item in shortcuts if item[1] != "Ma mémoire"]
     for start in range(0, len(shortcuts), 3):
         cols = st.columns(3)
         for col, (icon, title, desc) in zip(cols, shortcuts[start:start + 3]):
@@ -380,6 +402,7 @@ elif page == "Assistant IA":
                 reply = answer(
                     get_app_history(),
                     memories=[item["content"] for item in memories],
+                    work_mode=st.session_state.get("workspace_choice", "Personnel"),
                 )
                 st.markdown(reply)
                 save_app_message("assistant", reply)
@@ -461,6 +484,8 @@ elif page == "Analyse PDF":
     if file and st.button("Extraire le texte"):
         try:
             st.session_state.pdf_text = extract_pdf_text(file)
+            st.session_state.pop("premium_pdf_analysis_result", None)
+            st.session_state.pop("premium_pdf_batch_result", None)
             st.success("Texte extrait.")
         except ValueError as exc:
             st.error(str(exc))
@@ -488,6 +513,7 @@ elif page == "Analyse PDF":
                         response = answer(
                             [{"role": "user", "content": pdf_question.strip()}],
                             document_context=st.session_state.pdf_text,
+                            work_mode=st.session_state.get("workspace_choice", "Personnel"),
                         )
                         st.markdown("**Réponse de SOW IA**")
                         st.write(response)
@@ -496,6 +522,73 @@ elif page == "Analyse PDF":
                             "L'analyse du document a échoué. Vérifiez la disponibilité du service IA "
                             "et réessayez plus tard."
                         )
+
+    st.divider()
+    st.markdown("### Analyse avancée Premium")
+    st.caption("Synthèse structurée, points de vigilance et questions utiles. L'accès est vérifié côté serveur avant l'appel à l'IA.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous à votre compte sécurisé pour vérifier vos droits Premium.")
+    else:
+        if st.button("Lancer l'analyse avancée Premium", key="run_advanced_pdf_analysis", disabled=not bool(st.session_state.pdf_text)):
+            if not API_KEY:
+                st.warning("Le service IA n'est pas configuré. L'analyse avancée n'a pas été lancée.")
+            else:
+                with st.spinner("Vérification Premium et analyse du document..."):
+                    try:
+                        st.session_state["premium_pdf_analysis_result"] = analyze_pdf_advanced(
+                            supabase_client, current_user, st.session_state.pdf_text, answer
+                        )
+                    except PermissionError as exc:
+                        st.warning(str(exc))
+                    except ValueError as exc:
+                        st.warning(str(exc))
+                    except Exception:
+                        st.error("L'analyse avancée a échoué. Aucun changement n'a été apporté à votre document.")
+        clear_cached_premium_results_if_unentitled()
+        if st.session_state.get("premium_pdf_analysis_result"):
+            st.markdown("#### Résultat de l'analyse avancée")
+            st.markdown(st.session_state["premium_pdf_analysis_result"])
+
+        st.markdown("### Comparer plusieurs PDF")
+        if not has_feature_access(supabase_client, current_user, "batch_pdf_analysis"):
+            clear_premium_batch_upload_without_entitlement(st.session_state, False)
+            st.info("🔒 La comparaison de plusieurs PDF est réservée à un abonnement Premium actif. Les fichiers sélectionnés ont été effacés de cette session.")
+        else:
+            st.caption("Sélectionnez 2 à 5 PDF. Chaque fichier est limité à 10 Mo, et tous les fichiers sont validés avant extraction.")
+            batch_files = st.file_uploader(
+                "Importer 2 à 5 PDF à comparer",
+                type=["pdf"],
+                accept_multiple_files=True,
+                max_upload_size=10,
+                key="premium_pdf_batch_upload",
+            )
+            if st.button(
+                "Comparer les PDF avec Premium",
+                key="run_premium_pdf_batch",
+                disabled=not (batch_files and 2 <= len(batch_files) <= 5),
+            ):
+                if not API_KEY:
+                    st.warning("Le service IA n'est pas configuré. La comparaison n'a pas été lancée.")
+                else:
+                    with st.spinner("Validation des fichiers, vérification Premium et comparaison..."):
+                        try:
+                            prepared_documents = prepare_authorized_pdf_batch_uploads(
+                                supabase_client, current_user, batch_files, extract_pdf_text
+                            )
+                            st.session_state["premium_pdf_batch_result"] = analyze_pdf_batch(
+                                supabase_client, current_user, prepared_documents, answer
+                            )
+                        except PermissionError as exc:
+                            st.warning(str(exc))
+                        except ValueError as exc:
+                            st.warning(str(exc))
+                        except Exception:
+                            st.error("La comparaison des PDF a échoué. Vérifiez que les fichiers sont lisibles.")
+
+        clear_cached_premium_results_if_unentitled()
+        if st.session_state.get("premium_pdf_batch_result"):
+            st.markdown("#### Résultat de la comparaison")
+            st.markdown(st.session_state["premium_pdf_batch_result"])
 
 elif page == "Créer un PDF":
     st.subheader("🪄 Créer un PDF")
@@ -511,12 +604,18 @@ elif page == "Créer un PDF":
             template = get_professional_template(selected_template)
             st.session_state["pdf_title"] = template["title"]
             st.session_state["pdf_body"] = template["body"]
-    pdf_title = st.text_input("Titre du document", value="Mon document", key="pdf_title")
+    pdf_title = st.text_input(
+        "Titre du document",
+        value="Mon document",
+        key="pdf_title",
+        on_change=lambda: st.session_state.pop("premium_professional_pdf_result", None),
+    )
     pdf_body = st.text_area(
         "Contenu du document",
         height=300,
         placeholder="Écrivez ou collez votre texte ici...",
         key="pdf_body",
+        on_change=lambda: st.session_state.pop("premium_professional_pdf_result", None),
     )
     if st.button("Créer le PDF", type="primary", disabled=not pdf_body.strip()):
         try:
@@ -548,10 +647,47 @@ elif page == "Créer un PDF":
                 "La création du PDF a échoué. Vérifiez le contenu du document "
                 "et réessayez. Si le problème persiste, contactez l'assistance."
             )
+
+    if st.session_state.get("workspace_id") == "professional":
+        st.divider()
+        st.markdown("### Export professionnel Premium")
+        st.caption("Génère un rapport avec page de couverture, mise en page professionnelle et pagination. L'accès Premium est contrôlé côté serveur.")
+        if not cloud_mode or current_user is None:
+            st.info("Connectez-vous à votre compte sécurisé pour vérifier vos droits Premium.")
+        elif st.button(
+            "Générer l'export professionnel Premium",
+            key="generate_premium_professional_pdf",
+            disabled=not (pdf_title.strip() and pdf_body.strip()),
+        ):
+            st.session_state.pop("premium_professional_pdf_result", None)
+            try:
+                st.session_state["premium_professional_pdf_result"] = create_premium_professional_pdf(
+                    supabase_client, current_user, pdf_title, pdf_body
+                )
+                st.success("Votre rapport professionnel Premium est prêt.")
+            except PermissionError as exc:
+                st.warning(str(exc))
+            except ValueError as exc:
+                st.warning(str(exc))
+            except Exception:
+                st.error("L'export professionnel a échoué. Aucun fichier n'a été créé.")
+        clear_cached_premium_results_if_unentitled()
+        if st.session_state.get("premium_professional_pdf_result"):
+            st.download_button(
+                "Télécharger le rapport professionnel Premium",
+                data=st.session_state["premium_professional_pdf_result"],
+                file_name="rapport_professionnel_sow_ia.pdf",
+                mime="application/pdf",
+                type="primary",
+                key="download_premium_professional_pdf",
+            )
 elif page == "Mes documents":
     st.subheader("📁 Mes documents")
     if not cloud_mode:
         st.warning("Connectez-vous avec votre compte pour utiliser le stockage documentaire privé.")
+    elif not has_feature_access(supabase_client, current_user, "private_document_storage"):
+        clear_private_document_cache_without_entitlement(st.session_state, False)
+        st.info("🔒 Le stockage documentaire privé est réservé à un abonnement Premium actif. Vos documents restent protégés.")
     else:
         st.caption("Vos PDF sont conservés dans un espace privé Supabase, séparé de celui des autres utilisateurs. Taille maximale : 10 Mo par fichier.")
         uploaded_pdf = st.file_uploader("Ajouter un PDF à mes documents", type=["pdf"], key="private_pdf_upload", max_upload_size=10)
@@ -647,6 +783,7 @@ elif page == "Mes documents":
                                         response = answer(
                                             [{"role": "user", "content": saved_pdf_question.strip()}],
                                             document_context=st.session_state.get("selected_saved_pdf_text", ""),
+                                            work_mode=st.session_state.get("workspace_choice", "Personnel"),
                                         )
                                         st.session_state["saved_pdf_answer"] = response
                                         st.session_state["saved_pdf_answer_path"] = stored_path
@@ -720,6 +857,8 @@ elif page == "Mes documents":
                     elif st.button("Supprimer", key=f"delete_private_{stored_name}"):
                         st.session_state["pending_document_delete_path"] = stored_path
                         st.rerun()
+        except PermissionError as exc:
+            st.warning(str(exc))
         except Exception:
             st.error("Impossible de charger vos documents. Vérifiez que le bucket privé et ses règles de sécurité sont installés dans Supabase.")
 

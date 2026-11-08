@@ -7,6 +7,7 @@ import re
 
 from pypdf import PdfReader
 from uuid import uuid4
+from feature_access import require_feature_access
 
 BUCKET_NAME = "sowia-files"
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
@@ -45,7 +46,13 @@ def _owned_path(user, path, workspace_id="personal"):
     # Legacy flat files remain accessible only from the Personal workspace.
     legacy_personal = workspace == "personal" and len(parts) == 1
     workspace_file = len(parts) == 2 and parts[0] == workspace
-    if not (legacy_personal or workspace_file) or not parts[-1] or ".." in parts[-1]:
+    filename = parts[-1] if parts else ""
+    if (
+        not (legacy_personal or workspace_file)
+        or not filename
+        or ".." in filename
+        or not filename.lower().endswith(".pdf")
+    ):
         raise ValueError("Chemin de document invalide.")
     return path
 
@@ -68,6 +75,7 @@ def _validate_pdf(payload):
         raise ValueError("Le contenu du fichier n'est pas un PDF valide ou lisible.") from exc
 
 def upload_document(client, user, filename, content, workspace_id="personal"):
+    require_feature_access(client, user, "private_document_storage")
     prefix = _user_prefix(user)
     workspace = _workspace(workspace_id)
     safe_name = _safe_filename(filename)
@@ -83,6 +91,7 @@ def upload_document(client, user, filename, content, workspace_id="personal"):
     return path
 
 def list_documents(client, user, workspace_id="personal"):
+    require_feature_access(client, user, "private_document_storage")
     prefix = _user_prefix(user)
     workspace = _workspace(workspace_id)
     bucket = client.storage.from_(BUCKET_NAME)
@@ -100,10 +109,12 @@ def list_documents(client, user, workspace_id="personal"):
     return documents
 
 def download_document(client, user, path, workspace_id="personal"):
+    require_feature_access(client, user, "private_document_storage")
     owned_path = _owned_path(user, path, workspace_id)
     return client.storage.from_(BUCKET_NAME).download(owned_path)
 
 def delete_document(client, user, path, workspace_id="personal"):
+    require_feature_access(client, user, "private_document_storage")
     owned_path = _owned_path(user, path, workspace_id)
     return client.storage.from_(BUCKET_NAME).remove([owned_path])
 

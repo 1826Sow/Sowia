@@ -26,6 +26,10 @@ def test_workspace_switch_clears_pdf_caches_but_keeps_account_state():
 
     state = {
         "pdf_text": "private PDF text",
+        "premium_pdf_analysis_result": "private premium analysis",
+        "premium_pdf_batch_result": "private batch result",
+        "premium_pdf_batch_upload": "private uploaded files",
+        "premium_professional_pdf_result": b"private professional export",
         "pdf_question": "private question",
         "pdf_title": "Private professional title",
         "pdf_body": "Private professional draft",
@@ -51,6 +55,10 @@ def test_workspace_switch_clears_pdf_caches_but_keeps_account_state():
     assert all(
         key not in state
         for key in (
+            "premium_pdf_analysis_result",
+            "premium_pdf_batch_result",
+            "premium_pdf_batch_upload",
+            "premium_professional_pdf_result",
             "pdf_question",
             "pdf_title",
             "pdf_body",
@@ -156,3 +164,92 @@ def test_pending_delete_confirmation_is_cleared_when_search_has_no_results():
     clear_stale_document_delete_confirmation(state, [])
 
     assert "pending_document_delete_path" not in state
+
+
+def test_inactive_premium_entitlement_clears_all_cached_premium_outputs():
+    from session_security import clear_premium_results_without_entitlement
+
+    state = {
+        "premium_pdf_analysis_result": "private analysis",
+        "premium_pdf_batch_result": "private comparison",
+        "premium_professional_pdf_result": b"private export",
+        "unrelated_preference": "keep-me",
+    }
+
+    assert clear_premium_results_without_entitlement(state, False) is True
+
+    assert not any(
+        key in state
+        for key in (
+            "premium_pdf_analysis_result",
+            "premium_pdf_batch_result",
+            "premium_professional_pdf_result",
+        )
+    )
+    assert state["unrelated_preference"] == "keep-me"
+
+
+def test_active_premium_entitlement_keeps_cached_outputs():
+    from session_security import clear_premium_results_without_entitlement
+
+    state = {"premium_professional_pdf_result": b"private export"}
+
+    assert clear_premium_results_without_entitlement(state, True) is False
+    assert state["premium_professional_pdf_result"] == b"private export"
+
+
+
+def test_inactive_private_storage_entitlement_clears_cached_document_content():
+    from session_security import clear_private_document_cache_without_entitlement
+
+    state = {
+        "private_pdf_upload": "pending uploaded private PDF",
+        "prepared_document_bytes": b"private pdf",
+        "prepared_document_path": "user/personal/file.pdf",
+        "pending_document_delete_path": "user/personal/file.pdf",
+        "selected_saved_pdf_path": "user/personal/file.pdf",
+        "selected_saved_pdf_name": "file.pdf",
+        "selected_saved_pdf_text": "private extracted text",
+        "selected_saved_pdf_question": "private question",
+        "saved_pdf_answer": "private answer",
+        "saved_pdf_answer_path": "user/personal/file.pdf",
+        "unrelated_preference": "keep-me",
+    }
+
+    assert clear_private_document_cache_without_entitlement(state, False) is True
+    assert not any(key.startswith(("prepared_document", "selected_saved_pdf", "saved_pdf")) for key in state)
+    assert "pending_document_delete_path" not in state
+    assert "private_pdf_upload" not in state
+    assert state["unrelated_preference"] == "keep-me"
+
+
+def test_active_private_storage_entitlement_keeps_document_cache():
+    from session_security import clear_private_document_cache_without_entitlement
+
+    state = {"selected_saved_pdf_text": "authorized private text"}
+
+    assert clear_private_document_cache_without_entitlement(state, True) is False
+    assert state["selected_saved_pdf_text"] == "authorized private text"
+
+
+
+def test_inactive_premium_entitlement_clears_batch_pdf_upload():
+    from session_security import clear_premium_batch_upload_without_entitlement
+
+    state = {
+        "premium_pdf_batch_upload": ["private uploaded PDF"],
+        "unrelated_preference": "keep-me",
+    }
+
+    assert clear_premium_batch_upload_without_entitlement(state, False) is True
+    assert "premium_pdf_batch_upload" not in state
+    assert state["unrelated_preference"] == "keep-me"
+
+
+def test_active_premium_entitlement_keeps_batch_pdf_upload():
+    from session_security import clear_premium_batch_upload_without_entitlement
+
+    state = {"premium_pdf_batch_upload": ["authorized uploaded PDF"]}
+
+    assert clear_premium_batch_upload_without_entitlement(state, True) is False
+    assert state["premium_pdf_batch_upload"] == ["authorized uploaded PDF"]

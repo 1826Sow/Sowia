@@ -31,6 +31,14 @@ Consulter le [guide de l’espace Professionnel](docs/GUIDE_ESPACE_PROFESSIONNEL
 
 Après exécution, lancer le diagnostic en lecture seule `supabase_storage_diagnostics.sql`. Il affiche la configuration du bucket et **toutes** les politiques de `storage.objects`, y compris d'éventuelles anciennes règles qui pourraient élargir les accès. Ce diagnostic ne modifie aucune donnée ni configuration. Conserver le résultat pour vérifier l'installation réelle.
 
+Lancer également les deux diagnostics complémentaires en lecture seule :
+- `supabase_sequence_grants_diagnostics.sql` : vérifie les privilèges effectifs sur les séquences du schéma `public`.
+- `supabase_rls_storage_diagnostics.sql` : vérifie l'activation RLS, les politiques des tables SOW IA, la configuration du bucket privé et toutes les politiques `storage.objects`.
+
+Ces trois diagnostics ne modifient rien. Examiner leurs résultats avant toute correction ; ne pas révoquer de privilèges ni supprimer de politiques sans avoir identifié précisément leur usage et leur impact.
+
+Ajouter enfin `supabase_legacy_pdf_inventory_diagnostics.sql` pour obtenir un inventaire en lecture seule des PDF à la racine historique, des PDF Personnel et Professionnel, ainsi que des chemins PDF inattendus. La première requête donne uniquement des totaux ; la seconde affiche les UUID utilisateurs et chemins des anciens objets pour préparer une migration. Garder ces résultats privés. Ce diagnostic ne copie, ne déplace et ne supprime aucun fichier.
+
 Le script `supabase_storage_policies.sql` est le script canonique pour sécuriser le bucket privé. Il peut être réexécuté sans supprimer les fichiers existants. Il retire également les anciennes politiques plus permissives avant de créer les règles par utilisateur et espace de travail. `supabase/storage.sql` est conservé uniquement pour compatibilité avec les anciennes installations.
 
 ### Secrets requis
@@ -86,3 +94,17 @@ Une action GitHub exécute ces contrôles automatiquement sur les modifications.
 ## État de mise en production
 
 Le dépôt contient l'intégration Supabase et les tests de sécurité associés. Le déploiement effectif, l'exécution des scripts SQL dans le projet Supabase, les secrets de l'hébergeur, les URL OAuth autorisées et les tests de bout en bout sur l'URL publique restent à vérifier. Ne pas annoncer l'application comme entièrement sécurisée ou finalisée avant ces vérifications.
+
+
+### Migration prudente des anciens PDF
+
+Le module `legacy_pdf_migration.py` prépare la reprise des anciens PDF enregistrés sous `<user_id>/<fichier.pdf>` vers `<user_id>/personal/<fichier.pdf>`.
+
+- Par défaut, `migrate_legacy_pdfs(client, user)` effectue uniquement un **dry-run** (inventaire sans écriture).
+- Le mode `apply=True` copie les fichiers sans écraser une destination existante, puis compare les empreintes SHA-256 de la source et de la copie.
+- Les fichiers sources ne sont **jamais supprimés** par ce module.
+- Les collisions, PDF invalides et erreurs sont signalés individuellement.
+- Utiliser uniquement un client Supabase authentifié avec les droits de l'utilisateur concerné ; ne jamais utiliser ni exposer la clé `service_role`.
+- Ce module n'est pas déclenché automatiquement par l'application et n'a pas été exécuté sur le projet Supabase de production.
+
+La suppression éventuelle des anciens objets est une opération distincte, qui nécessitera une vérification indépendante et une autorisation explicite après sauvegarde et validation des copies.
