@@ -1,7 +1,17 @@
 """Tests for safe, copy-only migration of legacy PDF objects."""
 import pytest
+from io import BytesIO
+from pypdf import PdfWriter
 
 from legacy_pdf_migration import migrate_legacy_pdfs, plan_legacy_pdf_migration
+
+
+def valid_pdf():
+    writer = PdfWriter()
+    writer.add_blank_page(width=72, height=72)
+    output = BytesIO()
+    writer.write(output)
+    return output.getvalue()
 
 
 class User:
@@ -58,10 +68,10 @@ class FakeClient:
 
 def test_plan_is_read_only_and_only_selects_root_pdf_objects():
     client = FakeClient({
-        "user-123/old.pdf": b"%PDF-1.7 old",
+        "user-123/old.pdf": valid_pdf(),
         "user-123/notes.txt": b"text",
-        "user-123/personal/existing.pdf": b"%PDF-1.7 existing",
-        "user-123/professional/work.pdf": b"%PDF-1.7 work",
+        "user-123/personal/existing.pdf": valid_pdf(),
+        "user-123/professional/work.pdf": valid_pdf(),
     })
 
     plan = plan_legacy_pdf_migration(client, User())
@@ -76,7 +86,7 @@ def test_plan_is_read_only_and_only_selects_root_pdf_objects():
 
 
 def test_default_run_is_dry_run_and_does_not_write_or_delete():
-    client = FakeClient({"user-123/old.pdf": b"%PDF-1.7 old"})
+    client = FakeClient({"user-123/old.pdf": valid_pdf()})
 
     report = migrate_legacy_pdfs(client, User())
 
@@ -87,7 +97,7 @@ def test_default_run_is_dry_run_and_does_not_write_or_delete():
 
 
 def test_apply_copies_and_verifies_pdf_but_never_deletes_source():
-    payload = b"%PDF-1.7 valid content"
+    payload = valid_pdf()
     client = FakeClient({"user-123/old.pdf": payload})
 
     report = migrate_legacy_pdfs(client, User(), apply=True)
@@ -103,8 +113,8 @@ def test_apply_copies_and_verifies_pdf_but_never_deletes_source():
 
 
 def test_existing_personal_destination_is_reported_as_collision_and_never_overwritten():
-    source = b"%PDF-1.7 legacy"
-    existing = b"%PDF-1.7 current"
+    source = valid_pdf()
+    existing = valid_pdf()
     client = FakeClient({
         "user-123/old.pdf": source,
         "user-123/personal/old.pdf": existing,
@@ -129,7 +139,7 @@ def test_invalid_legacy_object_is_not_copied():
 
 
 def test_repeated_apply_is_idempotent_and_reports_destination_collision():
-    client = FakeClient({"user-123/old.pdf": b"%PDF-1.7 legacy"})
+    client = FakeClient({"user-123/old.pdf": valid_pdf()})
 
     first = migrate_legacy_pdfs(client, User(), apply=True)
     second = migrate_legacy_pdfs(client, User(), apply=True)
@@ -147,7 +157,7 @@ def test_user_must_be_authenticated_before_migration_planning():
 
 def test_plan_paginates_through_more_than_one_hundred_legacy_objects():
     objects = {
-        f"user-123/legacy-{index:03}.pdf": b"%PDF-1.7 content"
+        f"user-123/legacy-{index:03}.pdf": valid_pdf()
         for index in range(205)
     }
     client = FakeClient(objects)
