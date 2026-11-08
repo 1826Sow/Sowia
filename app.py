@@ -550,6 +550,12 @@ elif page == "Créer un PDF":
             )
 elif page == "Mes documents":
     st.subheader("📁 Mes documents")
+    upload_notice = st.session_state.pop("document_upload_notice", None)
+    if upload_notice:
+        st.success(upload_notice)
+    upload_error = st.session_state.pop("document_upload_error", None)
+    if upload_error:
+        st.error(upload_error)
     if not cloud_mode:
         st.warning("Connectez-vous avec votre compte pour utiliser le stockage documentaire privé.")
     else:
@@ -558,12 +564,16 @@ elif page == "Mes documents":
         if uploaded_pdf and st.button("Enregistrer dans mes documents", type="primary"):
             try:
                 upload_document(supabase_client, current_user, uploaded_pdf.name, uploaded_pdf.getvalue(), st.session_state.get("workspace_id", "personal"))
-                st.success("Document enregistré dans votre espace privé.")
+                st.session_state["document_upload_notice"] = "Document enregistré dans votre espace privé."
                 st.rerun()
             except (ValueError, PermissionError) as exc:
-                st.error(str(exc))
-            except Exception:
-                st.error("Impossible d'enregistrer le document. Vérifiez que le stockage privé Supabase est configuré.")
+                st.session_state["document_upload_error"] = str(exc)
+                st.rerun()
+            except Exception as exc:
+                # Show a short diagnostic so upload failures can be fixed without exposing credentials.
+                diagnostic = f"{type(exc).__name__}: {str(exc)[:300]}"
+                st.session_state["document_upload_error"] = f"Échec de l'enregistrement — {diagnostic}"
+                st.rerun()
         st.divider()
         st.markdown("#### Mes fichiers")
         try:
