@@ -33,7 +33,7 @@ from premium_batch_analysis import analyze_pdf_batch, prepare_pdf_batch_uploads
 from premium_exports import create_premium_professional_pdf
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
-from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation
+from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_premium_results_without_entitlement
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
@@ -234,6 +234,23 @@ def delete_app_memory(memory_id):
     if cloud_mode:
         return cloud_storage.delete_memory(supabase_client, current_user, memory_id, st.session_state.get("workspace_id", "personal"))
     return local_delete_memory(memory_id, st.session_state.get("workspace_id", "personal"))
+
+def clear_cached_premium_results_if_unentitled():
+    """Recheck the signed-in user's entitlement before showing cached Premium output."""
+    entitlement_active = False
+    if cloud_mode and current_user is not None:
+        try:
+            entitlement_active = premium_access.get_entitlement(
+                supabase_client, current_user
+            ) is not None
+        except Exception:
+            # Fail closed: a temporary entitlement lookup failure must not expose
+            # a previously generated Premium result or download.
+            entitlement_active = False
+    return clear_premium_results_without_entitlement(
+        st.session_state, entitlement_active
+    )
+
 
 def go_to_page(page_name):
     st.session_state.page_nav = page_name
@@ -523,6 +540,7 @@ elif page == "Analyse PDF":
                         st.warning(str(exc))
                     except Exception:
                         st.error("L'analyse avancée a échoué. Aucun changement n'a été apporté à votre document.")
+        clear_cached_premium_results_if_unentitled()
         if st.session_state.get("premium_pdf_analysis_result"):
             st.markdown("#### Résultat de l'analyse avancée")
             st.markdown(st.session_state["premium_pdf_analysis_result"])
@@ -559,6 +577,7 @@ elif page == "Analyse PDF":
                     except Exception:
                         st.error("La comparaison des PDF a échoué. Vérifiez que les fichiers sont lisibles.")
 
+        clear_cached_premium_results_if_unentitled()
         if st.session_state.get("premium_pdf_batch_result"):
             st.markdown("#### Résultat de la comparaison")
             st.markdown(st.session_state["premium_pdf_batch_result"])
@@ -644,6 +663,7 @@ elif page == "Créer un PDF":
                 st.warning(str(exc))
             except Exception:
                 st.error("L'export professionnel a échoué. Aucun fichier n'a été créé.")
+        clear_cached_premium_results_if_unentitled()
         if st.session_state.get("premium_professional_pdf_result"):
             st.download_button(
                 "Télécharger le rapport professionnel Premium",
