@@ -3,6 +3,7 @@ import pytest
 from io import BytesIO
 from pypdf import PdfWriter
 
+from document_storage import MAX_DOCUMENT_BYTES
 from legacy_pdf_migration import migrate_legacy_pdfs, plan_legacy_pdf_migration
 
 
@@ -135,6 +136,19 @@ def test_invalid_legacy_object_is_not_copied():
 
     assert report[0]["status"] == "invalid_source_pdf"
     assert "user-123/personal/fake.pdf" not in client.bucket.objects
+    assert client.bucket.removed == []
+
+
+
+def test_oversized_legacy_pdf_is_rejected_before_copy():
+    payload = b"%PDF-" + (b"x" * MAX_DOCUMENT_BYTES)
+    client = FakeClient({"user-123/oversized.pdf": payload})
+
+    report = migrate_legacy_pdfs(client, User(), apply=True)
+
+    assert report[0]["status"] == "source_too_large"
+    assert "user-123/personal/oversized.pdf" not in client.bucket.objects
+    assert client.bucket.uploaded == []
     assert client.bucket.removed == []
 
 
