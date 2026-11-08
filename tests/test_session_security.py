@@ -203,6 +203,7 @@ def test_inactive_private_storage_entitlement_clears_cached_document_content():
     from session_security import clear_private_document_cache_without_entitlement
 
     state = {
+        "private_pdf_upload": "pending uploaded private PDF",
         "prepared_document_bytes": b"private pdf",
         "prepared_document_path": "user/personal/file.pdf",
         "pending_document_delete_path": "user/personal/file.pdf",
@@ -218,6 +219,7 @@ def test_inactive_private_storage_entitlement_clears_cached_document_content():
     assert clear_private_document_cache_without_entitlement(state, False) is True
     assert not any(key.startswith(("prepared_document", "selected_saved_pdf", "saved_pdf")) for key in state)
     assert "pending_document_delete_path" not in state
+    assert "private_pdf_upload" not in state
     assert state["unrelated_preference"] == "keep-me"
 
 
