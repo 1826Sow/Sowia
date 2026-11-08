@@ -33,3 +33,24 @@ def test_premium_feature_uses_server_side_entitlement_guard(monkeypatch):
 
 def test_private_document_storage_is_premium():
     assert feature_access.feature_tier("private_document_storage") == "premium"
+
+
+def test_has_feature_access_returns_false_when_premium_is_denied(monkeypatch):
+    monkeypatch.setattr(
+        feature_access, "require_feature_access",
+        lambda *args: (_ for _ in ()).throw(PermissionError("Premium requis")),
+    )
+    assert feature_access.has_feature_access("client", "user", "private_document_storage") is False
+
+
+def test_has_feature_access_fails_closed_when_entitlement_backend_fails(monkeypatch):
+    monkeypatch.setattr(
+        feature_access, "require_feature_access",
+        lambda *args: (_ for _ in ()).throw(RuntimeError("backend indisponible")),
+    )
+    assert feature_access.has_feature_access("client", "user", "private_document_storage") is False
+
+
+def test_has_feature_access_returns_true_when_feature_is_authorized(monkeypatch):
+    monkeypatch.setattr(feature_access, "require_feature_access", lambda *args: None)
+    assert feature_access.has_feature_access("client", "user", "private_document_storage") is True
