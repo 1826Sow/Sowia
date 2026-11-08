@@ -182,3 +182,24 @@ def test_all_storage_policies_restrict_objects_to_pdf_files():
         assert policy_start in POLICIES
         policy_body = POLICIES.split(policy_start, 1)[1].split(";", 1)[0]
         assert "lower(name) like '%.pdf'" in policy_body
+
+
+COMPAT_POLICIES = (
+    ROOT / "supabase" / "storage.sql"
+).read_text(encoding="utf-8").lower()
+
+
+def _without_sql_comments_and_whitespace(sql):
+    executable_lines = [
+        line.split("--", 1)[0]
+        for line in sql.splitlines()
+    ]
+    return "".join("".join(executable_lines).split())
+
+
+def test_legacy_compatibility_storage_sql_matches_canonical_policy_sql():
+    # Keep the deprecated compatibility path behavior-identical to the
+    # canonical script so older setup instructions cannot weaken Storage RLS.
+    assert _without_sql_comments_and_whitespace(COMPAT_POLICIES) == (
+        _without_sql_comments_and_whitespace(POLICIES)
+    )
