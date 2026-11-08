@@ -172,3 +172,13 @@ def test_legacy_pdf_inventory_handles_missing_or_malformed_size_metadata_safely(
     assert "case" in LEGACY_PDF_INVENTORY
     assert "when (metadata ->> 'size') ~ '^[0-9]+$'" in LEGACY_PDF_INVENTORY
     assert "else null" in LEGACY_PDF_INVENTORY
+
+
+
+def test_all_storage_policies_restrict_objects_to_pdf_files():
+    assert POLICIES.count("and lower(name) like '%.pdf'") == 3
+    for command in ("select", "insert", "delete"):
+        policy_start = f"on storage.objects for {command} to authenticated"
+        assert policy_start in POLICIES
+        policy_body = POLICIES.split(policy_start, 1)[1].split(";", 1)[0]
+        assert "lower(name) like '%.pdf'" in policy_body
