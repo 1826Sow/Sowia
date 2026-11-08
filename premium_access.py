@@ -71,6 +71,17 @@ def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
     )
 
 
+def require_workspace_access(workspace_id, user_client, user):
+    """Require an active entitlement for the Professional workspace.
+
+    The Personal workspace remains free. Professional access fails closed if
+    the user is unauthenticated or the entitlement is missing/unreadable.
+    """
+    if str(workspace_id or "").strip().lower() != "professional":
+        return None
+    return require_active_entitlement(user_client, user)
+
+
 def require_active_entitlement(user_client, user):
     """Fail closed before executing any Premium-only server-side operation.
 
