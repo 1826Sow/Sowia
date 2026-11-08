@@ -5,6 +5,7 @@ server-only service-role client and are called only after PayPal capture
 validation succeeds.
 """
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 
 from settings import get_setting
 
@@ -38,15 +39,28 @@ def get_entitlement(user_client, user):
 def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
     if admin_client is None:
         raise RuntimeError("Le stockage sécurisé des abonnements n'est pas configuré.")
-    if not all((user_id, order_id, amount)) or currency != "EUR":
+    normalized_user_id = str(user_id or "").strip()
+    normalized_order_id = str(order_id or "").strip()
+    if not normalized_user_id or not normalized_order_id or amount is None:
         raise ValueError("Informations de paiement Premium incomplètes.")
+    try:
+        normalized_amount = Decimal(str(amount)).quantize(Decimal("0.01"))
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValueError("Le montant Premium doit être un montant en euros valide.")
+    if (
+        not normalized_amount.is_finite()
+        or normalized_amount <= 0
+        or normalized_amount > Decimal("9999.99")
+        or str(currency).upper() != "EUR"
+    ):
+        raise ValueError("Le montant Premium ou la devise ne sont pas valides.")
     payload = {
-        "user_id": str(user_id),
+        "user_id": normalized_user_id,
         "status": "active",
         "provider": "paypal",
-        "paypal_order_id": str(order_id),
-        "amount": str(amount),
-        "currency": currency,
+        "paypal_order_id": normalized_order_id,
+        "amount": f"{normalized_amount:.2f}",
+        "currency": "EUR",
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     return (
