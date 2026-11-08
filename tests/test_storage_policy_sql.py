@@ -60,3 +60,30 @@ def test_workspace_migration_adds_and_constrains_workspace_columns():
         assert f"alter table public.{table} add column if not exists workspace_id text not null default 'personal'" in WORKSPACES
         assert f"alter table public.{table} add constraint {table}_workspace_id_check" in WORKSPACES
     assert "check (workspace_id in ('personal', 'professional'))" in WORKSPACES
+
+
+def test_cloud_tables_enable_rls_and_scope_policies_to_authenticated_owner():
+    for table in ("sowia_messages", "sowia_memory_items", "sowia_entitlements"):
+        assert f"alter table public.{table} enable row level security" in SCHEMA
+    for policy in (
+        "users can read own messages",
+        "users can add own messages",
+        "users can delete own messages",
+        "users can read own memory",
+        "users can add own memory",
+        "users can delete own memory",
+        "users can read own premium entitlement",
+    ):
+        assert f'create policy "{policy}"' in SCHEMA
+    assert SCHEMA.count("(select auth.uid()) = user_id") == 7
+
+
+def test_authenticated_users_cannot_write_their_own_premium_entitlement():
+    entitlement_grants = [
+        line.strip()
+        for line in SCHEMA.splitlines()
+        if line.strip().startswith("grant ") and "sowia_entitlements" in line
+    ]
+    assert entitlement_grants == [
+        "grant select on public.sowia_entitlements to authenticated;"
+    ]
