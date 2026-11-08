@@ -1,6 +1,7 @@
 """Private, user-scoped PDF storage using Supabase Storage."""
 from io import BytesIO
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 import os
 import re
 
@@ -129,6 +130,18 @@ def _document_created_timestamp(document):
     except (TypeError, ValueError, OverflowError):
         return None
 
+
+
+def document_upload_label(document):
+    """Format a Storage upload date in the Paris time zone for the document list."""
+    timestamp = _document_created_timestamp(document)
+    if timestamp is None:
+        return None
+    try:
+        uploaded = datetime.fromtimestamp(timestamp, tz=ZoneInfo("Europe/Paris"))
+    except (OverflowError, OSError, ValueError):
+        return None
+    return f"Ajouté le {uploaded:%d/%m/%Y à %H:%M}"
 
 def filter_documents(documents, query="", sort_order="name_asc"):
     """Return a sorted, filtered copy without mutating the storage listing."""
