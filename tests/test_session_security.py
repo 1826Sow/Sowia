@@ -26,6 +26,9 @@ def test_workspace_switch_clears_pdf_caches_but_keeps_account_state():
 
     state = {
         "pdf_text": "private PDF text",
+        "premium_pdf_analysis_result": "private premium analysis",
+        "premium_pdf_batch_result": "private batch result",
+        "premium_pdf_batch_upload": "private uploaded files",
         "pdf_question": "private question",
         "pdf_title": "Private professional title",
         "pdf_body": "Private professional draft",
@@ -51,6 +54,9 @@ def test_workspace_switch_clears_pdf_caches_but_keeps_account_state():
     assert all(
         key not in state
         for key in (
+            "premium_pdf_analysis_result",
+            "premium_pdf_batch_result",
+            "premium_pdf_batch_upload",
             "pdf_question",
             "pdf_title",
             "pdf_body",
