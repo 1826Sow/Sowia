@@ -341,3 +341,24 @@ def test_private_storage_checks_premium_before_download_or_delete(monkeypatch):
 
     assert client.bucket.downloaded is None
     assert client.bucket.removed is None
+
+
+
+def test_legacy_flat_pdf_can_be_downloaded_and_deleted_only_from_personal():
+    client = FakeClient()
+    legacy_path = "user-123/old-report.pdf"
+
+    assert docs.download_document(client, User(), legacy_path, "personal") == b"%PDF"
+    assert client.bucket.downloaded == legacy_path
+
+    docs.delete_document(client, User(), legacy_path, "personal")
+    assert client.bucket.removed == [legacy_path]
+
+
+def test_legacy_flat_pdf_cannot_be_downloaded_from_professional_workspace():
+    client = FakeClient()
+    with pytest.raises(ValueError, match="Chemin de document invalide"):
+        docs.download_document(
+            client, User(), "user-123/old-report.pdf", "professional"
+        )
+    assert client.bucket.downloaded is None
