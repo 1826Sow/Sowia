@@ -139,3 +139,34 @@ def test_save_message_rejects_unknown_role_before_database_write():
 
     with pytest.raises(ValueError, match="Rôle de message invalide"):
         cloud_storage.save_message(Client(), User(), "private-session", "admin", "Nope")
+
+
+@pytest.mark.parametrize(
+    ("requested_limit", "expected_limit"),
+    [(0, 1), (-5, 1), (1, 1), (30, 30), (100, 100), (500, 100), ("7", 7)],
+)
+def test_history_limit_is_clamped_to_safe_range(requested_limit, expected_limit):
+    client = FakeClient()
+
+    cloud_storage.get_history(
+        client, User(), "private-session", limit=requested_limit, workspace_id="personal"
+    )
+
+    query = client.tables["sowia_messages"]
+    assert ("limit", expected_limit) in query.operations
+    assert ("order", "id", True) in query.operations
+
+
+def test_history_query_keeps_requested_user_session_and_workspace_together():
+    client = FakeClient()
+
+    cloud_storage.get_history(
+        client, User(), "professional-session", workspace_id="professional"
+    )
+
+    filters = client.tables["sowia_messages"].filters
+    assert filters == [
+        ("user_id", "user-123"),
+        ("workspace_id", "professional"),
+        ("session_id", "professional-session"),
+    ]
