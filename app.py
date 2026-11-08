@@ -195,7 +195,6 @@ if cloud_mode and current_user is not None:
             st.rerun()
         except Exception as exc:
             st.error("Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.")
-            st.caption(str(exc))
     if st.query_params.get("paypal") == "cancel":
         st.info("Le paiement a été annulé. Aucun montant n'a été confirmé par SOW IA.")
         st.query_params.clear()
@@ -741,7 +740,6 @@ elif page == "Abonnement":
         except Exception as exc:
             entitlement = None
             st.error("Impossible de vérifier votre abonnement auprès de Supabase.")
-            st.caption(str(exc))
 
         if entitlement:
             st.success("Votre accès SOW IA Premium est actif.")
@@ -772,7 +770,6 @@ elif page == "Abonnement":
                         st.session_state["paypal_order_id"] = order["id"]
                     except Exception as exc:
                         st.error("Impossible de préparer le paiement PayPal.")
-                        st.caption(str(exc))
                 approval_url = st.session_state.get("paypal_approval_url")
                 if approval_url:
                     st.link_button("Continuer vers PayPal", approval_url, type="primary")
