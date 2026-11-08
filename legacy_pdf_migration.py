@@ -73,7 +73,7 @@ def migrate_legacy_pdfs(client, user, *, apply=False):
             continue
         try:
             source_bytes = bytes(bucket.download(entry["source"]))
-            if not source_bytes.startswith(PDF_SIGNATURE):
+            if PDF_SIGNATURE not in source_bytes[:1024]:
                 report.append({**entry, "status": "invalid_source_pdf"})
                 continue
 
