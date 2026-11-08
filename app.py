@@ -463,6 +463,8 @@ elif page == "Analyse PDF":
     if file and st.button("Extraire le texte"):
         try:
             st.session_state.pdf_text = extract_pdf_text(file)
+            st.session_state.pop("premium_pdf_analysis_result", None)
+            st.session_state.pop("premium_pdf_batch_result", None)
             st.success("Texte extrait.")
         except ValueError as exc:
             st.error(str(exc))
