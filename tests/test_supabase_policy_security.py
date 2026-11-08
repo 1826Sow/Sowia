@@ -72,3 +72,35 @@ def test_pdf_upload_policy_requires_owner_and_exact_workspace_folder():
     assert "array_length(storage.foldername(name), 1) = 2" in block
     assert "personal" in block
     assert "professional" in block
+
+
+LEGACY_STORAGE = (
+    ROOT / "supabase" / "storage.sql"
+).read_text(encoding="utf-8").lower()
+
+
+def test_legacy_storage_script_keeps_the_same_private_bucket_settings():
+    for sql in (STORAGE, LEGACY_STORAGE):
+        assert "'sowia-files', 'sowia-files', false, 10485760" in sql
+        assert "array['application/pdf']" in sql
+
+
+def test_legacy_storage_script_removes_old_permissive_policy_names():
+    old_names = (
+        "sow ia users read own documents",
+        "sow ia users upload own documents",
+        "sow ia users delete own documents",
+    )
+    for sql in (STORAGE, LEGACY_STORAGE):
+        for name in old_names:
+            assert f'drop policy if exists "{name}"' in sql
+
+
+def test_legacy_and_canonical_storage_scripts_use_matching_workspace_rules():
+    policy_names = (
+        "SOW IA users can read own workspace PDFs",
+        "SOW IA users can upload own workspace PDFs",
+        "SOW IA users can delete own workspace PDFs",
+    )
+    for name in policy_names:
+        assert _policy_block(STORAGE, name) == _policy_block(LEGACY_STORAGE, name)
