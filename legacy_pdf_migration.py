@@ -5,7 +5,12 @@ PDF into the Personal workspace; it never deletes or overwrites the source.
 """
 from hashlib import sha256
 
-from document_storage import BUCKET_NAME, PDF_SIGNATURE, _user_prefix
+from document_storage import (
+    BUCKET_NAME,
+    MAX_DOCUMENT_BYTES,
+    _user_prefix,
+    _validate_pdf,
+)
 
 
 def _is_pdf_object(item):
@@ -88,7 +93,12 @@ def migrate_legacy_pdfs(client, user, *, apply=False):
             continue
         try:
             source_bytes = bytes(bucket.download(entry["source"]))
-            if PDF_SIGNATURE not in source_bytes[:1024]:
+            if len(source_bytes) > MAX_DOCUMENT_BYTES:
+                report.append({**entry, "status": "source_too_large"})
+                continue
+            try:
+                _validate_pdf(source_bytes)
+            except (ValueError, TypeError):
                 report.append({**entry, "status": "invalid_source_pdf"})
                 continue
 
