@@ -164,3 +164,33 @@ def test_authenticated_user_accepts_direct_user_response():
 
     client = type("Client", (), {"auth": Auth()})()
     assert supabase_auth.authenticated_user(client) is expected_user
+
+
+def test_pkce_verifier_expires_after_ten_minutes(monkeypatch, tmp_path):
+    monkeypatch.setattr(supabase_auth, "_OAUTH_DB", tmp_path / "oauth-ttl.db")
+    now = [1000]
+    monkeypatch.setattr(supabase_auth.time, "time", lambda: now[0])
+    storage = supabase_auth._BrowserScopedOAuthStorage("browser-hash")
+    key = "supabase.auth.token-code-verifier"
+
+    storage.set_item(key, "short-lived-verifier")
+    assert storage.get_item(key) == "short-lived-verifier"
+
+    now[0] += supabase_auth._VERIFIER_TTL_SECONDS + 1
+    assert storage.get_item(key) is None
+
+
+def test_non_pkce_session_values_are_kept_in_memory_not_sqlite(monkeypatch, tmp_path):
+    database = tmp_path / "oauth-memory-only.db"
+    monkeypatch.setattr(supabase_auth, "_OAUTH_DB", database)
+    storage = supabase_auth._BrowserScopedOAuthStorage("browser-hash")
+
+    storage.set_item("supabase.auth.token", "session-token")
+
+    assert storage.get_item("supabase.auth.token") == "session-token"
+    assert not database.exists()
+
+
+@pytest.mark.parametrize("browser_id", ["", "short", "contains spaces", "x" * 100])
+def test_invalid_browser_scope_is_rejected(browser_id):
+    assert supabase_auth._browser_storage_id(browser_id) is None
