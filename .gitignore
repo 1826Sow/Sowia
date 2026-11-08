@@ -1,8 +1,32 @@
+# Secrets et configurations privées
 .env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+secrets.toml
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python
 .venv/
 venv/
 __pycache__/
 *.py[cod]
-.streamlit/secrets.toml
+*.egg-info/
+
+# Données et sauvegardes
 data/
+*.sqlite
+*.sqlite3
+*.db
+*.bak
+*.backup
+
+# Fichiers système
 .DS_Store
+Thumbs.db
+
+# Journaux
+*.log
