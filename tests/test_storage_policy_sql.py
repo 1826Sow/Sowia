@@ -87,3 +87,19 @@ def test_authenticated_users_cannot_write_their_own_premium_entitlement():
     assert entitlement_grants == [
         "grant select on public.sowia_entitlements to authenticated;"
     ]
+
+
+SEQUENCE_DIAGNOSTICS = (
+    ROOT / "supabase_sequence_grants_diagnostics.sql"
+).read_text(encoding="utf-8").lower()
+
+
+def test_sequence_privilege_diagnostic_is_read_only_and_checks_effective_access():
+    assert "has_sequence_privilege('authenticated'" in SEQUENCE_DIAGNOSTICS
+    assert "sowia_messages_id_seq" in SEQUENCE_DIAGNOSTICS
+    assert "sowia_memory_items_id_seq" in SEQUENCE_DIAGNOSTICS
+    assert "from pg_class" in SEQUENCE_DIAGNOSTICS
+    assert not any(
+        statement in SEQUENCE_DIAGNOSTICS
+        for statement in ("grant ", "revoke ", "alter ", "drop ", "delete from", "update ")
+    )
