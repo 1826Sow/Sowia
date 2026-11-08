@@ -59,7 +59,8 @@ if "pdf_text" not in st.session_state:
     st.session_state.pdf_text = ""
 
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
-auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "false")).strip().lower() in {"1", "true", "yes"}
+# Fail closed by default on hosted deployments; local development must opt out explicitly.
+auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "true")).strip().lower() in {"1", "true", "yes"}
 supabase_enabled = configuration_ready()
 if auth_required and not supabase_enabled:
     st.error("SOW IA est en mode protégé, mais Supabase n'est pas encore configuré. L'accès est fermé jusqu'à la configuration de l'authentification.")
@@ -97,8 +98,7 @@ if cloud_mode:
         if current_user is None:
             # Never keep the previous account's private PDF or payment cache after
             # a missing/expired login.
-            clear_private_session_state(st.session_state)
-            st.session_state.pop("sowia_authenticated_user_id", None)
+            clear_private_session_state(st.session_state)            st.session_state.pop("sowia_authenticated_user_id", None)
         else:
             authenticated_user_id = str(current_user.id)
             if st.session_state.get("sowia_authenticated_user_id") != authenticated_user_id:
@@ -197,8 +197,7 @@ if cloud_mode and current_user is not None:
                 payment_config["amount"], payment_config["currency"],
             )
             st.query_params.clear()
-            st.session_state["paypal_purchase_confirmed"] = True
-            st.rerun()
+            st.session_state["paypal_purchase_confirmed"] = True            st.rerun()
         except Exception as exc:
             st.error("Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.")
             st.caption(str(exc))
@@ -297,8 +296,7 @@ if page == "Accueil":
         ("👑", "Abonnement", "Découvrez l’espace Premium"),
         ("⚙️", "Paramètres", "Vérifiez votre configuration"),
         ("❓", "Aide", "Consultez les indications d’utilisation"),
-    ]
-    for start in range(0, len(shortcuts), 3):
+    ]    for start in range(0, len(shortcuts), 3):
         cols = st.columns(3)
         for col, (icon, title, desc) in zip(cols, shortcuts[start:start + 3]):
             with col:
@@ -397,8 +395,7 @@ elif page == "Recherche Web":
             st.error(str(exc))
 
 elif page == "Analyse PDF":
-    st.subheader("📄 Analyse PDF")
-    file = st.file_uploader("Importer un document PDF", type=["pdf"])
+    st.subheader("📄 Analyse PDF")    file = st.file_uploader("Importer un document PDF", type=["pdf"])
     if file and st.button("Extraire le texte"):
         try:
             st.session_state.pdf_text = extract_pdf_text(file)
@@ -497,8 +494,7 @@ elif page == "Mes documents":
                 with st.container(border=True):
                     st.write(f"📄 {display_name}")
                     prepared_path = st.session_state.get("prepared_document_path")
-                    if prepared_path == stored_path and st.session_state.get("prepared_document_bytes"):
-                        st.download_button(
+                    if prepared_path == stored_path and st.session_state.get("prepared_document_bytes"):                        st.download_button(
                             "Télécharger le PDF",
                             data=st.session_state["prepared_document_bytes"],
                             file_name=display_name,
