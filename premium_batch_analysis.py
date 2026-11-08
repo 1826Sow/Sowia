@@ -51,7 +51,7 @@ def analyze_pdf_batch(user_client,user,documents,answer_function):
         content=content[:remaining]; total_chars+=len(content); normalized.append((index,safe_name,content))
     if len(normalized)<2: raise ValueError("Au moins deux PDF avec du texte extractible sont nécessaires.")
     require_feature_access(user_client,user,"batch_pdf_analysis")
-    document_context="\\n\\n".join(f"DOCUMENT {i} — {name}\\n{content}" for i,name,content in normalized)
+    document_context="\n\n".join(f"DOCUMENT {i} — {name}\n{content}" for i,name,content in normalized)
     prompt=("Compare les documents fournis et rédige une analyse groupée en français. "
       "Présente : 1) une synthèse de chaque document, 2) les thèmes communs, "
       "3) les différences et contradictions, 4) les chiffres ou faits importants en indiquant le document source, "
