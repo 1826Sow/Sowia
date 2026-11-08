@@ -144,6 +144,7 @@ def _validate_completed_capture(details, normalized_order_id, user_id, config):
         or amount.get("currency_code") != config["currency"]
         or amount.get("value") != config["amount"]
         or len(captures) != 1
+        or not str(captures[0].get("id") or "").strip()
         or captures[0].get("status") != "COMPLETED"
         or (captures[0].get("amount") or {}).get("currency_code") != config["currency"]
         or (captures[0].get("amount") or {}).get("value") != config["amount"]
