@@ -845,6 +845,8 @@ elif page == "Mes documents":
                     elif st.button("Supprimer", key=f"delete_private_{stored_name}"):
                         st.session_state["pending_document_delete_path"] = stored_path
                         st.rerun()
+        except PermissionError as exc:
+            st.warning(str(exc))
         except Exception:
             st.error("Impossible de charger vos documents. Vérifiez que le bucket privé et ses règles de sécurité sont installés dans Supabase.")
 
