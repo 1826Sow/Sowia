@@ -65,6 +65,15 @@ Le mode public doit impérativement conserver `SOWIA_REQUIRE_AUTH=true`. Si Supa
 
 Les paiements restent désactivés tant que la finalisation de l'application n'est pas terminée. Ne pas activer `SOWIA_PAYMENTS_ENABLED` ni ajouter de secrets de paiement avant décision explicite du propriétaire.
 
+
+### Autorisation des fonctions Premium
+
+- Les droits Premium sont lus avec le client Supabase de l'utilisateur connecté ; la politique RLS limite la lecture à son propre compte.
+- Toute nouvelle fonction payante doit appeler `premium_access.require_active_entitlement(client_utilisateur, utilisateur)` côté serveur avant d'exécuter l'action.
+- Le contrôle refuse l'accès si l'utilisateur n'est pas connecté ou si le droit est absent, inactif ou non reconnu.
+- Ne jamais considérer un bouton masqué, un état Streamlit ou un retour navigateur PayPal comme une preuve d'abonnement.
+- Aucun module Premium ne doit être activé tant que son contrôle serveur et ses tests ne sont pas ajoutés.
+
 ## Installation locale
 
 1. Installer Python 3.10 ou supérieur.
