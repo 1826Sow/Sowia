@@ -37,6 +37,12 @@ def prepare_pdf_batch_uploads(uploaded_files,extract_text):
         documents.append((uploaded.name,extract_text(uploaded,max_chars=MAX_BATCH_DOCUMENT_CHARS)))
     return documents
 
+def prepare_authorized_pdf_batch_uploads(user_client,user,uploaded_files,extract_text):
+    """Check Premium before parsing or extracting any uploaded PDF content."""
+    require_feature_access(user_client,user,"batch_pdf_analysis")
+    return prepare_pdf_batch_uploads(uploaded_files,extract_text)
+
+
 def analyze_pdf_batch(user_client,user,documents,answer_function):
     """Analyze and compare two to five named PDF text extracts."""
     items=list(documents or [])
