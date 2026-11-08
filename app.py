@@ -567,12 +567,15 @@ elif page == "Mes documents":
                 st.session_state["document_upload_notice"] = "Document enregistré dans votre espace privé."
                 st.rerun()
             except (ValueError, PermissionError) as exc:
+                # These exceptions come from our own PDF validation and ownership checks.
                 st.session_state["document_upload_error"] = str(exc)
                 st.rerun()
             except Exception as exc:
-                # Show a short diagnostic so upload failures can be fixed without exposing credentials.
-                diagnostic = f"{type(exc).__name__}: {str(exc)[:300]}"
-                st.session_state["document_upload_error"] = f"Échec de l'enregistrement — {diagnostic}"
+                # SDK/backend exception text may contain internal details.
+                st.session_state["document_upload_error"] = (
+                    f"Échec de l'enregistrement (code : {type(exc).__name__}). "
+                    "Réessayez ; si le problème persiste, contactez le support."
+                )
                 st.rerun()
         st.divider()
         st.markdown("#### Mes fichiers")
