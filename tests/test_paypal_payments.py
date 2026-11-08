@@ -198,6 +198,8 @@ def test_completed_order_is_not_captured_twice(monkeypatch):
                 "reference_id": "sowia-premium",
                 "amount": {"currency_code": "EUR", "value": "12.90"},
                 "payments": {"captures": [{
+                    "id": "CAPTURE123",
+                    "id": "CAPTURE123",
                     "status": "COMPLETED",
                     "amount": {"currency_code": "EUR", "value": "12.90"},
                 }]},
@@ -292,6 +294,8 @@ def test_capture_uses_normalized_order_id_for_capture_request(monkeypatch):
                 "reference_id": "sowia-premium",
                 "amount": {"currency_code": "EUR", "value": "12.90"},
                 "payments": {"captures": [{
+                    "id": "CAPTURE123",
+                    "id": "CAPTURE123",
                     "status": "COMPLETED",
                     "amount": {"currency_code": "EUR", "value": "12.90"},
                 }]},
@@ -323,6 +327,8 @@ def test_capture_uses_normalized_order_id_for_capture_request(monkeypatch):
                 "reference_id": "sowia-premium",
                 "amount": {"currency_code": "EUR", "value": "12.90"},
                 "payments": {"captures": [{
+                    "id": "CAPTURE123",
+                    "id": "CAPTURE123",
                     "status": "COMPLETED",
                     "amount": {"currency_code": "EUR", "value": "12.90"},
                 }]},
@@ -370,9 +376,10 @@ def test_capture_rejects_incomplete_or_mismatched_capture_response(
     "capture_data",
     [
         None,
-        {"status": "PENDING", "amount": {"currency_code": "EUR", "value": "12.90"}},
-        {"status": "COMPLETED", "amount": {"currency_code": "USD", "value": "12.90"}},
-        {"status": "COMPLETED", "amount": {"currency_code": "EUR", "value": "10.00"}},
+        {"id": "CAPTURE123", "status": "PENDING", "amount": {"currency_code": "EUR", "value": "12.90"}},
+        {"id": "CAPTURE123", "status": "COMPLETED", "amount": {"currency_code": "USD", "value": "12.90"}},
+        {"id": "CAPTURE123", "status": "COMPLETED", "amount": {"currency_code": "EUR", "value": "10.00"}},
+        {"status": "COMPLETED", "amount": {"currency_code": "EUR", "value": "12.90"}},
     ],
 )
 def test_completed_order_requires_matching_completed_capture(monkeypatch, capture_data):
