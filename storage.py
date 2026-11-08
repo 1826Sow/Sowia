@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 DB_PATH = Path("data/sowia.db")
 WORKSPACES = {"personal", "professional"}
+MESSAGE_ROLES = {"user", "assistant"}
 
 
 def _workspace_id(workspace_id):
@@ -50,7 +51,10 @@ def _connect():
 
 
 def save_message(session_id, role, content, workspace_id="personal"):
+    """Save only supported conversation roles, matching cloud storage rules."""
     workspace = _workspace_id(workspace_id)
+    if role not in MESSAGE_ROLES:
+        raise ValueError("Rôle de message invalide.")
     with _connect() as conn:
         conn.execute(
             "INSERT INTO messages(session_id, role, content, created_at, workspace_id) VALUES(?,?,?,?,?)",
@@ -60,10 +64,11 @@ def save_message(session_id, role, content, workspace_id="personal"):
 
 def get_history(session_id, limit=30, workspace_id="personal"):
     workspace = _workspace_id(workspace_id)
+    safe_limit = min(max(int(limit), 1), 100)
     with _connect() as conn:
         rows = conn.execute(
             "SELECT role, content FROM messages WHERE session_id=? AND workspace_id=? ORDER BY id DESC LIMIT ?",
-            (session_id, workspace, limit),
+            (session_id, workspace, safe_limit),
         ).fetchall()
     return [{"role": role, "content": content} for role, content in reversed(rows)]
 
@@ -100,10 +105,11 @@ def add_memory(content, workspace_id="personal"):
 
 def get_memories(limit=100, workspace_id="personal"):
     workspace = _workspace_id(workspace_id)
+    safe_limit = min(max(int(limit), 1), 100)
     with _connect() as conn:
         rows = conn.execute(
             "SELECT id, content, created_at FROM memory_items WHERE workspace_id=? ORDER BY id DESC LIMIT ?",
-            (workspace, limit),
+            (workspace, safe_limit),
         ).fetchall()
     return [{"id": row[0], "content": row[1], "created_at": row[2]} for row in rows]
 
