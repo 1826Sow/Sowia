@@ -102,3 +102,32 @@ def test_entitlement_grant_rejects_blank_identity_fields(user_id, order_id):
             client, user_id, order_id, "12.90", "EUR"
         )
     assert client.query.payload is None
+
+
+def test_admin_client_is_not_created_without_server_credentials(monkeypatch):
+    values = {
+        "SUPABASE_URL": "https://project.supabase.co",
+        "SUPABASE_SERVICE_ROLE_KEY": "",
+    }
+    monkeypatch.setattr(
+        premium_access, "get_setting",
+        lambda name, default="": values.get(name, default),
+    )
+    monkeypatch.setattr(
+        "supabase.create_client",
+        lambda *args, **kwargs: pytest.fail("Aucun client admin ne doit être créé sans clé serveur"),
+    )
+    assert premium_access.create_admin_client() is None
+
+
+def test_admin_client_rejects_non_https_supabase_url(monkeypatch):
+    values = {
+        "SUPABASE_URL": "http://project.supabase.co",
+        "SUPABASE_SERVICE_ROLE_KEY": "server-only-test-key",
+    }
+    monkeypatch.setattr(
+        premium_access, "get_setting",
+        lambda name, default="": values.get(name, default),
+    )
+    with pytest.raises(ValueError, match="HTTPS"):
+        premium_access.create_admin_client()
