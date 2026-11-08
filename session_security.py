@@ -77,3 +77,19 @@ def clear_stale_document_delete_confirmation(session_state, visible_documents):
     }
     if pending_path not in visible_paths:
         session_state.pop("pending_document_delete_path", None)
+
+
+PREMIUM_RESULT_KEYS = (
+    "premium_pdf_analysis_result",
+    "premium_pdf_batch_result",
+    "premium_professional_pdf_result",
+)
+
+
+def clear_premium_results_without_entitlement(session_state, entitlement_active):
+    """Remove cached Premium outputs whenever current access is not confirmed."""
+    if entitlement_active:
+        return False
+    for key in PREMIUM_RESULT_KEYS:
+        session_state.pop(key, None)
+    return True
