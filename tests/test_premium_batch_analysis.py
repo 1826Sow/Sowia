@@ -46,3 +46,39 @@ def test_batch_upload_preparation_extracts_only_after_validation():
     files=[Upload("a.pdf",pdf_bytes()),Upload("b.pdf",pdf_bytes())]
     result=batch.prepare_pdf_batch_uploads(files,lambda f,max_chars:f.name)
     assert result==[("a.pdf","a.pdf"),("b.pdf","b.pdf")]
+
+
+def test_authorized_batch_checks_premium_before_extracting_any_pdf(monkeypatch):
+    files = [Upload("a.pdf", pdf_bytes()), Upload("b.pdf", pdf_bytes())]
+    calls = []
+    monkeypatch.setattr(
+        batch,
+        "require_feature_access",
+        lambda *args: (_ for _ in ()).throw(PermissionError("Premium requis")),
+    )
+
+    with pytest.raises(PermissionError):
+        batch.prepare_authorized_pdf_batch_uploads(
+            "client", "user", files,
+            lambda *args, **kwargs: calls.append("extract") or "private text",
+        )
+
+    assert calls == []
+
+
+def test_authorized_batch_extracts_only_after_premium_check(monkeypatch):
+    files = [Upload("a.pdf", pdf_bytes()), Upload("b.pdf", pdf_bytes())]
+    calls = []
+    monkeypatch.setattr(
+        batch, "require_feature_access",
+        lambda client, user, feature: calls.append(("guard", client, user, feature)),
+    )
+
+    result = batch.prepare_authorized_pdf_batch_uploads(
+        "client", "user", files,
+        lambda uploaded, max_chars: calls.append(("extract", uploaded.name)) or uploaded.name,
+    )
+
+    assert result == [("a.pdf", "a.pdf"), ("b.pdf", "b.pdf")]
+    assert calls[0] == ("guard", "client", "user", "batch_pdf_analysis")
+    assert calls[1:] == [("extract", "a.pdf"), ("extract", "b.pdf")]
