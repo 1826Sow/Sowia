@@ -497,6 +497,54 @@ elif page == "Mes documents":
                 display_name = stored_name.split("_", 1)[-1] if "_" in stored_name else stored_name
                 with st.container(border=True):
                     st.write(f"📄 {display_name}")
+                    if st.button("Analyser ce PDF", key=f"analyze_private_{stored_name}"):
+                        try:
+                            from io import BytesIO
+                            workspace = st.session_state.get("workspace_id", "personal")
+                            pdf_bytes = download_document(
+                                supabase_client, current_user, stored_path, workspace
+                            )
+                            st.session_state["selected_saved_pdf_path"] = stored_path
+                            st.session_state["selected_saved_pdf_name"] = display_name
+                            st.session_state["selected_saved_pdf_text"] = extract_pdf_text(BytesIO(pdf_bytes))
+                            st.session_state.pop("saved_pdf_answer", None)
+                            st.session_state.pop("saved_pdf_answer_path", None)
+                            st.session_state["selected_saved_pdf_question"] = ""
+                            st.rerun()
+                        except Exception:
+                            st.error("Impossible de préparer l'analyse de ce PDF. Vérifiez que le document est lisible.")
+                    if st.session_state.get("selected_saved_pdf_path") == stored_path:
+                        st.markdown("##### Poser une question sur ce document")
+                        st.caption("Le PDF est lu depuis votre espace privé. Son texte reste dans la session et n'est pas ajouté à l'historique.")
+                        saved_pdf_question = st.text_input(
+                            "Votre question sur ce document",
+                            placeholder="Ex. : Résume les idées principales.",
+                            key="selected_saved_pdf_question",
+                        )
+                        if st.button(
+                            "Obtenir une réponse",
+                            key=f"answer_saved_pdf_{stored_name}",
+                            disabled=not saved_pdf_question.strip(),
+                        ):
+                            if not API_KEY:
+                                st.warning("Ajoutez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit pour activer l'analyse IA.")
+                            else:
+                                with st.spinner("Analyse du PDF en cours..."):
+                                    try:
+                                        response = answer(
+                                            [{"role": "user", "content": saved_pdf_question.strip()}],
+                                            document_context=st.session_state.get("selected_saved_pdf_text", ""),
+                                        )
+                                        st.session_state["saved_pdf_answer"] = response
+                                        st.session_state["saved_pdf_answer_path"] = stored_path
+                                    except Exception:
+                                        st.error("L'analyse du document a échoué. Vérifiez la disponibilité du service IA.")
+                        if (
+                            st.session_state.get("saved_pdf_answer_path") == stored_path
+                            and st.session_state.get("saved_pdf_answer")
+                        ):
+                            st.markdown("**Réponse de SOW IA**")
+                            st.write(st.session_state["saved_pdf_answer"])
                     prepared_path = st.session_state.get("prepared_document_path")
                     if prepared_path == stored_path and st.session_state.get("prepared_document_bytes"):
                         st.download_button(
@@ -515,6 +563,13 @@ elif page == "Mes documents":
                         if st.session_state.get("prepared_document_path") == stored_path:
                             st.session_state.pop("prepared_document_path", None)
                             st.session_state.pop("prepared_document_bytes", None)
+                        if st.session_state.get("selected_saved_pdf_path") == stored_path:
+                            for key in (
+                                "selected_saved_pdf_path", "selected_saved_pdf_name",
+                                "selected_saved_pdf_text", "selected_saved_pdf_question",
+                                "saved_pdf_answer", "saved_pdf_answer_path",
+                            ):
+                                st.session_state.pop(key, None)
                         st.rerun()
         except Exception:
             st.error("Impossible de charger vos documents. Vérifiez que le bucket privé et ses règles de sécurité sont installés dans Supabase.")
