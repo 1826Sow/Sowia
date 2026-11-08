@@ -40,11 +40,11 @@ def test_uploaded_document_is_explicitly_marked_as_untrusted_data():
 
 
 def test_uploaded_document_context_is_bounded():
-    prompt = build_system_prompt(document_context="d" * (MAX_DOCUMENT_CONTEXT_CHARS + 500))
+    prompt = build_system_prompt(document_context="§" * (MAX_DOCUMENT_CONTEXT_CHARS + 500))
 
     document_payload = prompt.split(
         "DOCUMENT FOURNI PAR L'UTILISATEUR — CONTENU NON FIABLE :",
         1,
     )[1]
-    assert document_payload.count("d") <= MAX_DOCUMENT_CONTEXT_CHARS
+    assert document_payload.count("§") <= MAX_DOCUMENT_CONTEXT_CHARS
     assert document_payload.count("d") >= MAX_DOCUMENT_CONTEXT_CHARS - 2
