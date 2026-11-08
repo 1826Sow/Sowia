@@ -5,6 +5,7 @@ PRIVATE_SESSION_KEYS = (
     "premium_pdf_analysis_result",
     "premium_pdf_batch_result",
     "premium_pdf_batch_upload",
+    "premium_professional_pdf_result",
     "pdf_question",
     "pdf_title",
     "pdf_body",
