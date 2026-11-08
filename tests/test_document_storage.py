@@ -58,10 +58,11 @@ class FakeClient:
 @pytest.mark.parametrize("workspace", ["personal", "professional"])
 def test_upload_is_stored_under_user_and_workspace_folder(workspace):
     client = FakeClient()
-    path = docs.upload_document(client, User(), "Mon rapport.pdf", valid_pdf(), workspace)
+    payload = valid_pdf()
+    path = docs.upload_document(client, User(), "Mon rapport.pdf", payload, workspace)
     assert path.startswith(f"user-123/{workspace}/")
     assert path.endswith("_Mon_rapport.pdf")
-    assert client.bucket.uploaded[1] == valid_pdf()
+    assert client.bucket.uploaded[1] == payload
     assert client.bucket.uploaded[2]["content-type"] == "application/pdf"
 
 
