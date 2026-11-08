@@ -415,3 +415,41 @@ def test_completed_order_requires_matching_completed_capture(monkeypatch, captur
 
     with pytest.raises(PermissionError, match="capture PayPal existante"):
         paypal.capture_premium_order("ORDER1", "current-user")
+
+
+def test_payments_default_to_disabled_when_enable_flag_is_missing(monkeypatch):
+    values = {
+        "PAYPAL_CLIENT_ID": "sandbox-client",
+        "PAYPAL_CLIENT_SECRET": "sandbox-secret",
+        "PAYPAL_PREMIUM_PRICE": "12.90",
+        "PAYPAL_CURRENCY": "EUR",
+        "PAYPAL_MODE": "sandbox",
+        "PAYPAL_RETURN_URL": "https://example.test/return",
+        "PAYPAL_CANCEL_URL": "https://example.test/cancel",
+    }
+    monkeypatch.setattr(
+        paypal, "get_setting",
+        lambda key, default="": values.get(key, default),
+    )
+    assert paypal.paypal_configuration() is None
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda: paypal.create_premium_order("current-user"),
+        lambda: paypal.capture_premium_order("ORDER123", "current-user"),
+    ],
+)
+def test_disabled_payment_operations_stop_before_network_calls(monkeypatch, operation):
+    _settings(monkeypatch, SOWIA_PAYMENTS_ENABLED="false")
+    monkeypatch.setattr(
+        paypal.requests, "post",
+        lambda *args, **kwargs: pytest.fail("Aucun appel réseau PayPal si les paiements sont désactivés"),
+    )
+    monkeypatch.setattr(
+        paypal.requests, "get",
+        lambda *args, **kwargs: pytest.fail("Aucun appel réseau PayPal si les paiements sont désactivés"),
+    )
+    with pytest.raises(RuntimeError, match="configuration PayPal"):
+        operation()
