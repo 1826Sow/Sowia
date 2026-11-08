@@ -37,6 +37,8 @@ Lancer également les deux diagnostics complémentaires en lecture seule :
 
 Ces trois diagnostics ne modifient rien. Examiner leurs résultats avant toute correction ; ne pas révoquer de privilèges ni supprimer de politiques sans avoir identifié précisément leur usage et leur impact.
 
+Ajouter enfin `supabase_legacy_pdf_inventory_diagnostics.sql` pour obtenir un inventaire en lecture seule des PDF à la racine historique, des PDF Personnel et Professionnel, ainsi que des chemins PDF inattendus. La première requête donne uniquement des totaux ; la seconde affiche les UUID utilisateurs et chemins des anciens objets pour préparer une migration. Garder ces résultats privés. Ce diagnostic ne copie, ne déplace et ne supprime aucun fichier.
+
 Le script `supabase_storage_policies.sql` est le script canonique pour sécuriser le bucket privé. Il peut être réexécuté sans supprimer les fichiers existants. Il retire également les anciennes politiques plus permissives avant de créer les règles par utilisateur et espace de travail. `supabase/storage.sql` est conservé uniquement pour compatibilité avec les anciennes installations.
 
 ### Secrets requis
