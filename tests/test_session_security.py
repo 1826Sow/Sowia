@@ -122,3 +122,37 @@ def test_workspace_switch_clears_pending_document_deletion_confirmation():
 
     assert "pending_document_delete_path" not in state
     assert state["sowia_authenticated_user_id"] == "account-id"
+
+
+def test_pending_delete_confirmation_is_cleared_when_pdf_is_not_visible():
+    from session_security import clear_stale_document_delete_confirmation
+
+    state = {"pending_document_delete_path": "user/personal/one.pdf"}
+
+    clear_stale_document_delete_confirmation(
+        state, [{"path": "user/personal/two.pdf"}]
+    )
+
+    assert "pending_document_delete_path" not in state
+
+
+def test_pending_delete_confirmation_is_kept_when_pdf_remains_visible():
+    from session_security import clear_stale_document_delete_confirmation
+
+    state = {"pending_document_delete_path": "user/personal/one.pdf"}
+
+    clear_stale_document_delete_confirmation(
+        state, [{"path": "user/personal/one.pdf"}]
+    )
+
+    assert state["pending_document_delete_path"] == "user/personal/one.pdf"
+
+
+def test_pending_delete_confirmation_is_cleared_when_search_has_no_results():
+    from session_security import clear_stale_document_delete_confirmation
+
+    state = {"pending_document_delete_path": "user/personal/one.pdf"}
+
+    clear_stale_document_delete_confirmation(state, [])
+
+    assert "pending_document_delete_path" not in state
