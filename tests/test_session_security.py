@@ -164,3 +164,35 @@ def test_pending_delete_confirmation_is_cleared_when_search_has_no_results():
     clear_stale_document_delete_confirmation(state, [])
 
     assert "pending_document_delete_path" not in state
+
+
+def test_inactive_premium_entitlement_clears_all_cached_premium_outputs():
+    from session_security import clear_premium_results_without_entitlement
+
+    state = {
+        "premium_pdf_analysis_result": "private analysis",
+        "premium_pdf_batch_result": "private comparison",
+        "premium_professional_pdf_result": b"private export",
+        "unrelated_preference": "keep-me",
+    }
+
+    assert clear_premium_results_without_entitlement(state, False) is True
+
+    assert not any(
+        key in state
+        for key in (
+            "premium_pdf_analysis_result",
+            "premium_pdf_batch_result",
+            "premium_professional_pdf_result",
+        )
+    )
+    assert state["unrelated_preference"] == "keep-me"
+
+
+def test_active_premium_entitlement_keeps_cached_outputs():
+    from session_security import clear_premium_results_without_entitlement
+
+    state = {"premium_professional_pdf_result": b"private export"}
+
+    assert clear_premium_results_without_entitlement(state, True) is False
+    assert state["premium_professional_pdf_result"] == b"private export"
