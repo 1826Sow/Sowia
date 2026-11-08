@@ -1,4 +1,5 @@
 """Tests for SOW IA conversation and memory storage."""
+import pytest
 import storage
 
 
@@ -10,6 +11,21 @@ def test_save_and_read_messages(tmp_path, monkeypatch):
         {"role": "user", "content": "Bonjour"},
         {"role": "assistant", "content": "Bienvenue"},
     ]
+
+
+def test_local_storage_rejects_unsupported_message_roles(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "sowia-test.db")
+    with pytest.raises(ValueError, match="Rôle de message invalide"):
+        storage.save_message("session-1", "admin", "Message interdit")
+    assert storage.get_history("session-1") == []
+
+
+def test_history_limit_is_bounded(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "sowia-test.db")
+    for number in range(105):
+        storage.save_message("session-1", "user", f"Message {number}")
+    assert len(storage.get_history("session-1", limit=500)) == 100
+    assert len(storage.get_history("session-1", limit=-1)) == 1
 
 
 def test_history_is_isolated_by_session(tmp_path, monkeypatch):
@@ -38,7 +54,6 @@ def test_memory_survives_between_sessions_and_can_be_deleted(tmp_path, monkeypat
 
 def test_memory_rejects_empty_and_oversized_notes(tmp_path, monkeypatch):
     monkeypatch.setattr(storage, "DB_PATH", tmp_path / "sowia-test.db")
-    import pytest
     with pytest.raises(ValueError, match="vide"):
         storage.add_memory("   ")
     with pytest.raises(ValueError, match="1 000"):
