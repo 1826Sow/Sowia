@@ -166,3 +166,45 @@ def test_capture_refuses_order_with_wrong_amount_currency_intent_or_status(
 
     # Only the OAuth token request is allowed; no capture request is sent.
     assert [kind for kind, _ in calls] == ["post", "get"]
+
+
+def test_completed_order_is_not_captured_twice(monkeypatch):
+    _settings(monkeypatch)
+
+    class Response:
+        def __init__(self, data):
+            self.data = data
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.data
+
+    calls = []
+
+    def fake_post(url, **kwargs):
+        calls.append(("post", url))
+        return Response({"access_token": "test-token"})
+
+    def fake_get(url, **kwargs):
+        calls.append(("get", url))
+        return Response({
+            "id": "ORDER-1",
+            "intent": "CAPTURE",
+            "status": "COMPLETED",
+            "purchase_units": [{
+                "custom_id": "current-user",
+                "reference_id": "sowia-premium",
+                "amount": {"currency_code": "EUR", "value": "12.90"},
+            }],
+        })
+
+    monkeypatch.setattr(paypal.requests, "post", fake_post)
+    monkeypatch.setattr(paypal.requests, "get", fake_get)
+
+    result = paypal.capture_premium_order("ORDER-1", "current-user")
+
+    assert result["status"] == "COMPLETED"
+    # Token request + order lookup only; no duplicate capture POST.
+    assert [kind for kind, _ in calls] == ["post", "get"]
