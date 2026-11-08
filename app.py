@@ -397,8 +397,10 @@ elif page == "Assistant IA":
                 elif "401" in error_text or "invalid_api_key" in error_text:
                     st.error("La clé API du fournisseur IA n'est pas reconnue. Vérifiez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit.")
                 else:
-                    st.error("Une erreur est survenue pendant la réponse de l'assistant.")
-                    st.caption(error_text)
+                    st.error(
+                        "Une erreur inattendue est survenue pendant la réponse de l'assistant. "
+                        "Réessayez dans quelques instants."
+                    )
     if st.button("Effacer cette conversation"):
         clear_app_history()
         st.rerun()
@@ -462,8 +464,13 @@ elif page == "Analyse PDF":
         try:
             st.session_state.pdf_text = extract_pdf_text(file)
             st.success("Texte extrait.")
-        except Exception as exc:
+        except ValueError as exc:
             st.error(str(exc))
+        except Exception:
+            st.error(
+                "Impossible de lire ce PDF. Vérifiez que le fichier n'est pas endommagé "
+                "et qu'il s'agit bien d'un PDF lisible."
+            )
     if st.session_state.pdf_text:
         st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
         st.download_button("Télécharger le texte", st.session_state.pdf_text, file_name="sowia_extraction.txt")
@@ -486,9 +493,11 @@ elif page == "Analyse PDF":
                         )
                         st.markdown("**Réponse de SOW IA**")
                         st.write(response)
-                    except Exception as exc:
-                        st.error("L'analyse du document a échoué.")
-                        st.caption(str(exc))
+                    except Exception:
+                        st.error(
+                            "L'analyse du document a échoué. Vérifiez la disponibilité du service IA "
+                            "et réessayez plus tard."
+                        )
 
 elif page == "Créer un PDF":
     st.subheader("🪄 Créer un PDF")
