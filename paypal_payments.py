@@ -128,6 +128,30 @@ def create_premium_order(user_id: str):
     return {"id": order["id"], "approval_url": approval_url}
 
 
+def _validate_completed_capture(details, normalized_order_id, user_id, config):
+    """Validate the settled capture embedded in a completed PayPal order."""
+    units = details.get("purchase_units") or []
+    if len(units) != 1:
+        raise PermissionError("Commande PayPal non reconnue.")
+    unit = units[0]
+    amount = unit.get("amount") or {}
+    captures = (unit.get("payments") or {}).get("captures") or []
+    if (
+        details.get("id") != normalized_order_id
+        or details.get("status") != "COMPLETED"
+        or unit.get("custom_id") != str(user_id)
+        or unit.get("reference_id") != "sowia-premium"
+        or amount.get("currency_code") != config["currency"]
+        or amount.get("value") != config["amount"]
+        or len(captures) != 1
+        or captures[0].get("status") != "COMPLETED"
+        or (captures[0].get("amount") or {}).get("currency_code") != config["currency"]
+        or (captures[0].get("amount") or {}).get("value") != config["amount"]
+    ):
+        raise PermissionError("La capture PayPal existante ne correspond pas à cet achat SOW IA.")
+    return details
+
+
 def capture_premium_order(order_id: str, user_id: str):
     """Capture only an order whose server-side details match this user and price."""
     config = paypal_configuration()
@@ -165,7 +189,7 @@ def capture_premium_order(order_id: str, user_id: str):
     ):
         raise PermissionError("La commande PayPal ne correspond pas à cet achat SOW IA.")
     if details.get("status") == "COMPLETED":
-        return details
+        return _validate_completed_capture(details, normalized_order_id, user_id, config)
     capture_response = requests.post(
         f"{base}/v2/checkout/orders/{normalized_order_id}/capture",
         json={},
@@ -174,23 +198,7 @@ def capture_premium_order(order_id: str, user_id: str):
     )
     capture_response.raise_for_status()
     result = capture_response.json()
-    result_units = result.get("purchase_units") or []
-    if result.get("id") != normalized_order_id or result.get("status") != "COMPLETED":
-        raise RuntimeError("La réponse de capture PayPal ne confirme pas la commande attendue.")
-    if len(result_units) != 1:
-        raise RuntimeError("La réponse de capture PayPal est incomplète.")
-    result_unit = result_units[0]
-    result_amount = result_unit.get("amount") or {}
-    captures = (result_unit.get("payments") or {}).get("captures") or []
-    if (
-        result_unit.get("custom_id") != str(user_id)
-        or result_unit.get("reference_id") != "sowia-premium"
-        or result_amount.get("currency_code") != config["currency"]
-        or result_amount.get("value") != config["amount"]
-        or len(captures) != 1
-        or captures[0].get("status") != "COMPLETED"
-        or (captures[0].get("amount") or {}).get("currency_code") != config["currency"]
-        or (captures[0].get("amount") or {}).get("value") != config["amount"]
-    ):
-        raise RuntimeError("Les détails de la capture PayPal ne correspondent pas à l'achat Premium.")
-    return result
+    try:
+        return _validate_completed_capture(result, normalized_order_id, user_id, config)
+    except PermissionError as exc:
+        raise RuntimeError("Les détails de la capture PayPal ne correspondent pas à l'achat Premium.") from exc
