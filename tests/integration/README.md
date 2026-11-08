@@ -5,9 +5,13 @@ Les tests d'intégration vérifient les politiques RLS réellement appliquées a
 ## Préparation sûre
 
 1. Utiliser un projet Supabase de test dédié, jamais la base de production.
-2. Créer deux comptes de test distincts dans Supabase Authentication.
-3. Exécuter sur ce projet les scripts `supabase/schema.sql` puis `supabase_workspaces.sql`.
-4. Fournir les six variables ci-dessous uniquement dans l'environnement d'exécution sécurisé :
+2. Dans **Authentication → Users**, créer deux comptes de test distincts (A et B) avec des adresses et mots de passe dédiés. Vérifier que les deux comptes peuvent se connecter.
+3. Dans le **SQL Editor** de ce projet de test, exécuter dans cet ordre :
+   - `supabase/schema.sql` (tables, RLS et droits de lecture Premium).
+   - `supabase_workspaces.sql` (ajout des espaces Personnel et Professionnel).
+   - `supabase_storage_policies.sql` (création du bucket privé `sowia-files` et règles d'accès PDF).
+4. Dans les paramètres API du projet de test, récupérer l'URL du projet et la clé publique **anon/publishable**. Ne pas utiliser la clé `service_role` ou une clé secrète.
+5. Fournir les six variables ci-dessous uniquement dans l'environnement d'exécution sécurisé :
 
 ```text
 SOWIA_TEST_SUPABASE_URL
@@ -18,7 +22,7 @@ SOWIA_TEST_USER_B_EMAIL
 SOWIA_TEST_USER_B_PASSWORD
 ```
 
-Utiliser uniquement la clé publique anon/publishable. Ne jamais utiliser une clé `service_role`, ni inscrire les secrets dans Git, les journaux CI ou une capture d'écran.
+Ne jamais utiliser les comptes de production, ni inscrire les secrets dans Git, les journaux CI ou une capture d'écran. Le projet de test doit rester distinct de l'application SOW IA en production.
 
 ## Exécution locale
 
