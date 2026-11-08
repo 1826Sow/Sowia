@@ -28,6 +28,7 @@ from sowia_supabase_auth import (
 import cloud_storage
 import paypal_payments
 import premium_access
+from feature_access import has_feature_access
 from premium_analysis import analyze_pdf_advanced
 from premium_batch_analysis import analyze_pdf_batch, prepare_authorized_pdf_batch_uploads
 from premium_exports import create_premium_professional_pdf
@@ -677,6 +678,8 @@ elif page == "Mes documents":
     st.subheader("📁 Mes documents")
     if not cloud_mode:
         st.warning("Connectez-vous avec votre compte pour utiliser le stockage documentaire privé.")
+    elif not has_feature_access(supabase_client, current_user, "private_document_storage"):
+        st.info("🔒 Le stockage documentaire privé est réservé à un abonnement Premium actif. Vos documents restent protégés.")
     else:
         st.caption("Vos PDF sont conservés dans un espace privé Supabase, séparé de celui des autres utilisateurs. Taille maximale : 10 Mo par fichier.")
         uploaded_pdf = st.file_uploader("Ajouter un PDF à mes documents", type=["pdf"], key="private_pdf_upload", max_upload_size=10)
