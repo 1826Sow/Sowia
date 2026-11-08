@@ -556,13 +556,17 @@ elif page == "Mes documents":
                 )
                 sort_choice = sort_col.selectbox(
                     "Trier par",
-                    ["Nom (A à Z)", "Nom (Z à A)"],
+                    ["Nom (A à Z)", "Nom (Z à A)", "Plus récents", "Plus anciens"],
                     key="private_pdf_sort",
                 )
                 filtered_documents = filter_documents(
                     stored_documents,
                     query=document_query,
-                    sort_order="name_desc" if sort_choice == "Nom (Z à A)" else "name_asc",
+                    sort_order={
+                        "Nom (Z à A)": "name_desc",
+                        "Plus récents": "newest",
+                        "Plus anciens": "oldest",
+                    }.get(sort_choice, "name_asc"),
                 )
                 clear_stale_document_delete_confirmation(
                     st.session_state, filtered_documents
