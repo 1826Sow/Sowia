@@ -194,3 +194,28 @@ def test_non_pkce_session_values_are_kept_in_memory_not_sqlite(monkeypatch, tmp_
 @pytest.mark.parametrize("browser_id", ["", "short", "contains spaces", "x" * 100])
 def test_invalid_browser_scope_is_rejected(browser_id):
     assert supabase_auth._browser_storage_id(browser_id) is None
+
+
+def test_sign_out_delegates_to_supabase_auth():
+    calls = []
+
+    class Auth:
+        def sign_out(self):
+            calls.append("signed-out")
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    supabase_auth.sign_out(client)
+
+    assert calls == ["signed-out"]
+
+
+def test_browser_scope_is_hashed_before_storage_use():
+    browser_id = "a" * 64
+
+    hashed = supabase_auth._browser_storage_id(browser_id)
+
+    assert hashed is not None
+    assert hashed != browser_id
+    assert len(hashed) == 64
+    assert all(character in "0123456789abcdef" for character in hashed)
