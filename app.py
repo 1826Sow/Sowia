@@ -399,7 +399,7 @@ elif page == "Recherche Web":
 
 elif page == "Analyse PDF":
     st.subheader("📄 Analyse PDF")
-    file = st.file_uploader("Importer un document PDF", type=["pdf"])
+    file = st.file_uploader("Importer un document PDF", type=["pdf"], max_upload_size=10)
     if file and st.button("Extraire le texte"):
         try:
             st.session_state.pdf_text = extract_pdf_text(file)
@@ -471,7 +471,7 @@ elif page == "Mes documents":
         st.warning("Connectez-vous avec votre compte pour utiliser le stockage documentaire privé.")
     else:
         st.caption("Vos PDF sont conservés dans un espace privé Supabase, séparé de celui des autres utilisateurs. Taille maximale : 10 Mo par fichier.")
-        uploaded_pdf = st.file_uploader("Ajouter un PDF à mes documents", type=["pdf"], key="private_pdf_upload")
+        uploaded_pdf = st.file_uploader("Ajouter un PDF à mes documents", type=["pdf"], key="private_pdf_upload", max_upload_size=10)
         if uploaded_pdf and st.button("Enregistrer dans mes documents", type="primary"):
             try:
                 upload_document(supabase_client, current_user, uploaded_pdf.name, uploaded_pdf.getvalue(), st.session_state.get("workspace_id", "personal"))
