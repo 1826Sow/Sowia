@@ -5,7 +5,7 @@ from pypdf import PdfReader
 from premium_exports import build_professional_pdf,create_premium_professional_pdf
 
 def test_professional_export_creates_cover_and_readable_report():
-    payload=build_professional_pdf("Rapport de test","Première section\\n\\nDeuxième section")
+    payload=build_professional_pdf("Rapport de test","Première section\n\nDeuxième section")
     reader=PdfReader(BytesIO(payload))
     assert payload.startswith(b"%PDF-") and len(reader.pages)==2
     assert "Rapport de test" in reader.pages[0].extract_text()
