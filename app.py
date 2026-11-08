@@ -236,11 +236,37 @@ def go_to_page(page_name):
     st.session_state.page_nav = page_name
 
 
+# Premium access is checked server-side. If the entitlement cannot be read,
+# the Professional workspace stays unavailable (fail closed).
+premium_entitlement = None
+premium_entitlement_unavailable = False
+if cloud_mode and current_user is not None:
+    try:
+        premium_entitlement = premium_access.get_entitlement(supabase_client, current_user)
+    except Exception:
+        premium_entitlement_unavailable = True
+premium_active = bool(premium_entitlement)
+
 with st.sidebar:
     st.markdown("## 🧠 SOW IA")
     st.caption("Intelligence artificielle")
-    workspace_choice = st.radio("Espace de travail", ["Personnel", "Professionnel"], key="workspace_choice", horizontal=True)
+    workspace_options = ["Personnel", "Professionnel"] if premium_active else ["Personnel"]
+    if st.session_state.get("workspace_choice") not in workspace_options:
+        st.session_state["workspace_choice"] = "Personnel"
+    workspace_choice = st.radio("Espace de travail", workspace_options, key="workspace_choice", horizontal=True)
+    if not premium_active:
+        if premium_entitlement_unavailable:
+            st.caption("Vérification Premium indisponible : l'espace Professionnel reste verrouillé par sécurité.")
+        else:
+            st.caption("L'espace Professionnel et ses modèles PDF sont réservés à Premium. Consultez Abonnement pour les prochaines étapes.")
     workspace_id = "professional" if workspace_choice == "Professionnel" else "personal"
+    if workspace_id == "professional":
+        try:
+            premium_access.require_workspace_access(workspace_id, supabase_client, current_user)
+        except Exception:
+            st.session_state["workspace_choice"] = "Personnel"
+            st.error("Un accès SOW IA Premium actif est nécessaire pour ouvrir l'espace Professionnel.")
+            st.stop()
     previous_workspace_id = st.session_state.get("active_workspace_id")
     if previous_workspace_id is not None and previous_workspace_id != workspace_id:
         clear_workspace_session_state(st.session_state)
