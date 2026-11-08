@@ -36,6 +36,7 @@ def clear_private_session_state(session_state):
 
 WORKSPACE_PRIVATE_SESSION_KEYS = (
     "pdf_text",
+    "premium_professional_pdf_result",
     "premium_pdf_analysis_result",
     "premium_pdf_batch_result",
     "premium_pdf_batch_upload",
