@@ -219,3 +219,37 @@ def test_browser_scope_is_hashed_before_storage_use():
     assert hashed != browser_id
     assert len(hashed) == 64
     assert all(character in "0123456789abcdef" for character in hashed)
+
+
+def test_authenticated_user_does_not_accept_session_user_without_server_validation():
+    expected_user = object()
+
+    class Auth:
+        def get_session(self):
+            return type(
+                "SessionResponse",
+                (),
+                {"session": type("Session", (), {"user": expected_user})()},
+            )()
+
+        def get_user(self):
+            raise RuntimeError("Supabase user validation failed")
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    with pytest.raises(RuntimeError, match="validation failed"):
+        supabase_auth.authenticated_user(client)
+
+
+def test_authenticated_user_propagates_server_validation_errors():
+    class Auth:
+        def get_session(self):
+            return object()
+
+        def get_user(self):
+            raise ConnectionError("Supabase unavailable")
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    with pytest.raises(ConnectionError, match="unavailable"):
+        supabase_auth.authenticated_user(client)
