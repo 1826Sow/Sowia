@@ -100,6 +100,30 @@ def test_workspace_path_cannot_be_read_from_other_workspace():
     assert client.bucket.downloaded is None
 
 
+
+@pytest.mark.parametrize(
+    ("active_workspace", "document_path"),
+    [
+        ("personal", "user-123/professional/report.pdf"),
+        ("professional", "user-123/personal/report.pdf"),
+    ],
+)
+@pytest.mark.parametrize("operation", ["download", "delete"])
+def test_document_cannot_be_accessed_or_deleted_from_the_other_workspace(
+    active_workspace, document_path, operation
+):
+    client = FakeClient()
+
+    with pytest.raises(ValueError, match="Chemin de document invalide"):
+        if operation == "download":
+            docs.download_document(client, User(), document_path, active_workspace)
+        else:
+            docs.delete_document(client, User(), document_path, active_workspace)
+
+    assert client.bucket.downloaded is None
+    assert client.bucket.removed is None
+
+
 def test_delete_rejects_path_traversal():
     client = FakeClient()
     with pytest.raises(ValueError):
