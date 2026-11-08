@@ -55,3 +55,17 @@ def clear_workspace_session_state(session_state):
     for key in WORKSPACE_PRIVATE_SESSION_KEYS:
         session_state.pop(key, None)
     session_state["pdf_text"] = ""
+
+
+def clear_stale_document_delete_confirmation(session_state, visible_documents):
+    """Drop a pending delete confirmation when its PDF is no longer visible."""
+    pending_path = session_state.get("pending_document_delete_path")
+    if not pending_path:
+        return
+    visible_paths = {
+        item.get("path")
+        for item in (visible_documents or [])
+        if isinstance(item, dict) and item.get("path")
+    }
+    if pending_path not in visible_paths:
+        session_state.pop("pending_document_delete_path", None)

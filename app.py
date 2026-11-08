@@ -31,7 +31,7 @@ import paypal_payments
 import premium_access
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name
-from session_security import clear_private_session_state, clear_workspace_session_state
+from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
@@ -563,6 +563,9 @@ elif page == "Mes documents":
                     stored_documents,
                     query=document_query,
                     sort_order="name_desc" if sort_choice == "Nom (Z à A)" else "name_asc",
+                )
+                clear_stale_document_delete_confirmation(
+                    st.session_state, filtered_documents
                 )
                 st.caption(f"{len(filtered_documents)} document(s) affiché(s) sur {len(stored_documents)}")
                 if not filtered_documents:
