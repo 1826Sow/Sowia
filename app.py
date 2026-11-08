@@ -132,7 +132,7 @@ if cloud_mode:
                 )
             st.stop()
         st.warning("Supabase ne répond pas correctement : SOW IA continue en mode local temporaire. Les fonctions locales, dont la création de PDF, restent accessibles. Les données locales ne sont pas destinées à un usage partagé.")
-        st.caption(f"Détail technique : {exc}")
+        st.caption("Les détails techniques sont masqués pour protéger les informations de connexion.")
         cloud_mode = False
         current_user = None
         supabase_client = None
@@ -167,8 +167,7 @@ if cloud_mode:
                 st.rerun()
         except Exception as exc:
             st.session_state.pop("sowia_github_login_url", None)
-            st.warning("La connexion GitHub attend encore la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
-            st.caption(str(exc))
+            st.warning("La connexion GitHub n'a pas pu être préparée. Vérifiez la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
         st.stop()
 
 
