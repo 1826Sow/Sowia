@@ -93,3 +93,25 @@ def clear_premium_results_without_entitlement(session_state, entitlement_active)
     for key in PREMIUM_RESULT_KEYS:
         session_state.pop(key, None)
     return True
+
+
+PRIVATE_DOCUMENT_CACHE_KEYS = (
+    "prepared_document_bytes",
+    "prepared_document_path",
+    "pending_document_delete_path",
+    "selected_saved_pdf_path",
+    "selected_saved_pdf_name",
+    "selected_saved_pdf_text",
+    "selected_saved_pdf_question",
+    "saved_pdf_answer",
+    "saved_pdf_answer_path",
+)
+
+
+def clear_private_document_cache_without_entitlement(session_state, entitlement_active):
+    """Clear cached private-document content when storage access is not confirmed."""
+    if entitlement_active:
+        return False
+    for key in PRIVATE_DOCUMENT_CACHE_KEYS:
+        session_state.pop(key, None)
+    return True
