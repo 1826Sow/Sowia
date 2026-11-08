@@ -4,6 +4,8 @@ Application web d'intelligence artificielle construite avec Streamlit.
 
 ## Socle actuel
 
+Consulter le [guide de l’espace Professionnel](docs/GUIDE_ESPACE_PROFESSIONNEL.md) pour utiliser le tableau de bord, les modèles PDF, la mémoire et la bibliothèque documentaire.
+
 - Interface Streamlit SOW IA
 - Assistant conversationnel via API compatible OpenAI
 - Historique local SQLite pour le développement
