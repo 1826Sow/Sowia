@@ -280,7 +280,19 @@ def test_capture_uses_normalized_order_id_for_capture_request(monkeypatch):
 
     def fake_post(url, **kwargs):
         calls.append(("post", url, kwargs))
-        return Response({"status": "COMPLETED"})
+        return Response({
+            "id": "ORDER123",
+            "status": "COMPLETED",
+            "purchase_units": [{
+                "custom_id": "current-user",
+                "reference_id": "sowia-premium",
+                "amount": {"currency_code": "EUR", "value": "12.90"},
+                "payments": {"captures": [{
+                    "status": "COMPLETED",
+                    "amount": {"currency_code": "EUR", "value": "12.90"},
+                }]},
+            }],
+        })
 
     monkeypatch.setattr(paypal.requests, "get", fake_get)
     monkeypatch.setattr(paypal.requests, "post", fake_post)
