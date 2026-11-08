@@ -28,11 +28,10 @@ def test_workspace_switch_clears_pdf_caches_but_keeps_account_state():
         "pdf_text": "private PDF text",
         "pdf_question": "private question",
         "pdf_title": "Private professional title",
+        "pdf_body": "Private professional draft",
         "prepared_document_bytes": b"private PDF",
         "prepared_document_path": "user/personal/file.pdf",
         "private_pdf_upload": "upload object",
-        "pdf_title": "Private professional title",
-        "pdf_body": "Private professional draft",
         "selected_saved_pdf_path": "user/personal/file.pdf",
         "selected_saved_pdf_name": "file.pdf",
         "selected_saved_pdf_text": "private saved PDF text",
@@ -53,11 +52,11 @@ def test_workspace_switch_clears_pdf_caches_but_keeps_account_state():
         key not in state
         for key in (
             "pdf_question",
+            "pdf_title",
+            "pdf_body",
             "prepared_document_bytes",
             "prepared_document_path",
             "private_pdf_upload",
-            "pdf_title",
-            "pdf_body",
             "selected_saved_pdf_path",
             "selected_saved_pdf_name",
             "selected_saved_pdf_text",
@@ -71,9 +70,6 @@ def test_workspace_switch_clears_pdf_caches_but_keeps_account_state():
     assert state["paypal_purchase_confirmed"] is True
     assert state["sowia_authenticated_user_id"] == "account-id"
     assert state["unrelated_preference"] == "keep-me"
-
-
-
 def test_account_switch_clears_saved_pdf_analysis_cache():
     state = {
         "selected_saved_pdf_path": "user/personal/file.pdf",
