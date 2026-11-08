@@ -34,3 +34,12 @@ def require_feature_access(user_client, user, feature_key):
     return require_premium_access(
         user_client, user, feature_name=feature_key.replace("_", " ")
     )
+
+
+def has_feature_access(user_client,user,feature_key):
+    """Return False when access is denied or the entitlement service is unavailable."""
+    try:
+        require_feature_access(user_client,user,feature_key)
+        return True
+    except Exception:
+        return False
