@@ -29,7 +29,7 @@ Consulter le [guide de l’espace Professionnel](docs/GUIDE_ESPACE_PROFESSIONNEL
 7. Dans Supabase > Authentication > Providers, vérifier que GitHub est activé et que les identifiants OAuth sont corrects.
 8. Tester la connexion GitHub, l'enregistrement d'une conversation, la mémoire, les documents PDF et la déconnexion avec un compte de test.
 
-Après exécution, lancer le diagnostic en lecture seule `supabase_storage_diagnostics.sql`. Il affiche la configuration du bucket et **toutes** les politiques de `storage.objects`, y compris d'éventuelles anciennes règles qui pourraient élargir les accès. Ce diagnostic ne modifie aucune donnée ni configuration. Conserver le résultat pour vérifier l'installation réelle.
+Après exécution, lancer `supabase_full_diagnostics.sql` dans le SQL Editor. Ce diagnostic en lecture seule vérifie la présence des tables et colonnes attendues, l'activation de RLS, les politiques des tables, la confidentialité du bucket et **toutes** les politiques de `storage.objects`. Il ne modifie aucune donnée ni configuration. Conserver le résultat pour vérifier l'installation réelle. Le diagnostic ciblé `supabase_storage_diagnostics.sql` reste également disponible pour contrôler uniquement le stockage PDF.
 
 Le script `supabase_storage_policies.sql` est le script canonique pour sécuriser le bucket privé. Il peut être réexécuté sans supprimer les fichiers existants. Il retire également les anciennes politiques plus permissives avant de créer les règles par utilisateur et espace de travail. `supabase/storage.sql` est conservé uniquement pour compatibilité avec les anciennes installations.
 
