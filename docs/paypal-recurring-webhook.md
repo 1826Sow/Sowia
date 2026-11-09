@@ -31,7 +31,9 @@ Set these Edge Function secrets in the Supabase project (never in Git):
 - `PAYPAL_CLIENT_SECRET`
 - `PAYPAL_WEBHOOK_ID`
 - `PAYPAL_MODE=sandbox` during tests; use `live` only after approval
-- `PAYPAL_PREMIUM_PLAN_ID` (the exact EUR plan ID)
+- `PAYPAL_PREMIUM_PLAN_ID` (the exact active EUR plan ID)
+- `PAYPAL_SUBSCRIPTION_RETURN_URL` (for example, the public SOW IA URL followed by `?paypal_subscription=return`)
+- `PAYPAL_SUBSCRIPTION_CANCEL_URL` (the public SOW IA URL followed by `?paypal_subscription=cancel`)
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
@@ -52,8 +54,14 @@ Subscribe to:
 - `PAYMENT.SALE.REVERSED`
 
 Copy the webhook ID into the Supabase secret `PAYPAL_WEBHOOK_ID`.
-The configured plan must have a fixed EUR price. Subscription creation must
-set `custom_id` to the authenticated SOW IA user's UUID; the webhook rejects
+The configured plan must have a fixed EUR price. In the Streamlit server secrets,
+set `SOWIA_PAYMENTS_ENABLED=false` until all checks pass; when the Sandbox
+flow is approved, configure the same switch only in the protected server
+configuration, together with `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`,
+`PAYPAL_PREMIUM_PLAN_ID`, `PAYPAL_MODE=sandbox`, and the two HTTPS return URLs.
+The Abonnement page creates the subscription server-side and sends the buyer
+to the returned PayPal approval link. Subscription creation must set
+`custom_id` to the authenticated SOW IA user's UUID; the webhook rejects
 events that do not resolve to a valid UUID and the configured plan.
 
 ## Important implementation boundary
