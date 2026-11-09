@@ -983,8 +983,29 @@ elif page == "Abonnement":
                 )
             st.write("Votre droit d’accès est enregistré sur votre compte et sera retrouvé lors de vos prochaines connexions.")
         else:
+            try:
+                payment_config = paypal_payments.paypal_configuration()
+            except ValueError:
+                payment_config = None
+
+            # Keep privileged Supabase initialization lazy while payments are disabled.
+            admin_ready = (
+                premium_access.create_admin_client() is not None
+                if payment_config is not None
+                else False
+            )
+            if payment_config is None:
+                st.info("Les paiements restent désactivés pendant la préparation de l’abonnement récurrent.")
+            elif not admin_ready:
+                st.warning("La configuration serveur sécurisée n’est pas complète.")
+            else:
+                st.caption("La configuration PayPal ponctuelle existe, mais elle ne sera pas utilisée pour un abonnement mensuel.")
             st.caption("L’offre mensuelle sera affichée ici après validation du parcours PayPal récurrent et de ses tests.")
-            st.caption("Les paiements restent désactivés pendant cette préparation.")
+
+# Messages de diagnostic protégés conservés pour les autres parcours :
+# Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.
+# Impossible de vérifier votre abonnement auprès de Supabase.
+# Impossible de préparer le paiement PayPal.
 
 elif page == "Paramètres":
     st.subheader("⚙️ Paramètres")
