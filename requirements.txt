@@ -1,6 +1,8 @@
 streamlit>=1.51
 openai>=1.50
 pypdf>=5.0
+pypdfium2>=4.30
+pytesseract>=0.3.13
 python-dotenv>=1.0
 requests>=2.32
 stripe>=11.0
