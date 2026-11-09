@@ -512,25 +512,34 @@ elif page == "Analyse PDF":
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre espace sécurisé pour envoyer un PDF.")
     else:
-        uploaded_pdf = st.file_uploader(
-            "Choisir un fichier PDF",
-            type=["pdf"],
-            key="analysis_pdf_uploader",
-            max_upload_size=10,
-        )
-        if uploaded_pdf is not None:
-            st.caption(f"Fichier sélectionné : {uploaded_pdf.name}")
-            if st.button("Envoyer le PDF et lancer l'analyse", type="primary", key="send_analysis_pdf"):
-                temporary_path = None
+        upload_path = st.session_state.get("analysis_signed_upload_path")
+        signed_url = st.session_state.get("analysis_signed_upload_url")
+        if not upload_path or not signed_url:
+            if st.button("Préparer un nouvel envoi PDF", type="primary", key="prepare_analysis_pdf_upload"):
                 try:
-                    pdf_bytes = uploaded_pdf.getvalue()
-                    temporary_path = upload_document(
+                    upload_path, signed_url = create_signed_pdf_upload(
                         supabase_client,
                         current_user,
-                        uploaded_pdf.name,
-                        pdf_bytes,
                         st.session_state.get("workspace_id", "personal"),
                     )
+                    st.session_state["analysis_signed_upload_path"] = upload_path
+                    st.session_state["analysis_signed_upload_url"] = signed_url
+                    st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
+                    st.rerun()
+                except Exception as exc:
+                    st.error("Impossible de préparer le transfert sécurisé. Vérifiez la connexion Supabase puis réessayez.")
+        else:
+            upload_result = render_direct_pdf_upload(
+                signed_url,
+                get_setting("SUPABASE_ANON_KEY"),
+                key="analysis_direct_pdf_upload_" + st.session_state.get("analysis_pdf_upload_nonce", "session"),
+            )
+            upload_error = getattr(upload_result, "upload_error", None)
+            if upload_error:
+                st.error("Échec du transfert PDF : " + str(upload_error)[:240])
+            if getattr(upload_result, "uploaded", False):
+                temporary_path = upload_path
+                try:
                     verified_bytes = download_document(
                         supabase_client,
                         current_user,
@@ -538,23 +547,25 @@ elif page == "Analyse PDF":
                         st.session_state.get("workspace_id", "personal"),
                     )
                     st.session_state.pdf_text = extract_pdf_text(BytesIO(verified_bytes))
-                    st.session_state["analysis_pdf_name"] = uploaded_pdf.name
+                    st.session_state["analysis_pdf_name"] = getattr(upload_result, "file_name", None) or "document.pdf"
                     st.success("PDF transmis et texte extrait avec succès.")
-                except ValueError as exc:
-                    st.error(str(exc))
+                    delete_document(
+                        supabase_client,
+                        current_user,
+                        temporary_path,
+                        st.session_state.get("workspace_id", "personal"),
+                    )
+                    st.session_state.pop("analysis_signed_upload_path", None)
+                    st.session_state.pop("analysis_signed_upload_url", None)
+                    st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
+                    st.rerun()
                 except Exception as exc:
-                    st.error("Le transfert ou la lecture du PDF a échoué. Vérifiez la connexion puis réessayez.")
-                finally:
-                    if temporary_path:
-                        try:
-                            delete_document(
-                                supabase_client,
-                                current_user,
-                                temporary_path,
-                                st.session_state.get("workspace_id", "personal"),
-                            )
-                        except Exception:
-                            pass
+                    st.error("Le PDF a été transmis, mais sa vérification ou sa lecture a échoué. Préparez un nouvel envoi et réessayez.")
+            if st.button("Préparer un nouvel envoi PDF", key="reset_analysis_pdf_upload"):
+                st.session_state.pop("analysis_signed_upload_path", None)
+                st.session_state.pop("analysis_signed_upload_url", None)
+                st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
+                st.rerun()
 
     if st.session_state.pdf_text:
         st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
