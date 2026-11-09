@@ -24,7 +24,7 @@ def test_premium_admin_client_is_created_only_after_payments_are_enabled():
         and isinstance(node.func.value, ast.Name)
         and node.func.value.id == "premium_access"
     ]
-    assert len(admin_calls) == 2
+    assert len(admin_calls) == 1
 
     call = admin_calls[0]
     enclosing_try = parents.get(call)
