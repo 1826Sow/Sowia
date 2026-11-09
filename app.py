@@ -15,6 +15,8 @@ from storage import (
     save_message as local_save_message,
 )
 from documents import extract_pdf_text
+from io import BytesIO
+from direct_pdf_upload import create_signed_pdf_upload, render_direct_pdf_upload
 from websearch import search_web
 from sowia_supabase_auth import (
     authenticated_user,
@@ -635,22 +637,67 @@ elif page == "Mes documents":
         st.warning("Connectez-vous avec votre compte pour utiliser le stockage documentaire privé.")
     else:
         st.caption("Vos PDF sont conservés dans un espace privé Supabase, séparé de celui des autres utilisateurs. Taille maximale : 10 Mo par fichier.")
-        uploaded_pdf = st.file_uploader("Ajouter un PDF à mes documents", type=["pdf"], key="private_pdf_upload", max_upload_size=10)
-        if uploaded_pdf and st.button("Enregistrer dans mes documents", type="primary"):
-            try:
-                upload_document(supabase_client, current_user, uploaded_pdf.name, uploaded_pdf.getvalue(), st.session_state.get("workspace_id", "personal"))
-                st.session_state["document_upload_notice"] = "Document enregistré dans votre espace privé."
-                st.rerun()
-            except (ValueError, PermissionError) as exc:
-                # These exceptions come from our own PDF validation and ownership checks.
-                st.session_state["document_upload_error"] = str(exc)
-                st.rerun()
-            except Exception as exc:
-                # SDK/backend exception text may contain internal details.
-                st.session_state["document_upload_error"] = (
-                    f"Échec de l'enregistrement (code : {type(exc).__name__}). "
-                    "Réessayez ; si le problème persiste, contactez le support."
-                )
+        # Android-friendly direct upload: the browser sends the selected file to
+        # a short-lived Supabase signed URL, avoiding Streamlit's file uploader.
+        upload_path = st.session_state.get("documents_signed_upload_path")
+        signed_url = st.session_state.get("documents_signed_upload_url")
+        if not upload_path or not signed_url:
+            if st.button("Préparer l'envoi d'un PDF", type="primary", key="prepare_documents_pdf_upload"):
+                try:
+                    upload_path, signed_url = create_signed_pdf_upload(
+                        supabase_client,
+                        current_user,
+                        st.session_state.get("workspace_id", "personal"),
+                    )
+                    st.session_state["documents_signed_upload_path"] = upload_path
+                    st.session_state["documents_signed_upload_url"] = signed_url
+                    st.session_state["documents_pdf_upload_nonce"] = str(uuid.uuid4())
+                    st.rerun()
+                except Exception as exc:
+                    st.error("Impossible de préparer le transfert sécurisé. Vérifiez la connexion Supabase puis réessayez.")
+        else:
+            upload_result = render_direct_pdf_upload(
+                signed_url,
+                get_setting("SUPABASE_ANON_KEY"),
+                key="documents_direct_pdf_upload_" + st.session_state.get("documents_pdf_upload_nonce", "session"),
+            )
+            upload_error = getattr(upload_result, "upload_error", None)
+            if upload_error:
+                st.error("Échec du transfert PDF : " + str(upload_error)[:240])
+            if getattr(upload_result, "uploaded", False):
+                try:
+                    temporary_bytes = download_document(
+                        supabase_client,
+                        current_user,
+                        upload_path,
+                        st.session_state.get("workspace_id", "personal"),
+                    )
+                    upload_document(
+                        supabase_client,
+                        current_user,
+                        getattr(upload_result, "file_name", None) or "document.pdf",
+                        temporary_bytes,
+                        st.session_state.get("workspace_id", "personal"),
+                    )
+                    delete_document(
+                        supabase_client,
+                        current_user,
+                        upload_path,
+                        st.session_state.get("workspace_id", "personal"),
+                    )
+                    st.session_state.pop("documents_signed_upload_path", None)
+                    st.session_state.pop("documents_signed_upload_url", None)
+                    st.session_state["documents_pdf_upload_nonce"] = str(uuid.uuid4())
+                    st.session_state["document_upload_notice"] = "Document enregistré dans votre espace privé."
+                    st.rerun()
+                except (ValueError, PermissionError) as exc:
+                    st.error(str(exc))
+                except Exception as exc:
+                    st.error("Le transfert a été reçu, mais l'enregistrement n'a pas pu être confirmé. Code : " + type(exc).__name__)
+            if st.button("Annuler / recommencer", key="reset_documents_pdf_upload"):
+                st.session_state.pop("documents_signed_upload_path", None)
+                st.session_state.pop("documents_signed_upload_url", None)
+                st.session_state["documents_pdf_upload_nonce"] = str(uuid.uuid4())
                 st.rerun()
         st.divider()
         st.markdown("#### Mes fichiers")
