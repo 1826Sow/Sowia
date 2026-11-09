@@ -18,6 +18,11 @@ create table if not exists public.sowia_subscriptions (
 create index if not exists sowia_subscriptions_user_status_idx
     on public.sowia_subscriptions (user_id, status);
 
+-- Keep at most one active recurring subscription per SOW IA account.
+create unique index if not exists sowia_subscriptions_one_active_per_user_idx
+    on public.sowia_subscriptions (user_id)
+    where status = 'active';
+
 alter table public.sowia_subscriptions enable row level security;
 
 drop policy if exists "Users can read their own SOW IA subscription"
