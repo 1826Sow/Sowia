@@ -741,6 +741,36 @@ elif page == "Mes documents":
                     continue
                 display_name = display_document_name(stored_name)
                 with st.container(border=True):
+                    # Generate a short-lived private URL so the PDF can open
+                    # in the browser's native viewer without making it public.
+                    if st.button("Ouvrir le PDF", key=f"open_private_{stored_name}"):
+                        try:
+                            signed_result = supabase_client.storage.from_("sowia-files").create_signed_url(
+                                stored_path, 300
+                            )
+                            signed_url = (
+                                signed_result.get("signedURL")
+                                or signed_result.get("signedUrl")
+                                or signed_result.get("signed_url")
+                            )
+                            if not signed_url:
+                                raise RuntimeError("URL temporaire indisponible")
+                            st.session_state["opened_saved_pdf_path"] = stored_path
+                            st.session_state["opened_saved_pdf_url"] = signed_url
+                        except Exception as exc:
+                            st.error(
+                                "Impossible de créer le lien privé d'ouverture. "
+                                "Code : " + type(exc).__name__
+                            )
+                    if (
+                        st.session_state.get("opened_saved_pdf_path") == stored_path
+                        and st.session_state.get("opened_saved_pdf_url")
+                    ):
+                        st.link_button(
+                            "Afficher le PDF dans le navigateur",
+                            st.session_state["opened_saved_pdf_url"],
+                            use_container_width=True,
+                        )
                     st.write(f"📄 {display_name}")
                     upload_label = document_upload_label(stored)
                     if upload_label:
