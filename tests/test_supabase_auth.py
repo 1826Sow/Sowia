@@ -9,6 +9,24 @@ def test_supabase_configuration_requires_both_values(monkeypatch):
     assert supabase_auth.configuration_ready() is False
 
 
+@pytest.mark.parametrize(
+    ("configured_url", "expected_url"),
+    [
+        ("https://project.supabase.co", "https://project.supabase.co"),
+        ("https://project.supabase.co/", "https://project.supabase.co"),
+        ("https://project.supabase.co/rest/v1", "https://project.supabase.co"),
+        ("https://project.supabase.co/auth/v1", "https://project.supabase.co"),
+    ],
+)
+def test_normalize_supabase_url_removes_api_path(configured_url, expected_url):
+    assert supabase_auth.normalize_supabase_url(configured_url) == expected_url
+
+
+def test_normalize_supabase_url_rejects_unknown_path():
+    with pytest.raises(RuntimeError, match="sans chemin API"):
+        supabase_auth.normalize_supabase_url("https://project.supabase.co/custom")
+
+
 def test_client_fails_closed_when_not_configured(monkeypatch):
     monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
@@ -26,22 +44,32 @@ def test_missing_authorization_code_is_rejected():
         supabase_auth.complete_github_login(object(), "")
 
 
-def test_oauth_url_reads_supabase_py_url_attribute():
+def test_oauth_url_reads_supabase_py_url_attribute(monkeypatch):
+    from urllib.parse import parse_qs, urlsplit
+
+    monkeypatch.setattr(
+        supabase_auth,
+        "get_setting",
+        lambda name, default="": "sb_publishable_test" if name == "SUPABASE_ANON_KEY" else default,
+    )
+
     class Auth:
         def sign_in_with_oauth(self, _options):
             return type("OAuthResponse", (), {"url": "https://github.com/login/oauth"})()
 
     client = type("Client", (), {"auth": Auth()})()
-    assert supabase_auth.github_authorization_url(
-        client, "https://sowia.example"
-    ) == "https://github.com/login/oauth"
+    result = supabase_auth.github_authorization_url(client, "https://sowia.example")
+    parsed = urlsplit(result)
+    assert parsed.scheme == "https"
+    assert parsed.netloc == "github.com"
+    assert parse_qs(parsed.query)["apikey"] == ["sb_publishable_test"]
 
 
-def test_oauth_code_is_passed_as_string_to_supabase_sdk():
+def test_oauth_code_is_passed_in_supabase_sdk_params_mapping():
     class Auth:
-        def exchange_code_for_session(self, auth_code):
-            assert auth_code == "one-time-code"
-            assert isinstance(auth_code, str)
+        def exchange_code_for_session(self, params):
+            assert params == {"auth_code": "one-time-code"}
+            assert isinstance(params, dict)
             return "exchanged"
 
     client = type("Client", (), {"auth": Auth()})()

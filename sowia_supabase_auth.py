@@ -176,13 +176,36 @@ def _browser_storage_id(browser_id):
     return hashlib.sha256(browser_id.encode("ascii")).hexdigest()
 
 
+def normalize_supabase_url(value):
+    """Normalize a Supabase project URL, removing accidental REST/Auth API suffixes."""
+    from urllib.parse import urlsplit, urlunsplit
+
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    parts = urlsplit(raw)
+    if parts.scheme != "https" or not parts.netloc:
+        raise RuntimeError("SUPABASE_URL doit être l'adresse HTTPS racine du projet Supabase.")
+    path = parts.path.rstrip("/")
+    for suffix in ("/rest/v1", "/auth/v1", "/storage/v1"):
+        if path.endswith(suffix):
+            path = path[:-len(suffix)].rstrip("/")
+            break
+    if path:
+        raise RuntimeError(
+            "SUPABASE_URL doit désigner le projet Supabase, sans chemin API "
+            "(par exemple /rest/v1 ou /auth/v1)."
+        )
+    return urlunsplit((parts.scheme, parts.netloc, "", "", ""))
+
+
 def configuration_ready():
     return bool(get_setting("SUPABASE_URL") and get_setting("SUPABASE_ANON_KEY"))
 
 
 def create_user_client(browser_id):
     """Create a per-session PKCE client; service-role keys are never accepted."""
-    url = str(get_setting("SUPABASE_URL", "")).strip()
+    url = normalize_supabase_url(get_setting("SUPABASE_URL", ""))
     key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
     if not url or not key:
         raise RuntimeError(
@@ -206,6 +229,12 @@ def create_user_client(browser_id):
     return create_client(url, key, options=options)
 
 
+def pkce_verifier_available(browser_id):
+    """Return whether this browser's one-time PKCE verifier survived the redirect."""
+    storage = _BrowserScopedOAuthStorage(_browser_storage_id(browser_id))
+    return bool(storage.get_item("supabase.auth.token-code-verifier"))
+
+
 def github_authorization_url(client, redirect_to):
     """Start GitHub OAuth via Supabase; redirect_to must be allow-listed."""
     if not redirect_to or not redirect_to.startswith("https://"):
@@ -221,6 +250,19 @@ def github_authorization_url(client, redirect_to):
         url = getattr(getattr(response, "data", None), "url", None)
     if not url:
         raise RuntimeError("Supabase n'a pas retourné l'adresse de connexion.")
+
+    # OAuth opens in the user's browser, so the Python client's HTTP headers
+    # (including apikey) are not carried into that navigation. Supabase's API
+    # gateway requires the publishable/anon key on the authorize URL.
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+    public_key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
+    if not public_key:
+        raise RuntimeError("La clé publique Supabase est absente.")
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query.setdefault("apikey", public_key)
+    url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
     return url
 
 
@@ -228,9 +270,9 @@ def complete_github_login(client, authorization_code):
     """Exchange the one-time PKCE code using the browser-scoped verifier."""
     if not authorization_code:
         raise ValueError("Code de connexion manquant.")
-    # supabase-py expects the authorization code as a string, not the
-    # GoTrue JSON payload shape used by sign_in_with_oauth.
-    return client.auth.exchange_code_for_session(str(authorization_code))
+    # Current supabase-py/auth-py expects a mapping with the OAuth code.
+    # Passing a bare string causes AttributeError because the SDK calls params.get().
+    return client.auth.exchange_code_for_session({"auth_code": str(authorization_code)})
 
 
 def authenticated_user(client):

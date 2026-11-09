@@ -26,6 +26,7 @@ from sowia_supabase_auth import (
     create_user_client,
     github_authorization_url,
     sign_out,
+    pkce_verifier_available,
 )
 import cloud_storage
 import paypal_payments
@@ -78,14 +79,14 @@ current_user = None
 supabase_client = None
 if cloud_mode:
     auth_stage = "initialisation du client Supabase"
+    pkce_diagnostic = "non applicable"
     try:
+        # Read the same browser scope on every rerun, including the OAuth callback.
+        browser_id = browser_storage_id()
+        if not browser_id:
+            st.info("Initialisation sécurisée du navigateur…")
+            st.stop()
         if "sowia_supabase_client" not in st.session_state:
-            # Streamlit Cloud WebSocket requests may not expose browser cookies.
-            # Obtain a persistent random browser scope through a v2 component.
-            browser_id = browser_storage_id()
-            if not browser_id:
-                st.info("Initialisation sécurisée du navigateur…")
-                st.stop()
             # Keep this PKCE client in this browser session; never use a global cache.
             st.session_state.sowia_supabase_client = create_user_client(browser_id)
         supabase_client = st.session_state.sowia_supabase_client
@@ -93,6 +94,11 @@ if cloud_mode:
         auth_stage = "échange du code de retour GitHub avec Supabase"
         authorization_code = st.query_params.get("code")
         if authorization_code:
+            pkce_diagnostic = (
+                "vérificateur retrouvé dans le stockage du serveur"
+                if pkce_verifier_available(browser_id)
+                else "vérificateur PKCE absent du stockage du serveur"
+            )
             complete_github_login(supabase_client, authorization_code)
             st.session_state.pop("sowia_github_login_url", None)
             st.query_params.clear()
@@ -136,6 +142,12 @@ if cloud_mode:
                 "L'accès reste fermé par sécurité. Rechargez cette page pour "
                 "générer une nouvelle tentative GitHub.\n\n"
                 f"Étape : {auth_stage}.\nCode technique : {type(exc).__name__}"
+                + (
+                    f"\nAttribut manquant : {exc.name}"
+                    if isinstance(exc, AttributeError) and getattr(exc, "name", None)
+                    else ""
+                )
+                + (f"\nDiagnostic PKCE : {pkce_diagnostic}." if pkce_diagnostic != "non applicable" else "")
             )
             with st.expander("Détails techniques pour le diagnostic"):
                 st.caption(
@@ -167,10 +179,10 @@ if cloud_mode:
         if callback_error_description:
             st.warning("Motif communiqué par le fournisseur : " + callback_error_description[:300])
         try:
-            # Pin the OAuth return address to this active test deployment.
+            # Pin the OAuth return address to the current sowia-pdf test deployment.
             # This avoids a stale SOWIA_PUBLIC_URL secret sending users back
             # to an older Streamlit app URL.
-            redirect_to = "https://sowia-test.streamlit.app"
+            redirect_to = "https://sowia-pdf.streamlit.app"
             st.caption("Adresse de retour utilisée : " + redirect_to)
             # Keep one OAuth URL per Streamlit session. Each call to
             # sign_in_with_oauth creates a new PKCE verifier; generating a
