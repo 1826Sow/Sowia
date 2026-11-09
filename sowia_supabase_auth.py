@@ -223,6 +223,8 @@ def create_user_client(browser_id):
     options = ClientOptions(
         storage=storage,
         flow_type="pkce",
+        # Prevent a stalled Storage request from leaving PDF analysis loading forever.
+        storage_client_timeout=30,
         persist_session=False,
         auto_refresh_token=True,
     )
