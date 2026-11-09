@@ -122,19 +122,22 @@ Deno.serve(async (request: Request) => {
     const resource = (event.resource && typeof event.resource === "object")
       ? event.resource as Record<string, unknown>
       : {};
-    const related = (resource.supplementary_data && typeof resource.supplementary_data === "object")
-      ? resource.supplementary_data as Record<string, unknown>
-      : {};
-    const relatedIds = (related.related_ids && typeof related.related_ids === "object")
-      ? related.related_ids as Record<string, unknown>
-      : {};
+    const related =
+      (resource.supplementary_data &&
+        typeof resource.supplementary_data === "object")
+        ? resource.supplementary_data as Record<string, unknown>
+        : {};
+    const relatedIds =
+      (related.related_ids && typeof related.related_ids === "object")
+        ? related.related_ids as Record<string, unknown>
+        : {};
     // Sale events carry their subscription ID in billing_agreement_id;
     // resource.id is the sale/transaction ID and must never be mistaken for it.
     const subscriptionId = String(
-      resource.billing_agreement_id ||
-      relatedIds.billing_agreement_id ||
-      relatedIds.subscription_id ||
-      (eventType.startsWith("BILLING.SUBSCRIPTION.") ? resource.id : "") ||
+        resource.billing_agreement_id ||
+        relatedIds.billing_agreement_id ||
+        relatedIds.subscription_id ||
+        (eventType.startsWith("BILLING.SUBSCRIPTION.") ? resource.id : "") ||
       "",
     ).trim();
     if (!/^I-[A-Z0-9-]{5,64}$/.test(subscriptionId)) {
