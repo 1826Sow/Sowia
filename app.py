@@ -174,10 +174,10 @@ if cloud_mode:
         if callback_error_description:
             st.warning("Motif communiqué par le fournisseur : " + callback_error_description[:300])
         try:
-            # Pin the OAuth return address to this active test deployment.
+            # Pin the OAuth return address to the current sowia-pdf test deployment.
             # This avoids a stale SOWIA_PUBLIC_URL secret sending users back
             # to an older Streamlit app URL.
-            redirect_to = "https://sowia-test-2026.streamlit.app"
+            redirect_to = "https://sowia-pdf.streamlit.app"
             st.caption("Adresse de retour utilisée : " + redirect_to)
             # Keep one OAuth URL per Streamlit session. Each call to
             # sign_in_with_oauth creates a new PKCE verifier; generating a
