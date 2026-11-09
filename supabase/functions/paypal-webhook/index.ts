@@ -120,9 +120,15 @@ async function dbRequest(
 Deno.serve(async (request: Request) => {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  let claimedEventId: string | null = null;
+  let databaseUrl = "";
+  let databaseKey = "";
+
   try {
     const supabaseUrl = env("SUPABASE_URL").replace(/\/$/, "");
     const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+    databaseUrl = supabaseUrl;
+    databaseKey = serviceKey;
     const expectedPlanId = env("PAYPAL_PREMIUM_PLAN_ID");
     if (!supabaseUrl.startsWith("https://") || !serviceKey || !expectedPlanId) {
       console.error("Webhook server configuration incomplete");
@@ -155,33 +161,32 @@ Deno.serve(async (request: Request) => {
     const resource = event.resource ?? {};
     const resourceId = typeof resource.id === "string" ? resource.id : null;
 
-    // Insert receipt once. Failed receipts may be retried by PayPal; completed
-    // or intentionally ignored receipts are acknowledged without reapplying.
-    await dbRequest(
-      supabaseUrl,
-      serviceKey,
-      "sowia_paypal_webhook_events",
+    // Claim the event atomically in Postgres. Concurrent duplicate deliveries
+    // cannot both proceed; failed events may be claimed again on PayPal retry.
+    if (!eventId.trim() || eventId.length > 200) {
+      return json({ error: "Invalid event ID" }, 400);
+    }
+    const claimResponse = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/claim_sowia_paypal_webhook_event`,
       {
         method: "POST",
-        headers: { prefer: "resolution=ignore-duplicates,return=minimal" },
+        headers: supabaseHeaders(serviceKey),
         body: JSON.stringify({
-          event_id: eventId,
-          event_type: eventType,
-          resource_id: resourceId,
-          processing_status: "received",
+          p_event_id: eventId,
+          p_event_type: eventType,
+          p_resource_id: resourceId,
         }),
       },
     );
-    const receiptResponse = await dbRequest(
-      supabaseUrl,
-      serviceKey,
-      `sowia_paypal_webhook_events?event_id=eq.${encodeURIComponent(eventId)}&select=processing_status`,
-    );
-    const receipts = await receiptResponse.json();
-    const receiptStatus = receipts?.[0]?.processing_status;
-    if (receiptStatus === "processed" || receiptStatus === "ignored") {
+    if (!claimResponse.ok) {
+      console.error("Could not claim PayPal webhook event", claimResponse.status);
+      throw new Error("Webhook event could not be claimed");
+    }
+    const claimed = await claimResponse.json();
+    if (claimed !== true) {
       return json({ received: true, duplicate: true });
     }
+    claimedEventId = eventId;
 
     if (!supported.has(eventType)) {
       await dbRequest(
@@ -304,6 +309,21 @@ Deno.serve(async (request: Request) => {
     return json({ received: true });
   } catch (error) {
     console.error("PayPal webhook processing failed", error instanceof Error ? error.message : "unknown error");
+    if (claimedEventId && databaseUrl && databaseKey) {
+      try {
+        await dbRequest(
+          databaseUrl,
+          databaseKey,
+          `sowia_paypal_webhook_events?event_id=eq.${encodeURIComponent(claimedEventId)}&processing_status=eq.processing`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({ processing_status: "failed" }),
+          },
+        );
+      } catch {
+        console.error("Could not mark failed PayPal webhook event for retry");
+      }
+    }
     return json({ error: "Webhook processing failed; PayPal may retry delivery" }, 500);
   }
 });
