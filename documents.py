@@ -6,6 +6,7 @@ from pypdf import PdfReader
 
 MAX_PDF_BYTES = 10 * 1024 * 1024
 MAX_PDF_PAGES = 500
+MAX_OCR_PAGES = 20
 
 
 def _uploaded_size(uploaded_file):
@@ -71,8 +72,58 @@ def extract_pdf_text(uploaded_file, max_chars=100000, max_pages=MAX_PDF_PAGES):
         total += min(len(chunk), remaining)
 
     result = "".join(pages).strip()
-    if not result:
+    if result:
+        return result
+
+    # Scanned PDFs contain page images rather than an embedded text layer.
+    # Render a bounded number of pages and run local Tesseract OCR.
+    if len(reader.pages) > MAX_OCR_PAGES:
         raise ValueError(
-            "Aucun texte extractible. Le PDF est peut-être scanné ou protégé."
+            "Ce PDF ne contient pas de texte sélectionnable et dépasse "
+            f"la limite OCR de {MAX_OCR_PAGES} pages. Réduisez-le ou utilisez "
+            "un PDF avec texte sélectionnable."
         )
-    return result
+    try:
+        import fitz
+        import pytesseract
+        from PIL import Image
+    except ImportError as exc:
+        raise ValueError(
+            "Ce PDF semble être un scan. La lecture OCR n'est pas disponible "
+            "sur cette version de SOW IA."
+        ) from exc
+
+    try:
+        ocr_pages = []
+        ocr_total = 0
+        document = fitz.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            for number, page in enumerate(document, start=1):
+                remaining = max_chars - ocr_total
+                if remaining <= 0:
+                    break
+                pixmap = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
+                image = Image.frombytes("RGB", [pixmap.width, pixmap.height], pixmap.samples)
+                try:
+                    page_text = pytesseract.image_to_string(image, lang="fra+eng").strip()
+                except Exception:
+                    page_text = pytesseract.image_to_string(image, lang="eng").strip()
+                if page_text:
+                    chunk = f"\n--- Page {number} (OCR) ---\n{page_text}"
+                    ocr_pages.append(chunk[:remaining])
+                    ocr_total += min(len(chunk), remaining)
+        finally:
+            document.close()
+    except Exception as exc:
+        raise ValueError(
+            "La lecture OCR du PDF scanné a échoué. Vérifiez que le document "
+            "n'est pas endommagé et réessayez."
+        ) from exc
+
+    ocr_result = "".join(ocr_pages).strip()
+    if not ocr_result:
+        raise ValueError(
+            "Aucun texte n'a pu être reconnu dans ce scan. Vérifiez la netteté "
+            "des pages et leur orientation."
+        )
+    return ocr_result
