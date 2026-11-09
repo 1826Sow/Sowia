@@ -7,7 +7,8 @@ alter table public.sowia_entitlements
     add column if not exists paypal_plan_id text,
     add column if not exists paypal_status text,
     add column if not exists current_period_end timestamptz,
-    add column if not exists last_payment_at timestamptz;
+    add column if not exists last_payment_at timestamptz,
+    add column if not exists paypal_access_blocked boolean not null default false;
 
 create unique index if not exists sowia_entitlements_paypal_subscription_uidx
     on public.sowia_entitlements (paypal_subscription_id)
