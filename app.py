@@ -532,6 +532,7 @@ elif page == "Analyse PDF":
             st.info("Choisissez votre PDF, puis touchez « Envoyer le PDF ». Le fichier est transmis directement à votre espace privé.")
             upload_result = render_direct_pdf_upload(
                 signed_url,
+                get_setting("SUPABASE_ANON_KEY"),
                 key="direct_pdf_upload_" + st.session_state.get("direct_pdf_upload_nonce", "session"),
             )
             if getattr(upload_result, "upload_error", None):
