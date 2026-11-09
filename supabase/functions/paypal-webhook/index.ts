@@ -262,7 +262,32 @@ Deno.serve(async (request: Request) => {
     const entitlementRows = await entitlementResponse.json();
     const previouslyBlocked = Array.isArray(entitlementRows) &&
       entitlementRows.some((row: any) => row.paypal_access_blocked === true);
-    const accessBlocked = paymentRevokedAccess || previouslyBlocked;
+    // Store refund/reversal blocks in a dedicated table keyed by the PayPal
+    // subscription ID. This works even when no entitlement row exists yet.
+    if (paymentRevokedAccess) {
+      await dbRequest(
+        supabaseUrl,
+        serviceKey,
+        "sowia_paypal_subscription_blocks?on_conflict=paypal_subscription_id",
+        {
+          method: "POST",
+          headers: { prefer: "resolution=merge-duplicates,return=minimal" },
+          body: JSON.stringify({
+            paypal_subscription_id: subscriptionId,
+            user_id: userId,
+            source_event_id: eventId,
+          }),
+        },
+      );
+    }
+    const blockResponse = await dbRequest(
+      supabaseUrl,
+      serviceKey,
+      `sowia_paypal_subscription_blocks?paypal_subscription_id=eq.${encodeURIComponent(subscriptionId)}&select=paypal_subscription_id`,
+    );
+    const durableBlocks = await blockResponse.json();
+    const durablyBlocked = Array.isArray(durableBlocks) && durableBlocks.length > 0;
+    const accessBlocked = paymentRevokedAccess || previouslyBlocked || durablyBlocked;
     const isActive = paypalStatus === "ACTIVE" && !accessBlocked;
     const billingInfo = subscription.billing_info ?? {};
     const nextBilling = billingInfo.next_billing_time ?? null;
