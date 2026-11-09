@@ -502,18 +502,29 @@ elif page == "Recherche Web":
 
 elif page == "Analyse PDF":
     st.subheader("📄 Analyse PDF")
-    file = st.file_uploader("Importer un document PDF", type=["pdf"], max_upload_size=10)
-    if file and st.button("Extraire le texte"):
-        try:
-            st.session_state.pdf_text = extract_pdf_text(file)
-            st.success("Texte extrait.")
-        except ValueError as exc:
-            st.error(str(exc))
-        except Exception:
-            st.error(
-                "Impossible de lire ce PDF. Vérifiez que le fichier n'est pas endommagé "
-                "et qu'il s'agit bien d'un PDF lisible."
-            )
+    st.caption("Importez un PDF depuis votre téléphone. Taille maximale : 10 Mo.")
+    file = st.file_uploader(
+        "Importer un document PDF",
+        type=["pdf"],
+        key="pdf_analysis_upload",
+        max_upload_size=10,
+        help="Choisissez un fichier PDF enregistré sur votre téléphone.",
+    )
+    if file is None:
+        st.info("Aucun PDF reçu pour le moment. Sélectionnez un fichier dans le champ ci-dessus.")
+    else:
+        st.success(f"Fichier reçu : {file.name} · {file.size / (1024 * 1024):.2f} Mo")
+        if st.button("Extraire le texte", type="primary", key="extract_uploaded_pdf_text"):
+            try:
+                st.session_state.pdf_text = extract_pdf_text(file)
+                st.success("Texte extrait.")
+            except ValueError as exc:
+                st.error(str(exc))
+            except Exception:
+                st.error(
+                    "Le fichier a bien été reçu, mais sa lecture a échoué. Vérifiez qu'il s'agit "
+                    "d'un PDF lisible et non endommagé."
+                )
     if st.session_state.pdf_text:
         st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
         st.download_button("Télécharger le texte", st.session_state.pdf_text, file_name="sowia_extraction.txt")
