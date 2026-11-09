@@ -26,21 +26,32 @@ export default function({ parentElement, data, setStateValue }) {
   const status = parentElement.querySelector("#sowia-pdf-status");
   let selectedFile = null;
   let busy = false;
-  input.onchange = () => {
-    selectedFile = input.files && input.files[0] ? input.files[0] : null;
+  input.addEventListener("change", () => {
+    selectedFile = input.files && input.files.length ? input.files[0] : null;
+    setStateValue("uploaded", false);
+    setStateValue("upload_error", null);
     const validName = selectedFile && selectedFile.name.toLowerCase().endsWith(".pdf");
     const validSize = selectedFile && selectedFile.size > 0 && selectedFile.size <= 10 * 1024 * 1024;
-    if (!selectedFile) { status.textContent = "Aucun fichier sélectionné."; button.disabled = true; }
-    else if (!validName) { status.textContent = "Choisissez un fichier .pdf."; button.disabled = true; }
-    else if (!validSize) { status.textContent = "Le PDF doit peser au maximum 10 Mo."; button.disabled = true; }
-    else { status.textContent = selectedFile.name + " · " + (selectedFile.size / 1048576).toFixed(2) + " Mo"; button.disabled = false; }
-  };
+    if (!selectedFile) {
+      status.textContent = "Aucun fichier reçu du sélecteur Android. Réessayez ou choisissez un autre PDF.";
+      button.disabled = true;
+    } else if (!validName) {
+      status.textContent = "Le fichier reçu n'est pas un PDF. Choisissez un fichier .pdf.";
+      button.disabled = true;
+    } else if (!validSize) {
+      status.textContent = "Le PDF doit peser au maximum 10 Mo.";
+      button.disabled = true;
+    } else {
+      status.textContent = "Fichier reçu : " + selectedFile.name + " · " + (selectedFile.size / 1048576).toFixed(2) + " Mo";
+      button.disabled = false;
+    }
+  });
   button.onclick = async () => {
     if (busy) return;
     if (!selectedFile) { status.textContent = "Choisissez d'abord un fichier PDF."; return; }
     if (!data?.signed_url) { status.textContent = "Erreur : autorisation temporaire absente. Touchez « Préparer un nouvel envoi PDF »."; return; }
     if (!data?.apikey) { status.textContent = "Erreur : clé publique Supabase non transmise au composant. Vérifiez le secret SUPABASE_ANON_KEY."; return; }
-    busy = true; button.disabled = true; status.textContent = "Envoi sécurisé en cours…";
+    busy = true; button.disabled = true; setStateValue("upload_error", null); status.textContent = "Envoi sécurisé en cours…";
     try {
       // Supabase Storage requires the project API key even for signed uploads.
       // Send the PDF bytes directly; multipart FormData is not accepted here.
@@ -60,9 +71,12 @@ export default function({ parentElement, data, setStateValue }) {
       setStateValue("file_size", selectedFile.size);
       setStateValue("uploaded", true);
     } catch (error) {
-      status.textContent = "Échec du transfert : " + (error?.message || "erreur réseau");
+      status.textContent = "Échec du transfert : " + (error?.message || "erreur réseau") + ". Vous pouvez réessayer sans sélectionner à nouveau le fichier.";
       setStateValue("upload_error", String(error?.message || "Erreur réseau").slice(0, 240));
-    } finally { busy = false; }
+    } finally {
+      busy = false;
+      button.disabled = !selectedFile || !selectedFile.name.toLowerCase().endsWith(".pdf") || selectedFile.size <= 0 || selectedFile.size > 10 * 1024 * 1024;
+    }
   };
 }
 """
