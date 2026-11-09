@@ -249,21 +249,11 @@ Deno.serve(async (request: Request) => {
     // the recurring subscription itself as ACTIVE.
     const paymentRevokedAccess = eventType === "PAYMENT.SALE.REFUNDED" ||
       eventType === "PAYMENT.SALE.REVERSED";
-    const paymentRestoredAccess = eventType === "PAYMENT.SALE.COMPLETED";
-
-    // Persist a refund/reversal block so a later subscription status notification
-    // cannot silently restore Premium. Only a newly completed sale clears it.
-    if (paymentRestoredAccess) {
-      await dbRequest(
-        supabaseUrl,
-        serviceKey,
-        `sowia_entitlements?paypal_subscription_id=eq.${encodeURIComponent(subscriptionId)}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ paypal_access_blocked: false }),
-        },
-      );
-    }
+    // A refund/reversal block is permanent for this subscription ID.
+    // A later PAYMENT.SALE.COMPLETED event must never clear it: delayed or
+    // out-of-order notifications could otherwise restore access after a refund.
+    // A customer who subscribes again receives a new subscription ID and is
+    // evaluated independently by the normal subscription flow.
     const entitlementResponse = await dbRequest(
       supabaseUrl,
       serviceKey,
