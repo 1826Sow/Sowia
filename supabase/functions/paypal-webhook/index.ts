@@ -144,20 +144,29 @@ Deno.serve(async (request: Request) => {
     // Reconcile against PayPal's current server-side record; never trust event status alone.
     const subscriptionResponse = await fetch(
       baseUrl + "/v1/billing/subscriptions/" + encodeURIComponent(subscriptionId),
-      { headers: { Authorization: "Bearer " + token, Accept: "application/json" } },
+      {
+        headers: {
+          Authorization: "Bearer " + token,
+          Accept: "application/json",
+        },
+      },
     );
     if (!subscriptionResponse.ok) {
       throw new Error("Unable to reconcile subscription with PayPal");
     }
     const subscription = await subscriptionResponse.json();
     const userId = String(subscription.custom_id || "");
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (
       subscription.id !== subscriptionId ||
       subscription.plan_id !== planId ||
       !uuidPattern.test(userId)
     ) {
-      return json({ error: "Subscription ownership or plan validation failed" }, 403);
+      return json(
+        { error: "Subscription ownership or plan validation failed" },
+        403,
+      );
     }
 
     const billing = subscription.billing_info || {};
@@ -177,7 +186,8 @@ Deno.serve(async (request: Request) => {
     };
 
     const writeResponse = await fetch(
-      supabaseUrl + "/rest/v1/sowia_subscriptions?on_conflict=paypal_subscription_id",
+      supabaseUrl +
+        "/rest/v1/sowia_subscriptions?on_conflict=paypal_subscription_id",
       {
         method: "POST",
         headers: {
@@ -190,7 +200,10 @@ Deno.serve(async (request: Request) => {
       },
     );
     if (!writeResponse.ok) {
-      console.error("Supabase subscription upsert failed", await writeResponse.text());
+      console.error(
+        "Supabase subscription upsert failed",
+        await writeResponse.text(),
+      );
       throw new Error("Unable to persist subscription state");
     }
 
