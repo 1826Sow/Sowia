@@ -217,9 +217,13 @@ if cloud_mode and current_user is not None:
             "Retour de PayPal reçu. Votre accès Premium sera activé uniquement "
             "après confirmation sécurisée de l'abonnement par PayPal."
         )
+        st.session_state.pop("sowia_paypal_subscription_approval_url", None)
+        st.session_state.pop("sowia_paypal_subscription_id_pending", None)
         st.query_params.clear()
     elif st.query_params.get("paypal_subscription") == "cancel":
         st.info("La souscription a été annulée. Aucun accès Premium n'a été activé.")
+        st.session_state.pop("sowia_paypal_subscription_approval_url", None)
+        st.session_state.pop("sowia_paypal_subscription_id_pending", None)
         st.query_params.clear()
 
     paypal_token = st.query_params.get("token")
@@ -1016,11 +1020,13 @@ elif page == "Abonnement":
                 )
             else:
                 st.caption("Formule PayPal récurrente configurée. La souscription sera confirmée par le serveur avant l'ouverture de Premium.")
-                if st.button("Préparer mon abonnement PayPal", type="primary", use_container_width=True):
+                approval_url = st.session_state.get("sowia_paypal_subscription_approval_url")
+                if not approval_url and st.button("Préparer mon abonnement PayPal", type="primary", use_container_width=True):
                     try:
                         subscription = paypal_payments.create_premium_subscription(str(current_user.id))
                         st.session_state["sowia_paypal_subscription_approval_url"] = subscription["approval_url"]
                         st.session_state["sowia_paypal_subscription_id_pending"] = subscription["id"]
+                        st.rerun()
                     except Exception:
                         st.error("Impossible de préparer la souscription PayPal. Aucun accès Premium n'a été accordé.")
                 approval_url = st.session_state.get("sowia_paypal_subscription_approval_url")
