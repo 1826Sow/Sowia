@@ -1,4 +1,6 @@
 """PDF text extraction helpers."""
+from io import BytesIO
+
 from pypdf import PdfReader
 
 
@@ -28,7 +30,25 @@ def extract_pdf_text(uploaded_file, max_chars=100000, max_pages=MAX_PDF_PAGES):
     if size is not None and size > MAX_PDF_BYTES:
         raise ValueError("Le PDF dépasse la limite de 10 Mo.")
 
-    reader = PdfReader(uploaded_file)
+    # Streamlit's UploadedFile is a BytesIO object. Rebuild the stream
+    # from its complete bytes so a previous read or mobile upload cannot
+    # leave the PDF reader positioned at the end of the file.
+    getvalue = getattr(uploaded_file, "getvalue", None)
+    if callable(getvalue):
+        pdf_bytes = getvalue()
+    else:
+        seek = getattr(uploaded_file, "seek", None)
+        if callable(seek):
+            seek(0)
+        read = getattr(uploaded_file, "read", None)
+        if not callable(read):
+            raise ValueError("Le fichier PDF reçu ne peut pas être lu.")
+        pdf_bytes = read()
+
+    if not pdf_bytes or b"%PDF-" not in pdf_bytes[:1024]:
+        raise ValueError("Le fichier sélectionné ne semble pas être un PDF valide.")
+
+    reader = PdfReader(BytesIO(pdf_bytes), strict=False)
     if reader.is_encrypted:
         raise ValueError("Ce PDF est protégé par mot de passe et ne peut pas être analysé.")
     if len(reader.pages) > max_pages:
