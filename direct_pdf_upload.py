@@ -36,7 +36,10 @@ export default function({ parentElement, data, setStateValue }) {
     else { status.textContent = selectedFile.name + " · " + (selectedFile.size / 1048576).toFixed(2) + " Mo"; button.disabled = false; }
   };
   button.onclick = async () => {
-    if (!selectedFile || busy || !data?.signed_url || !data?.apikey) return;
+    if (busy) return;
+    if (!selectedFile) { status.textContent = "Choisissez d'abord un fichier PDF."; return; }
+    if (!data?.signed_url) { status.textContent = "Erreur : autorisation temporaire absente. Touchez « Préparer un nouvel envoi PDF »."; return; }
+    if (!data?.apikey) { status.textContent = "Erreur : clé publique Supabase non transmise au composant. Vérifiez le secret SUPABASE_ANON_KEY."; return; }
     busy = true; button.disabled = true; status.textContent = "Envoi sécurisé en cours…";
     try {
       // Supabase Storage requires the project API key even for signed uploads.
