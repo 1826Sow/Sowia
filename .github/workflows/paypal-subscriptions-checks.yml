@@ -11,6 +11,7 @@ on:
       - "premium_access.py"
       - "supabase/**"
       - "tests/test_paypal_subscriptions.py"
+      - "tests/test_premium_admin_client_lazy.py"
       - "tests/test_premium_subscription_access.py"
       - ".github/workflows/paypal-subscriptions-checks.yml"
 
@@ -29,7 +30,7 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install --upgrade pip pytest requests streamlit
       - name: Run PayPal subscription tests
-        run: python -m pytest -q tests/test_paypal_subscriptions.py tests/test_premium_subscription_access.py
+        run: python -m pytest -q tests/test_paypal_subscriptions.py tests/test_premium_subscription_access.py tests/test_premium_admin_client_lazy.py
 
   edge-function-check:
     runs-on: ubuntu-latest

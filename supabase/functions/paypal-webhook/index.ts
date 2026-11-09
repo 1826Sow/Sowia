@@ -84,7 +84,6 @@ Deno.serve(async (request: Request) => {
     const serviceRoleKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
     const clientId = requiredEnv("PAYPAL_CLIENT_ID");
     const clientSecret = requiredEnv("PAYPAL_CLIENT_SECRET");
-    const planId = requiredEnv("PAYPAL_PREMIUM_PLAN_ID");
     const webhookId = requiredEnv("PAYPAL_SUBSCRIPTION_WEBHOOK_ID");
     const mode = (Deno.env.get("PAYPAL_MODE") || "sandbox").trim()
       .toLowerCase();
@@ -94,6 +93,29 @@ Deno.serve(async (request: Request) => {
     const baseUrl = mode === "live"
       ? "https://api-m.paypal.com"
       : "https://api-m.sandbox.paypal.com";
+
+    const catalogResponse = await fetch(
+      supabaseUrl +
+        "/rest/v1/sowia_paypal_catalog?mode=eq." + mode +
+        "&select=paypal_plan_id&limit=1",
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: "Bearer " + serviceRoleKey,
+          Accept: "application/json",
+        },
+      },
+    );
+    if (!catalogResponse.ok) {
+      throw new Error("Unable to read the configured PayPal plan");
+    }
+    const catalogRows = await catalogResponse.json();
+    const planId = Array.isArray(catalogRows) && catalogRows.length
+      ? String(catalogRows[0].paypal_plan_id || "")
+      : "";
+    if (!/^P-[A-Z0-9]+$/.test(planId)) {
+      return json({ error: "PayPal plan is not provisioned for this mode" }, 503);
+    }
 
     const event = await request.json();
     if (!event || typeof event !== "object" || Array.isArray(event)) {

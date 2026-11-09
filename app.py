@@ -1024,7 +1024,14 @@ elif page == "Abonnement":
                     st.write("L’abonnement récurrent sera préparé dans PayPal Sandbox uniquement.")
                     if st.button("Préparer mon abonnement Premium", key="create_paypal_subscription"):
                         try:
-                            created = paypal_subscriptions.create_premium_subscription(str(current_user.id))
+                            admin_client_factory = premium_access.create_admin_client
+                            admin_client = admin_client_factory()
+                            if admin_client is None:
+                                raise RuntimeError("Le stockage serveur Supabase n'est pas configuré.")
+                            plan_id = paypal_subscriptions.ensure_premium_plan(admin_client)
+                            created = paypal_subscriptions.create_premium_subscription(
+                                str(current_user.id), plan_id=plan_id
+                            )
                             st.session_state["paypal_subscription_approval_url"] = created["approval_url"]
                             st.success("Votre demande Sandbox a été préparée. Aucun accès n’est accordé avant la confirmation du webhook.")
                         except Exception:
