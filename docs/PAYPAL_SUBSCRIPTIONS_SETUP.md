@@ -37,4 +37,4 @@ Subscribe the PayPal webhook to:
 5. Run end-to-end Sandbox tests for approval, renewal, failed payment, cancellation, suspension, and expiry.
 6. Only after those pass, connect the app's Professional access guard to the new table and separately approve any live-mode change.
 
-The webhook currently records reconciled subscription state only. It does not grant access by writing to `sowia_entitlements`, and the application access guard has not yet been changed. Therefore this branch must not be treated as a complete subscription launch.
+The webhook records reconciled subscription state in `sowia_subscriptions`. The Professional access guard now recognizes either the existing one-time entitlement or an active recurring subscription through the user's RLS-scoped client. The migration must be applied before recurring access can work; if the table is unavailable, the guard fails closed. Therefore this branch must not be treated as a complete subscription launch until Sandbox end-to-end tests pass.
