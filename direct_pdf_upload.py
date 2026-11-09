@@ -7,8 +7,8 @@ HTML = """
 <div class="sowia-upload">
   <label for="sowia-pdf-file">Choisir un fichier PDF</label>
   <input id="sowia-pdf-file" type="file" accept="application/pdf,.pdf" />
-  <button id="sowia-pdf-send" type="button" disabled>Envoyer le PDF</button>
-  <p id="sowia-pdf-status" role="status">Sélectionnez un PDF (10 Mo maximum).</p>
+  <p id="sowia-pdf-status" role="status">Sélectionnez un PDF : le transfert démarre automatiquement (10 Mo maximum).</p>
+  <button id="sowia-pdf-send" type="button" hidden>Réessayer le transfert</button>
 </div>
 """
 CSS = """
@@ -26,24 +26,14 @@ export default function({ parentElement, data, setStateValue }) {
   const status = parentElement.querySelector("#sowia-pdf-status");
   let selectedFile = null;
   let busy = false;
-  input.onchange = () => {
-    selectedFile = input.files && input.files[0] ? input.files[0] : null;
-    const validName = selectedFile && selectedFile.name.toLowerCase().endsWith(".pdf");
-    const validSize = selectedFile && selectedFile.size > 0 && selectedFile.size <= 10 * 1024 * 1024;
-    if (!selectedFile) { status.textContent = "Aucun fichier sélectionné."; button.disabled = true; }
-    else if (!validName) { status.textContent = "Choisissez un fichier .pdf."; button.disabled = true; }
-    else if (!validSize) { status.textContent = "Le PDF doit peser au maximum 10 Mo."; button.disabled = true; }
-    else { status.textContent = selectedFile.name + " · " + (selectedFile.size / 1048576).toFixed(2) + " Mo"; button.disabled = false; }
-  };
-  button.onclick = async () => {
+  async function sendFile(file) {
     if (busy) return;
-    if (!selectedFile) { status.textContent = "Choisissez d'abord un fichier PDF."; return; }
-    if (!data?.signed_url) { status.textContent = "Erreur : autorisation temporaire absente. Touchez « Préparer un nouvel envoi PDF »."; return; }
-    if (!data?.apikey) { status.textContent = "Erreur : clé publique Supabase non transmise au composant. Vérifiez le secret SUPABASE_ANON_KEY."; return; }
-    busy = true; button.disabled = true; status.textContent = "Envoi sécurisé en cours…";
+    if (!file) { status.textContent = "Aucun fichier sélectionné."; return; }
+    if (!data?.signed_url) { status.textContent = "Erreur : autorisation temporaire absente. Préparez un nouvel envoi PDF."; return; }
+    if (!data?.apikey) { status.textContent = "Erreur : clé publique Supabase non transmise. Vérifiez le secret SUPABASE_ANON_KEY."; return; }
+    busy = true; button.hidden = true; status.textContent = "Envoi sécurisé en cours…";
     try {
-      // Supabase Storage requires the project API key even for signed uploads.
-      // Send the PDF bytes directly; multipart FormData is not accepted here.
+      // Upload immediately while the Android file object is still available.
       const response = await fetch(data.signed_url, {
         method: "PUT",
         headers: {
@@ -52,18 +42,32 @@ export default function({ parentElement, data, setStateValue }) {
           "x-upsert": "false",
           "cache-control": "max-age=3600"
         },
-        body: selectedFile
+        body: file
       });
       if (!response.ok) throw new Error("Réponse Supabase HTTP " + response.status);
       status.textContent = "PDF transmis. Vérification par SOW IA…";
-      setStateValue("file_name", selectedFile.name);
-      setStateValue("file_size", selectedFile.size);
+      setStateValue("file_name", file.name);
+      setStateValue("file_size", file.size);
       setStateValue("uploaded", true);
     } catch (error) {
       status.textContent = "Échec du transfert : " + (error?.message || "erreur réseau");
       setStateValue("upload_error", String(error?.message || "Erreur réseau").slice(0, 240));
+      button.hidden = false; button.disabled = false;
     } finally { busy = false; }
+  }
+  input.onchange = () => {
+    selectedFile = input.files && input.files[0] ? input.files[0] : null;
+    const validName = selectedFile && selectedFile.name.toLowerCase().endsWith(".pdf");
+    const validSize = selectedFile && selectedFile.size > 0 && selectedFile.size <= 10 * 1024 * 1024;
+    if (!selectedFile) { status.textContent = "Aucun fichier sélectionné."; }
+    else if (!validName) { status.textContent = "Choisissez un fichier .pdf."; }
+    else if (!validSize) { status.textContent = "Le PDF doit peser au maximum 10 Mo."; }
+    else {
+      status.textContent = selectedFile.name + " · " + (selectedFile.size / 1048576).toFixed(2) + " Mo. Démarrage du transfert…";
+      sendFile(selectedFile);
+    }
   };
+  button.onclick = () => sendFile(selectedFile);
 }
 """
 def create_signed_pdf_upload(client, user, workspace_id="personal"):
