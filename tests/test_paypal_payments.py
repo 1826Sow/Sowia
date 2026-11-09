@@ -461,7 +461,7 @@ def test_create_subscription_binds_authenticated_uuid_and_returns_approval_link(
     assert calls[0][1]["json"]["application_context"]["user_action"] == "SUBSCRIBE_NOW"
 
 
-@pytest.mark.parametrize("user_id", ["", "not-a-uuid", "../admin", "123e4567-e89b-12d3-a456-426614174000"])
+@pytest.mark.parametrize("user_id", ["", "not-a-uuid", "../admin", "123e4567-e89b-02d3-a456-426614174000"])
 def test_create_subscription_rejects_invalid_user_identity_before_network(monkeypatch, user_id):
     _settings(monkeypatch, PAYPAL_PREMIUM_PLAN_ID="P-PLAN123")
     calls = []
