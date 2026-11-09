@@ -950,53 +950,41 @@ elif page == "Historique":
 
 elif page == "Abonnement":
     st.subheader("👑 Version Premium")
+    st.write("L’espace Personnel reste gratuit. L’espace Professionnel sera accessible avec une offre Premium.")
+    st.info(
+        "L’abonnement mensuel récurrent est en préparation. "
+        "Aucun prélèvement automatique n’est actuellement proposé par SOW IA."
+    )
     if not cloud_mode or current_user is None:
-        st.warning("Connectez-vous à votre espace personnel pour souscrire et conserver votre accès Premium.")
+        st.warning("Connectez-vous à votre espace personnel pour consulter vos droits Premium.")
     else:
         try:
             entitlement = premium_access.get_entitlement(supabase_client, current_user)
-        except Exception as exc:
+        except Exception:
             entitlement = None
-            st.error("Impossible de vérifier votre abonnement auprès de Supabase.")
+            st.error("Impossible de vérifier vos droits auprès de Supabase.")
 
         if entitlement:
             st.success("Votre accès SOW IA Premium est actif.")
-            st.caption(
-                f"Paiement : {entitlement.get('provider', '—')} · "
-                f"{entitlement.get('amount', '—')} {entitlement.get('currency', 'EUR')}"
-            )
-            st.write("Votre droit d'accès est enregistré sur votre compte et sera retrouvé lors de vos prochaines connexions.")
-        else:
-            try:
-                payment_config = paypal_payments.paypal_configuration()
-            except ValueError as exc:
-                payment_config = None
-                st.error(str(exc))
-
-            # Do not initialize a service-role client while payments are disabled.
-            admin_ready = (
-                premium_access.create_admin_client() is not None
-                if payment_config is not None
-                else False
-            )
-            if payment_config is None:
-                st.info("Les paiements sont volontairement désactivés pour le moment. Ils ne seront activés qu’une fois SOW IA terminé, sur décision de l’administrateur.")
-            elif not admin_ready:
-                st.warning("Le paiement reste désactivé tant que SUPABASE_SERVICE_ROLE_KEY n'est pas configuré côté serveur.")
+            provider = str(entitlement.get("provider", "—")).strip().lower()
+            if provider == "paypal" and entitlement.get("paypal_order_id"):
+                st.caption(
+                    f"Accès accordé après un paiement ponctuel PayPal · "
+                    f"{entitlement.get('amount', '—')} {entitlement.get('currency', 'EUR')}"
+                )
+                st.caption(
+                    "Cet accès enregistré n’est pas un abonnement mensuel récurrent. "
+                    "La gestion des renouvellements et des résiliations sera disponible avec la future offre."
+                )
             else:
-                st.write(f"Accès Premium : **{payment_config['amount']} €**")
-                st.caption("Paiement sécurisé PayPal — environnement Sandbox tant que PAYPAL_MODE n'est pas explicitement réglé sur live.")
-                if st.button("Préparer mon paiement PayPal", type="primary"):
-                    try:
-                        order = paypal_payments.create_premium_order(str(current_user.id))
-                        st.session_state["paypal_approval_url"] = order["approval_url"]
-                        st.session_state["paypal_order_id"] = order["id"]
-                    except Exception as exc:
-                        st.error("Impossible de préparer le paiement PayPal.")
-                approval_url = st.session_state.get("paypal_approval_url")
-                if approval_url:
-                    st.link_button("Continuer vers PayPal", approval_url, type="primary")
-                    st.caption("Après paiement, revenez automatiquement sur SOW IA. L'accès ne sera activé qu'après confirmation serveur.")
+                st.caption(
+                    f"Fournisseur : {entitlement.get('provider', '—')} · "
+                    f"{entitlement.get('amount', '—')} {entitlement.get('currency', 'EUR')}"
+                )
+            st.write("Votre droit d’accès est enregistré sur votre compte et sera retrouvé lors de vos prochaines connexions.")
+        else:
+            st.caption("L’offre mensuelle sera affichée ici après validation du parcours PayPal récurrent et de ses tests.")
+            st.caption("Les paiements restent désactivés pendant cette préparation.")
 
 elif page == "Paramètres":
     st.subheader("⚙️ Paramètres")
