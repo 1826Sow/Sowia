@@ -15,6 +15,8 @@ from storage import (
     save_message as local_save_message,
 )
 from documents import extract_pdf_text
+from io import BytesIO
+from direct_pdf_upload import create_signed_pdf_upload, render_direct_pdf_upload
 from websearch import search_web
 from sowia_supabase_auth import (
     authenticated_user,
@@ -505,50 +507,65 @@ elif page == "Recherche Web":
 
 elif page == "Analyse PDF":
     st.subheader("📄 Analyse PDF")
-    st.caption("Importez un PDF depuis votre téléphone. Taille maximale : 10 Mo.")
+    st.caption("Transfert direct et privé vers Supabase. Taille maximale : 10 Mo.")
 
-    # A reset button creates a genuinely new Streamlit uploader widget.
-    # This clears a stuck browser-side upload selection without touching saved files.
-    if "pdf_uploader_reset_count" not in st.session_state:
-        st.session_state["pdf_uploader_reset_count"] = 0
-    if st.button("Réinitialiser le sélecteur PDF", key="reset_pdf_uploader"):
-        st.session_state["pdf_uploader_reset_count"] += 1
-        st.session_state["pdf_text"] = ""
-        st.rerun()
-
-    # Android file pickers can report inconsistent MIME types for PDFs.
-    # Do not filter in the browser; validate the filename and PDF signature
-    # after Streamlit has received the file (extract_pdf_text checks the signature).
-    file = st.file_uploader(
-        "Choisir un fichier PDF",
-        type=None,
-        key=f"pdf_analysis_upload_{st.session_state['pdf_uploader_reset_count']}",
-        max_upload_size=10,
-        help="Sélectionnez votre PDF dans Téléchargements ou dans vos fichiers.",
-    )
-    if file is None:
-        st.info("Aucun fichier reçu. Touchez « Choisir un fichier PDF » et sélectionnez votre document.")
-    elif not file.name.lower().endswith(".pdf"):
-        st.warning("Ce fichier n'a pas l'extension .pdf. Sélectionnez un document PDF.")
+    if not cloud_mode or current_user is None:
+        st.warning("Connectez-vous à votre espace sécurisé pour envoyer un PDF.")
     else:
-        st.success(f"Fichier reçu : {file.name} · {file.size / (1024 * 1024):.2f} Mo")
-        if st.button("Extraire le texte", type="primary", key="extract_uploaded_pdf_text"):
+        if st.button("Préparer un nouvel envoi PDF", key="prepare_direct_pdf_upload"):
             try:
-                st.session_state.pdf_text = extract_pdf_text(file)
-                st.success("Texte extrait.")
-            except ValueError as exc:
-                st.error(str(exc))
-            except Exception as exc:
-                st.error(
-                    "Le fichier a bien été reçu, mais sa lecture a échoué. "
-                    "Le lecteur PDF n'a pas réussi à décoder ce document."
+                upload_path, signed_url = create_signed_pdf_upload(
+                    supabase_client, current_user,
+                    st.session_state.get("workspace_id", "personal"),
                 )
-                st.caption(f"Diagnostic technique : {type(exc).__name__}")
+                st.session_state["direct_pdf_upload_path"] = upload_path
+                st.session_state["direct_pdf_upload_url"] = signed_url
+                st.session_state["direct_pdf_upload_nonce"] = str(uuid.uuid4())
+                st.session_state.pop("direct_pdf_upload_processed", None)
+                st.session_state["pdf_text"] = ""
+            except Exception:
+                st.error("L'autorisation temporaire d'envoi n'a pas pu être créée.")
+
+        upload_path = st.session_state.get("direct_pdf_upload_path")
+        signed_url = st.session_state.get("direct_pdf_upload_url")
+        if upload_path and signed_url:
+            st.info("Choisissez votre PDF, puis touchez « Envoyer le PDF ». Le fichier est transmis directement à votre espace privé.")
+            upload_result = render_direct_pdf_upload(
+                signed_url,
+                key="direct_pdf_upload_" + st.session_state.get("direct_pdf_upload_nonce", "session"),
+            )
+            if getattr(upload_result, "upload_error", None):
+                st.error("Le transfert direct a échoué : " + str(upload_result.upload_error)[:240])
+            if getattr(upload_result, "uploaded", False) and st.session_state.get("direct_pdf_upload_processed") != upload_path:
+                try:
+                    pdf_bytes = download_document(
+                        supabase_client, current_user, upload_path,
+                        st.session_state.get("workspace_id", "personal"),
+                    )
+                    st.session_state.pdf_text = extract_pdf_text(BytesIO(pdf_bytes))
+                    st.session_state["direct_pdf_upload_processed"] = upload_path
+                    st.success("PDF reçu et texte extrait avec succès.")
+                    st.caption("Fichier : " + str(getattr(upload_result, "file_name", "document.pdf")))
+                except ValueError as exc:
+                    st.error(str(exc))
+                except Exception:
+                    st.error("Le PDF a été transmis, mais sa vérification ou son extraction a échoué.")
+                finally:
+                    try:
+                        delete_document(
+                            supabase_client, current_user, upload_path,
+                            st.session_state.get("workspace_id", "personal"),
+                        )
+                    except Exception:
+                        pass
+                    st.session_state.pop("direct_pdf_upload_url", None)
+                    st.session_state.pop("direct_pdf_upload_path", None)
+
     if st.session_state.pdf_text:
         st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
         st.download_button("Télécharger le texte", st.session_state.pdf_text, file_name="sowia_extraction.txt")
         st.markdown("#### Poser une question sur ce PDF")
-        st.caption("SOW IA répond à partir du texte extrait. Le document reste dans votre session et n'est pas ajouté à votre historique.")
+        st.caption("SOW IA répond à partir du texte extrait. Le document temporaire est supprimé après vérification.")
         pdf_question = st.text_input(
             "Votre question sur le document",
             placeholder="Ex. : Résume les points essentiels de ce document.",
@@ -567,10 +584,7 @@ elif page == "Analyse PDF":
                         st.markdown("**Réponse de SOW IA**")
                         st.write(response)
                     except Exception:
-                        st.error(
-                            "L'analyse du document a échoué. Vérifiez la disponibilité du service IA "
-                            "et réessayez plus tard."
-                        )
+                        st.error("L'analyse du document a échoué. Vérifiez le service IA et réessayez.")
 
 elif page == "Créer un PDF":
     st.subheader("🪄 Créer un PDF")
