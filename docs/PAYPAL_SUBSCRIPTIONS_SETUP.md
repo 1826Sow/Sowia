@@ -30,7 +30,7 @@ Subscribe the PayPal webhook to:
 - `PAYMENT.SALE.REFUNDED`
 
 ## Activation order
-1. Review and test this pull request.
+1. Let the GitHub Actions workflow `PayPal subscription safety checks` run on this pull request; resolve any Python test, Deno formatting, or type-check failures.
 2. Apply the SQL migration in Supabase.
 3. Deploy the Edge Function and add its secrets.
 4. Register its HTTPS URL as the webhook URL in PayPal Sandbox and copy the generated webhook ID into the Supabase secret.
