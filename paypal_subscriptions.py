@@ -110,7 +110,7 @@ def create_premium_subscription(user_id: str):
                 "cancel_url": config["cancel_url"],
             },
         },
-        headers=_api_headers(config, token, f"sowia-sub-create-{uuid4()}"),
+        headers=_api_headers(config, token, str(uuid4())),
         timeout=TIMEOUT_SECONDS,
     )
     response.raise_for_status()
@@ -162,7 +162,7 @@ def cancel_premium_subscription(subscription_id: str, reason: str = "Cancellatio
     response = requests.post(
         f"{config['base_url']}/v1/billing/subscriptions/{normalized_id}/cancel",
         json={"reason": str(reason)[:128]},
-        headers=_api_headers(config, token, f"sowia-sub-cancel-{normalized_id}"),
+        headers=_api_headers(config, token, str(uuid4())),
         timeout=TIMEOUT_SECONDS,
     )
     response.raise_for_status()
