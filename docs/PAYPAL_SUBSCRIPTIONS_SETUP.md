@@ -37,9 +37,12 @@ Subscribe the PayPal webhook to:
 - `BILLING.SUBSCRIPTION.CANCELLED`
 - `BILLING.SUBSCRIPTION.SUSPENDED`
 - `BILLING.SUBSCRIPTION.EXPIRED`
+- `BILLING.SUBSCRIPTION.PAYMENT.FAILED`
 - `PAYMENT.SALE.COMPLETED`
-- `PAYMENT.SALE.DENIED`
 - `PAYMENT.SALE.REFUNDED`
+- `PAYMENT.SALE.REVERSED`
+
+Do not register `PAYMENT.SALE.DENIED` for this handler: it is not currently processed. The handler reconciles failed-payment, refund, and reversal events against the subscription's current PayPal status before saving the subscription record.
 
 ## Activation order
 1. Let the GitHub Actions workflow `PayPal subscription safety checks` run on this pull request; resolve any Python test, Deno formatting, or type-check failures.
