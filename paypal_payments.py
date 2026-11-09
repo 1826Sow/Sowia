@@ -289,5 +289,5 @@ def create_premium_subscription(user_id: str):
         or not isinstance(approval_url, str)
         or not approval_url.startswith("https://")
     ):
-        raise RuntimeError("PayPal n'a pas retourné une demande d'abonnement valide.")
+        raise RuntimeError("PayPal n'a pas retourné un identifiant ou un lien d'approbation valide.")
     return {"id": subscription_id, "approval_url": approval_url}
