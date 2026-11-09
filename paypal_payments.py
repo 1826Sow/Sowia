@@ -203,3 +203,91 @@ def capture_premium_order(order_id: str, user_id: str):
         return _validate_completed_capture(result, normalized_order_id, user_id, config)
     except PermissionError as exc:
         raise RuntimeError("Les détails de la capture PayPal ne correspondent pas à l'achat Premium.") from exc
+
+
+def paypal_subscription_configuration():
+    """Return recurring-plan configuration only when payments are explicitly enabled."""
+    enabled = _setting("SOWIA_PAYMENTS_ENABLED", "false").lower() in {"1", "true", "yes"}
+    if not enabled:
+        return None
+    client_id = _setting("PAYPAL_CLIENT_ID")
+    client_secret = _setting("PAYPAL_CLIENT_SECRET")
+    plan_id = _setting("PAYPAL_PREMIUM_PLAN_ID")
+    mode = _setting("PAYPAL_MODE", "sandbox").lower()
+    return_url = _setting("PAYPAL_SUBSCRIPTION_RETURN_URL", _setting("PAYPAL_RETURN_URL"))
+    cancel_url = _setting("PAYPAL_SUBSCRIPTION_CANCEL_URL", _setting("PAYPAL_CANCEL_URL"))
+    if not all((client_id, client_secret, plan_id, return_url, cancel_url)):
+        return None
+    if mode not in {"sandbox", "live"}:
+        raise ValueError("PAYPAL_MODE doit être 'sandbox' ou 'live'.")
+    if not re.fullmatch(r"[A-Z0-9-]{5,80}", plan_id):
+        raise ValueError("Identifiant de formule PayPal invalide.")
+    if not return_url.startswith("https://") or not cancel_url.startswith("https://"):
+        raise ValueError("Les URL de retour PayPal doivent utiliser HTTPS.")
+    base_url = (
+        "https://api-m.sandbox.paypal.com"
+        if mode == "sandbox"
+        else "https://api-m.paypal.com"
+    )
+    return {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "plan_id": plan_id,
+        "mode": mode,
+        "return_url": return_url,
+        "cancel_url": cancel_url,
+        "base_url": base_url,
+    }
+
+
+def create_premium_subscription(user_id: str):
+    """Create a PayPal subscription linked to the authenticated SOW IA UUID."""
+    config = paypal_subscription_configuration()
+    if not config:
+        raise RuntimeError("La configuration de l'abonnement PayPal n'est pas complète.")
+    normalized_user_id = str(user_id or "").strip()
+    if not re.fullmatch(
+        r"[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
+        normalized_user_id,
+        re.IGNORECASE,
+    ):
+        raise PermissionError("Un compte SOW IA valide est nécessaire pour souscrire.")
+    token = _access_token(config)
+    response = requests.post(
+        f"{config['base_url']}/v1/billing/subscriptions",
+        json={
+            "plan_id": config["plan_id"],
+            "custom_id": normalized_user_id,
+            "application_context": {
+                "brand_name": "SOW IA",
+                "locale": "fr-FR",
+                "shipping_preference": "NO_SHIPPING",
+                "user_action": "SUBSCRIBE_NOW",
+                "return_url": config["return_url"],
+                "cancel_url": config["cancel_url"],
+            },
+        },
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "PayPal-Request-Id": str(uuid4()),
+        },
+        timeout=TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    subscription = response.json()
+    approval_url = next(
+        (item.get("href") for item in subscription.get("links", [])
+         if item.get("rel") == "approve"),
+        None,
+    )
+    subscription_id = subscription.get("id")
+    if (
+        not isinstance(subscription_id, str)
+        or not re.fullmatch(r"[A-Z0-9-]{5,80}", subscription_id)
+        or subscription.get("status") not in {"APPROVAL_PENDING", "APPROVED", "ACTIVE"}
+        or not isinstance(approval_url, str)
+        or not approval_url.startswith("https://")
+    ):
+        raise RuntimeError("PayPal n'a pas retourné une demande d'abonnement valide.")
+    return {"id": subscription_id, "approval_url": approval_url}
