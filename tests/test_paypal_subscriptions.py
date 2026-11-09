@@ -87,3 +87,18 @@ def test_checkout_configuration_does_not_require_webhook_id(monkeypatch):
     config = paypal.paypal_subscription_configuration()
     assert config is not None
     assert config["webhook_id"] == ""
+
+
+def test_live_paypal_mode_is_blocked_in_subscription_ui():
+    """The app must never expose subscription creation against PayPal Live."""
+    from pathlib import Path
+
+    source = Path("app.py").read_text(encoding="utf-8")
+    live_guard = 'if subscription_config["mode"] != "sandbox":'
+    assert live_guard in source
+    guarded_section = source.split(live_guard, 1)[1].split(
+        '\\n# Messages de diagnostic protégés', 1
+    )[0]
+    live_branch, sandbox_branch = guarded_section.split("else:", 1)
+    assert 'st.button("Préparer mon abonnement Premium"' not in live_branch
+    assert 'st.button("Préparer mon abonnement Premium"' in sandbox_branch
