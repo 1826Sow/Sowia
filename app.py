@@ -125,6 +125,12 @@ if cloud_mode:
                 "L'accès reste fermé car l'authentification est obligatoire.\n\n"
                 f"Étape : {auth_stage}.\nCode technique : {type(exc).__name__}"
             )
+            # Show only the provider error message/code (never tokens or callback URLs).
+            safe_message = getattr(exc, "message", None)
+            safe_code = getattr(exc, "code", None)
+            if safe_message or safe_code:
+                diagnostic = " · ".join(str(v)[:240] for v in (safe_code, safe_message) if v)
+                st.caption("Diagnostic Supabase : " + diagnostic)
             with st.expander("Détails techniques pour le diagnostic"):
                 st.caption(
                     "Les détails sensibles sont masqués. Communiquez le code "
