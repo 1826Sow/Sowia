@@ -245,7 +245,11 @@ Deno.serve(async (request: Request) => {
 
     const userId = subscription.custom_id as string;
     const paypalStatus = String(subscription.status ?? "");
-    const isActive = paypalStatus === "ACTIVE";
+    // A refund or reversal must revoke access even if PayPal still reports
+    // the recurring subscription itself as ACTIVE.
+    const paymentRevokedAccess = eventType === "PAYMENT.SALE.REFUNDED" ||
+      eventType === "PAYMENT.SALE.REVERSED";
+    const isActive = paypalStatus === "ACTIVE" && !paymentRevokedAccess;
     const billingInfo = subscription.billing_info ?? {};
     const nextBilling = billingInfo.next_billing_time ?? null;
     const lastPaymentTime = billingInfo.last_payment?.time ?? null;
