@@ -26,6 +26,7 @@ from sowia_supabase_auth import (
     create_user_client,
     github_authorization_url,
     sign_out,
+    pkce_verifier_available,
 )
 import cloud_storage
 import paypal_payments
@@ -78,6 +79,7 @@ current_user = None
 supabase_client = None
 if cloud_mode:
     auth_stage = "initialisation du client Supabase"
+    pkce_diagnostic = "non applicable"
     try:
         if "sowia_supabase_client" not in st.session_state:
             # Streamlit Cloud WebSocket requests may not expose browser cookies.
@@ -93,6 +95,11 @@ if cloud_mode:
         auth_stage = "échange du code de retour GitHub avec Supabase"
         authorization_code = st.query_params.get("code")
         if authorization_code:
+            pkce_diagnostic = (
+                "vérificateur retrouvé dans le stockage du serveur"
+                if pkce_verifier_available(browser_id)
+                else "vérificateur PKCE absent du stockage du serveur"
+            )
             complete_github_login(supabase_client, authorization_code)
             st.session_state.pop("sowia_github_login_url", None)
             st.query_params.clear()
@@ -136,6 +143,7 @@ if cloud_mode:
                 "L'accès reste fermé par sécurité. Rechargez cette page pour "
                 "générer une nouvelle tentative GitHub.\n\n"
                 f"Étape : {auth_stage}.\nCode technique : {type(exc).__name__}"
+                + (f"\nDiagnostic PKCE : {pkce_diagnostic}." if pkce_diagnostic != "non applicable" else "")
             )
             with st.expander("Détails techniques pour le diagnostic"):
                 st.caption(
