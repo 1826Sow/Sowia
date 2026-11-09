@@ -587,11 +587,17 @@ elif page == "Analyse PDF":
                     st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
                     st.rerun()
                 except Exception as exc:
-                    st.error(
-                        "Le transfert a été signalé comme terminé, mais une étape a échoué : "
-                        f"{analysis_stage} (code technique : {type(exc).__name__}). "
-                        "Le texte déjà extrait reste disponible si cette étape avait réussi."
-                    )
+                    safe_detail = (
+                    " Détail : " + str(exc)[:240]
+                    if isinstance(exc, ValueError) and str(exc).strip()
+                    else ""
+                )
+                st.error(
+                    "Le transfert a été signalé comme terminé, mais une étape a échoué : "
+                    f"{analysis_stage} (code technique : {type(exc).__name__})."
+                    + safe_detail
+                    + " Le texte déjà extrait reste disponible si cette étape avait réussi."
+                )
             if st.button("Préparer un nouvel envoi PDF", key="reset_analysis_pdf_upload"):
                 st.session_state.pop("analysis_signed_upload_path", None)
                 st.session_state.pop("analysis_signed_upload_url", None)
