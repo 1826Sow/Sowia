@@ -82,13 +82,39 @@ def require_workspace_access(workspace_id, user_client, user):
     return require_active_entitlement(user_client, user)
 
 
-def require_active_entitlement(user_client, user):
-    """Fail closed before executing any Premium-only server-side operation.
+def get_active_subscription(user_client, user):
+    """Read an active recurring PayPal subscription through the user's RLS client."""
+    user_id = getattr(user, "id", None)
+    if not user_id:
+        raise PermissionError("Connexion requise.")
+    result = (
+        user_client.table("sowia_subscriptions")
+        .select(
+            "status, provider, paypal_subscription_id, paypal_plan_id, "
+            "amount, currency, next_billing_time, updated_at"
+        )
+        .eq("user_id", str(user_id))
+        .eq("status", "active")
+        .maybe_single()
+        .execute()
+    )
+    data = getattr(result, "data", None)
+    return data if data and data.get("provider") == "paypal" else None
 
-    Call this guard inside the trusted server path of every paid feature.
-    A missing, inactive, or unreadable entitlement must never grant access.
+
+def require_active_entitlement(user_client, user):
+    """Allow Professional access for a valid one-time entitlement or active subscription.
+
+    A missing or unreadable subscription table fails closed; it never grants access.
+    Apply the subscription migration before relying on recurring plans.
     """
     entitlement = get_entitlement(user_client, user)
-    if entitlement is None:
-        raise PermissionError("Un accès SOW IA Premium actif est nécessaire.")
-    return entitlement
+    if entitlement is not None:
+        return entitlement
+    try:
+        subscription = get_active_subscription(user_client, user)
+    except Exception:
+        subscription = None
+    if subscription is not None:
+        return subscription
+    raise PermissionError("Un accès SOW IA Premium actif est nécessaire.")
