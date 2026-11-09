@@ -170,7 +170,7 @@ if cloud_mode:
             # Pin the OAuth return address to this active test deployment.
             # This avoids a stale SOWIA_PUBLIC_URL secret sending users back
             # to an older Streamlit app URL.
-            redirect_to = "https://sowia-test.streamlit.app"
+            redirect_to = "https://sowia-test-2026.streamlit.app"
             st.caption("Adresse de retour utilisée : " + redirect_to)
             # Keep one OAuth URL per Streamlit session. Each call to
             # sign_in_with_oauth creates a new PKCE verifier; generating a
