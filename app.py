@@ -562,6 +562,7 @@ elif page == "Analyse PDF":
                         pass
                     st.session_state.pop("direct_pdf_upload_url", None)
                     st.session_state.pop("direct_pdf_upload_path", None)
+                    st.session_state.pop("direct_pdf_upload_anon_key", None)
 
     if st.session_state.pdf_text:
         st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
