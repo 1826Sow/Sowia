@@ -69,8 +69,7 @@ events that do not resolve to a valid UUID and the configured plan.
 The function fetches the subscription and plan directly from PayPal after
 signature verification. It grants access only when PayPal reports the
 subscription as `ACTIVE`, and marks a previously linked entitlement inactive
-for non-active statuses. Event IDs are recorded for duplicate-delivery
-protection.
+for non-active statuses. Event IDs are claimed atomically in Postgres before processing. Concurrent duplicate deliveries cannot both apply entitlement changes; failed events are marked retryable so PayPal can safely redeliver them.
 
 The existing entitlement table requires a non-null `paypal_order_id`; until
 a separately reviewed schema cleanup is made, the function stores a
