@@ -206,6 +206,12 @@ def create_user_client(browser_id):
     return create_client(url, key, options=options)
 
 
+def pkce_verifier_available(browser_id):
+    """Return whether this browser's one-time PKCE verifier survived the redirect."""
+    storage = _BrowserScopedOAuthStorage(_browser_storage_id(browser_id))
+    return bool(storage.get_item("supabase.auth.token-code-verifier"))
+
+
 def github_authorization_url(client, redirect_to):
     """Start GitHub OAuth via Supabase; redirect_to must be allow-listed."""
     if not redirect_to or not redirect_to.startswith("https://"):
