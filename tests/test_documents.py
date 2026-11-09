@@ -41,7 +41,7 @@ def test_pdf_with_too_many_pages_is_rejected(monkeypatch):
 
     monkeypatch.setattr(documents, "PdfReader", lambda _file: Reader())
     with pytest.raises(ValueError, match="limite de 2 pages"):
-        extract_pdf_text(BytesIO(b"pdf"), max_pages=2)
+        extract_pdf_text(_blank_pdf(), max_pages=2)
 
 
 def test_encrypted_pdf_is_rejected_with_clear_message(monkeypatch):
@@ -51,7 +51,7 @@ def test_encrypted_pdf_is_rejected_with_clear_message(monkeypatch):
 
     monkeypatch.setattr(documents, "PdfReader", lambda _file: Reader())
     with pytest.raises(ValueError, match="protégé par mot de passe"):
-        extract_pdf_text(BytesIO(b"pdf"))
+        extract_pdf_text(_blank_pdf())
 
 
 def test_extracted_text_respects_max_chars(monkeypatch):
@@ -64,7 +64,7 @@ def test_extracted_text_respects_max_chars(monkeypatch):
         pages = [Page()]
 
     monkeypatch.setattr(documents, "PdfReader", lambda _file: Reader())
-    result = extract_pdf_text(BytesIO(b"pdf"), max_chars=20)
+    result = extract_pdf_text(_blank_pdf(), max_chars=20)
     assert len(result) <= 20
 
 
