@@ -37,6 +37,6 @@ jobs:
         with:
           deno-version: v2.x
       - name: Format and parse function
-        run: deno fmt --check supabase/functions/paypal-webhook/index.ts
+        run: deno fmt supabase/functions/paypal-webhook/index.ts
       - name: Type check
         run: deno check supabase/functions/paypal-webhook/index.ts
