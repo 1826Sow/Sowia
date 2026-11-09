@@ -176,13 +176,36 @@ def _browser_storage_id(browser_id):
     return hashlib.sha256(browser_id.encode("ascii")).hexdigest()
 
 
+def normalize_supabase_url(value):
+    """Normalize a Supabase project URL, removing accidental REST/Auth API suffixes."""
+    from urllib.parse import urlsplit, urlunsplit
+
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    parts = urlsplit(raw)
+    if parts.scheme != "https" or not parts.netloc:
+        raise RuntimeError("SUPABASE_URL doit être l'adresse HTTPS racine du projet Supabase.")
+    path = parts.path.rstrip("/")
+    for suffix in ("/rest/v1", "/auth/v1", "/storage/v1"):
+        if path.endswith(suffix):
+            path = path[:-len(suffix)].rstrip("/")
+            break
+    if path:
+        raise RuntimeError(
+            "SUPABASE_URL doit désigner le projet Supabase, sans chemin API "
+            "(par exemple /rest/v1 ou /auth/v1)."
+        )
+    return urlunsplit((parts.scheme, parts.netloc, "", "", ""))
+
+
 def configuration_ready():
     return bool(get_setting("SUPABASE_URL") and get_setting("SUPABASE_ANON_KEY"))
 
 
 def create_user_client(browser_id):
     """Create a per-session PKCE client; service-role keys are never accepted."""
-    url = str(get_setting("SUPABASE_URL", "")).strip()
+    url = normalize_supabase_url(get_setting("SUPABASE_URL", ""))
     key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
     if not url or not key:
         raise RuntimeError(
