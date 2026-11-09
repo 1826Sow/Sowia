@@ -108,6 +108,21 @@ def delete_document(client, user, path, workspace_id="personal"):
     return client.storage.from_(BUCKET_NAME).remove([owned_path])
 
 
+def persist_temporary_document(client, user, temporary_path, filename, workspace_id="personal"):
+    """Copy a validated temporary upload into permanent storage, then remove the temporary object.
+
+    Returns (permanent_path, temporary_deleted). A cleanup failure does not
+    invalidate a successfully saved permanent document.
+    """
+    temporary_bytes = download_document(client, user, temporary_path, workspace_id)
+    permanent_path = upload_document(client, user, filename, temporary_bytes, workspace_id)
+    try:
+        delete_document(client, user, temporary_path, workspace_id)
+    except Exception:
+        return permanent_path, False
+    return permanent_path, True
+
+
 def display_document_name(filename):
     """Hide the random storage identifier from a stored PDF's display name."""
     name = str(filename or "")

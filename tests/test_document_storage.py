@@ -271,3 +271,35 @@ def test_document_upload_label_formats_storage_timestamp_in_paris_time():
 def test_document_upload_label_returns_none_for_missing_or_invalid_timestamp():
     assert docs.document_upload_label({}) is None
     assert docs.document_upload_label({"created_at": "not-a-date"}) is None
+
+
+def test_persist_temporary_document_copies_then_deletes_temporary_object(monkeypatch):
+    client = FakeClient()
+    payload = valid_pdf()
+    monkeypatch.setattr(docs, "download_document", lambda *args: payload)
+    deleted = []
+    monkeypatch.setattr(docs, "delete_document", lambda *args: deleted.append(args[2]))
+    path, temporary_deleted = docs.persist_temporary_document(
+        client, User(), "user-123/personal/temp.pdf", "final.pdf", "personal"
+    )
+    assert path.startswith("user-123/personal/")
+    assert client.bucket.uploaded[1] == payload
+    assert deleted == ["user-123/personal/temp.pdf"]
+    assert temporary_deleted is True
+
+
+def test_persist_temporary_document_keeps_success_when_temporary_cleanup_fails(monkeypatch):
+    client = FakeClient()
+    payload = valid_pdf()
+    monkeypatch.setattr(docs, "download_document", lambda *args: payload)
+
+    def fail_delete(*args):
+        raise RuntimeError("temporary cleanup unavailable")
+
+    monkeypatch.setattr(docs, "delete_document", fail_delete)
+    path, temporary_deleted = docs.persist_temporary_document(
+        client, User(), "user-123/personal/temp.pdf", "final.pdf", "personal"
+    )
+    assert path.startswith("user-123/personal/")
+    assert client.bucket.uploaded[1] == payload
+    assert temporary_deleted is False

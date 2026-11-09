@@ -48,6 +48,15 @@ Dans **Mes documents**, lorsque le stockage cloud est configuré et accessible :
 
 Le stockage est organisé par compte et par espace de travail. La disponibilité effective dépend de la configuration Supabase et de ses règles de sécurité. Ne déposez pas de documents sensibles tant que l'accès réel n'a pas été validé sur l'instance utilisée.
 
+### Configuration Supabase requise
+
+Pour une nouvelle installation ou une mise à niveau du schéma, exécutez dans l'éditeur SQL Supabase, dans cet ordre :
+
+1. `supabase/schema.sql` pour les tables, les colonnes d'espace de travail et les règles RLS des données.
+2. `supabase/storage_security.sql` pour rendre le bucket `sowia-files` privé, limiter les fichiers aux PDF de 10 Mo et appliquer les règles de stockage par utilisateur.
+
+Le second script est réexécutable : il remet le bucket dédié en mode privé et recrée les trois règles de lecture, d'envoi et de suppression. Après exécution, vérifiez le fonctionnement avec deux comptes de test distincts avant d'y déposer des documents réels. La présence de ces scripts dans GitHub ne signifie pas qu'ils ont déjà été exécutés sur le projet Supabase en production.
+
 ## 5. Analyser un PDF
 
 L'analyse d'un document enregistré nécessite un fournisseur IA configuré et disponible. En cas de quota ou de clé API indisponible, l'analyse peut échouer ; cela n'empêche pas les fonctions de création PDF qui n'utilisent pas l'IA.

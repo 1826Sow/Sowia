@@ -31,7 +31,7 @@ import cloud_storage
 import paypal_payments
 import premium_access
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
-from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
+from document_storage import upload_document, list_documents, download_document, delete_document, persist_temporary_document, filter_documents, display_document_name, document_upload_label
 from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_authenticated_session_state
 
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
@@ -684,6 +684,9 @@ elif page == "Mes documents":
     upload_error = st.session_state.pop("document_upload_error", None)
     if upload_error:
         st.error(upload_error)
+    cleanup_warning = st.session_state.pop("document_upload_cleanup_warning", None)
+    if cleanup_warning:
+        st.warning(cleanup_warning)
     if not cloud_mode:
         st.warning("Connectez-vous avec votre compte pour utiliser le stockage documentaire privé.")
     else:
@@ -717,34 +720,47 @@ elif page == "Mes documents":
                 st.error("Échec du transfert PDF : " + str(upload_error)[:240])
             if getattr(upload_result, "uploaded", False):
                 try:
-                    temporary_bytes = download_document(
+                    permanent_path, temporary_deleted = persist_temporary_document(
                         supabase_client,
                         current_user,
                         upload_path,
-                        st.session_state.get("workspace_id", "personal"),
-                    )
-                    upload_document(
-                        supabase_client,
-                        current_user,
                         getattr(upload_result, "file_name", None) or "document.pdf",
-                        temporary_bytes,
-                        st.session_state.get("workspace_id", "personal"),
-                    )
-                    delete_document(
-                        supabase_client,
-                        current_user,
-                        upload_path,
                         st.session_state.get("workspace_id", "personal"),
                     )
                     st.session_state.pop("documents_signed_upload_path", None)
                     st.session_state.pop("documents_signed_upload_url", None)
                     st.session_state["documents_pdf_upload_nonce"] = str(uuid.uuid4())
                     st.session_state["document_upload_notice"] = "Document enregistré dans votre espace privé."
+                    if not temporary_deleted:
+                        st.session_state["document_upload_cleanup_warning"] = (
+                            "Le document est bien enregistré, mais le fichier temporaire n'a pas pu être supprimé. "
+                            "Un nettoyage Supabase sera nécessaire."
+                        )
                     st.rerun()
                 except (ValueError, PermissionError) as exc:
+                    cleanup_error = False
+                    try:
+                        delete_document(supabase_client, current_user, upload_path, st.session_state.get("workspace_id", "personal"))
+                    except Exception:
+                        cleanup_error = True
+                    st.session_state.pop("documents_signed_upload_path", None)
+                    st.session_state.pop("documents_signed_upload_url", None)
+                    st.session_state["documents_pdf_upload_nonce"] = str(uuid.uuid4())
                     st.error(str(exc))
+                    if cleanup_error:
+                        st.warning("Le fichier temporaire n'a pas pu être supprimé automatiquement ; un nettoyage Supabase sera nécessaire.")
                 except Exception as exc:
-                    st.error("Le transfert a été reçu, mais l'enregistrement n'a pas pu être confirmé. Code : " + type(exc).__name__)
+                    cleanup_error = False
+                    try:
+                        delete_document(supabase_client, current_user, upload_path, st.session_state.get("workspace_id", "personal"))
+                    except Exception:
+                        cleanup_error = True
+                    st.session_state.pop("documents_signed_upload_path", None)
+                    st.session_state.pop("documents_signed_upload_url", None)
+                    st.session_state["documents_pdf_upload_nonce"] = str(uuid.uuid4())
+                    st.error("Le transfert n'a pas pu être finalisé. Code : " + type(exc).__name__)
+                    if cleanup_error:
+                        st.warning("Le fichier temporaire n'a pas pu être supprimé automatiquement ; un nettoyage Supabase sera nécessaire.")
             if st.button("Annuler / recommencer", key="reset_documents_pdf_upload"):
                 st.session_state.pop("documents_signed_upload_path", None)
                 st.session_state.pop("documents_signed_upload_url", None)

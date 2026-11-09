@@ -9,4 +9,5 @@ def test_document_upload_diagnostics_never_render_raw_backend_exception_text():
 
     assert 'str(exc)' not in upload_block.split('except Exception as exc:', 1)[-1]
     assert 'type(exc).__name__' in upload_block
-    assert 'Le transfert a été reçu, mais l\'enregistrement n\'a pas pu être confirmé.' in upload_block
+    assert 'Le transfert n\'a pas pu être finalisé.' in upload_block
+    assert 'fichier temporaire n\'a pas pu être supprimé automatiquement' in upload_block
