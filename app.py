@@ -167,11 +167,23 @@ if cloud_mode:
         if callback_error_description:
             st.warning("Motif communiqué par le fournisseur : " + callback_error_description[:300])
         try:
-            # Pin the OAuth return address to this active test deployment.
-            # This avoids a stale SOWIA_PUBLIC_URL secret sending users back
-            # to an older Streamlit app URL.
-            redirect_to = "https://sowia-test.streamlit.app"
-            st.caption("Adresse de retour utilisée : " + redirect_to)
+            # Return OAuth to the exact Streamlit app currently open.
+            # This prevents redirects to an older test or production deployment.
+            from urllib.parse import urlsplit, urlunsplit
+            current_app_url = str(getattr(st.context, "url", "") or "").strip()
+            configured_public_url = str(get_setting("SOWIA_PUBLIC_URL", "") or "").strip()
+            candidate_url = current_app_url or configured_public_url
+            parts = urlsplit(candidate_url)
+            if parts.scheme != "https" or not parts.netloc:
+                st.error(
+                    "Adresse publique de SOW IA invalide. Ouvrez l'application depuis "
+                    "son adresse HTTPS Streamlit et réessayez."
+                )
+                st.stop()
+            redirect_to = urlunsplit(
+                (parts.scheme, parts.netloc, parts.path.rstrip("/"), "", "")
+            )
+            st.caption("Adresse de retour sécurisée : " + redirect_to)
             # Keep one OAuth URL per Streamlit session. Each call to
             # sign_in_with_oauth creates a new PKCE verifier; generating a
             # fresh URL on every rerun can overwrite the verifier for the
