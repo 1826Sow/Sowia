@@ -37,11 +37,10 @@ def test_oauth_url_reads_supabase_py_url_attribute():
     ) == "https://github.com/login/oauth"
 
 
-def test_oauth_code_is_passed_as_string_to_supabase_sdk():
+def test_oauth_code_is_passed_in_supabase_pkce_payload():
     class Auth:
-        def exchange_code_for_session(self, auth_code):
-            assert auth_code == "one-time-code"
-            assert isinstance(auth_code, str)
+        def exchange_code_for_session(self, params):
+            assert params == {"auth_code": "one-time-code"}
             return "exchanged"
 
     client = type("Client", (), {"auth": Auth()})()
