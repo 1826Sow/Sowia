@@ -228,9 +228,11 @@ def complete_github_login(client, authorization_code):
     """Exchange the one-time PKCE code using the browser-scoped verifier."""
     if not authorization_code:
         raise ValueError("Code de connexion manquant.")
-    # supabase-py expects the authorization code as a string, not the
-    # GoTrue JSON payload shape used by sign_in_with_oauth.
-    return client.auth.exchange_code_for_session(str(authorization_code))
+    # supabase-py expects the GoTrue payload shape with an auth_code field.
+    # Passing a bare string can raise AttributeError inside the SDK.
+    return client.auth.exchange_code_for_session(
+        {"auth_code": str(authorization_code)}
+    )
 
 
 def authenticated_user(client):
