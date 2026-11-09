@@ -221,6 +221,19 @@ def github_authorization_url(client, redirect_to):
         url = getattr(getattr(response, "data", None), "url", None)
     if not url:
         raise RuntimeError("Supabase n'a pas retourné l'adresse de connexion.")
+
+    # OAuth opens in the user's browser, so the Python client's HTTP headers
+    # (including apikey) are not carried into that navigation. Supabase's API
+    # gateway requires the publishable/anon key on the authorize URL.
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+    public_key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
+    if not public_key:
+        raise RuntimeError("La clé publique Supabase est absente.")
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query.setdefault("apikey", public_key)
+    url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
     return url
 
 
