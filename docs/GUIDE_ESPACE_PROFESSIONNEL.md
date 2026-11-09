@@ -48,6 +48,10 @@ Dans **Mes documents**, lorsque le stockage cloud est configuré et accessible :
 
 Le stockage est organisé par compte et par espace de travail. La disponibilité effective dépend de la configuration Supabase et de ses règles de sécurité. Ne déposez pas de documents sensibles tant que l'accès réel n'a pas été validé sur l'instance utilisée.
 
+### Exporter sa mémoire
+
+Dans **Ma mémoire**, utilisez **Télécharger ma mémoire (.txt)** pour enregistrer une copie des notes de l'espace actuellement sélectionné. L'export contient uniquement les notes visibles dans cet espace ; il n'inclut ni les conversations ni les documents PDF. Les espaces Personnel et Professionnel restent séparés.
+
 ## 5. Analyser un PDF
 
 L'analyse d'un document enregistré nécessite un fournisseur IA configuré et disponible. En cas de quota ou de clé API indisponible, l'analyse peut échouer ; cela n'empêche pas les fonctions de création PDF qui n'utilisent pas l'IA.
