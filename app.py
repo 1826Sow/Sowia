@@ -142,6 +142,11 @@ if cloud_mode:
                 "L'accès reste fermé par sécurité. Rechargez cette page pour "
                 "générer une nouvelle tentative GitHub.\n\n"
                 f"Étape : {auth_stage}.\nCode technique : {type(exc).__name__}"
+                + (
+                    f"\nAttribut manquant : {exc.name}"
+                    if isinstance(exc, AttributeError) and getattr(exc, "name", None)
+                    else ""
+                )
                 + (f"\nDiagnostic PKCE : {pkce_diagnostic}." if pkce_diagnostic != "non applicable" else "")
             )
             with st.expander("Détails techniques pour le diagnostic"):
