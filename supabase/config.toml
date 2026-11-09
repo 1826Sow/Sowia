@@ -1,0 +1,4 @@
+# PayPal sends webhooks without a Supabase user JWT. The Edge Function
+# independently verifies every delivery with PayPal's signature API.
+[functions.paypal-webhook]
+verify_jwt = false
