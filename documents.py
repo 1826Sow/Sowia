@@ -113,6 +113,6 @@ def extract_pdf_text(uploaded_file, max_chars=100000, max_pages=MAX_PDF_PAGES):
 
     if not result:
         raise ValueError(
-            "Aucun texte n'a été reconnu. Le PDF est peut-être vide, protégé ou constitué d'images trop floues."
+            "Aucun texte extractible n'a été trouvé. Le PDF est peut-être vide, protégé ou constitué d'images trop floues."
         )
     return result
