@@ -1,11 +1,11 @@
-"""PDF text extraction helpers."""
+"""PDF text extraction helpers, with OCR fallback for scanned documents."""
 from io import BytesIO
 
 from pypdf import PdfReader
 
-
 MAX_PDF_BYTES = 10 * 1024 * 1024
 MAX_PDF_PAGES = 500
+MAX_OCR_PAGES = 30
 
 
 def _uploaded_size(uploaded_file):
@@ -19,8 +19,42 @@ def _uploaded_size(uploaded_file):
     return None
 
 
+def _ocr_pdf_pages(pdf_bytes, max_chars, max_pages):
+    """Recognize scanned page images. OCR is deliberately page-limited."""
+    try:
+        import pypdfium2 as pdfium
+        import pytesseract
+    except ImportError as exc:
+        raise ValueError(
+            "Ce PDF semble être scanné. Le module OCR n'est pas encore installé."
+        ) from exc
+
+    pdf = pdfium.PdfDocument(pdf_bytes)
+    pages = []
+    total = 0
+    page_limit = min(len(pdf), max_pages, MAX_OCR_PAGES)
+    try:
+        for index in range(page_limit):
+            remaining = max_chars - total
+            if remaining <= 0:
+                break
+            page = pdf[index]
+            bitmap = page.render(scale=2)
+            image = bitmap.to_pil()
+            text = (pytesseract.image_to_string(image, lang="fra+eng") or "").strip()
+            if text:
+                chunk = f"\n--- Page {index + 1} (OCR) ---\n{text}"
+                pages.append(chunk[:remaining])
+                total += min(len(chunk), remaining)
+            image.close()
+            page.close()
+    finally:
+        pdf.close()
+    return "".join(pages).strip()
+
+
 def extract_pdf_text(uploaded_file, max_chars=100000, max_pages=MAX_PDF_PAGES):
-    """Extract readable text with upload, page-count, and output-size limits."""
+    """Extract selectable PDF text, then use OCR when pages are scanned."""
     if not isinstance(max_chars, int) or isinstance(max_chars, bool) or max_chars < 1:
         raise ValueError("La limite de texte doit être un entier positif.")
     if not isinstance(max_pages, int) or isinstance(max_pages, bool) or max_pages < 1:
@@ -30,9 +64,6 @@ def extract_pdf_text(uploaded_file, max_chars=100000, max_pages=MAX_PDF_PAGES):
     if size is not None and size > MAX_PDF_BYTES:
         raise ValueError("Le PDF dépasse la limite de 10 Mo.")
 
-    # Streamlit's UploadedFile is a BytesIO object. Rebuild the stream
-    # from its complete bytes so a previous read or mobile upload cannot
-    # leave the PDF reader positioned at the end of the file.
     getvalue = getattr(uploaded_file, "getvalue", None)
     if callable(getvalue):
         pdf_bytes = getvalue()
@@ -56,23 +87,32 @@ def extract_pdf_text(uploaded_file, max_chars=100000, max_pages=MAX_PDF_PAGES):
 
     pages = []
     total = 0
-
     for number, page in enumerate(reader.pages, start=1):
         remaining = max_chars - total
         if remaining <= 0:
             break
-
         page_text = (page.extract_text() or "").strip()
-        if not page_text:
-            continue
-
-        chunk = f"\n--- Page {number} ---\n{page_text}"
-        pages.append(chunk[:remaining])
-        total += min(len(chunk), remaining)
+        if page_text:
+            chunk = f"\n--- Page {number} ---\n{page_text}"
+            pages.append(chunk[:remaining])
+            total += min(len(chunk), remaining)
 
     result = "".join(pages).strip()
+    if result:
+        return result
+
+    # No selectable text: treat the PDF as scanned and try OCR.
+    try:
+        result = _ocr_pdf_pages(pdf_bytes, max_chars, max_pages)
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError(
+            "La lecture OCR de ce PDF a échoué. Le document est peut-être endommagé ou protégé."
+        ) from exc
+
     if not result:
         raise ValueError(
-            "Aucun texte extractible. Le PDF est peut-être scanné ou protégé."
+            "Aucun texte n'a été reconnu. Le PDF est peut-être vide, protégé ou constitué d'images trop floues."
         )
     return result
