@@ -1,7 +1,6 @@
 """Direct-to-Supabase PDF upload component for Android-friendly transfer."""
 import streamlit as st
 from uuid import uuid4
-from settings import get_setting
 from document_storage import BUCKET_NAME, _workspace, _user_prefix
 
 HTML = """
@@ -37,21 +36,17 @@ export default function({ parentElement, data, setStateValue }) {
     else { status.textContent = selectedFile.name + " · " + (selectedFile.size / 1048576).toFixed(2) + " Mo"; button.disabled = false; }
   };
   button.onclick = async () => {
-    if (!selectedFile || busy || !data?.signed_url || !data?.anon_key) return;
+    if (!selectedFile || busy || !data?.signed_url) return;
     busy = true; button.disabled = true; status.textContent = "Envoi sécurisé en cours…";
     try {
-      // Match Supabase Storage uploadToSignedUrl: the signed endpoint expects
-      // multipart FormData for browser File/Blob uploads, not a raw PDF body.
+      // Match Supabase Storage uploadToSignedUrl: browser File uploads use
+      // multipart FormData with cacheControl and the file under an empty field name.
       const form = new FormData();
       form.append("cacheControl", "3600");
       form.append("", selectedFile);
       const response = await fetch(data.signed_url, {
         method: "PUT",
-        headers: {
-          "apikey": data.anon_key,
-          "Authorization": "Bearer " + data.anon_key,
-          "x-upsert": "false"
-        },
+        headers: { "x-upsert": "false" },
         body: form
       });
       if (!response.ok) throw new Error("Réponse Supabase HTTP " + response.status);
@@ -77,15 +72,12 @@ def create_signed_pdf_upload(client, user, workspace_id="personal"):
         signed_url = getattr(response, "signed_url", None) or getattr(response, "signedUrl", None)
     if not isinstance(signed_url, str) or not signed_url.startswith("https://"):
         raise RuntimeError("Autorisation temporaire Supabase invalide.")
-    anon_key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
-    if not anon_key:
-        raise RuntimeError("Clé publique Supabase manquante.")
-    return path, signed_url, anon_key
+    return path, signed_url
 
-def render_direct_pdf_upload(signed_url, anon_key, key):
+def render_direct_pdf_upload(signed_url, key):
     uploader = st.components.v2.component(name="sowia_direct_pdf_upload", html=HTML, css=CSS, js=JS)
     return uploader(
-        data={"signed_url": signed_url, "anon_key": anon_key},
+        data={"signed_url": signed_url},
         default={"uploaded": False, "file_name": None, "file_size": None, "upload_error": None},
         on_uploaded_change=lambda: None,
         on_file_name_change=lambda: None,
