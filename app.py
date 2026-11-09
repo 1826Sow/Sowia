@@ -285,12 +285,24 @@ def go_to_page(page_name):
 premium_entitlement = None
 premium_entitlement_unavailable = False
 if cloud_mode and current_user is not None:
+    entitlement_read_failed = False
+    subscription_read_failed = False
     try:
         premium_entitlement = premium_access.get_entitlement(supabase_client, current_user)
-        if premium_entitlement is None:
-            premium_entitlement = premium_access.get_active_subscription(supabase_client, current_user)
     except Exception:
-        premium_entitlement_unavailable = True
+        entitlement_read_failed = True
+    if premium_entitlement is None:
+        try:
+            premium_entitlement = premium_access.get_active_subscription(supabase_client, current_user)
+        except Exception:
+            subscription_read_failed = True
+    # A failure in the legacy one-time-entitlement table must not prevent
+    # checking the independent recurring-subscription table.
+    premium_entitlement_unavailable = (
+        premium_entitlement is None
+        and entitlement_read_failed
+        and subscription_read_failed
+    )
 premium_active = bool(premium_entitlement)
 
 with st.sidebar:
@@ -975,15 +987,20 @@ elif page == "Abonnement":
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre espace personnel pour consulter vos droits Premium.")
     else:
+        entitlement = None
+        subscription = None
+        entitlement_read_failed = False
+        subscription_read_failed = False
         try:
             entitlement = premium_access.get_entitlement(supabase_client, current_user)
-            subscription = (
-                premium_access.get_active_subscription(supabase_client, current_user)
-                if entitlement is None else None
-            )
         except Exception:
-            entitlement = None
-            subscription = None
+            entitlement_read_failed = True
+        if entitlement is None:
+            try:
+                subscription = premium_access.get_active_subscription(supabase_client, current_user)
+            except Exception:
+                subscription_read_failed = True
+        if entitlement_read_failed and subscription_read_failed:
             st.error("Impossible de vérifier vos droits auprès de Supabase.")
 
         if entitlement or subscription:
