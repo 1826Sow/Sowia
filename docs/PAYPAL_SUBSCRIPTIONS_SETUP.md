@@ -50,7 +50,7 @@ Do not register `PAYMENT.SALE.DENIED` for this handler: it is not currently proc
 3. Deploy the Edge Function and add its secrets.
 4. Register its HTTPS URL as the webhook URL in PayPal Sandbox and copy the generated webhook ID into the Supabase secret.
 5. Run end-to-end Sandbox tests for approval, renewal, failed payment, cancellation, suspension, and expiry.
-6. The app now contains a feature-flagged recurring checkout and reads active subscriptions through the user's RLS-scoped Supabase client. Keep the feature flag false until steps 2–5 are complete and verified.
+6. The app contains a feature-flagged recurring checkout and reads active subscriptions through the user's RLS-scoped Supabase client. The checkout button is explicitly blocked whenever `PAYPAL_MODE` is not `sandbox`; keep the feature flag false until steps 2–5 are complete and verified.
 7. Only after Sandbox end-to-end tests pass, separately approve any live-mode change.
 
 The webhook is configured to accept PayPal callbacks without a Supabase JWT and verifies PayPal’s signature itself. It records reconciled subscription state in `sowia_subscriptions`. The app's Professional workspace and Abonnement page recognize either the existing one-time entitlement or an active recurring subscription through the user's RLS-scoped client. The checkout button remains hidden unless the recurring feature flag and required PayPal checkout settings are configured. A return from PayPal never grants access by itself; only the verified webhook can do so. The migration must be applied before recurring access can work; if the table is unavailable, the guard fails closed. Therefore this branch must not be treated as a complete subscription launch until Sandbox end-to-end tests pass.
