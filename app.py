@@ -551,6 +551,7 @@ elif page == "Analyse PDF":
                 st.error("Échec du transfert PDF : " + str(upload_error)[:240])
             if getattr(upload_result, "uploaded", False):
                 temporary_path = upload_path
+                analysis_stage = "téléchargement du fichier depuis Supabase"
                 try:
                     verified_bytes = download_document(
                         supabase_client,
@@ -558,9 +559,12 @@ elif page == "Analyse PDF":
                         temporary_path,
                         st.session_state.get("workspace_id", "personal"),
                     )
-                    st.session_state.pdf_text = extract_pdf_text(BytesIO(verified_bytes))
+                    analysis_stage = "extraction du texte du PDF"
+                    extracted_text = extract_pdf_text(BytesIO(verified_bytes))
+                    st.session_state.pdf_text = extracted_text
                     st.session_state["analysis_pdf_name"] = getattr(upload_result, "file_name", None) or "document.pdf"
                     st.success("PDF transmis et texte extrait avec succès.")
+                    analysis_stage = "suppression du fichier temporaire"
                     delete_document(
                         supabase_client,
                         current_user,
@@ -572,7 +576,11 @@ elif page == "Analyse PDF":
                     st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
                     st.rerun()
                 except Exception as exc:
-                    st.error("Le PDF a été transmis, mais sa vérification ou sa lecture a échoué. Préparez un nouvel envoi et réessayez.")
+                    st.error(
+                        "Le transfert a été signalé comme terminé, mais une étape a échoué : "
+                        f"{analysis_stage} (code technique : {type(exc).__name__}). "
+                        "Le texte déjà extrait reste disponible si cette étape avait réussi."
+                    )
             if st.button("Préparer un nouvel envoi PDF", key="reset_analysis_pdf_upload"):
                 st.session_state.pop("analysis_signed_upload_path", None)
                 st.session_state.pop("analysis_signed_upload_url", None)
