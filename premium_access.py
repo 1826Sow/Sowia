@@ -27,7 +27,7 @@ def get_entitlement(user_client, user):
         raise PermissionError("Connexion requise.")
     result = (
         user_client.table("sowia_entitlements")
-        .select("status, provider, paypal_order_id, amount, currency, updated_at")
+        .select("status, provider, paypal_order_id, paypal_subscription_id, paypal_plan_id, paypal_status, current_period_end, last_payment_at, amount, currency, updated_at")
         .eq("user_id", str(user_id))
         .maybe_single()
         .execute()
