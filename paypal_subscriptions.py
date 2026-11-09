@@ -37,7 +37,7 @@ def paypal_subscription_configuration():
     cancel_url = _setting("PAYPAL_SUBSCRIPTION_CANCEL_URL")
     webhook_id = _setting("PAYPAL_SUBSCRIPTION_WEBHOOK_ID")
 
-    if not all((client_id, client_secret, plan_id, return_url, cancel_url, webhook_id)):
+    if not all((client_id, client_secret, plan_id, return_url, cancel_url)):
         return None
     if mode not in {"sandbox", "live"}:
         raise ValueError("PAYPAL_MODE doit être 'sandbox' ou 'live'.")
@@ -172,7 +172,7 @@ def cancel_premium_subscription(subscription_id: str, reason: str = "Cancellatio
 def verify_paypal_subscription_webhook(event: dict, transmission_headers: dict):
     """Ask PayPal to verify the webhook signature; return True only on SUCCESS."""
     config = paypal_subscription_configuration()
-    if not config:
+    if not config or not config.get("webhook_id"):
         raise RuntimeError("La configuration webhook PayPal n'est pas complète.")
     if not isinstance(event, dict) or not isinstance(transmission_headers, dict):
         return False
