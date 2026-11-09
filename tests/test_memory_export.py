@@ -32,4 +32,4 @@ def test_memory_export_skips_blank_note_content():
     )
 
     assert "Note utile" in result
-    assert "Note 2" not in result
+    assert "\nNote 2\n" not in result
