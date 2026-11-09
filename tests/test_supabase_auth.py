@@ -26,15 +26,25 @@ def test_missing_authorization_code_is_rejected():
         supabase_auth.complete_github_login(object(), "")
 
 
-def test_oauth_url_reads_supabase_py_url_attribute():
+def test_oauth_url_reads_supabase_py_url_attribute(monkeypatch):
+    from urllib.parse import parse_qs, urlsplit
+
+    monkeypatch.setattr(
+        supabase_auth,
+        "get_setting",
+        lambda name, default="": "sb_publishable_test" if name == "SUPABASE_ANON_KEY" else default,
+    )
+
     class Auth:
         def sign_in_with_oauth(self, _options):
             return type("OAuthResponse", (), {"url": "https://github.com/login/oauth"})()
 
     client = type("Client", (), {"auth": Auth()})()
-    assert supabase_auth.github_authorization_url(
-        client, "https://sowia.example"
-    ) == "https://github.com/login/oauth"
+    result = supabase_auth.github_authorization_url(client, "https://sowia.example")
+    parsed = urlsplit(result)
+    assert parsed.scheme == "https"
+    assert parsed.netloc == "github.com"
+    assert parse_qs(parsed.query)["apikey"] == ["sb_publishable_test"]
 
 
 def test_oauth_code_is_passed_as_string_to_supabase_sdk():
