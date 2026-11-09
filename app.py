@@ -1008,21 +1008,22 @@ elif page == "Abonnement":
             if subscription_config is None:
                 st.info("L’abonnement mensuel reste désactivé tant que le parcours Sandbox n’a pas été configuré et validé.")
             else:
-                st.write("L’abonnement récurrent sera créé dans l’environnement PayPal configuré.")
                 if subscription_config["mode"] != "sandbox":
-                    st.warning("Le mode PayPal n’est pas Sandbox. Le lancement réel nécessite une validation séparée.")
-                if st.button("Préparer mon abonnement Premium", key="create_paypal_subscription"):
-                    try:
-                        created = paypal_subscriptions.create_premium_subscription(str(current_user.id))
-                        st.session_state["paypal_subscription_approval_url"] = created["approval_url"]
-                        st.success("Votre demande d’abonnement a été préparée. Aucun accès n’est accordé avant la confirmation du webhook.")
-                    except Exception:
-                        st.error("Impossible de préparer l’abonnement PayPal. Aucun accès Premium n’a été accordé.")
-                approval_url = st.session_state.get("paypal_subscription_approval_url")
-                if approval_url:
-                    st.link_button("Continuer sur PayPal", approval_url, use_container_width=True)
-                if st.session_state.pop("paypal_subscription_returned", False):
-                    st.info("PayPal vous a renvoyé vers SOW IA. L’accès sera activé uniquement après vérification du webhook et enregistrement Supabase.")
+                    st.warning("Le mode PayPal réel est bloqué dans cette version. Aucun abonnement ne peut être créé avant validation explicite du lancement.")
+                else:
+                    st.write("L’abonnement récurrent sera préparé dans PayPal Sandbox uniquement.")
+                    if st.button("Préparer mon abonnement Premium", key="create_paypal_subscription"):
+                        try:
+                            created = paypal_subscriptions.create_premium_subscription(str(current_user.id))
+                            st.session_state["paypal_subscription_approval_url"] = created["approval_url"]
+                            st.success("Votre demande Sandbox a été préparée. Aucun accès n’est accordé avant la confirmation du webhook.")
+                        except Exception:
+                            st.error("Impossible de préparer l’abonnement PayPal. Aucun accès Premium n’a été accordé.")
+                    approval_url = st.session_state.get("paypal_subscription_approval_url")
+                    if approval_url:
+                        st.link_button("Continuer sur PayPal Sandbox", approval_url, use_container_width=True)
+                    if st.session_state.pop("paypal_subscription_returned", False):
+                        st.info("PayPal vous a renvoyé vers SOW IA. L’accès sera activé uniquement après vérification du webhook et enregistrement Supabase.")
 
 # Messages de diagnostic protégés conservés pour les autres parcours :
 # Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.
