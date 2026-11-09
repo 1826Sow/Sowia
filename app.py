@@ -516,15 +516,20 @@ elif page == "Analyse PDF":
         st.session_state["pdf_text"] = ""
         st.rerun()
 
+    # Android file pickers can report inconsistent MIME types for PDFs.
+    # Do not filter in the browser; validate the filename and PDF signature
+    # after Streamlit has received the file (extract_pdf_text checks the signature).
     file = st.file_uploader(
         "Choisir un fichier PDF",
-        type=["pdf"],
+        type=None,
         key=f"pdf_analysis_upload_{st.session_state['pdf_uploader_reset_count']}",
         max_upload_size=10,
-        help="Touchez le bouton pour ouvrir les fichiers de votre téléphone.",
+        help="Sélectionnez votre PDF dans Téléchargements ou dans vos fichiers.",
     )
     if file is None:
-        st.info("Aucun PDF reçu pour le moment. Sélectionnez un fichier dans le champ ci-dessus.")
+        st.info("Aucun fichier reçu. Touchez « Choisir un fichier PDF » et sélectionnez votre document.")
+    elif not file.name.lower().endswith(".pdf"):
+        st.warning("Ce fichier n'a pas l'extension .pdf. Sélectionnez un document PDF.")
     else:
         st.success(f"Fichier reçu : {file.name} · {file.size / (1024 * 1024):.2f} Mo")
         if st.button("Extraire le texte", type="primary", key="extract_uploaded_pdf_text"):
