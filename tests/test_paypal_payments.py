@@ -415,3 +415,76 @@ def test_completed_order_requires_matching_completed_capture(monkeypatch, captur
 
     with pytest.raises(PermissionError, match="capture PayPal existante"):
         paypal.capture_premium_order("ORDER1", "current-user")
+
+
+def test_recurring_subscription_configuration_is_disabled_by_default(monkeypatch):
+    _settings(monkeypatch, SOWIA_PAYMENTS_ENABLED="false", PAYPAL_PREMIUM_PLAN_ID="P-PLAN123")
+    assert paypal.paypal_subscription_configuration() is None
+
+
+def test_recurring_subscription_requires_plan_and_https_urls(monkeypatch):
+    _settings(monkeypatch, PAYPAL_PREMIUM_PLAN_ID="", PAYPAL_SUBSCRIPTION_RETURN_URL="http://bad.test/return")
+    assert paypal.paypal_subscription_configuration() is None
+    _settings(monkeypatch, PAYPAL_PREMIUM_PLAN_ID="P-PLAN123", PAYPAL_SUBSCRIPTION_RETURN_URL="http://bad.test/return")
+    with pytest.raises(ValueError, match="HTTPS"):
+        paypal.paypal_subscription_configuration()
+
+
+def test_create_subscription_binds_authenticated_uuid_and_returns_approval_link(monkeypatch):
+    _settings(monkeypatch, PAYPAL_PREMIUM_PLAN_ID="P-PLAN123")
+    monkeypatch.setattr(paypal, "_access_token", lambda config: "sandbox-token")
+    calls = []
+
+    class Response:
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {
+                "id": "I-SUBSCRIPTION123",
+                "status": "APPROVAL_PENDING",
+                "links": [{"rel": "approve", "href": "https://www.sandbox.paypal.com/checkoutnow?token=I-SUBSCRIPTION123"}],
+            }
+
+    def fake_post(url, **kwargs):
+        calls.append((url, kwargs))
+        return Response()
+
+    monkeypatch.setattr(paypal.requests, "post", fake_post)
+    user_id = "123e4567-e89b-42d3-a456-426614174000"
+    result = paypal.create_premium_subscription(user_id)
+
+    assert result["id"] == "I-SUBSCRIPTION123"
+    assert result["approval_url"].startswith("https://")
+    assert calls[0][0].endswith("/v1/billing/subscriptions")
+    assert calls[0][1]["json"]["plan_id"] == "P-PLAN123"
+    assert calls[0][1]["json"]["custom_id"] == user_id
+    assert calls[0][1]["json"]["application_context"]["user_action"] == "SUBSCRIBE_NOW"
+
+
+@pytest.mark.parametrize("user_id", ["", "not-a-uuid", "../admin", "123e4567-e89b-12d3-a456-426614174000"])
+def test_create_subscription_rejects_invalid_user_identity_before_network(monkeypatch, user_id):
+    _settings(monkeypatch, PAYPAL_PREMIUM_PLAN_ID="P-PLAN123")
+    calls = []
+    monkeypatch.setattr(paypal, "_access_token", lambda config: calls.append("token") or "token")
+    with pytest.raises(PermissionError):
+        paypal.create_premium_subscription(user_id)
+    assert calls == []
+
+
+def test_create_subscription_rejects_untrusted_approval_link(monkeypatch):
+    _settings(monkeypatch, PAYPAL_PREMIUM_PLAN_ID="P-PLAN123")
+    monkeypatch.setattr(paypal, "_access_token", lambda config: "token")
+
+    class Response:
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {
+                "id": "I-SUBSCRIPTION123",
+                "status": "APPROVAL_PENDING",
+                "links": [{"rel": "approve", "href": "javascript:alert(1)"}],
+            }
+
+    monkeypatch.setattr(paypal.requests, "post", lambda *args, **kwargs: Response())
+    with pytest.raises(RuntimeError, match="lien d'approbation"):
+        paypal.create_premium_subscription("123e4567-e89b-42d3-a456-426614174000")
