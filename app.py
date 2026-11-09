@@ -506,14 +506,22 @@ elif page == "Recherche Web":
 elif page == "Analyse PDF":
     st.subheader("📄 Analyse PDF")
     st.caption("Importez un PDF depuis votre téléphone. Taille maximale : 10 Mo.")
-    # Use a fresh widget key to remount the Android uploader after a
-    # previous selection or failed transfer.
+
+    # A reset button creates a genuinely new Streamlit uploader widget.
+    # This clears a stuck browser-side upload selection without touching saved files.
+    if "pdf_uploader_reset_count" not in st.session_state:
+        st.session_state["pdf_uploader_reset_count"] = 0
+    if st.button("Réinitialiser le sélecteur PDF", key="reset_pdf_uploader"):
+        st.session_state["pdf_uploader_reset_count"] += 1
+        st.session_state["pdf_text"] = ""
+        st.rerun()
+
     file = st.file_uploader(
         "Choisir un fichier PDF",
         type=["pdf"],
-        key="pdf_analysis_upload_v2",
+        key=f"pdf_analysis_upload_{st.session_state['pdf_uploader_reset_count']}",
         max_upload_size=10,
-        help="Touchez la zone de sélection pour ouvrir les fichiers de votre téléphone.",
+        help="Touchez le bouton pour ouvrir les fichiers de votre téléphone.",
     )
     if file is None:
         st.info("Aucun PDF reçu pour le moment. Sélectionnez un fichier dans le champ ci-dessus.")
