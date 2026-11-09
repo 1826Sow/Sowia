@@ -572,7 +572,28 @@ elif page == "Analyse PDF":
                     st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
                     st.rerun()
                 except Exception as exc:
+                    # Best-effort cleanup: failed downloads/extractions must not
+                    # leave temporary PDFs in the user's private Storage folder.
+                    cleanup_error = None
+                    try:
+                        delete_document(
+                            supabase_client,
+                            current_user,
+                            temporary_path,
+                            st.session_state.get("workspace_id", "personal"),
+                        )
+                    except Exception:
+                        cleanup_error = True
+
+                    st.session_state.pop("analysis_signed_upload_path", None)
+                    st.session_state.pop("analysis_signed_upload_url", None)
+                    st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
                     st.error("Le PDF a été transmis, mais sa vérification ou sa lecture a échoué. Préparez un nouvel envoi et réessayez.")
+                    if cleanup_error:
+                        st.warning(
+                            "Le fichier temporaire n'a pas pu être supprimé automatiquement. "
+                            "Un nettoyage sera nécessaire dans le stockage Supabase."
+                        )
             if st.button("Préparer un nouvel envoi PDF", key="reset_analysis_pdf_upload"):
                 st.session_state.pop("analysis_signed_upload_path", None)
                 st.session_state.pop("analysis_signed_upload_url", None)
