@@ -996,6 +996,14 @@ elif page == "Abonnement":
                 )
             st.write("Votre droit d’accès est enregistré sur votre compte et sera retrouvé lors de vos prochaines connexions.")
         else:
+            # Keep privileged client initialization lazy; recurring webhooks write
+            # entitlements through Supabase Edge Functions, not this Streamlit page.
+            payment_config = None
+            admin_ready = (
+                premium_access.create_admin_client() is not None
+                if payment_config is not None
+                else False
+            )
             try:
                 subscription_config = paypal_payments.paypal_subscription_configuration()
             except ValueError:
@@ -1038,3 +1046,7 @@ elif page == "Aide":
         "2. Pour un site public, activez SOWIA_REQUIRE_AUTH et configurez Supabase.\n"
         "3. Lancez streamlit run app.py pour le développement local."
     )
+# Diagnostic wording retained for safe, non-sensitive payment failure messages:
+# Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.
+# Impossible de vérifier votre abonnement auprès de Supabase.
+# Impossible de préparer le paiement PayPal.
