@@ -209,8 +209,8 @@ if cloud_mode:
         st.stop()
 
 
-# Legacy one-time PayPal returns are disabled separately from recurring subscriptions.
-# A recurring subscription must be confirmed by the verified server-side webhook.
+# Legacy one-time PayPal returns remain separately disabled by default.
+# Recurring subscriptions are confirmed only by the verified server-side webhook.
 if cloud_mode and current_user is not None:
     if st.query_params.get("paypal_subscription") == "return":
         st.info(
@@ -222,11 +222,11 @@ if cloud_mode and current_user is not None:
         st.info("La souscription a été annulée. Aucun accès Premium n'a été activé.")
         st.query_params.clear()
 
-    legacy_order_token = st.query_params.get("token")
+    paypal_token = st.query_params.get("token")
     one_time_enabled = str(
         get_setting("SOWIA_ONE_TIME_PAYMENTS_ENABLED", "false")
     ).strip().lower() in {"1", "true", "yes"}
-    if legacy_order_token and one_time_enabled:
+    if paypal_token and one_time_enabled:
         try:
             payment_config = paypal_payments.paypal_configuration()
             if payment_config is None:
@@ -234,7 +234,7 @@ if cloud_mode and current_user is not None:
             admin_client = premium_access.create_admin_client()
             if admin_client is None:
                 raise RuntimeError("Le stockage sécurisé des droits Premium n'est pas configuré.")
-            normalized_order_id = str(legacy_order_token).strip()
+            normalized_order_id = str(paypal_token).strip()
             paypal_payments.capture_premium_order(normalized_order_id, str(current_user.id))
             premium_access.grant_paypal_entitlement(
                 admin_client, str(current_user.id), normalized_order_id,
@@ -245,7 +245,7 @@ if cloud_mode and current_user is not None:
             st.rerun()
         except Exception:
             st.error("Le paiement ponctuel n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.")
-    elif legacy_order_token:
+    elif paypal_token:
         st.query_params.clear()
         st.info("Les anciens paiements ponctuels ne sont pas activés sur SOW IA.")
 
