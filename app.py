@@ -587,6 +587,25 @@ elif page == "Analyse PDF":
                     st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
                     st.rerun()
                 except Exception as exc:
+                    # Best-effort cleanup: failed downloads/extractions must not
+                    # leave temporary PDFs in the user's private Storage folder.
+                    cleanup_error = None
+                    try:
+                        delete_document(
+                            supabase_client,
+                            current_user,
+                            temporary_path,
+                            st.session_state.get("workspace_id", "personal"),
+                        )
+                    except Exception as cleanup_exc:
+                        cleanup_error = cleanup_exc
+
+                    # Reset the component state so a failed upload is not
+                    # processed again automatically on the next Streamlit rerun.
+                    st.session_state.pop("analysis_signed_upload_path", None)
+                    st.session_state.pop("analysis_signed_upload_url", None)
+                    st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
+
                     safe_detail = (
                         " Détail : " + str(exc)[:240]
                         if isinstance(exc, ValueError) and str(exc).strip()
@@ -598,6 +617,11 @@ elif page == "Analyse PDF":
                         + safe_detail
                         + " Le texte déjà extrait reste disponible si cette étape avait réussi."
                     )
+                    if cleanup_error is not None:
+                        st.warning(
+                            "Le fichier temporaire n'a pas pu être supprimé automatiquement. "
+                            "Un nettoyage sera nécessaire dans le stockage Supabase."
+                        )
             if st.button("Préparer un nouvel envoi PDF", key="reset_analysis_pdf_upload"):
                 st.session_state.pop("analysis_signed_upload_path", None)
                 st.session_state.pop("analysis_signed_upload_url", None)
