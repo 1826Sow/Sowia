@@ -29,6 +29,7 @@ from sowia_supabase_auth import (
 )
 import cloud_storage
 import paypal_payments
+import paypal_subscriptions
 import premium_access
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -238,6 +239,10 @@ if cloud_mode and current_user is not None:
     if st.query_params.get("paypal") == "cancel":
         st.info("Le paiement a été annulé. Aucun montant n'a été confirmé par SOW IA.")
         st.query_params.clear()
+    if st.query_params.get("subscription_id"):
+        # The browser return is informational only; Premium is granted by the verified webhook.
+        st.session_state["paypal_subscription_returned"] = True
+        st.query_params.clear()
 
 
 def get_app_history(limit=30):
@@ -281,6 +286,8 @@ premium_entitlement_unavailable = False
 if cloud_mode and current_user is not None:
     try:
         premium_entitlement = premium_access.get_entitlement(supabase_client, current_user)
+        if premium_entitlement is None:
+            premium_entitlement = premium_access.get_active_subscription(supabase_client, current_user)
     except Exception:
         premium_entitlement_unavailable = True
 premium_active = bool(premium_entitlement)
@@ -960,47 +967,62 @@ elif page == "Abonnement":
     else:
         try:
             entitlement = premium_access.get_entitlement(supabase_client, current_user)
+            subscription = (
+                premium_access.get_active_subscription(supabase_client, current_user)
+                if entitlement is None else None
+            )
         except Exception:
             entitlement = None
+            subscription = None
             st.error("Impossible de vérifier vos droits auprès de Supabase.")
 
-        if entitlement:
+        if entitlement or subscription:
             st.success("Votre accès SOW IA Premium est actif.")
-            provider = str(entitlement.get("provider", "—")).strip().lower()
-            if provider == "paypal" and entitlement.get("paypal_order_id"):
-                st.caption(
-                    f"Accès accordé après un paiement ponctuel PayPal · "
-                    f"{entitlement.get('amount', '—')} {entitlement.get('currency', 'EUR')}"
-                )
-                st.caption(
-                    "Cet accès enregistré n’est pas un abonnement mensuel récurrent. "
-                    "La gestion des renouvellements et des résiliations sera disponible avec la future offre."
-                )
+            if subscription:
+                st.caption("Abonnement mensuel PayPal actif · renouvellement vérifié côté serveur.")
+                if subscription.get("next_billing_time"):
+                    st.caption(f"Prochaine échéance indiquée par PayPal : {subscription['next_billing_time']}")
             else:
-                st.caption(
-                    f"Fournisseur : {entitlement.get('provider', '—')} · "
-                    f"{entitlement.get('amount', '—')} {entitlement.get('currency', 'EUR')}"
-                )
+                provider = str(entitlement.get("provider", "—")).strip().lower()
+                if provider == "paypal" and entitlement.get("paypal_order_id"):
+                    st.caption(
+                        f"Accès accordé après un paiement ponctuel PayPal · "
+                        f"{entitlement.get('amount', '—')} {entitlement.get('currency', 'EUR')}"
+                    )
+                    st.caption(
+                        "Cet accès enregistré n’est pas un abonnement mensuel récurrent."
+                    )
+                else:
+                    st.caption(
+                        f"Fournisseur : {entitlement.get('provider', '—')} · "
+                        f"{entitlement.get('amount', '—')} {entitlement.get('currency', 'EUR')}"
+                    )
             st.write("Votre droit d’accès est enregistré sur votre compte et sera retrouvé lors de vos prochaines connexions.")
         else:
             try:
-                payment_config = paypal_payments.paypal_configuration()
+                subscription_config = paypal_subscriptions.paypal_subscription_configuration()
             except ValueError:
-                payment_config = None
+                subscription_config = None
+                st.error("La configuration de l’abonnement PayPal est invalide.")
 
-            # Keep privileged Supabase initialization lazy while payments are disabled.
-            admin_ready = (
-                premium_access.create_admin_client() is not None
-                if payment_config is not None
-                else False
-            )
-            if payment_config is None:
-                st.info("Les paiements restent désactivés pendant la préparation de l’abonnement récurrent.")
-            elif not admin_ready:
-                st.warning("La configuration serveur sécurisée n’est pas complète.")
+            if subscription_config is None:
+                st.info("L’abonnement mensuel reste désactivé tant que le parcours Sandbox n’a pas été configuré et validé.")
             else:
-                st.caption("La configuration PayPal ponctuelle existe, mais elle ne sera pas utilisée pour un abonnement mensuel.")
-            st.caption("L’offre mensuelle sera affichée ici après validation du parcours PayPal récurrent et de ses tests.")
+                st.write("L’abonnement récurrent sera créé dans l’environnement PayPal configuré.")
+                if subscription_config["mode"] != "sandbox":
+                    st.warning("Le mode PayPal n’est pas Sandbox. Le lancement réel nécessite une validation séparée.")
+                if st.button("Préparer mon abonnement Premium", key="create_paypal_subscription"):
+                    try:
+                        created = paypal_subscriptions.create_premium_subscription(str(current_user.id))
+                        st.session_state["paypal_subscription_approval_url"] = created["approval_url"]
+                        st.success("Votre demande d’abonnement a été préparée. Aucun accès n’est accordé avant la confirmation du webhook.")
+                    except Exception:
+                        st.error("Impossible de préparer l’abonnement PayPal. Aucun accès Premium n’a été accordé.")
+                approval_url = st.session_state.get("paypal_subscription_approval_url")
+                if approval_url:
+                    st.link_button("Continuer sur PayPal", approval_url, use_container_width=True)
+                if st.session_state.pop("paypal_subscription_returned", False):
+                    st.info("PayPal vous a renvoyé vers SOW IA. L’accès sera activé uniquement après vérification du webhook et enregistrement Supabase.")
 
 # Messages de diagnostic protégés conservés pour les autres parcours :
 # Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.
