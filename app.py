@@ -81,13 +81,12 @@ if cloud_mode:
     auth_stage = "initialisation du client Supabase"
     pkce_diagnostic = "non applicable"
     try:
+        # Read the same browser scope on every rerun, including the OAuth callback.
+        browser_id = browser_storage_id()
+        if not browser_id:
+            st.info("Initialisation sécurisée du navigateur…")
+            st.stop()
         if "sowia_supabase_client" not in st.session_state:
-            # Streamlit Cloud WebSocket requests may not expose browser cookies.
-            # Obtain a persistent random browser scope through a v2 component.
-            browser_id = browser_storage_id()
-            if not browser_id:
-                st.info("Initialisation sécurisée du navigateur…")
-                st.stop()
             # Keep this PKCE client in this browser session; never use a global cache.
             st.session_state.sowia_supabase_client = create_user_client(browser_id)
         supabase_client = st.session_state.sowia_supabase_client
