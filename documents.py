@@ -89,7 +89,7 @@ def extract_pdf_text(uploaded_file, max_chars=100000, max_pages=MAX_PDF_PAGES):
         from PIL import Image
     except ImportError as exc:
         raise ValueError(
-            "Ce PDF semble être un scan. La lecture OCR n'est pas disponible "
+            "Aucun texte extractible : ce PDF semble être un scan et la lecture OCR n'est pas disponible "
             "sur cette version de SOW IA."
         ) from exc
 
@@ -116,7 +116,7 @@ def extract_pdf_text(uploaded_file, max_chars=100000, max_pages=MAX_PDF_PAGES):
             document.close()
     except Exception as exc:
         raise ValueError(
-            "La lecture OCR du PDF scanné a échoué. Vérifiez que le document "
+            "Aucun texte extractible après tentative OCR. La lecture du PDF scanné a échoué. Vérifiez que le document "
             "n'est pas endommagé et réessayez."
         ) from exc
 
