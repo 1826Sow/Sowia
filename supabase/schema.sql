@@ -16,7 +16,7 @@ create table if not exists public.sowia_messages (
 alter table public.sowia_messages
     add column if not exists workspace_id text not null default 'personal';
 
-do $ begin
+do $block$ begin
     if not exists (
         select 1 from pg_constraint
         where conname = 'sowia_messages_workspace_id_check'
@@ -26,7 +26,7 @@ do $ begin
             add constraint sowia_messages_workspace_id_check
             check (workspace_id in ('personal', 'professional'));
     end if;
-end $;
+end $block$;
 
 create index if not exists sowia_messages_user_workspace_session_idx
     on public.sowia_messages (user_id, workspace_id, session_id, id);
@@ -43,7 +43,7 @@ create table if not exists public.sowia_memory_items (
 alter table public.sowia_memory_items
     add column if not exists workspace_id text not null default 'personal';
 
-do $ begin
+do $block$ begin
     if not exists (
         select 1 from pg_constraint
         where conname = 'sowia_memory_items_workspace_id_check'
@@ -53,7 +53,7 @@ do $ begin
             add constraint sowia_memory_items_workspace_id_check
             check (workspace_id in ('personal', 'professional'));
     end if;
-end $;
+end $block$;
 
 create index if not exists sowia_memory_user_workspace_created_idx
     on public.sowia_memory_items (user_id, workspace_id, created_at desc);
