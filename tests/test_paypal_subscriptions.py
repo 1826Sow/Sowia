@@ -12,11 +12,10 @@ def test_enabled_but_incomplete_configuration_fails_closed(monkeypatch):
         "SOWIA_SUBSCRIPTIONS_ENABLED": "true",
         "PAYPAL_CLIENT_ID": "client",
         "PAYPAL_CLIENT_SECRET": "secret",
-        "PAYPAL_PREMIUM_PLAN_ID": "P-123",
         "PAYPAL_MODE": "sandbox",
         "PAYPAL_SUBSCRIPTION_RETURN_URL": "https://example.com/return",
         "PAYPAL_SUBSCRIPTION_CANCEL_URL": "https://example.com/cancel",
-        # Missing webhook ID must prevent activation.
+        # Missing plan ID must prevent checkout.
     }
     monkeypatch.setattr(paypal, "_setting", lambda name, default="": values.get(name, default))
     assert paypal.paypal_subscription_configuration() is None
@@ -72,3 +71,19 @@ def test_webhook_verification_requires_all_paypal_headers(monkeypatch):
         {"id": "EVENT-1"}, {"paypal-transmission-id": "only-one-header"}
     ) is False
     assert called == []
+
+
+def test_checkout_configuration_does_not_require_webhook_id(monkeypatch):
+    values = {
+        "SOWIA_SUBSCRIPTIONS_ENABLED": "true",
+        "PAYPAL_CLIENT_ID": "client",
+        "PAYPAL_CLIENT_SECRET": "secret",
+        "PAYPAL_PREMIUM_PLAN_ID": "P-123",
+        "PAYPAL_MODE": "sandbox",
+        "PAYPAL_SUBSCRIPTION_RETURN_URL": "https://example.com/return",
+        "PAYPAL_SUBSCRIPTION_CANCEL_URL": "https://example.com/cancel",
+    }
+    monkeypatch.setattr(paypal, "_setting", lambda name, default="": values.get(name, default))
+    config = paypal.paypal_subscription_configuration()
+    assert config is not None
+    assert config["webhook_id"] == ""
