@@ -209,22 +209,32 @@ if cloud_mode:
         st.stop()
 
 
-# PayPal returns the buyer to this server URL with the order ID in ?token=...
-# The server validates and captures the order before granting any entitlement.
+# Legacy one-time PayPal returns are disabled separately from recurring subscriptions.
+# A recurring subscription must be confirmed by the verified server-side webhook.
 if cloud_mode and current_user is not None:
-    paypal_token = st.query_params.get("token")
-    if paypal_token:
+    if st.query_params.get("paypal_subscription") == "return":
+        st.info(
+            "Retour de PayPal reçu. Votre accès Premium sera activé uniquement "
+            "après confirmation sécurisée de l'abonnement par PayPal."
+        )
+        st.query_params.clear()
+    elif st.query_params.get("paypal_subscription") == "cancel":
+        st.info("La souscription a été annulée. Aucun accès Premium n'a été activé.")
+        st.query_params.clear()
+
+    legacy_order_token = st.query_params.get("token")
+    one_time_enabled = str(
+        get_setting("SOWIA_ONE_TIME_PAYMENTS_ENABLED", "false")
+    ).strip().lower() in {"1", "true", "yes"}
+    if legacy_order_token and one_time_enabled:
         try:
             payment_config = paypal_payments.paypal_configuration()
             if payment_config is None:
-                raise RuntimeError("Les paiements Premium sont désactivés.")
+                raise RuntimeError("Les paiements ponctuels sont désactivés.")
             admin_client = premium_access.create_admin_client()
             if admin_client is None:
-                raise RuntimeError(
-                    "Ajoutez SUPABASE_SERVICE_ROLE_KEY dans les secrets Streamlit "
-                    "avant d'activer la validation des achats."
-                )
-            normalized_order_id = str(paypal_token).strip()
+                raise RuntimeError("Le stockage sécurisé des droits Premium n'est pas configuré.")
+            normalized_order_id = str(legacy_order_token).strip()
             paypal_payments.capture_premium_order(normalized_order_id, str(current_user.id))
             premium_access.grant_paypal_entitlement(
                 admin_client, str(current_user.id), normalized_order_id,
@@ -233,11 +243,11 @@ if cloud_mode and current_user is not None:
             st.query_params.clear()
             st.session_state["paypal_purchase_confirmed"] = True
             st.rerun()
-        except Exception as exc:
-            st.error("Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.")
-    if st.query_params.get("paypal") == "cancel":
-        st.info("Le paiement a été annulé. Aucun montant n'a été confirmé par SOW IA.")
+        except Exception:
+            st.error("Le paiement ponctuel n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.")
+    elif legacy_order_token:
         st.query_params.clear()
+        st.info("Les anciens paiements ponctuels ne sont pas activés sur SOW IA.")
 
 
 def get_app_history(limit=30):
