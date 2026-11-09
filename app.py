@@ -520,11 +520,12 @@ elif page == "Analyse PDF":
                 st.success("Texte extrait.")
             except ValueError as exc:
                 st.error(str(exc))
-            except Exception:
+            except Exception as exc:
                 st.error(
-                    "Le fichier a bien été reçu, mais sa lecture a échoué. Vérifiez qu'il s'agit "
-                    "d'un PDF lisible et non endommagé."
+                    "Le fichier a bien été reçu, mais sa lecture a échoué. "
+                    "Le lecteur PDF n'a pas réussi à décoder ce document."
                 )
+                st.caption(f"Diagnostic technique : {type(exc).__name__}")
     if st.session_state.pdf_text:
         st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
         st.download_button("Télécharger le texte", st.session_state.pdf_text, file_name="sowia_extraction.txt")
