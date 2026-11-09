@@ -249,7 +249,31 @@ Deno.serve(async (request: Request) => {
     // the recurring subscription itself as ACTIVE.
     const paymentRevokedAccess = eventType === "PAYMENT.SALE.REFUNDED" ||
       eventType === "PAYMENT.SALE.REVERSED";
-    const isActive = paypalStatus === "ACTIVE" && !paymentRevokedAccess;
+    const paymentRestoredAccess = eventType === "PAYMENT.SALE.COMPLETED";
+
+    // Persist a refund/reversal block so a later subscription status notification
+    // cannot silently restore Premium. Only a newly completed sale clears it.
+    if (paymentRestoredAccess) {
+      await dbRequest(
+        supabaseUrl,
+        serviceKey,
+        `sowia_entitlements?paypal_subscription_id=eq.${encodeURIComponent(subscriptionId)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ paypal_access_blocked: false }),
+        },
+      );
+    }
+    const entitlementResponse = await dbRequest(
+      supabaseUrl,
+      serviceKey,
+      `sowia_entitlements?paypal_subscription_id=eq.${encodeURIComponent(subscriptionId)}&select=paypal_access_blocked`,
+    );
+    const entitlementRows = await entitlementResponse.json();
+    const previouslyBlocked = Array.isArray(entitlementRows) &&
+      entitlementRows.some((row: any) => row.paypal_access_blocked === true);
+    const accessBlocked = paymentRevokedAccess || previouslyBlocked;
+    const isActive = paypalStatus === "ACTIVE" && !accessBlocked;
     const billingInfo = subscription.billing_info ?? {};
     const nextBilling = billingInfo.next_billing_time ?? null;
     const lastPaymentTime = billingInfo.last_payment?.time ?? null;
@@ -273,6 +297,7 @@ Deno.serve(async (request: Request) => {
             paypal_subscription_id: subscriptionId,
             paypal_plan_id: expectedPlanId,
             paypal_status: paypalStatus,
+            paypal_access_blocked: false,
             amount: amount.toFixed(2),
             currency: "EUR",
             current_period_end: nextBilling,
@@ -291,6 +316,7 @@ Deno.serve(async (request: Request) => {
           body: JSON.stringify({
             status: "inactive",
             paypal_status: paypalStatus,
+            ...(paymentRevokedAccess ? { paypal_access_blocked: true } : {}),
             current_period_end: nextBilling,
             updated_at: new Date().toISOString(),
           }),
