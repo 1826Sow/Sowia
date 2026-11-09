@@ -6,23 +6,57 @@ create table if not exists public.sowia_messages (
     id bigint generated always as identity primary key,
     user_id uuid not null references auth.users(id) on delete cascade,
     session_id text not null,
+    workspace_id text not null default 'personal'
+        constraint sowia_messages_workspace_id_check check (workspace_id in ('personal', 'professional')),
     role text not null check (role in ('user', 'assistant')),
     content text not null,
     created_at timestamptz not null default now()
 );
 
-create index if not exists sowia_messages_user_session_idx
-    on public.sowia_messages (user_id, session_id, id);
+alter table public.sowia_messages
+    add column if not exists workspace_id text not null default 'personal';
+
+do $ begin
+    if not exists (
+        select 1 from pg_constraint
+        where conname = 'sowia_messages_workspace_id_check'
+          and conrelid = 'public.sowia_messages'::regclass
+    ) then
+        alter table public.sowia_messages
+            add constraint sowia_messages_workspace_id_check
+            check (workspace_id in ('personal', 'professional'));
+    end if;
+end $;
+
+create index if not exists sowia_messages_user_workspace_session_idx
+    on public.sowia_messages (user_id, workspace_id, session_id, id);
 
 create table if not exists public.sowia_memory_items (
     id bigint generated always as identity primary key,
     user_id uuid not null references auth.users(id) on delete cascade,
+    workspace_id text not null default 'personal'
+        constraint sowia_memory_items_workspace_id_check check (workspace_id in ('personal', 'professional')),
     content text not null check (char_length(content) between 1 and 1000),
     created_at timestamptz not null default now()
 );
 
-create index if not exists sowia_memory_user_created_idx
-    on public.sowia_memory_items (user_id, created_at desc);
+alter table public.sowia_memory_items
+    add column if not exists workspace_id text not null default 'personal';
+
+do $ begin
+    if not exists (
+        select 1 from pg_constraint
+        where conname = 'sowia_memory_items_workspace_id_check'
+          and conrelid = 'public.sowia_memory_items'::regclass
+    ) then
+        alter table public.sowia_memory_items
+            add constraint sowia_memory_items_workspace_id_check
+            check (workspace_id in ('personal', 'professional'));
+    end if;
+end $;
+
+create index if not exists sowia_memory_user_workspace_created_idx
+    on public.sowia_memory_items (user_id, workspace_id, created_at desc);
 
 alter table public.sowia_messages enable row level security;
 alter table public.sowia_memory_items enable row level security;
