@@ -31,6 +31,7 @@ import cloud_storage
 import paypal_payments
 import premium_access
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
+from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
 from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_authenticated_session_state
 
@@ -494,6 +495,15 @@ elif page == "Ma mémoire":
     memories = get_app_memories()
     if not memories:
         st.caption("Aucune note enregistrée pour le moment.")
+    else:
+        st.download_button(
+            "Télécharger ma mémoire (.txt)",
+            data=format_memory_export(memories, workspace_label),
+            file_name=f"sowia_memoire_{workspace_label}.txt",
+            mime="text/plain; charset=utf-8",
+            use_container_width=True,
+            help="Télécharge une copie des notes de cet espace uniquement.",
+        )
     for item in memories:
         with st.container(border=True):
             st.write(item["content"])
