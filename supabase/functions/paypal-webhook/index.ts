@@ -110,9 +110,10 @@ Deno.serve(async (request: Request) => {
       "BILLING.SUBSCRIPTION.CANCELLED",
       "BILLING.SUBSCRIPTION.SUSPENDED",
       "BILLING.SUBSCRIPTION.EXPIRED",
+      "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
       "PAYMENT.SALE.COMPLETED",
-      "PAYMENT.SALE.DENIED",
       "PAYMENT.SALE.REFUNDED",
+      "PAYMENT.SALE.REVERSED",
     ]);
     if (!supportedEvents.has(eventType)) {
       return json({ received: true, ignored: true });
@@ -127,8 +128,14 @@ Deno.serve(async (request: Request) => {
     const relatedIds = (related.related_ids && typeof related.related_ids === "object")
       ? related.related_ids as Record<string, unknown>
       : {};
+    // Sale events carry their subscription ID in billing_agreement_id;
+    // resource.id is the sale/transaction ID and must never be mistaken for it.
     const subscriptionId = String(
-      resource.id || resource.billing_agreement_id || relatedIds.subscription_id || "",
+      resource.billing_agreement_id ||
+      relatedIds.billing_agreement_id ||
+      relatedIds.subscription_id ||
+      (eventType.startsWith("BILLING.SUBSCRIPTION.") ? resource.id : "") ||
+      "",
     ).trim();
     if (!/^I-[A-Z0-9-]{5,64}$/.test(subscriptionId)) {
       return json({ received: true, ignored: true, reason: "No subscription identifier" });
