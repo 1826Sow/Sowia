@@ -507,60 +507,54 @@ elif page == "Recherche Web":
 
 elif page == "Analyse PDF":
     st.subheader("📄 Analyse PDF")
-    st.caption("Transfert direct et privé vers Supabase. Taille maximale : 10 Mo.")
+    st.caption("Sélectionnez un PDF depuis votre téléphone. Transfert privé vers Supabase, 10 Mo maximum.")
 
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre espace sécurisé pour envoyer un PDF.")
     else:
-        if st.button("Préparer un nouvel envoi PDF", key="prepare_direct_pdf_upload"):
-            try:
-                upload_path, signed_url = create_signed_pdf_upload(
-                    supabase_client, current_user,
-                    st.session_state.get("workspace_id", "personal"),
-                )
-                st.session_state["direct_pdf_upload_path"] = upload_path
-                st.session_state["direct_pdf_upload_url"] = signed_url
-                st.session_state["direct_pdf_upload_nonce"] = str(uuid.uuid4())
-                st.session_state.pop("direct_pdf_upload_processed", None)
-                st.session_state["pdf_text"] = ""
-            except Exception:
-                st.error("L'autorisation temporaire d'envoi n'a pas pu être créée.")
-
-        upload_path = st.session_state.get("direct_pdf_upload_path")
-        signed_url = st.session_state.get("direct_pdf_upload_url")
-        if upload_path and signed_url:
-            st.info("Choisissez votre PDF, puis touchez « Envoyer le PDF ». Le fichier est transmis directement à votre espace privé.")
-            upload_result = render_direct_pdf_upload(
-                signed_url,
-                get_setting("SUPABASE_ANON_KEY"),
-                key="direct_pdf_upload_" + st.session_state.get("direct_pdf_upload_nonce", "session"),
-            )
-            if getattr(upload_result, "upload_error", None):
-                st.error("Le transfert direct a échoué : " + str(upload_result.upload_error)[:240])
-            if getattr(upload_result, "uploaded", False) and st.session_state.get("direct_pdf_upload_processed") != upload_path:
+        uploaded_pdf = st.file_uploader(
+            "Choisir un fichier PDF",
+            type=["pdf"],
+            key="analysis_pdf_uploader",
+            max_upload_size=10,
+        )
+        if uploaded_pdf is not None:
+            st.caption(f"Fichier sélectionné : {uploaded_pdf.name}")
+            if st.button("Envoyer le PDF et lancer l'analyse", type="primary", key="send_analysis_pdf"):
+                temporary_path = None
                 try:
-                    pdf_bytes = download_document(
-                        supabase_client, current_user, upload_path,
+                    pdf_bytes = uploaded_pdf.getvalue()
+                    temporary_path = upload_document(
+                        supabase_client,
+                        current_user,
+                        uploaded_pdf.name,
+                        pdf_bytes,
                         st.session_state.get("workspace_id", "personal"),
                     )
-                    st.session_state.pdf_text = extract_pdf_text(BytesIO(pdf_bytes))
-                    st.session_state["direct_pdf_upload_processed"] = upload_path
-                    st.success("PDF reçu et texte extrait avec succès.")
-                    st.caption("Fichier : " + str(getattr(upload_result, "file_name", "document.pdf")))
+                    verified_bytes = download_document(
+                        supabase_client,
+                        current_user,
+                        temporary_path,
+                        st.session_state.get("workspace_id", "personal"),
+                    )
+                    st.session_state.pdf_text = extract_pdf_text(BytesIO(verified_bytes))
+                    st.session_state["analysis_pdf_name"] = uploaded_pdf.name
+                    st.success("PDF transmis et texte extrait avec succès.")
                 except ValueError as exc:
                     st.error(str(exc))
-                except Exception:
-                    st.error("Le PDF a été transmis, mais sa vérification ou son extraction a échoué.")
+                except Exception as exc:
+                    st.error("Le transfert ou la lecture du PDF a échoué. Vérifiez la connexion puis réessayez.")
                 finally:
-                    try:
-                        delete_document(
-                            supabase_client, current_user, upload_path,
-                            st.session_state.get("workspace_id", "personal"),
-                        )
-                    except Exception:
-                        pass
-                    st.session_state.pop("direct_pdf_upload_url", None)
-                    st.session_state.pop("direct_pdf_upload_path", None)
+                    if temporary_path:
+                        try:
+                            delete_document(
+                                supabase_client,
+                                current_user,
+                                temporary_path,
+                                st.session_state.get("workspace_id", "personal"),
+                            )
+                        except Exception:
+                            pass
 
     if st.session_state.pdf_text:
         st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
