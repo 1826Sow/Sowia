@@ -1,0 +1,4 @@
+[functions.paypal-webhook]
+# PayPal sends signed webhook headers, not a Supabase user JWT.
+# The function verifies the PayPal signature before processing any event.
+verify_jwt = false
