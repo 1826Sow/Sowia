@@ -14,7 +14,11 @@ create table if not exists public.sowia_messages (
 );
 
 alter table public.sowia_messages
-    add column if not exists workspace_id text not null default 'personal';
+    add column if not exists workspace_id text;
+update public.sowia_messages set workspace_id = 'personal' where workspace_id is null;
+alter table public.sowia_messages
+    alter column workspace_id set default 'personal',
+    alter column workspace_id set not null;
 
 do $block$ begin
     if not exists (
@@ -41,7 +45,11 @@ create table if not exists public.sowia_memory_items (
 );
 
 alter table public.sowia_memory_items
-    add column if not exists workspace_id text not null default 'personal';
+    add column if not exists workspace_id text;
+update public.sowia_memory_items set workspace_id = 'personal' where workspace_id is null;
+alter table public.sowia_memory_items
+    alter column workspace_id set default 'personal',
+    alter column workspace_id set not null;
 
 do $block$ begin
     if not exists (
