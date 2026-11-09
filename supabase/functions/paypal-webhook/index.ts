@@ -138,12 +138,17 @@ Deno.serve(async (request: Request) => {
       "",
     ).trim();
     if (!/^I-[A-Z0-9-]{5,64}$/.test(subscriptionId)) {
-      return json({ received: true, ignored: true, reason: "No subscription identifier" });
+      return json({
+        received: true,
+        ignored: true,
+        reason: "No subscription identifier",
+      });
     }
 
     // Reconcile against PayPal's current server-side record; never trust event status alone.
     const subscriptionResponse = await fetch(
-      baseUrl + "/v1/billing/subscriptions/" + encodeURIComponent(subscriptionId),
+      baseUrl + "/v1/billing/subscriptions/" +
+        encodeURIComponent(subscriptionId),
       {
         headers: {
           Authorization: "Bearer " + token,
