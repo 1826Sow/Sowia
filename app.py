@@ -514,11 +514,10 @@ elif page == "Analyse PDF":
     else:
         if st.button("Préparer un nouvel envoi PDF", key="prepare_direct_pdf_upload"):
             try:
-                upload_path, signed_url, upload_anon_key = create_signed_pdf_upload(
+                upload_path, signed_url = create_signed_pdf_upload(
                     supabase_client, current_user,
                     st.session_state.get("workspace_id", "personal"),
                 )
-                st.session_state["direct_pdf_upload_anon_key"] = upload_anon_key
                 st.session_state["direct_pdf_upload_path"] = upload_path
                 st.session_state["direct_pdf_upload_url"] = signed_url
                 st.session_state["direct_pdf_upload_nonce"] = str(uuid.uuid4())
@@ -533,7 +532,6 @@ elif page == "Analyse PDF":
             st.info("Choisissez votre PDF, puis touchez « Envoyer le PDF ». Le fichier est transmis directement à votre espace privé.")
             upload_result = render_direct_pdf_upload(
                 signed_url,
-                st.session_state.get("direct_pdf_upload_anon_key", ""),
                 key="direct_pdf_upload_" + st.session_state.get("direct_pdf_upload_nonce", "session"),
             )
             if getattr(upload_result, "upload_error", None):
@@ -562,7 +560,6 @@ elif page == "Analyse PDF":
                         pass
                     st.session_state.pop("direct_pdf_upload_url", None)
                     st.session_state.pop("direct_pdf_upload_path", None)
-                    st.session_state.pop("direct_pdf_upload_anon_key", None)
 
     if st.session_state.pdf_text:
         st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
