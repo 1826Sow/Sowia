@@ -86,7 +86,8 @@ Deno.serve(async (request: Request) => {
     const clientSecret = requiredEnv("PAYPAL_CLIENT_SECRET");
     const planId = requiredEnv("PAYPAL_PREMIUM_PLAN_ID");
     const webhookId = requiredEnv("PAYPAL_SUBSCRIPTION_WEBHOOK_ID");
-    const mode = (Deno.env.get("PAYPAL_MODE") || "sandbox").trim().toLowerCase();
+    const mode = (Deno.env.get("PAYPAL_MODE") || "sandbox").trim()
+      .toLowerCase();
     if (mode !== "sandbox" && mode !== "live") {
       return json({ error: "Invalid PayPal mode" }, 500);
     }
@@ -100,7 +101,13 @@ Deno.serve(async (request: Request) => {
     }
 
     const token = await paypalAccessToken(baseUrl, clientId, clientSecret);
-    const verified = await verifyWebhook(baseUrl, token, webhookId, event, request);
+    const verified = await verifyWebhook(
+      baseUrl,
+      token,
+      webhookId,
+      event,
+      request,
+    );
     if (!verified) return json({ error: "Webhook signature verification failed" }, 401);
 
     const eventType = String(event.event_type || "");
@@ -133,7 +140,7 @@ Deno.serve(async (request: Request) => {
     // Sale events carry their subscription ID in billing_agreement_id;
     // resource.id is the sale/transaction ID and must never be mistaken for it.
     const subscriptionId = String(
-        resource.billing_agreement_id ||
+      resource.billing_agreement_id ||
         relatedIds.billing_agreement_id ||
         relatedIds.subscription_id ||
         (eventType.startsWith("BILLING.SUBSCRIPTION.") ? resource.id : "") ||
