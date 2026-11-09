@@ -503,12 +503,14 @@ elif page == "Recherche Web":
 elif page == "Analyse PDF":
     st.subheader("📄 Analyse PDF")
     st.caption("Importez un PDF depuis votre téléphone. Taille maximale : 10 Mo.")
+    # Use a fresh widget key to remount the Android uploader after a
+    # previous selection or failed transfer.
     file = st.file_uploader(
-        "Importer un document PDF",
+        "Choisir un fichier PDF",
         type=["pdf"],
-        key="pdf_analysis_upload",
+        key="pdf_analysis_upload_v2",
         max_upload_size=10,
-        help="Choisissez un fichier PDF enregistré sur votre téléphone.",
+        help="Touchez la zone de sélection pour ouvrir les fichiers de votre téléphone.",
     )
     if file is None:
         st.info("Aucun PDF reçu pour le moment. Sélectionnez un fichier dans le champ ci-dessus.")
