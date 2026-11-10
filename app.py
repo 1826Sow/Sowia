@@ -845,7 +845,7 @@ elif page == "Ma mémoire":
 elif page == "Développement mondial":
     st.subheader(translate_ui("🌍 Développement mondial de SOW IA", language))
     st.caption("Repérez des partenaires, préparez vos prises de contact et construisez votre promotion internationale. Rien n'est envoyé ou publié automatiquement.")
-    partner_tab, greeting_tab, promo_tab = st.tabs(["🤝 Partenaires", "🎉 Vœux internationaux", "📣 Promotion multilingue"])
+    partner_tab, greeting_tab, agenda_tab, promo_tab = st.tabs(["🤝 Partenaires", "🎉 Vœux internationaux", "🗓️ Agenda relationnel", "📣 Promotion multilingue"])
 
     with partner_tab:
         st.markdown("#### Prospection internationale")
@@ -1069,6 +1069,103 @@ elif page == "Développement mondial":
             "gérer les préférences de réception, puis connecter un fournisseur d'envoi autorisé "
             "avec validation et journalisation avant tout envoi automatique."
         )
+
+    with agenda_tab:
+        st.markdown("#### 🗓️ Agenda relationnel des partenaires")
+        st.caption(
+            "Centralisez les anniversaires, échéances de partenariat et rappels de suivi. "
+            "Les rappels apparaissent dans SOW IA ; aucun email, SMS ou notification externe n'est envoyé."
+        )
+        if not cloud_mode or current_user is None:
+            st.info("Connectez-vous à votre espace sécurisé pour conserver votre agenda.")
+        else:
+            try:
+                from relationship_calendar import EVENT_TYPES, EVENT_STATUSES, classify_event
+                agenda_workspace = st.session_state.get("workspace_id", "personal")
+                agenda_contacts = cloud_storage.list_growth_leads(
+                    supabase_client, current_user, agenda_workspace
+                )
+                contact_options = {"Sans partenaire associé": None}
+                for lead in agenda_contacts:
+                    contact_options[f"{lead['organization']} — {lead['country']}"] = lead["id"]
+                with st.form("sowia_relationship_event_form"):
+                    agenda_title = st.text_input("Intitulé du rappel", max_chars=160)
+                    agenda_type = st.selectbox("Type d'échéance", EVENT_TYPES)
+                    agenda_date = st.date_input("Date de l'échéance")
+                    agenda_contact_label = st.selectbox("Partenaire associé", list(contact_options))
+                    agenda_notes = st.text_area("Notes / prochaine action", max_chars=2000)
+                    agenda_contact_permission = st.checkbox(
+                        "Le contact a explicitement accepté de recevoir des messages liés à cette relation"
+                    )
+                    agenda_submit = st.form_submit_button("Enregistrer le rappel", type="primary")
+                if agenda_submit:
+                    try:
+                        from relationship_calendar import validate_event
+                        event_data = validate_event(
+                            title=agenda_title, event_type=agenda_type,
+                            due_date=agenda_date.isoformat(), notes=agenda_notes,
+                            contact_authorized=agenda_contact_permission,
+                        )
+                        cloud_storage.add_relationship_event(
+                            supabase_client, current_user,
+                            title=event_data["title"], event_type=event_data["event_type"],
+                            due_date=event_data["due_date"], notes=event_data["notes"],
+                            lead_id=contact_options[agenda_contact_label],
+                            contact_authorized=event_data["contact_authorized"],
+                            workspace_id=agenda_workspace,
+                        )
+                        st.success("Rappel enregistré dans votre agenda.")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(f"Enregistrement impossible : {exc}")
+                st.divider()
+                agenda_events = cloud_storage.list_relationship_events(
+                    supabase_client, current_user, agenda_workspace
+                )
+                if not agenda_events:
+                    st.info("Votre agenda relationnel est vide. Ajoutez une première échéance ci-dessus.")
+                else:
+                    from datetime import date as _date
+                    open_events = [event for event in agenda_events if event.get("status") == "À faire"]
+                    overdue = [event for event in open_events if event["due_date"] < _date.today().isoformat()]
+                    due_today = [event for event in open_events if event["due_date"] == _date.today().isoformat()]
+                    metric_cols = st.columns(3)
+                    metric_cols[0].metric("Rappels ouverts", len(open_events))
+                    metric_cols[1].metric("En retard", len(overdue))
+                    metric_cols[2].metric("À traiter aujourd'hui", len(due_today))
+                    for event in agenda_events:
+                        lead_name = next(
+                            (lead["organization"] for lead in agenda_contacts if lead["id"] == event.get("lead_id")),
+                            "Partenaire non associé",
+                        )
+                        state = classify_event(event["due_date"], event.get("status", "À faire"))
+                        with st.expander(f"{'🔴' if state == 'En retard' else '🟠' if state == 'Aujourd’hui' else '🟢' if state == 'À venir' else '⚪'} {event['due_date']} · {event['title']}"):
+                            st.caption(f"{event['event_type']} · {lead_name} · {state}")
+                            if event.get("notes"):
+                                st.write(event["notes"])
+                            st.caption(
+                                "Contact autorisé : oui" if event.get("contact_authorized")
+                                else "Contact externe non autorisé par défaut"
+                            )
+                            if event.get("status") == "À faire":
+                                if st.button("Marquer comme terminé", key=f"agenda_done_{event['id']}"):
+                                    cloud_storage.update_relationship_event_status(
+                                        supabase_client, current_user, event["id"],
+                                        "Terminé", agenda_workspace
+                                    )
+                                    st.rerun()
+                            if event.get("status") != "Annulé":
+                                if st.button("Annuler ce rappel", key=f"agenda_cancel_{event['id']}"):
+                                    cloud_storage.update_relationship_event_status(
+                                        supabase_client, current_user, event["id"],
+                                        "Annulé", agenda_workspace
+                                    )
+                                    st.rerun()
+            except Exception:
+                st.warning(
+                    "L'agenda relationnel nécessite la migration "
+                    "supabase_relationship_calendar.sql dans Supabase > SQL Editor."
+                )
 
     with promo_tab:
         st.markdown("#### Préparer une campagne internationale")
