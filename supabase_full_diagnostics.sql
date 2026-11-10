@@ -64,7 +64,7 @@ table_checks as (
             else 'PRESENT'
         end as status,
         case
-            when c.oid is null then 'Table public.' || e.table_name || ' not found'
+            when c.oid is null then 'Required table public.' || e.table_name || ' not found'
             when c.relkind not in ('r', 'p') then 'Found object is not a regular or partitioned table'
             else 'RLS enabled=' || c.relrowsecurity::text
                  || '; RLS forced=' || c.relforcerowsecurity::text
@@ -111,63 +111,60 @@ view_checks as (
     left join pg_namespace n on n.nspname = 'public'
     left join pg_class c on c.relnamespace = n.oid and c.relname = e.view_name
 ),
-expected_columns(table_name, column_name) as (
+expected_columns(table_name, column_name, is_optional) as (
     values
-        ('sowia_messages', 'user_id'),
-        ('sowia_messages', 'session_id'),
-        ('sowia_messages', 'role'),
-        ('sowia_messages', 'content'),
-        ('sowia_messages', 'workspace_id'),
-        ('sowia_memory_items', 'user_id'),
-        ('sowia_memory_items', 'content'),
-        ('sowia_memory_items', 'workspace_id'),
-        ('sowia_entitlements', 'user_id'),
-        ('sowia_entitlements', 'status'),
-        ('sowia_entitlements', 'provider'),
-        ('sowia_entitlements', 'paypal_order_id'),
-        ('sowia_growth_leads', 'user_id'),
-        ('sowia_growth_leads', 'workspace_id'),
-        ('sowia_growth_leads', 'organization'),
-        ('sowia_growth_leads', 'country'),
-        ('sowia_growth_leads', 'status'),
-        ('sowia_growth_leads', 'source_url'),
-        ('sowia_user_preferences', 'user_id'),
-        ('sowia_user_preferences', 'language'),
-        ('sowia_user_preferences', 'updated_at'),
-        ('sowia_business_opportunities', 'user_id'),
-        ('sowia_business_opportunities', 'workspace_id'),
-        ('sowia_business_opportunities', 'niche'),
-        ('sowia_business_opportunities', 'offer'),
-        ('sowia_business_opportunities', 'stage'),
-        ('sowia_business_opportunities', 'expected_monthly_revenue'),
-        ('sowia_business_opportunities', 'estimated_monthly_cost'),
-        ('sowia_business_opportunities', 'currency'),
-        ('sowia_financial_transactions', 'user_id'),
-        ('sowia_financial_transactions', 'provider'),
-        ('sowia_financial_transactions', 'status'),
-        ('sowia_night_exchange_apps', 'user_id'),
-        ('sowia_night_exchange_apps', 'workspace_id'),
-        ('sowia_global_profiles', 'user_id'),
-        ('sowia_global_profiles', 'is_published'),
-        ('sowia_global_connection_requests', 'requester_id'),
-        ('sowia_global_connection_requests', 'recipient_id'),
-        ('sowia_global_messages', 'sender_id'),
-        ('sowia_global_messages', 'recipient_id'),
-        ('sowia_vip_card_orders', 'user_id'),
-        ('sowia_vip_card_orders', 'status')
+        ('sowia_messages', 'user_id', false),
+        ('sowia_messages', 'session_id', false),
+        ('sowia_messages', 'role', false),
+        ('sowia_messages', 'content', false),
+        ('sowia_messages', 'workspace_id', false),
+        ('sowia_memory_items', 'user_id', false),
+        ('sowia_memory_items', 'content', false),
+        ('sowia_memory_items', 'workspace_id', false),
+        ('sowia_entitlements', 'user_id', false),
+        ('sowia_entitlements', 'status', false),
+        ('sowia_entitlements', 'provider', true),
+        ('sowia_entitlements', 'paypal_order_id', true),
+        ('sowia_growth_leads', 'user_id', false),
+        ('sowia_growth_leads', 'workspace_id', false),
+        ('sowia_growth_leads', 'organization', false),
+        ('sowia_growth_leads', 'country', false),
+        ('sowia_growth_leads', 'status', false),
+        ('sowia_growth_leads', 'source_url', false),
+        ('sowia_user_preferences', 'user_id', false),
+        ('sowia_user_preferences', 'language', false),
+        ('sowia_user_preferences', 'updated_at', false),
+        ('sowia_business_opportunities', 'user_id', false),
+        ('sowia_business_opportunities', 'workspace_id', false),
+        ('sowia_business_opportunities', 'niche', false),
+        ('sowia_business_opportunities', 'offer', false),
+        ('sowia_business_opportunities', 'stage', false),
+        ('sowia_business_opportunities', 'expected_monthly_revenue', false),
+        ('sowia_business_opportunities', 'estimated_monthly_cost', false),
+        ('sowia_business_opportunities', 'currency', false),
+        ('sowia_financial_transactions', 'user_id', true),
+        ('sowia_financial_transactions', 'provider', true),
+        ('sowia_financial_transactions', 'status', true),
+        ('sowia_night_exchange_apps', 'user_id', true),
+        ('sowia_night_exchange_apps', 'workspace_id', true),
+        ('sowia_global_profiles', 'user_id', true),
+        ('sowia_global_profiles', 'is_published', true),
+        ('sowia_global_connection_requests', 'requester_id', true),
+        ('sowia_global_connection_requests', 'recipient_id', true),
+        ('sowia_global_messages', 'sender_id', true),
+        ('sowia_global_messages', 'recipient_id', true),
+        ('sowia_vip_card_orders', 'user_id', true),
+        ('sowia_vip_card_orders', 'status', true)
 ),
 column_checks as (
     select
         'column'::text as check_type,
         (e.table_name || '.' || e.column_name)::text as object_name,
-        case when t.oid is null and et.is_optional then 'OPTIONAL - NOT INSTALLED'
+        case when c.column_name is null and e.is_optional then 'OPTIONAL - NOT INSTALLED'
              when c.column_name is null then 'MISSING' else 'PRESENT' end as status,
-        case when t.oid is null and et.is_optional then 'Optional feature table is not installed'
+        case when c.column_name is null and e.is_optional then 'Optional feature column is not installed'
              else coalesce(c.data_type, 'Expected column is absent from public schema')::text end as detail
     from expected_columns e
-    join expected_tables et on et.table_name = e.table_name
-    left join pg_namespace tn on tn.nspname = 'public'
-    left join pg_class t on t.relnamespace = tn.oid and t.relname = e.table_name
     left join information_schema.columns c
         on c.table_schema = 'public'
        and c.table_name = e.table_name
