@@ -693,3 +693,49 @@ def list_night_exchange_apps_for_admin(client, user, limit=200):
         .execute().data
     )
 
+
+
+# SOWIA NIGHT EXCHANGE — append-only activity ledger.
+NIGHT_EXCHANGE_EVENT_TYPES = {
+    "match_viewed", "meeting_confirmed", "offer_accepted", "integration_approved"
+}
+NIGHT_EXCHANGE_REPORT_TYPES = NIGHT_EXCHANGE_EVENT_TYPES | {"payment_confirmed"}
+
+
+def record_night_exchange_event(client, user, workspace_id, event_type,
+                                app_id=None, event_payload=None):
+    """Record a member-confirmed non-financial event; payment events are server-only."""
+    if event_type not in NIGHT_EXCHANGE_EVENT_TYPES:
+        raise ValueError("Type d'événement non autorisé depuis l'application.")
+    payload = event_payload or {}
+    if not isinstance(payload, dict) or len(str(payload)) > 1800:
+        raise ValueError("Données d'événement invalides ou trop volumineuses.")
+    row = {
+        "user_id": _user_id(user),
+        "workspace_id": _workspace_id(workspace_id),
+        "event_type": event_type,
+        "event_payload": payload,
+    }
+    if app_id:
+        row["app_id"] = str(app_id)
+    return client.table("sowia_night_exchange_events").insert(row).execute().data
+
+
+def list_night_exchange_events(client, user, workspace_id="professional",
+                               days=7, limit=500):
+    """Read the current user's recent event ledger; RLS enforces ownership."""
+    from datetime import datetime, timedelta, timezone
+    _user_id(user)
+    days = int(days)
+    if days < 1 or days > 90:
+        raise ValueError("La période doit être comprise entre 1 et 90 jours.")
+    return (
+        client.table("sowia_night_exchange_events")
+        .select("id,app_id,event_type,event_payload,created_at")
+        .eq("user_id", _user_id(user))
+        .eq("workspace_id", _workspace_id(workspace_id))
+        .gte("created_at", (datetime.now(timezone.utc) - timedelta(days=days)).isoformat())
+        .order("created_at", desc=True)
+        .limit(min(max(int(limit), 1), 1000))
+        .execute().data
+    )
