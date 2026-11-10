@@ -144,8 +144,20 @@ _TRANSLATIONS = {
 }
 
 
+_CORE_TRANSLATIONS = {
+    "English": {"Développement mondial": "Global growth", "Professionnel": "Professional", "Personnel": "Personal"},
+    "Español": {"Développement mondial": "Crecimiento global", "Professionnel": "Profesional", "Personnel": "Personal"},
+    "中文": {"Développement mondial": "全球拓展", "Professionnel": "专业空间", "Personnel": "个人空间"},
+    "Deutsch": {"Développement mondial": "Internationale Entwicklung", "Professionnel": "Geschäftlich", "Personnel": "Persönlich"},
+    "العربية": {"Développement mondial": "التوسع العالمي", "Professionnel": "مهني", "Personnel": "شخصي"},
+}
+
+
 def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     if language not in LANGUAGES:
         language = "Français"
-    return _TRANSLATIONS.get(language, {}).get(text, text)
+    translated = _TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    return _CORE_TRANSLATIONS.get(language, {}).get(text, text)
