@@ -2009,7 +2009,7 @@ elif page == "SOW IA Business Club":
                             if meeting.get("meeting_url"):
                                 st.link_button("Rejoindre la visioconférence", meeting["meeting_url"])
                             if meeting["status"] == "Proposée":
-                                if meeting["recipient_user_id"] == str(getattr(current_user, "id", current_user)):
+                                if meeting["invitee_user_id"] == cloud_storage._user_id(current_user):
                                     yes, no = st.columns(2)
                                     if yes.button("Confirmer", key=f"club_meeting_yes_{meeting['id']}"):
                                         cloud_storage.update_business_club_meeting(supabase_client, current_user, meeting["id"], "Confirmée")
@@ -2017,7 +2017,7 @@ elif page == "SOW IA Business Club":
                                     if no.button("Refuser", key=f"club_meeting_no_{meeting['id']}"):
                                         cloud_storage.update_business_club_meeting(supabase_client, current_user, meeting["id"], "Refusée")
                                         st.rerun()
-                                elif meeting["organizer_user_id"] == str(getattr(current_user, "id", current_user)):
+                                elif meeting["organizer_user_id"] == cloud_storage._user_id(current_user):
                                     if st.button("Annuler la proposition", key=f"club_meeting_cancel_{meeting['id']}"):
                                         cloud_storage.update_business_club_meeting(supabase_client, current_user, meeting["id"], "Annulée")
                                         st.rerun()
