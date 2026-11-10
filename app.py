@@ -1892,7 +1892,7 @@ elif page == "SOW IA Business Club":
             elif own_profile:
                 st.info("Votre profil est privé. Activez la publication pour apparaître dans l'annuaire.")
             st.divider()
-            notifications_tab, directory_tab, incoming_tab, outgoing_tab, meetings_tab = st.tabs(["🔔 Notifications", "🌍 Annuaire international", "📥 Demandes reçues", "📤 Mes demandes", "📅 Rendez-vous"])
+            notifications_tab, directory_tab, incoming_tab, outgoing_tab, meetings_tab, cards_tab = st.tabs(["🔔 Notifications", "🌍 Annuaire international", "📥 Demandes reçues", "📤 Mes demandes", "📅 Rendez-vous", "💳 Cartes VIP"])
             with notifications_tab:
                 st.markdown("#### Mon centre de notifications")
                 notifications = cloud_storage.list_business_club_notifications(supabase_client, current_user)
@@ -1913,6 +1913,50 @@ elif page == "SOW IA Business Club":
                                 st.rerun()
                         else:
                             action_col.caption("Lue")
+            with cards_tab:
+                st.markdown("#### Atelier Cartes VIP")
+                st.caption("Créez une carte personnelle ou au nom de votre entreprise. Les fichiers générés restent sous votre contrôle : rien n'est publié automatiquement.")
+                from business_cards import build_printable_card_html, build_vcard
+                with st.form("sowia_vip_business_card_form"):
+                    card_name = st.text_input("Nom et prénom à afficher")
+                    card_role = st.text_input("Fonction (facultatif)")
+                    card_company = st.text_input("Entreprise ou marque")
+                    card_email = st.text_input("E-mail professionnel (facultatif)")
+                    card_phone = st.text_input("Téléphone professionnel (facultatif)")
+                    card_website = st.text_input("Site web (facultatif)")
+                    card_country = st.text_input("Pays (facultatif)")
+                    card_style = st.selectbox("Identité visuelle", ["Noir & or", "Vert & ivoire", "Bleu professionnel"])
+                    card_generate = st.form_submit_button("Créer ma carte VIP", type="primary")
+                if card_generate:
+                    try:
+                        from business_cards import validate_business_card
+                        card_data = validate_business_card({
+                            "display_name": card_name, "job_title": card_role, "company": card_company,
+                            "email": card_email, "phone": card_phone, "website": card_website,
+                            "country": card_country, "style": card_style,
+                        })
+                        st.session_state["sowia_vip_card_data"] = card_data
+                        st.success("Votre maquette de carte est prête. Vérifiez-la avant de la partager ou de l'imprimer.")
+                    except ValueError as exc:
+                        st.error(str(exc))
+                card_data = st.session_state.get("sowia_vip_card_data")
+                if card_data:
+                    try:
+                        html_card = build_printable_card_html(card_data)
+                        st.markdown("**Aperçu et fichiers**")
+                        st.markdown(
+                            f"<div style='padding:22px;border-radius:12px;background:{'#151515' if card_data['style']=='Noir & or' else '#173d32' if card_data['style']=='Vert & ivoire' else '#17365d'};color:white;border:2px solid {('#d6b56d' if card_data['style']=='Noir & or' else '#f3eddf' if card_data['style']=='Vert & ivoire' else '#e8eef6')};max-width:520px'>"
+                            f"<div style='font-size:1.35rem;font-weight:700'>{card_data['display_name']}</div>"
+                            f"<div style='margin:5px 0 12px;color:#d6b56d'>{card_data['job_title'] or card_data['company']}</div>"
+                            f"<div>{' · '.join(v for v in [card_data['company'],card_data['email'],card_data['phone'],card_data['website'],card_data['country']] if v)}</div></div>",
+                            unsafe_allow_html=True,
+                        )
+                        c1, c2 = st.columns(2)
+                        c1.download_button("Télécharger la carte imprimable (HTML)", html_card, file_name="carte_vip_sowia.html", mime="text/html")
+                        c2.download_button("Télécharger le contact (vCard)", build_vcard(card_data), file_name="contact_sowia.vcf", mime="text/vcard")
+                        st.info("Pour une impression physique, ouvrez le fichier HTML puis utilisez l'impression du navigateur à l'échelle 100 % (format 90 × 50 mm). La commande et la livraison par imprimeur partenaire seront activées dans une prochaine étape.")
+                    except ValueError as exc:
+                        st.error(str(exc))
             with directory_tab:
                 st.markdown("#### Entreprises membres")
                 directory = cloud_storage.list_business_club_profiles(supabase_client, current_user, club_workspace)
