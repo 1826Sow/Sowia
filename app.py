@@ -42,6 +42,7 @@ import sowia_global_id
 import sowia_global_directory
 import sowia_global_connect
 import sowia_global_messenger
+import sowia_global_alerts
 import sowia_business_card
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
@@ -6264,6 +6265,25 @@ elif page == "SOWIA CONTROL CENTER":
 
         st.markdown("#### État des composants")
         st.dataframe(checks, use_container_width=True, hide_index=True)
+
+        technical_alerts = sowia_global_alerts.build_technical_alerts(checks)
+        st.markdown("#### 🚨 Alertes techniques")
+        if not technical_alerts:
+            st.success("Aucune anomalie détectée parmi les contrôles exécutés.")
+        else:
+            high_alerts = [item for item in technical_alerts if item["level"] == "high"]
+            medium_alerts = [item for item in technical_alerts if item["level"] == "medium"]
+            alert_cols = st.columns(2)
+            with alert_cols[0]:
+                st.metric("À vérifier", len(high_alerts))
+            with alert_cols[1]:
+                st.metric("Contrôles incomplets", len(medium_alerts))
+            for alert in technical_alerts:
+                message = f'{alert["component"]} · {alert["status"]} — {alert["message"]}'
+                if alert["level"] == "high":
+                    st.error(message)
+                else:
+                    st.warning(message)
         st.info(
             "Important : « table accessible » confirme uniquement qu'une requête de lecture fonctionne. "
             "Cela ne prouve pas que les migrations sont entièrement cohérentes, que les webhooks sont "
