@@ -184,3 +184,9 @@ Scores are subjective decision-support inputs, not automatically gathered market
 
 Apply `supabase_global_intelligence.sql` AFTER `supabase_global_moderation.sql`. Full migration order now ends with GLOBAL TRUST, GLOBAL MODERATION, then GLOBAL INTELLIGENCE. Code and tests are committed to GitHub; the migration is not confirmed applied to the live Supabase project, and automated tests/deployment remain to be verified.
 
+
+
+## SOWIA GLOBAL PULSE — on-demand international monitoring
+The first version provides a user-triggered search across public web sources for a selected country/market, sector, topic and signal category (economy, technology, trade, regulation, competition or other). Results are normalized, deduplicated by URL, labeled according to the date/source metadata supplied by the search provider, and can be saved to a private account-scoped register. Users can open the original source or delete a saved item.
+
+This is an on-demand research tool, not continuous background monitoring: it does not run a scheduler, poll sources, send push/email notifications or guarantee complete coverage. Search-provider results and publication dates must be independently checked before decisions. Apply `supabase_global_pulse.sql` after the existing GLOBAL INTELLIGENCE migration. The SQL migration is committed but has not been applied to the live Supabase project; production behavior and RLS are not yet verified.
