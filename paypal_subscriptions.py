@@ -508,6 +508,19 @@ def sync_completed_subscription_transactions(
                 financial_ledger.flag_paypal_refund_for_review(
                     admin_client, user_id=user_id, transaction=transaction
                 )
+                capture_id = str(transaction.get("id") or "").strip()
+                capture_response = requests.get(
+                    f"{config['base_url']}/v2/payments/captures/{capture_id}",
+                    headers=_api_headers(config, token),
+                    timeout=TIMEOUT_SECONDS,
+                )
+                capture_response.raise_for_status()
+                capture_details = capture_response.json()
+                if str(capture_details.get("id") or "").strip() != capture_id:
+                    raise PermissionError("PayPal a retourné une autre capture que celle demandée.")
+                financial_ledger.record_paypal_refund_total(
+                    admin_client, user_id=user_id, capture=capture_details
+                )
                 manual_review += 1
             else:
                 ignored += 1
