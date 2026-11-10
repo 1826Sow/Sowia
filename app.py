@@ -361,11 +361,6 @@ premium_active = bool(premium_entitlement)
 
 with st.sidebar:
     st.markdown("## 🧠 SOW IA")
-    privacy_screen = st.toggle(
-        "🔒 Protection d'écran",
-        key="sowia_privacy_screen",
-        help="Floute le contenu principal de SOW IA pour limiter les regards indiscrets. Désactivez cette option pour retrouver l'affichage normal.",
-    )
     preference_owner = str(getattr(current_user, "id", "")) if cloud_mode and current_user is not None else "local"
     if st.session_state.get("sowia_language_loaded_for") != preference_owner:
         saved_language = "Français"
@@ -407,6 +402,26 @@ with st.sidebar:
             st.session_state[f"sowia_{setting_name}"] = setting_value
         st.session_state["sowia_accessibility_loaded_for"] = preference_owner
         st.session_state["sowia_accessibility_saved"] = dict(defaults)
+    privacy_screen = st.toggle(
+        "🔒 Protection d'écran",
+        key="sowia_privacy_screen",
+        help="Floute le contenu principal de SOW IA pour limiter les regards indiscrets. Désactivez cette option pour retrouver l'affichage normal.",
+    )
+    privacy_values = {
+        "voice_readout": bool(st.session_state.get("sowia_voice_readout", False)),
+        "large_text": bool(st.session_state.get("sowia_large_text", False)),
+        "high_contrast": bool(st.session_state.get("sowia_high_contrast", False)),
+        "privacy_screen": bool(privacy_screen),
+    }
+    if privacy_values != st.session_state.get("sowia_accessibility_saved", {}):
+        if cloud_mode and current_user is not None and st.session_state.get("sowia_accessibility_save_available", False):
+            try:
+                cloud_storage.set_accessibility_preferences(supabase_client, current_user, privacy_values)
+                st.session_state["sowia_accessibility_saved"] = dict(privacy_values)
+            except Exception:
+                st.caption("Protection d'écran active pour cette session ; l'enregistrement du compte n'a pas abouti.")
+        else:
+            st.session_state["sowia_accessibility_saved"] = dict(privacy_values)
     st.caption(translate_ui("Intelligence artificielle", language))
     workspace_options = ["Personnel", "Professionnel"] if premium_active else ["Personnel"]
     if st.session_state.get("workspace_choice") not in workspace_options:
