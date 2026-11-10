@@ -54,6 +54,21 @@ st.markdown(
     [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] { gap: 1rem; }
     [data-testid="stButton"] button, [data-testid="stLinkButton"] a { border-radius: 12px !important; min-height: 2.8rem; font-weight: 650 !important; }
     [data-testid="stMetric"] { background: #fff; border: 1px solid #dce6f2; border-radius: 15px; padding: .85rem 1rem; box-shadow: 0 3px 12px rgba(32,64,105,.04); }
+    [data-testid="stMainBlockContainer"] { max-width: 1180px; padding-top: 1.5rem; padding-bottom: 3rem; }
+    [data-testid="stSidebar"] [data-testid="stRadio"] label { border-radius: 10px; }
+    [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { background: #d9e8f8; }
+    [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color: #17365d !important; font-weight: 750; }
+    [data-testid="stAlert"] { border-radius: 14px; }
+    [data-testid="stExpander"] { border: 1px solid #dce6f2; border-radius: 14px; background: #fff; }
+    @media (max-width: 700px) {
+      [data-testid="stMainBlockContainer"] { padding: .75rem .8rem 2rem; }
+      .hero { padding: 1.2rem 1.1rem; border-radius: 17px; }
+      .hero h1 { font-size: 2rem; }
+      div[role="radiogroup"] { flex-wrap: wrap !important; gap: .35rem !important; }
+      div[role="radiogroup"] label { padding: .34rem .58rem; font-size: .84rem; }
+      [data-testid="stMetric"] { padding: .65rem .7rem; }
+      [data-testid="stButton"] button, [data-testid="stLinkButton"] a { min-height: 2.7rem; white-space: normal; }
+    }
     [data-testid="stChatMessage"] { background: #ffffff !important; border: 1px solid #dce6f2 !important; border-radius: 16px !important; padding: 1rem !important; box-shadow: 0 3px 12px rgba(32,64,105,.05); color: #172033 !important; }
     [data-testid="stChatMessage"] [data-testid="stMarkdownContainer"], [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] li { color: #172033 !important; }
     div[data-testid="stChatInput"] { background: #ffffff !important; border: 1px solid #b9cbe0 !important; border-radius: 14px !important; box-shadow: 0 4px 14px rgba(32,64,105,.07) !important; }
