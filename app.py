@@ -39,6 +39,7 @@ import decision_benchmark_ui
 import sowia_prioritization
 import sowia_night_exchange
 import sowia_global_id
+import sowia_business_card
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -2605,6 +2606,35 @@ elif page == "SOWIA GLOBAL ID":
                     if profile.get("website"):
                         st.write(profile["website"])
                     st.caption(f"{profile.get('public_id')} · {verification_labels.get(profile.get('verification_status'), 'Non vérifié')}")
+                st.divider()
+                st.markdown("#### 🎴 SOWIA DIGITAL BUSINESS CARD")
+                st.write("Créez une carte professionnelle partageable. Le QR code contient une fiche contact vCard que le destinataire peut enregistrer dans son téléphone.")
+                with st.form("sowia_business_card_export_form"):
+                    card_email = st.text_input("E-mail professionnel à afficher (facultatif)", max_chars=180)
+                    card_phone = st.text_input("Téléphone professionnel à afficher (facultatif)", max_chars=60)
+                    generate_card = st.form_submit_button("Créer ma carte numérique", type="primary", use_container_width=True)
+                if generate_card:
+                    try:
+                        vcard_payload = sowia_business_card.build_vcard(
+                            profile, email=card_email, phone=card_phone
+                        )
+                        card_png = sowia_business_card.render_card_png(
+                            profile, vcard_payload, email=card_email, phone=card_phone
+                        )
+                        card_pdf = sowia_business_card.render_card_pdf(card_png)
+                        st.session_state["sowia_business_card_png"] = card_png
+                        st.session_state["sowia_business_card_pdf"] = card_pdf
+                        st.session_state["sowia_business_card_vcf"] = vcard_payload.encode("utf-8")
+                        st.success("Votre carte numérique est prête. Les coordonnées saisies sont intégrées au fichier exporté, pas enregistrées dans votre profil.")
+                    except Exception as exc:
+                        st.error("Impossible de créer la carte. Vérifiez les coordonnées saisies.")
+                        st.caption("Diagnostic : " + type(exc).__name__)
+                if st.session_state.get("sowia_business_card_png"):
+                    st.image(st.session_state["sowia_business_card_png"], caption="Aperçu de votre carte SOWIA", use_container_width=True)
+                    download_cols = st.columns(3)
+                    download_cols[0].download_button("Télécharger PNG", st.session_state["sowia_business_card_png"], "sowia_business_card.png", "image/png", use_container_width=True)
+                    download_cols[1].download_button("Télécharger PDF", st.session_state["sowia_business_card_pdf"], "sowia_business_card.pdf", "application/pdf", use_container_width=True)
+                    download_cols[2].download_button("Télécharger contact", st.session_state["sowia_business_card_vcf"], "sowia_contact.vcf", "text/vcard", use_container_width=True)
                 if profile.get("is_published"):
                     st.success("Votre fiche est publiée dans l’annuaire des cartes SOWIA.")
                 else:
