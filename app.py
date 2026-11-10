@@ -441,7 +441,7 @@ page = st.radio(
     [
         "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "Opportunités et revenus", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "Opportunités et revenus", "Technologies & fournisseurs", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -541,6 +541,7 @@ if page == "Accueil":
         ("👑", "Abonnement", "Découvrez l’espace Premium"),
         ("🌍", "Développement mondial", "Trouvez des partenaires et préparez vos campagnes"),
         ("📈", "Opportunités et revenus", "Suivez vos niches, offres et prévisions commerciales"),
+        ("🧪", "Technologies & fournisseurs", "Comparez les solutions et choisissez sur preuves"),
         ("⚙️", "Paramètres", "Vérifiez votre configuration"),
         ("❓", "Aide", "Consultez les indications d’utilisation"),
     ]
@@ -1546,6 +1547,137 @@ elif page == "Opportunités et revenus":
                 "Le tableau des opportunités n'est pas encore initialisé. "
                 "Exécutez supabase_business_opportunities.sql dans Supabase > SQL Editor, puis rechargez l'application."
             )
+
+elif page == "Technologies & fournisseurs":
+    st.subheader("🧪 Sélection des meilleures technologies")
+    st.caption(
+        "SOW IA compare les solutions sur des critères communs. "
+        "Un score n'est valable que si les preuves sont documentées ; "
+        "aucun fournisseur n'est choisi automatiquement sur sa seule réputation."
+    )
+    st.info(
+        "Principe SOW IA : adopter la meilleure solution utilisable légalement, "
+        "sûrement et durablement. Une technologie propriétaire nécessite une licence, "
+        "un contrat ou une API autorisée ; SOW IA ne s'approprie pas la propriété intellectuelle d'autrui."
+    )
+    try:
+        from technology_selection import (
+            CRITERIA_WEIGHTS, evaluate_candidate, rank_candidates,
+        )
+        criteria_labels = {
+            "quality": "Qualité et précision",
+            "reliability": "Fiabilité et disponibilité",
+            "security": "Sécurité et confidentialité",
+            "integration": "Facilité d'intégration",
+            "cost_efficiency": "Coût et efficacité économique",
+            "international_coverage": "Couverture internationale et langues",
+            "support": "Support et documentation",
+            "portability": "Portabilité et réversibilité",
+        }
+        if "technology_candidates" not in st.session_state:
+            st.session_state["technology_candidates"] = []
+
+        with st.expander("＋ Évaluer une solution ou un fournisseur", expanded=not st.session_state["technology_candidates"]):
+            with st.form("technology_candidate_form", clear_on_submit=True):
+                candidate_name = st.text_input("Nom de la solution / du fournisseur", max_chars=120)
+                st.markdown("**Évaluez chaque critère de 0 à 5**")
+                score_values = {}
+                score_cols = st.columns(2)
+                for index, (criterion, weight) in enumerate(CRITERIA_WEIGHTS.items()):
+                    with score_cols[index % 2]:
+                        score_values[criterion] = st.slider(
+                            f"{criteria_labels[criterion]} · poids {weight:.0%}",
+                            min_value=0.0, max_value=5.0, value=3.0, step=0.5,
+                            key=f"technology_score_{criterion}",
+                        )
+                evidence_text = st.text_area(
+                    "Preuves consultées (une par ligne : documentation, audit, benchmark, tarifs…)",
+                    max_chars=3000,
+                )
+                licence_verified = st.checkbox(
+                    "Les droits d'utilisation, licences et conditions contractuelles ont été vérifiés."
+                )
+                critical_incident = st.checkbox(
+                    "Un incident critique de sécurité ou de disponibilité reste non résolu."
+                )
+                save_candidate = st.form_submit_button("Évaluer et comparer", type="primary")
+            if save_candidate:
+                try:
+                    evidence = [line.strip() for line in evidence_text.splitlines() if line.strip()]
+                    evaluation = evaluate_candidate(
+                        candidate_name,
+                        score_values,
+                        evidence=evidence,
+                        compliant=licence_verified,
+                        critical_incident=critical_incident,
+                    )
+                    record = {
+                        "name": evaluation.name,
+                        "score": evaluation.score,
+                        "decision": evaluation.decision,
+                        "reasons": list(evaluation.reasons),
+                        "evidence_count": evaluation.evidence_count,
+                        "scores": dict(score_values),
+                    }
+                    existing = st.session_state["technology_candidates"]
+                    existing = [item for item in existing if item["name"].casefold() != evaluation.name.casefold()]
+                    existing.append(record)
+                    st.session_state["technology_candidates"] = existing
+                    st.success("Évaluation ajoutée au comparatif de cette session.")
+                    st.rerun()
+                except ValueError as exc:
+                    st.error(str(exc))
+
+        candidates = st.session_state["technology_candidates"]
+        if candidates:
+            st.markdown("#### Comparatif des solutions évaluées")
+            evaluations = [
+                evaluate_candidate(
+                    item["name"], item["scores"],
+                    evidence=["preuve"] * item["evidence_count"],
+                    compliant=item["decision"] != "Écarter" or not any("Conformité" in reason for reason in item["reasons"]),
+                    critical_incident=any("Incident critique" in reason for reason in item["reasons"]),
+                )
+                for item in candidates
+            ]
+            ranked = rank_candidates(evaluations)
+            table_rows = [
+                {"Solution": item.name, "Score / 100": item.score,
+                 "Décision": item.decision, "Preuves": item.evidence_count}
+                for item in ranked
+            ]
+            st.dataframe(table_rows, use_container_width=True, hide_index=True)
+            best = ranked[0]
+            if best.decision in ("Prioritaire", "À tester"):
+                st.markdown("#### Solution à privilégier pour un prochain test")
+                st.metric("Meilleur score documenté", f"{best.score:.1f}/100")
+                st.write(f"**{best.name}** — {best.decision}")
+                st.caption(
+                    "Cette sélection est une recommandation d'évaluation, pas une intégration automatique. "
+                    "Avant adoption : test technique réel, validation juridique et sécurité, "
+                    "contrôle du coût total, puis approbation du changement."
+                )
+            else:
+                st.warning(
+                    "Aucune solution ne remplit actuellement les conditions pour être recommandée. "
+                    "Complétez les preuves ou évaluez d'autres candidats."
+                )
+            with st.expander("Détails des critères et des preuves"):
+                for item in ranked:
+                    st.markdown(f"**{item.name}** — {item.decision} ({item.score:.1f}/100)")
+                    for criterion, value in next(
+                        row["scores"] for row in candidates if row["name"] == item.name
+                    ).items():
+                        st.caption(f"{criteria_labels[criterion]} : {value:.1f}/5")
+                    for reason in item.reasons:
+                        st.warning(reason)
+            if st.button("Effacer le comparatif de cette session", key="clear_technology_candidates"):
+                st.session_state["technology_candidates"] = []
+                st.rerun()
+        else:
+            st.caption("Aucune solution évaluée. Commencez par ajouter deux candidats pour obtenir un comparatif utile.")
+    except Exception:
+        st.error("Le comparateur de technologies est momentanément indisponible. Aucune solution n'a été sélectionnée.")
 
 elif page == "Paramètres":
     st.subheader(translate_ui("⚙️ Paramètres", language))
