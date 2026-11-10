@@ -1005,6 +1005,45 @@ def delete_global_intelligence_assessment(client, user, assessment_id):
     )
 
 
+
+
+# SOWIA GLOBAL PULSE — private source records captured by explicit searches.
+def save_global_pulse_items(client, user, items):
+    from sowia_global_pulse import normalize_pulse_result
+    uid = _user_id(user)
+    clean = []
+    for item in items if isinstance(items, list) else []:
+        row = normalize_pulse_result(
+            item, item.get("country"), item.get("sector", ""), item.get("topic"),
+            item.get("category"),
+        ) if isinstance(item, dict) else None
+        if row:
+            row["user_id"] = uid
+            clean.append(row)
+    if not clean:
+        return []
+    # Upsert prevents duplicate source URLs for the same account.
+    return client.table("sowia_global_pulse_items").upsert(
+        clean, on_conflict="user_id,url"
+    ).execute().data
+
+
+def list_global_pulse_items(client, user, limit=100):
+    return (
+        client.table("sowia_global_pulse_items")
+        .select("id,title,url,snippet,source_domain,published_at,country,sector,topic,category,captured_at")
+        .eq("user_id", _user_id(user))
+        .order("captured_at", desc=True)
+        .limit(min(max(int(limit), 1), 200)).execute().data
+    )
+
+
+def delete_global_pulse_item(client, user, item_id):
+    return (
+        client.table("sowia_global_pulse_items").delete()
+        .eq("user_id", _user_id(user)).eq("id", str(item_id)).execute().data
+    )
+
 # SOWIA GLOBAL ID — private profile registry and safe public directory.
 def _validate_global_profile(display_name, app_name="", organization="", country="",
                              languages="", website="", short_description="",
