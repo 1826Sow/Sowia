@@ -5034,8 +5034,8 @@ elif page == "SOW IA Business Club":
                                     mime="text/plain",
                                     key=f"club_invite_download_{meeting['id']}",
                                 )
-                            except ValueError as exc:
-                                st.caption(str(exc))
+                            except ValueError:
+                                st.caption("Invitation indisponible : vérifiez les informations du rendez-vous.")
                             if meeting["status"] == "Proposée":
                                 if meeting["invitee_user_id"] == cloud_storage._user_id(current_user):
                                     yes, no = st.columns(2)
