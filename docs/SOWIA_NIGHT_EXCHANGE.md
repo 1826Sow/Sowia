@@ -119,3 +119,9 @@ The migration `supabase_global_id.sql` defines one profile per authenticated acc
 The Streamlit navigation now includes a GLOBAL ID page with a profile editor, private-by-default publication checkbox, completeness indicator, card preview, published-card directory, and an administrator review panel. The card preview is available after applying the migration. No public profile URL route or QR image is deployed yet, so the interface deliberately does not display a fabricated QR or non-functional share link.
 
 **Activation steps:** apply `supabase_global_id.sql` in the connected Supabase project's SQL Editor, then reload the app and create a profile. This migration has only been committed to GitHub; it has not been applied to Supabase. The app deployment and database behavior have not been verified in production. Tests have been added but not executed.
+
+
+## SOWIA DIGITAL BUSINESS CARD
+The `sowia_business_card.py` module creates a landscape PNG card, a printable PDF and a vCard contact file. The QR code embeds the vCard data so a phone can offer to save the contact; it does not point to a nonexistent public profile route. The Streamlit GLOBAL ID page provides optional email/phone fields for the export only; those contact fields are not written to the profile database. The existing profile remains private by default, and the card export is a local download initiated by the signed-in user.
+
+**Limitations:** the QR encodes the contact details supplied at export time, not a live SOWIA profile URL. No public profile page, automatic sharing, or contact synchronization is implemented. Users should only include email/phone details they consent to share. Tests are added but not yet run in a confirmed CI result.
