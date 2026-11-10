@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL", "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL COLLABORATION HUB", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL", "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -3150,6 +3150,151 @@ elif page == "SOWIA GLOBAL DECISION ENGINE":
             except Exception as decision_history_error:
                 st.error("L'archive des décisions n'est pas disponible.")
                 st.caption("Appliquez supabase_global_decisions.sql. Diagnostic : " + type(decision_history_error).__name__)
+
+
+elif page == "SOWIA GLOBAL COLLABORATION HUB":
+    st.subheader("🤝 SOWIA GLOBAL COLLABORATION HUB")
+    st.caption("Espace de projets partagés entre organisations et applications partenaires, avec invitation et consentement explicites.")
+    st.warning("Les contributions financières sont des déclarations, pas des paiements vérifiés. Aucun transfert, contrat, message externe ou engagement financier n'est exécuté par ce module.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous à votre compte sécurisé pour créer des projets et recevoir des invitations.")
+    else:
+        try:
+            import sowia_global_collaboration as collaboration
+            collab_tabs = st.tabs(["＋ Créer un projet", "📁 Mes collaborations", "📨 Invitations reçues"])
+            with collab_tabs[0]:
+                with st.form("sowia_global_project_create", clear_on_submit=True):
+                    cp_title = st.text_input("Nom du projet", max_chars=160)
+                    cp_objective = st.text_area("Objectif commun", max_chars=2000)
+                    cp_country = st.text_input("Pays ou marché principal", max_chars=100)
+                    cp_date = st.date_input("Date cible")
+                    cp_metric = st.text_input("Indicateur de réussite", max_chars=500)
+                    cp_description = st.text_area("Description complémentaire", max_chars=2000)
+                    cp_submit = st.form_submit_button("Créer le projet", type="primary", use_container_width=True)
+                if cp_submit:
+                    try:
+                        cloud_storage.create_global_project(supabase_client,current_user,{
+                            "title":cp_title,"objective":cp_objective,"country":cp_country,
+                            "target_date":cp_date.isoformat(),"success_metric":cp_metric,
+                            "description":cp_description,
+                        })
+                        st.success("Projet créé. Vous en êtes le propriétaire et premier membre.")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error("Création impossible : " + type(exc).__name__)
+            with collab_tabs[1]:
+                projects = cloud_storage.list_global_projects(supabase_client,current_user,limit=150)
+                if not projects:
+                    st.info("Aucun projet accessible. Créez-en un ou acceptez une invitation.")
+                else:
+                    project_map = {row["id"]:row for row in projects}
+                    selected_project_id = st.selectbox("Projet",list(project_map),format_func=lambda key: f"{project_map[key]['title']} · {project_map[key]['status']}")
+                    selected_project = project_map[selected_project_id]
+                    st.markdown(f"### {selected_project['title']}")
+                    st.write(selected_project["objective"])
+                    st.caption(f"{selected_project['country']} · échéance {selected_project['target_date']} · réussite : {selected_project['success_metric']}")
+                    members = cloud_storage.list_global_project_members(supabase_client,current_user,selected_project_id)
+                    accepted_members = [m for m in members if m["status"]=="accepted"]
+                    st.metric("Membres ayant accepté",len(accepted_members))
+                    current_uid = str(current_user.id)
+                    if selected_project["owner_id"] == current_uid:
+                        with st.expander("Inviter un partenaire GLOBAL ID"):
+                            with st.form("sowia_project_invite_form"):
+                                invite_public_id = st.text_input("Identifiant public SOWIA (ex. SOWIA-…)",max_chars=80)
+                                invite_role = st.selectbox("Rôle proposé",["contributor","coordinator","observer"],format_func=lambda v:{"contributor":"Contributeur","coordinator":"Coordinateur","observer":"Observateur"}[v])
+                                invite_submit = st.form_submit_button("Envoyer l'invitation")
+                            if invite_submit:
+                                try:
+                                    cloud_storage.invite_global_project_member(supabase_client,current_user,selected_project_id,invite_public_id,invite_role)
+                                    st.success("Invitation créée. Le partenaire doit l'accepter avant de rejoindre le projet.")
+                                    st.rerun()
+                                except Exception as exc:
+                                    st.error("Invitation impossible : " + type(exc).__name__)
+                    with st.expander("Membres et rôles"):
+                        st.dataframe([{"Compte":m["user_id"],"Rôle":m["role"],"Statut":m["status"]} for m in members],use_container_width=True,hide_index=True)
+                    st.markdown("#### Contributions déclarées")
+                    contributions = cloud_storage.list_global_project_contributions(supabase_client,current_user,selected_project_id)
+                    if contributions:
+                        st.dataframe([{"Type":x["contribution_type"],"Description":x["description"],"Montant":f"{x['amount']} {x['currency']}" if x["amount"] else "—","Heures":x["hours"] or "—","Statut de preuve":x["verification_status"]} for x in contributions],use_container_width=True,hide_index=True)
+                    else:
+                        st.caption("Aucune contribution enregistrée.")
+                    if any(m["user_id"]==current_uid and m["status"]=="accepted" and m["role"]!="observer" for m in members) or selected_project["owner_id"]==current_uid:
+                        with st.expander("Déclarer une contribution"):
+                            with st.form("sowia_project_contribution_form"):
+                                contribution_type = st.selectbox("Nature",["financial","time","expertise","technology","network","other"],format_func=lambda v:{"financial":"Financière","time":"Temps","expertise":"Expertise","technology":"Technologie","network":"Réseau","other":"Autre"}[v])
+                                contribution_description = st.text_area("Description",max_chars=1000)
+                                contribution_amount = st.number_input("Montant (uniquement si contribution financière)",min_value=0.0,value=0.0,step=10.0)
+                                contribution_currency = st.selectbox("Devise",["EUR","USD","GBP","CHF","CNY","SGD","MYR","TWD","KRW","XOF","AED","BRL"])
+                                contribution_hours = st.number_input("Heures (si contribution non financière)",min_value=0.0,value=0.0,step=1.0)
+                                contribution_submit = st.form_submit_button("Enregistrer la contribution")
+                            if contribution_submit:
+                                try:
+                                    cloud_storage.add_global_project_contribution(supabase_client,current_user,selected_project_id,{
+                                        "contribution_type":contribution_type,"description":contribution_description,
+                                        "amount":contribution_amount if contribution_type=="financial" else None,
+                                        "currency":contribution_currency if contribution_type=="financial" else None,
+                                        "hours":contribution_hours if contribution_type!="financial" and contribution_hours else None,
+                                    })
+                                    st.success("Contribution enregistrée comme déclarée, sans validation de paiement.")
+                                    st.rerun()
+                                except Exception as exc:
+                                    st.error("Contribution non enregistrée : " + type(exc).__name__)
+                    st.markdown("#### Objectifs et jalons")
+                    milestones = cloud_storage.list_global_project_milestones(supabase_client,current_user,selected_project_id)
+                    if milestones:
+                        st.dataframe([{"Étape":m["title"],"Responsable":m["owner_label"],"Échéance":m["due_date"],"Statut":m["status"]} for m in milestones],use_container_width=True,hide_index=True)
+                    else:
+                        st.caption("Aucun jalon défini.")
+                    if any(m["user_id"]==current_uid and m["status"]=="accepted" and m["role"] in {"owner","coordinator","contributor"} for m in members) or selected_project["owner_id"]==current_uid:
+                        with st.expander("Ajouter un jalon"):
+                            with st.form("sowia_project_milestone_form"):
+                                ms_title = st.text_input("Nom du jalon",max_chars=160)
+                                ms_owner = st.text_input("Responsable",max_chars=120)
+                                ms_due = st.date_input("Date du jalon")
+                                ms_desc = st.text_area("Détail (facultatif)",max_chars=1000)
+                                ms_submit = st.form_submit_button("Ajouter le jalon")
+                            if ms_submit:
+                                try:
+                                    cloud_storage.add_global_project_milestone(supabase_client,current_user,selected_project_id,{
+                                        "title":ms_title,"owner_label":ms_owner,"due_date":ms_due.isoformat(),"description":ms_desc,
+                                    })
+                                    st.success("Jalon ajouté.")
+                                    st.rerun()
+                                except Exception as exc:
+                                    st.error("Jalon non ajouté : " + type(exc).__name__)
+                    if selected_project["owner_id"]==current_uid and selected_project["status"] not in {"completed","cancelled"}:
+                        next_status = st.selectbox("État du projet",["active","paused","completed","cancelled"],index=["active","paused","completed","cancelled"].index(selected_project["status"]) if selected_project["status"] in {"active","paused","completed","cancelled"} else 0,format_func=lambda v:{"active":"Actif","paused":"En pause","completed":"Terminé","cancelled":"Annulé"}[v])
+                        if st.button("Mettre à jour l'état du projet",key="sowia_project_status_update"):
+                            try:
+                                cloud_storage.transition_global_project(supabase_client,current_user,selected_project_id,next_status)
+                                st.success("État du projet mis à jour.")
+                                st.rerun()
+                            except Exception as exc:
+                                st.error("Modification impossible : " + type(exc).__name__)
+                    with st.expander("Historique des événements"):
+                        audit = cloud_storage.list_global_project_audit(supabase_client,current_user,selected_project_id)
+                        if audit:
+                            st.dataframe([{"Date":x["created_at"],"Événement":x["event_type"],"Détails":x["details"]} for x in audit],use_container_width=True,hide_index=True)
+                        else:
+                            st.caption("L'historique apparaîtra après les premières actions.")
+            with collab_tabs[2]:
+                invitations = cloud_storage.list_global_project_invitations(supabase_client,current_user)
+                if not invitations:
+                    st.info("Aucune invitation en attente.")
+                for invitation in invitations:
+                    project = next((p for p in projects if p["id"]==invitation["project_id"]),None)
+                    st.write(f"Projet : {project['title'] if project else invitation['project_id']} · rôle proposé : {invitation['role']}")
+                    ic1,ic2 = st.columns(2)
+                    if ic1.button("Accepter",key="sowia_invite_accept_"+invitation["id"]):
+                        cloud_storage.respond_global_project_invitation(supabase_client,current_user,invitation["id"],"accepted")
+                        st.success("Invitation acceptée.")
+                        st.rerun()
+                    if ic2.button("Refuser",key="sowia_invite_decline_"+invitation["id"]):
+                        cloud_storage.respond_global_project_invitation(supabase_client,current_user,invitation["id"],"declined")
+                        st.rerun()
+        except Exception as collaboration_error:
+            st.error("Le Hub de collaboration n'est pas encore accessible.")
+            st.caption("Vérifiez que supabase_global_collaboration.sql a été appliqué après les migrations GLOBAL ID et DIRECTORY. Diagnostic : " + type(collaboration_error).__name__)
 
 
 elif page == "SOWIA GLOBAL ACTION GOVERNANCE":
