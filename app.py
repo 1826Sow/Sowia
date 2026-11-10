@@ -649,17 +649,72 @@ st.write("")
 
 if page == "Accueil":
     st.subheader("Bienvenue dans SOWIA")
-    st.caption("Un accueil simple : les informations essentielles en premier, puis tous les outils classés dans leurs dossiers.")
+    st.caption("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.")
     workspace_title = "Professionnel" if st.session_state.get("workspace_id") == "professional" else "Personnel"
     account_status = "Connecté" if cloud_mode and current_user is not None else "Mode local"
-    security_status = "Protection active" if cloud_mode and current_user is not None else "Configuration locale"
+    session_status = "Authentifiée" if cloud_mode and current_user is not None else "Non connectée"
     key_cols = st.columns(3)
     with key_cols[0]:
         st.metric("Espace de travail", workspace_title)
     with key_cols[1]:
         st.metric("Compte", account_status)
     with key_cols[2]:
-        st.metric("Sécurité", security_status)
+        st.metric("Session", session_status)
+
+    st.markdown("### 📊 Vue d'ensemble")
+    st.caption("Indicateurs en lecture seule. Les données financières sont limitées aux écritures accessibles à votre compte.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous pour afficher les indicateurs financiers privés. Aucun montant n'est estimé en mode local.")
+    else:
+        try:
+            import financial_reporting
+            dashboard_rows = financial_reporting.load_user_financial_transactions(
+                supabase_client, current_user, limit=500
+            )
+            dashboard_payments = sum(
+                1 for row in dashboard_rows
+                if row.get("transaction_type") == "payment" and row.get("status") == "confirmed"
+            )
+            dashboard_refunds = sum(
+                1 for row in dashboard_rows
+                if row.get("transaction_type") == "refund" and row.get("status") == "refunded"
+            )
+            dashboard_review = sum(
+                1 for row in dashboard_rows if row.get("status") == "manual_review"
+            )
+            dashboard_other = sum(
+                1 for row in dashboard_rows
+                if row.get("status") not in {"confirmed", "refunded", "manual_review"}
+            )
+            dashboard_cols = st.columns(4)
+            dashboard_cols[0].metric("Paiements confirmés", dashboard_payments)
+            dashboard_cols[1].metric("Remboursements validés", dashboard_refunds)
+            dashboard_cols[2].metric("À vérifier", dashboard_review)
+            dashboard_cols[3].metric("Autres statuts", dashboard_other)
+            st.caption("Comptage des écritures chargées (maximum 500). Les statuts non confirmés ne sont pas comptabilisés comme revenus.")
+            if dashboard_review or dashboard_other:
+                st.warning("Des écritures nécessitent une vérification. Consultez « Revenus & paiements » avant toute conclusion financière.")
+            elif not dashboard_rows:
+                st.info("Aucune écriture financière enregistrée dans le registre accessible.")
+            else:
+                st.success("Aucune écriture en contrôle manuel ou avec un autre statut dans les lignes chargées.")
+        except Exception as dashboard_error:
+            st.warning("Indicateurs financiers indisponibles pour le moment. Ouvrez « Revenus & paiements » pour consulter le détail et le diagnostic.")
+
+    st.markdown("### 🎯 Actions prioritaires")
+    dashboard_actions = st.session_state.get("sowia_priority_actions", [])
+    if dashboard_actions:
+        try:
+            dashboard_ranked = sowia_prioritization.rank_actions(dashboard_actions)
+            st.caption(f"{len(dashboard_actions)} action(s) dans la comparaison de cette session.")
+            for item in dashboard_ranked[:3]:
+                blockers = " · ".join(item.get("blockers", [])) or "Aucun blocage détecté dans cette grille"
+                st.markdown(f"**{item.get('title', 'Action sans titre')}** — {item.get('score', 'N/A')}/100 · {item.get('status', 'Statut non précisé')}")
+                st.caption("Vigilance : " + blockers)
+        except Exception:
+            st.info("La comparaison d'actions est disponible dans le moteur de priorisation.")
+    else:
+        st.info("Aucune action n'est enregistrée dans la comparaison de cette session. Le moteur de priorisation permet d'en ajouter.")
     st.markdown("### ⭐ Points clés")
     key_actions = [
         ("💬 Assistant IA", "Accéder directement à votre assistant", "Assistant IA"),
