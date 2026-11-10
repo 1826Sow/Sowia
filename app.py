@@ -1856,7 +1856,7 @@ elif page == "SOW IA Business Club":
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre espace sécurisé pour créer un profil, consulter l'annuaire et échanger avec les membres.")
     else:
-        club_workspace = st.session_state.get("workspace_id", "professional")
+        club_workspace = "professional"
         try:
             own_profile = cloud_storage.get_business_club_profile(supabase_client, current_user, club_workspace)
             with st.expander("🏢 Mon profil d'entreprise", expanded=own_profile is None):
