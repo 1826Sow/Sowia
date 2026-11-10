@@ -906,6 +906,66 @@ def submit_global_trust_report(client, user, request_id, reason):
     }).execute().data
 
 
+
+# SOWIA GLOBAL ADMIN & MODERATION — database policies remain authoritative.
+def list_global_moderation_reports(client, user, limit=100):
+    _user_id(user)
+    rows = (
+        client.table("sowia_global_trust_reports")
+        .select("id,request_id,reporter_id,reported_user_id,reason,status,created_at")
+        .order("created_at", desc=True)
+        .limit(min(max(int(limit), 1), 200))
+        .execute().data
+    )
+    return rows
+
+
+def list_global_moderation_profiles(client, user, limit=100):
+    _user_id(user)
+    return (
+        client.table("sowia_global_profiles")
+        .select("id,public_id,display_name,app_name,organization,country,verification_status,is_published,created_at")
+        .order("created_at", desc=True)
+        .limit(min(max(int(limit), 1), 200))
+        .execute().data
+    )
+
+
+def update_global_moderation_report(client, user, report_id, status, note=""):
+    _user_id(user)
+    import sowia_global_moderation
+    clean_status = sowia_global_moderation.validate_report_status(status)
+    clean_note = sowia_global_moderation.validate_moderation_note(note)
+    return client.rpc("sowia_admin_update_global_trust_report", {
+        "p_report_id": str(report_id), "p_status": clean_status, "p_note": clean_note,
+    }).execute().data
+
+
+def update_global_moderation_profile(client, user, profile_id, status,
+                                     evidence_reference="", note=""):
+    _user_id(user)
+    import sowia_global_moderation
+    clean_status, clean_evidence = sowia_global_moderation.validate_profile_status(
+        status, evidence_reference
+    )
+    clean_note = sowia_global_moderation.validate_moderation_note(note)
+    return client.rpc("sowia_admin_update_global_profile_status", {
+        "p_profile_id": str(profile_id), "p_status": clean_status,
+        "p_evidence_reference": clean_evidence, "p_note": clean_note,
+    }).execute().data
+
+
+def list_global_moderation_audit(client, user, limit=100):
+    _user_id(user)
+    return (
+        client.table("sowia_global_moderation_audit")
+        .select("id,admin_id,action,subject_id,old_status,new_status,note,created_at")
+        .order("created_at", desc=True)
+        .limit(min(max(int(limit), 1), 200))
+        .execute().data
+    )
+
+
 # SOWIA GLOBAL ID — private profile registry and safe public directory.
 def _validate_global_profile(display_name, app_name="", organization="", country="",
                              languages="", website="", short_description="",
