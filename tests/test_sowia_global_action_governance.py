@@ -5,7 +5,7 @@ from sowia_global_action_governance import validate_action_plan, validate_transi
 class ActionGovernanceTests(unittest.TestCase):
     def plan(self, **updates):
         data = dict(title="Pilote Sénégal", objective="Tester le marché avec un périmètre limité.",
-                    country="Sénégal", owner_label="Équipe développement", budget_cap=500,
+                    country="Sénégal", owner_label="Équipe développement", approver_id="123e4567-e89b-12d3-a456-426614174000", budget_cap=500,
                     currency="EUR", due_date="2027-03-31",
                     success_metric="100 utilisateurs actifs", stop_condition="Arrêt si dépassement du plafond.")
         data.update(updates)
