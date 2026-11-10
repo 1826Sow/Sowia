@@ -206,10 +206,11 @@ def capture_premium_order(order_id: str, user_id: str):
 
 
 def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, limit: int = 500):
-    """Reconcile refunded one-time captures already present in this user's ledger.
+    """Detect refunded one-time captures and move them to manual review.
 
-    The ledger supplies the user-to-capture association; PayPal remains the
-    authority for the current capture/refund status and cumulative EUR amount.
+    The ledger supplies the user-to-capture association. PayPal's capture
+    status alone does not prove each refund's exact amount, so this function
+    never creates a refund amount from the original capture gross.
     """
     from datetime import datetime, timedelta, timezone
     import financial_ledger
