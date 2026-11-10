@@ -335,11 +335,13 @@ La page « Assistant IA » propose désormais :
 - réponses conservées à l'écran en texte, y compris lorsque la lecture vocale est activée ;
 - lecture vocale facultative des réponses via l'API de synthèse vocale du navigateur/appareil ;
 - bouton explicite pour démarrer et arrêter la lecture ;
-- réglage de taille de texte et contraste renforcé.
+- réglage de taille de texte et contraste renforcé ;
+- sélection de la langue de synthèse vocale à partir de la langue active de l'interface ;
+- mémorisation des préférences d'accessibilité dans le compte, après application de la migration Supabase dédiée.
 
 La lecture vocale dépend du support et des voix installées sur le navigateur ou l'appareil. Elle n'est pas un service audio hébergé par SOW IA.
 
-**À développer avant de déclarer l'accessibilité complète :** transcription temps réel de la parole entrante, sous-titres synchronisés pendant les appels, choix de langue/voix, mémorisation des préférences par utilisateur, navigation clavier et lecteur d'écran testée, réglages visuels plus fins et essais avec des personnes sourdes ou malentendantes. Une transcription en direct nécessitera un moteur de reconnaissance vocale et une interface audio dédiée ; elle n'est pas encore implémentée.
+**À développer avant de déclarer l'accessibilité complète :** transcription temps réel de la parole entrante, sous-titres synchronisés pendant les appels, choix manuel de la voix et du débit, navigation clavier et lecteur d'écran testée, réglages visuels plus fins et essais avec des personnes sourdes ou malentendantes. Une transcription en direct nécessitera un moteur de reconnaissance vocale et une interface audio dédiée ; elle n'est pas encore implémentée.
 
 
 ### 14 bis. Accessibilité de l'interface et de la conversation
