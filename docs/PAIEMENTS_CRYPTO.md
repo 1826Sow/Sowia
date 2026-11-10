@@ -201,3 +201,21 @@ La suite nécessaire est l'intégration d'une source PayPal vérifiable qui four
 Les deux contrôles disponibles sont limités à Sandbox. Le contrôle des achats ponctuels examine au maximum 500 captures sur 90 jours par passage ; la pagination reste à développer. Les tests sont écrits mais ne sont pas encore exécutés/confirmés. La migration du registre financier doit être appliquée dans Supabase avant toute validation en production.
 
 Documentation officielle : [consultation d'une capture Payments v2](https://developer.paypal.com/api/payments/v2/captures-get), [consultation d'un remboursement Payments v2](https://developer.paypal.com/api/payments/v2/refunds-get), [référence des codes de transactions PayPal](https://developer.paypal.com/docs/transaction-search/transaction-event-codes/).
+
+
+### Recherche des remboursements individuels — Sandbox
+
+Le module `paypal_refund_search.py` ajoute un rapprochement en deux étapes :
+
+1. Recherche des événements PayPal `T1107` (remboursement) via `GET /v1/reporting/transactions`, par fenêtres de 30 jours et avec pagination.
+2. Correspondance de la référence de transaction avec une capture déjà enregistrée pour le compte SOW IA concerné.
+3. Vérification individuelle par `GET /v2/payments/refunds/{refund_id}` : même identifiant, statut `COMPLETED`, montant et devise EUR cohérents avec le rapport, et lien parent HTTPS correspondant exactement à la capture attendue sur l'hôte API PayPal configuré.
+4. Enregistrement idempotent sous l'identifiant propre du remboursement, avec statut `manual_review`. La capture d'origine reste également en contrôle manuel.
+
+Le contrôle s'arrête quatre heures avant l'heure courante afin de tenir compte du délai de publication pouvant atteindre trois heures annoncé par PayPal. Cela réduit le risque d'un rapport incomplet, sans constituer une garantie absolue d'exhaustivité : les écritures vérifiées restent donc exclues des revenus reconnus tant que le rapprochement comptable complet n'est pas validé.
+
+**Dépendance d'accès :** l'application PayPal doit disposer de l'autorisation Transaction Search / Reporting nécessaire. Si PayPal refuse l'appel (par exemple HTTP 403), le rapprochement s'arrête sans comptabiliser de remboursement. Aucun passage en mode Live n'est effectué.
+
+Tests ajoutés dans `tests/test_paypal_refund_search.py` pour la correspondance capture/remboursement, le contrôle du montant et de la devise, la validation du lien parent et le verrouillage Sandbox. Leur exécution en CI et un test réel dans PayPal Sandbox restent à confirmer.
+
+Références officielles : [Transaction Search API](https://developer.paypal.com/api/transaction-search/v1), [schéma des détails de transaction](https://developer.paypal.com/api/transaction-search/v1/definitions/transaction_detail/), [codes d'événement T1107](https://developer.paypal.com/docs/transaction-search/transaction-event-codes/), [consultation d'un remboursement](https://developer.paypal.com/api/payments/v2/refunds-get).
