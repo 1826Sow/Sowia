@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -3001,6 +3001,105 @@ elif page == "SOWIA GLOBAL DIRECTORY":
 
 
 
+
+
+elif page == "SOWIA GLOBAL STRATEGIC FORECAST":
+    st.subheader("🔭 SOWIA GLOBAL STRATEGIC FORECAST")
+    st.caption("Préparez plusieurs futurs possibles à partir de vos évaluations et alertes enregistrées.")
+    st.warning("Ces scénarios sont des hypothèses conditionnelles, pas des prédictions, probabilités ni conseils financiers ou juridiques. Les données d'entrée et les sources doivent être vérifiées par une personne.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous pour créer et conserver vos projections dans votre espace privé.")
+    else:
+        forecast_tabs = st.tabs(["＋ Construire une projection", "📚 Mes projections"])
+        with forecast_tabs[0]:
+            try:
+                forecast_assessments = cloud_storage.list_global_intelligence_assessments(
+                    supabase_client, current_user, limit=200
+                )
+                if not forecast_assessments:
+                    st.info("Commencez par créer une évaluation dans SOWIA GLOBAL INTELLIGENCE.")
+                else:
+                    assessment_map = {row["id"]: row for row in forecast_assessments}
+                    with st.form("sowia_global_forecast_form"):
+                        selected_assessment_id = st.selectbox(
+                            "Évaluation de référence",
+                            options=list(assessment_map),
+                            format_func=lambda value: (
+                                f"{assessment_map[value]['name']} · {assessment_map[value]['country']} · "
+                                f"{assessment_map[value]['weighted_score']}/100"
+                            ),
+                        )
+                        forecast_horizon = st.selectbox(
+                            "Horizon de planification",
+                            ["30 jours", "90 jours", "12 mois"],
+                            index=1,
+                        )
+                        forecast_submit = st.form_submit_button("Construire les cinq scénarios")
+                    if forecast_submit:
+                        try:
+                            import sowia_global_forecast as forecast_engine
+                            user_alerts = cloud_storage.list_global_alerts(
+                                supabase_client, current_user, limit=200
+                            )
+                            generated_forecast = forecast_engine.build_forecast(
+                                assessment_map[selected_assessment_id], user_alerts, forecast_horizon
+                            )
+                            st.session_state["sowia_global_forecast_draft"] = generated_forecast
+                            st.success("Projection construite. Examinez les hypothèses avant de l'enregistrer.")
+                        except Exception as forecast_error:
+                            st.error("Projection non générée : " + type(forecast_error).__name__)
+                forecast_draft = st.session_state.get("sowia_global_forecast_draft")
+                if forecast_draft:
+                    st.markdown(f"### {forecast_draft['title']}")
+                    fc1, fc2, fc3 = st.columns(3)
+                    fc1.metric("Score de référence", f"{forecast_draft['assessment_score']}/100")
+                    fc2.metric("Pression des alertes", f"{forecast_draft['risk_pressure']}/100")
+                    fc3.metric("Confiance indicative", f"{forecast_draft['confidence']}/100")
+                    st.caption(f"{forecast_draft['country']} · {forecast_draft['sector']} · Horizon : {forecast_draft['horizon']}")
+                    st.caption("La confiance indicative mesure la complétude relative des données d'entrée selon une règle interne. Ce n'est pas une probabilité de réussite.")
+                    for scenario in forecast_draft["scenarios"]:
+                        with st.expander(scenario["label"], expanded=scenario["name"] == "central"):
+                            st.markdown("**Conditions possibles**")
+                            for condition in scenario["conditions"]:
+                                st.write("• " + condition)
+                            st.write("**Impact à envisager :** " + scenario["impact"])
+                            st.write("**Indicateur à surveiller :** " + scenario["indicator"])
+                    with st.expander("Hypothèses et limites"):
+                        for assumption in forecast_draft["assumptions"]:
+                            st.write("• " + assumption)
+                    if st.button("Enregistrer cette projection dans mon espace privé"):
+                        try:
+                            cloud_storage.save_global_forecast(
+                                supabase_client, current_user, forecast_draft
+                            )
+                            st.session_state.pop("sowia_global_forecast_draft", None)
+                            st.success("Projection enregistrée.")
+                            st.rerun()
+                        except Exception as forecast_save_error:
+                            st.error("Enregistrement impossible : " + type(forecast_save_error).__name__)
+            except Exception as forecast_load_error:
+                st.error("Les données nécessaires à la projection ne sont pas accessibles.")
+                st.caption("Vérifiez les migrations GLOBAL INTELLIGENCE et GLOBAL ALERTS. Diagnostic : " + type(forecast_load_error).__name__)
+        with forecast_tabs[1]:
+            try:
+                saved_forecasts = cloud_storage.list_global_forecasts(
+                    supabase_client, current_user, limit=200
+                )
+                if not saved_forecasts:
+                    st.info("Aucune projection enregistrée.")
+                for saved in saved_forecasts:
+                    with st.expander(f"{saved['title']} · {saved['horizon']}"):
+                        st.caption(f"{saved['country']} · {saved['sector']} · Score {saved['assessment_score']}/100 · Confiance indicative {saved['confidence']}/100")
+                        for scenario in saved["scenarios"]:
+                            st.markdown(f"**{scenario['label']}** — {scenario['impact']}")
+                        if st.button("Supprimer cette projection", key=f"delete_forecast_{saved['id']}"):
+                            cloud_storage.delete_global_forecast(
+                                supabase_client, current_user, saved["id"]
+                            )
+                            st.rerun()
+            except Exception as forecast_history_error:
+                st.error("L'archive des projections n'est pas disponible.")
+                st.caption("Appliquez supabase_global_forecast.sql après les migrations GLOBAL INTELLIGENCE et GLOBAL ALERTS. Diagnostic : " + type(forecast_history_error).__name__)
 
 
 elif page == "SOWIA GLOBAL INTELLIGENCE":
