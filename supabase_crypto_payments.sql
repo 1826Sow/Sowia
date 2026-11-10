@@ -28,7 +28,7 @@ create table if not exists public.sowia_crypto_orders (
     asset_code text not null check (asset_code ~ '^[A-Z0-9]{2,16}$'),
     network_code text not null check (network_code ~ '^[A-Za-z0-9][A-Za-z0-9._-]{1,39}$'),
     expected_asset_amount numeric(30,12) not null check (expected_asset_amount > 0),
-    provider text not null check (provider in ('fipto')),
+    provider text not null check (char_length(provider) between 1 and 40),
     provider_checkout_id text,
     provider_payment_id text,
     checkout_url text,
@@ -58,7 +58,7 @@ grant select on public.sowia_crypto_orders to authenticated;
 
 create table if not exists public.sowia_crypto_payment_events (
     id uuid primary key default gen_random_uuid(),
-    provider text not null check (provider in ('fipto')),
+    provider text not null check (char_length(provider) between 1 and 40),
     provider_event_id text not null,
     provider_payment_id text,
     order_id uuid references public.sowia_crypto_orders(id) on delete set null,
@@ -84,6 +84,7 @@ commit;
 -- signature_verified flag; the adapter MUST verify the provider signature first.
 -- Execution is restricted to service_role. Never call this from a browser.
 create or replace function public.sowia_confirm_crypto_payment(
+    p_provider text,
     p_event_id text,
     p_payment_id text,
     p_order_id uuid,
@@ -113,7 +114,7 @@ begin
         provider, provider_event_id, provider_payment_id, order_id,
         event_type, signature_verified, processing_status
     ) values (
-        'fipto', p_event_id, p_payment_id, p_order_id,
+        p_provider, p_event_id, p_payment_id, p_order_id,
         coalesce(nullif(trim(p_event_type), ''), 'unknown'),
         coalesce(p_signature_verified, false),
         'received'
@@ -136,6 +137,7 @@ begin
       from public.sowia_crypto_orders
      where id = p_order_id
        and user_id = p_user_id
+       and provider = p_provider
      for update;
 
     if not found then
@@ -216,8 +218,8 @@ end;
 $$;
 
 revoke all on function public.sowia_confirm_crypto_payment(
-    text, text, uuid, uuid, text, boolean, text, text, text, numeric
+    text, text, text, uuid, uuid, text, boolean, text, text, text, numeric
 ) from public, anon, authenticated;
 grant execute on function public.sowia_confirm_crypto_payment(
-    text, text, uuid, uuid, text, boolean, text, text, text, numeric
+    text, text, text, uuid, uuid, text, boolean, text, text, text, numeric
 ) to service_role;
