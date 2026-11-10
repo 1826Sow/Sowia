@@ -113,3 +113,24 @@ def test_refund_search_is_sandbox_only(monkeypatch):
         assert "Sandbox" in str(exc)
     else:
         raise AssertionError("Live refund reconciliation must remain disabled")
+
+
+def test_reporting_search_reads_every_page(monkeypatch):
+    requested_pages = []
+    def fake_get(url, **kwargs):
+        requested_pages.append(kwargs["params"]["page"])
+        if kwargs["params"]["page"] == 1:
+            return Response({"transaction_details": [{"transaction_info": {"transaction_id": "A"}}], "total_pages": 2})
+        return Response({"transaction_details": [{"transaction_info": {"transaction_id": "B"}}], "total_pages": 2})
+    monkeypatch.setattr(sync.requests, "get", fake_get)
+    from datetime import datetime, timezone, timedelta
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=1)
+    result = sync._fetch_refund_events(
+        {"base_url": "https://api-m.sandbox.paypal.com"},
+        {"Authorization": "Bearer test"},
+        start,
+        end,
+    )
+    assert requested_pages == [1, 2]
+    assert [item["transaction_info"]["transaction_id"] for item in result] == ["A", "B"]
