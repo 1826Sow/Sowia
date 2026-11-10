@@ -41,6 +41,7 @@ import sowia_night_exchange
 import sowia_global_id
 import sowia_global_directory
 import sowia_global_connect
+import sowia_global_messenger
 import sowia_business_card
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
@@ -2863,6 +2864,61 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                                     )
                                     st.info("Demande annulée.")
                                     st.rerun()
+
+                st.divider()
+                st.subheader("💬 GLOBAL MESSENGER — conversations acceptées")
+                st.caption("La messagerie est activée uniquement après acceptation d’une demande. Les échanges restent privés entre les deux participants.")
+                accepted_requests = [
+                    ("Reçue", item) for item in incoming if item.get("status") == "accepted"
+                ] + [
+                    ("Envoyée", item) for item in outgoing if item.get("status") == "accepted"
+                ]
+                if not accepted_requests:
+                    st.info("Aucune conversation ouverte pour le moment. Une conversation apparaîtra ici après acceptation d’une mise en relation.")
+                else:
+                    request_labels = {
+                        f"{direction} · conversation {item['id'][:8]} · {item['created_at'][:10]}": item
+                        for direction, item in accepted_requests
+                    }
+                    selected_conversation = st.selectbox(
+                        "Choisir une conversation",
+                        options=list(request_labels.keys()),
+                        key="global_messenger_selected",
+                    )
+                    conversation = request_labels[selected_conversation]
+                    conversation_id = conversation["id"]
+                    messages = cloud_storage.list_global_messages(
+                        supabase_client, current_user, conversation_id, limit=300
+                    )
+                    own_uid = cloud_storage._user_id(current_user)
+                    if not messages:
+                        st.info("Conversation créée. Vous pouvez envoyer le premier message.")
+                    for message in messages:
+                        author = "user" if message.get("sender_id") == own_uid else "assistant"
+                        with st.chat_message(author):
+                            st.write(message.get("body", ""))
+                            st.caption(
+                                ("Vous" if author == "user" else "Partenaire")
+                                + " · " + str(message.get("created_at", ""))[:16].replace("T", " ")
+                            )
+                    with st.form(f"global_messenger_form_{conversation_id}", clear_on_submit=True):
+                        outgoing_message = st.text_area(
+                            "Votre message",
+                            max_chars=4000,
+                            key=f"global_messenger_body_{conversation_id}",
+                            placeholder="Écrivez votre message professionnel…",
+                        )
+                        send_message = st.form_submit_button("Envoyer le message", type="primary")
+                    if send_message:
+                        try:
+                            cloud_storage.send_global_message(
+                                supabase_client, current_user, conversation_id, outgoing_message
+                            )
+                            st.success("Message envoyé.")
+                            st.rerun()
+                        except Exception as message_error:
+                            st.error("Envoi impossible : " + type(message_error).__name__)
+                            st.caption("Vérifiez que la migration supabase_global_messenger.sql a été appliquée.");
             except Exception as connect_error:
                 st.error("GLOBAL CONNECT nécessite la migration Supabase dédiée.")
                 st.caption("Diagnostic : " + type(connect_error).__name__)
