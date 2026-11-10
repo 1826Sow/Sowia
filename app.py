@@ -6245,6 +6245,7 @@ elif page == "SOWIA CONTROL CENTER":
         if admin_client is not None:
             for table_name, label in (
                 ("sowia_financial_transactions", "Registre financier"),
+                ("sowia_financial_audit_log", "Journal d’audit financier"),
                 ("sowia_subscriptions", "Abonnements"),
                 ("sowia_paypal_catalog", "Catalogue PayPal"),
             ):
