@@ -1059,8 +1059,16 @@ elif page == "Abonnement":
                             )
                             st.session_state["paypal_subscription_approval_url"] = created["approval_url"]
                             st.success("Votre demande Sandbox a été préparée. Aucun accès n’est accordé avant la confirmation du webhook.")
-                        except Exception:
+                        except Exception as exc:
                             st.error("Impossible de préparer l’abonnement PayPal. Aucun accès Premium n’a été accordé.")
+                            # Safe diagnostic: expose only the exception class and HTTP status,
+                            # never request headers, credentials, tokens, or response bodies.
+                            response = getattr(exc, "response", None)
+                            status_code = getattr(response, "status_code", None)
+                            diagnostic = type(exc).__name__
+                            if status_code is not None:
+                                diagnostic += f" · HTTP {status_code}"
+                            st.caption("Diagnostic technique (sans identifiants) : " + diagnostic)
                     approval_url = st.session_state.get("paypal_subscription_approval_url")
                     if approval_url:
                         st.link_button("Continuer sur PayPal Sandbox", approval_url, use_container_width=True)
