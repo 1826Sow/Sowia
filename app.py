@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -3001,6 +3001,118 @@ elif page == "SOWIA GLOBAL DIRECTORY":
 
 
 
+
+
+elif page == "SOWIA GLOBAL DECISION ENGINE":
+    st.subheader("⚖️ SOWIA GLOBAL DECISION ENGINE")
+    st.caption("Comparez plusieurs options avec une grille de critères transparente et conservez la justification de votre choix.")
+    st.warning("Les notes et pondérations constituent une aide à la réflexion. Elles ne remplacent pas une expertise indépendante ni une validation humaine. Aucune décision n'est exécutée automatiquement.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous pour enregistrer vos comparaisons dans votre espace privé.")
+    else:
+        import sowia_global_decision as decision_engine
+        decision_tabs = st.tabs(["＋ Comparer des options", "📚 Mes décisions"])
+        with decision_tabs[0]:
+            with st.form("sowia_global_decision_form"):
+                decision_title = st.text_input("Décision à prendre", max_chars=180, placeholder="Ex. Quel pays choisir pour le prochain pilote SOWIA ?")
+                decision_evidence = st.selectbox(
+                    "Niveau général des preuves",
+                    ["hypothesis", "indicative", "documented", "verified"],
+                    format_func=lambda value: {
+                        "hypothesis": "Hypothèse", "indicative": "Indices indicatifs",
+                        "documented": "Sources documentées", "verified": "Vérification indépendante effectuée",
+                    }[value],
+                )
+                decision_context = st.text_area("Contexte, contraintes et sources", max_chars=2000)
+                st.markdown("#### Options à comparer")
+                option_names = []
+                option_scores = []
+                for option_index in range(3):
+                    with st.expander(f"Option {option_index + 1}", expanded=option_index < 2):
+                        option_names.append(st.text_input(
+                            f"Nom de l'option {option_index + 1}",
+                            max_chars=120,
+                            key=f"sowia_decision_name_{option_index}",
+                            placeholder="Ex. Lancer un pilote au Sénégal" if option_index == 0 else (
+                                "Ex. Lancer un pilote en Malaisie" if option_index == 1 else "Option facultative"
+                            ),
+                        ))
+                        scores = {}
+                        for criterion_key, criterion in decision_engine.CRITERIA.items():
+                            scores[criterion_key] = st.slider(
+                                criterion["label"] + " (1 = faible, 5 = fort)",
+                                1, 5, 3, key=f"sowia_decision_{option_index}_{criterion_key}",
+                            )
+                        option_scores.append(scores)
+                decision_submit = st.form_submit_button("Analyser et classer les options")
+            if decision_submit:
+                try:
+                    submitted_options = [
+                        {"name": name, "scores": scores}
+                        for name, scores in zip(option_names, option_scores) if name.strip()
+                    ]
+                    decision_result = decision_engine.evaluate_options(
+                        decision_title, submitted_options, decision_evidence, decision_context
+                    )
+                    st.session_state["sowia_global_decision_draft"] = decision_result
+                    st.success("Comparaison calculée. Vérifiez les notes et la justification.")
+                except Exception as decision_error:
+                    st.error("Comparaison impossible : " + str(decision_error))
+            decision_draft = st.session_state.get("sowia_global_decision_draft")
+            if decision_draft:
+                st.markdown("### Résultat de l'analyse")
+                st.write(decision_draft["interpretation"])
+                st.metric("Confiance indicative des données", f"{decision_draft['confidence']}/100")
+                st.caption("Cet indice mesure uniquement le niveau de preuve déclaré et la complétude des notes. Ce n'est pas une probabilité de réussite.")
+                for rank, option in enumerate(decision_draft["ranked_options"], start=1):
+                    with st.container(border=True):
+                        st.markdown(f"**{rank}. {option['name']}**")
+                        st.progress(int(option["score"]))
+                        st.write(f"Score pondéré : **{option['score']}/100**")
+                        st.write(" · ".join(
+                            f"{decision_engine.CRITERIA[key]['label']} : {value}/5"
+                            for key, value in option["scores"].items()
+                        ))
+                if decision_draft["recommended_option"]:
+                    st.success("Option en tête selon les critères saisis : " + decision_draft["recommended_option"])
+                else:
+                    st.info("Égalité ou écart faible : SOWIA ne force pas de recommandation.")
+                with st.expander("Pondérations et limites de l'analyse"):
+                    for criterion in decision_draft["criteria"]:
+                        st.write(f"• {criterion['label']} : {int(criterion['weight'] * 100)} %")
+                    for limitation in decision_draft["limitations"]:
+                        st.write("• " + limitation)
+                if st.button("Enregistrer cette analyse dans mon espace privé"):
+                    try:
+                        cloud_storage.save_global_decision(
+                            supabase_client, current_user, decision_draft
+                        )
+                        st.session_state.pop("sowia_global_decision_draft", None)
+                        st.success("Analyse enregistrée dans votre espace privé.")
+                        st.rerun()
+                    except Exception as decision_save_error:
+                        st.error("Enregistrement impossible : " + type(decision_save_error).__name__)
+        with decision_tabs[1]:
+            try:
+                saved_decisions = cloud_storage.list_global_decisions(
+                    supabase_client, current_user, limit=200
+                )
+                if not saved_decisions:
+                    st.info("Aucune analyse de décision enregistrée.")
+                for saved in saved_decisions:
+                    with st.expander(f"{saved['title']} · {saved['created_at'][:10]}"):
+                        st.write(saved["interpretation"])
+                        st.caption(f"Preuves : {saved['evidence_level']} · Confiance indicative : {saved['confidence']}/100")
+                        for rank, option in enumerate(saved["ranked_options"], start=1):
+                            st.write(f"{rank}. {option['name']} — {option['score']}/100")
+                        if st.button("Supprimer cette analyse", key=f"delete_global_decision_{saved['id']}"):
+                            cloud_storage.delete_global_decision(
+                                supabase_client, current_user, saved["id"]
+                            )
+                            st.rerun()
+            except Exception as decision_history_error:
+                st.error("L'archive des décisions n'est pas disponible.")
+                st.caption("Appliquez supabase_global_decisions.sql. Diagnostic : " + type(decision_history_error).__name__)
 
 
 elif page == "SOWIA GLOBAL STRATEGIC FORECAST":
