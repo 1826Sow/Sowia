@@ -2603,10 +2603,28 @@ elif page == "SOWIA GLOBAL ID":
                 display_name = st.text_input("Nom public / nom professionnel", value=profile.get("display_name") or "", max_chars=120)
                 app_name = st.text_input("Nom de votre application (facultatif)", value=profile.get("app_name") or "", max_chars=160)
                 organization = st.text_input("Entreprise / organisation (facultatif)", value=profile.get("organization") or "", max_chars=160)
-                country = st.text_input("Pays", value=profile.get("country") or "", max_chars=100)
-                languages = st.text_input("Langues (séparées par des virgules)", value=", ".join(profile.get("languages") or []), max_chars=300)
+                country = st.text_input(
+                    "Pays",
+                    value=profile.get("country") or "",
+                    max_chars=100,
+                    placeholder="Ex. : Sénégal, France, Singapour, Brésil",
+                    help="Indiquez le pays où votre activité est principalement établie.",
+                )
+                languages = st.text_input(
+                    "Langues (séparées par des virgules)",
+                    value=", ".join(profile.get("languages") or []),
+                    max_chars=300,
+                    placeholder="Ex. : français, English, العربية, 中文",
+                    help="Vous pouvez indiquer plusieurs langues, séparées par des virgules.",
+                )
                 website = st.text_input("Site web public (facultatif)", value=profile.get("website") or "", max_chars=500)
-                short_description = st.text_area("Présentation publique", value=profile.get("short_description") or "", max_chars=600)
+                short_description = st.text_area(
+                    "Présentation publique",
+                    value=profile.get("short_description") or "",
+                    max_chars=600,
+                    placeholder="Présentez brièvement votre activité, votre application ou les services que vous proposez.",
+                    help="N'indiquez ici que les informations que vous acceptez de rendre publiques si vous activez la publication.",
+                )
                 sector_options = list(sowia_global_directory.SECTORS)
                 selected_sectors = st.multiselect(
                     "Secteurs professionnels",
