@@ -2776,7 +2776,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 report_cols[1].metric("Rencontres confirmées", morning_report["counts"]["meeting_confirmed"])
                 report_cols[2].metric("Offres acceptées", morning_report["counts"]["offer_accepted"])
                 st.write("Consultations de matching : " + str(morning_report["counts"]["match_viewed"]))
-                st.write("Intégrations approuvées : " + str(morning_report["counts"]["integration_approved"]))
+                st.write("Intégrations approuvées (événements de confiance) : " + str(morning_report["counts"]["integration_approved"]))
                 if morning_report["spend_currencies"]:
                     st.write("Dépenses confirmées : " + " · ".join(
                         f"{currency} {amount:.2f}"
@@ -2801,7 +2801,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
                     st.dataframe(event_rows, use_container_width=True, hide_index=True)
                 else:
                     st.info("Aucune activité enregistrée sur les 7 derniers jours.")
-                st.caption("Les rencontres confirmées sont des déclarations explicites du membre, pas une preuve qu'une réunion a effectivement eu lieu. Les paiements restent réservés aux événements serveur.")
+                st.caption("Les rencontres confirmées sont des déclarations explicites du membre, pas une preuve qu'une réunion a effectivement eu lieu. Les offres acceptées, intégrations approuvées et paiements ne peuvent pas être déclarés directement par un membre : ils nécessitent un flux de confirmation fiable.")
             except Exception as exc:
                 st.error("Le journal d'activité n'est pas disponible. Appliquez la migration Supabase dédiée.")
                 st.caption(f"Diagnostic : {type(exc).__name__}")
