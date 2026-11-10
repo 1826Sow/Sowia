@@ -433,3 +433,18 @@ Cet audit porte sur le code de la branche `main` consulté le 10 novembre 2026. 
 - Prévoir des tests automatisés, des tests d'isolation des comptes, un contrôle des erreurs fournisseur et un essai sur l'application déployée avant toute annonce de disponibilité.
 
 **Statut de cet audit :** feuille de route mise à jour ; aucun nouveau module financier ou météorologique n'est déclaré livré par cette mise à jour documentaire.
+
+### 16. Première brique technique de la veille financière — validation des cotations
+
+Le module `market_data.py` introduit une structure normalisée et des contrôles d'entrée pour les observations de marché :
+- symbole, instrument, place boursière et type d'actif obligatoires ;
+- prix numérique fini, devise à trois lettres et fournisseur identifié ;
+- horodatage ISO 8601 avec fuseau horaire, normalisé en UTC ;
+- statut explicite : temps réel, différé, indicatif ou inconnu ;
+- délai obligatoire lorsqu'une donnée est déclarée différée ;
+- source web HTTPS facultative ;
+- aucune déduction automatique du statut temps réel.
+
+Des tests dédiés sont ajoutés dans `tests/test_market_data.py`.
+
+**Limite :** cette brique ne se connecte à aucun fournisseur, ne récupère aucune cotation et n'est pas encore exposée dans l'interface. Elle prépare une ingestion contrôlée ; elle ne constitue pas encore une veille boursière utilisable par l'utilisateur.
