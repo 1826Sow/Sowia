@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -3356,6 +3356,93 @@ elif page == "SOWIA GLOBAL PERFORMANCE & IMPACT":
         except Exception as performance_load_error:
             st.error("Le registre de performance n'est pas encore accessible.")
             st.caption("Appliquez supabase_global_performance.sql après supabase_global_action_governance.sql. Diagnostic : " + type(performance_load_error).__name__)
+
+
+
+elif page == "SOWIA GLOBAL EXECUTIVE REPORTS":
+    st.subheader("📑 SOWIA GLOBAL EXECUTIVE REPORTS")
+    st.caption("Générez à la demande un rapport de direction réunissant vos marchés, alertes, scénarios, décisions, apprentissages et plans d'action.")
+    st.warning("Le rapport reflète uniquement les données disponibles dans votre espace connecté. Il ne constitue ni un audit, ni une certification, ni une vérification indépendante. Les budgets restent séparés par devise.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous pour générer un rapport privé SOWIA.")
+    else:
+        try:
+            import sowia_global_reporting as reporting_engine
+            with st.spinner("Lecture des données privées de votre espace SOWIA…"):
+                report_assessments = cloud_storage.list_global_intelligence_assessments(supabase_client, current_user, limit=200)
+                report_alerts = cloud_storage.list_global_alerts(supabase_client, current_user, limit=200)
+                report_forecasts = cloud_storage.list_global_forecasts(supabase_client, current_user, limit=200)
+                report_decisions = cloud_storage.list_global_decisions(supabase_client, current_user, limit=200)
+                report_learning = cloud_storage.list_global_learning_records(supabase_client, current_user, limit=300)
+                report_plans_all = cloud_storage.list_global_action_plans(supabase_client, current_user, limit=200)
+                report_plans = [
+                    row for row in report_plans_all
+                    if str(row.get("creator_id")) == str(current_user.id)
+                ]
+                report_performance = cloud_storage.list_global_performance_observations(supabase_client, current_user, limit=500)
+            report = reporting_engine.build_executive_report(
+                assessments=report_assessments,
+                alerts=report_alerts,
+                forecasts=report_forecasts,
+                decisions=report_decisions,
+                learning_records=report_learning,
+                action_plans=report_plans,
+                performance_observations=report_performance,
+            )
+            summary = report["summary"]
+            st.markdown("#### Vue d'ensemble")
+            cards = st.columns(4)
+            cards[0].metric("Marchés évalués", summary["market_assessments"])
+            cards[1].metric("Alertes actives", summary["active_alerts"])
+            cards[2].metric("Décisions archivées", summary["saved_decisions"])
+            cards[3].metric("Plans d'action", summary["action_plans"])
+            second = st.columns(4)
+            second[0].metric("Scénarios archivés", summary["saved_forecasts"])
+            second[1].metric("Décisions évaluées", summary["evaluated_decisions"])
+            second[2].metric("Plans mesurés", summary["measured_plans"])
+            second[3].metric("Plans au-dessus du budget", summary["over_budget_plans"])
+            st.markdown("#### Répartition budgétaire par devise")
+            if summary["budget_by_currency"]:
+                st.dataframe([
+                    {"Devise": currency, "Budget autorisé": values["authorized_budget"],
+                     "Dépenses cumulées": values["cumulative_spend"], "Solde": values["budget_remaining"]}
+                    for currency, values in summary["budget_by_currency"].items()
+                ], use_container_width=True, hide_index=True)
+            else:
+                st.info("Aucune mesure budgétaire enregistrée.")
+            st.markdown("#### Exports du rapport")
+            st.caption("Les fichiers sont créés à la demande et restent sous votre contrôle. Aucun envoi automatique par e-mail.")
+            export_pdf_data = reporting_engine.export_pdf(report)
+            export_json_data = reporting_engine.export_json(report)
+            export_csv_data = reporting_engine.export_summary_csv(report)
+            x1, x2, x3 = st.columns(3)
+            x1.download_button(
+                "Télécharger le rapport PDF", export_pdf_data,
+                file_name="SOWIA_Rapport_Executif_Global.pdf", mime="application/pdf",
+                use_container_width=True,
+            )
+            x2.download_button(
+                "Télécharger les données JSON", export_json_data,
+                file_name="SOWIA_Rapport_Executif_Global.json", mime="application/json",
+                use_container_width=True,
+            )
+            x3.download_button(
+                "Télécharger la synthèse CSV", export_csv_data,
+                file_name="SOWIA_Synthese_Executive.csv", mime="text/csv",
+                use_container_width=True,
+            )
+            with st.expander("Méthodologie et limites du rapport"):
+                for note in report["methodology"]:
+                    st.write("• " + note)
+            with st.expander("Aperçu des données incluses"):
+                for section, records in report["sections"].items():
+                    st.write(f"**{section.replace('_', ' ').capitalize()} :** {len(records)} enregistrement(s)")
+        except Exception as report_error:
+            st.error("Le rapport exécutif n'a pas pu être généré.")
+            st.caption(
+                "Vérifiez que les migrations Supabase des modules concernés ont été appliquées. "
+                "Diagnostic : " + type(report_error).__name__
+            )
 
 
 elif page == "SOWIA GLOBAL AUTONOMOUS STRATEGY":
