@@ -2023,6 +2023,23 @@ elif page == "SOW IA Business Club":
                                 st.caption("Fichier agenda indisponible : informations de rendez-vous invalides.")
                             if meeting.get("meeting_url"):
                                 st.link_button("Rejoindre la visioconférence", meeting["meeting_url"])
+                            from business_club import build_meeting_invitation
+                            invite_language = st.selectbox(
+                                "Langue de l'invitation",
+                                ["Français", "English", "Español", "中文", "Deutsch", "العربية"],
+                                key=f"club_invite_lang_{meeting['id']}",
+                            )
+                            try:
+                                invitation = build_meeting_invitation(meeting, invite_language)
+                                st.download_button(
+                                    "✉️ Télécharger l'invitation",
+                                    f"{invitation['subject']}\\n\\n{invitation['body']}",
+                                    file_name=f"sowia-invitation-{meeting['id']}.txt",
+                                    mime="text/plain",
+                                    key=f"club_invite_download_{meeting['id']}",
+                                )
+                            except ValueError as exc:
+                                st.caption(str(exc))
                             if meeting["status"] == "Proposée":
                                 if meeting["invitee_user_id"] == cloud_storage._user_id(current_user):
                                     yes, no = st.columns(2)
