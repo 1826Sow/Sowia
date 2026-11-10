@@ -1,5 +1,8 @@
 """Validation and safe presentation helpers for SOWIA GLOBAL TRUST."""
 
+MIN_PUBLIC_REVIEWS = 3
+
+
 def validate_rating(value):
     try:
         rating = int(value)
@@ -18,10 +21,24 @@ def validate_report_reason(value):
 
 
 def safe_trust_aggregate(record):
+    """Expose only validated aggregate fields; hide averages below the minimum sample."""
     if not isinstance(record, dict):
         return {}
-    return {
-        key: record[key]
-        for key in ("public_id", "average_rating", "review_count")
-        if key in record
-    }
+    public_id = record.get("public_id")
+    try:
+        review_count = int(record.get("review_count", 0))
+    except (TypeError, ValueError):
+        review_count = 0
+    if review_count < 0:
+        review_count = 0
+    result = {"review_count": review_count}
+    if isinstance(public_id, str) and public_id.strip():
+        result["public_id"] = public_id.strip()
+    if review_count >= MIN_PUBLIC_REVIEWS:
+        try:
+            average = float(record.get("average_rating"))
+        except (TypeError, ValueError):
+            average = None
+        if average is not None and 1 <= average <= 5:
+            result["average_rating"] = round(average, 2)
+    return result
