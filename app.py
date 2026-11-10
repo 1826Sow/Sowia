@@ -38,6 +38,7 @@ import financial_ledger
 import decision_benchmark_ui
 import sowia_prioritization
 import sowia_night_exchange
+import sowia_global_id
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -563,7 +564,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -2539,6 +2540,92 @@ elif page == "Abonnement":
 # Impossible de vérifier votre abonnement auprès de Supabase.
 # Impossible de préparer le paiement PayPal.
 
+
+elif page == "SOWIA GLOBAL ID":
+    st.subheader("🪪 SOWIA GLOBAL ID")
+    st.caption("Votre identité professionnelle internationale, sous votre contrôle.")
+    if not cloud_mode or current_user is None:
+        st.warning("Connectez-vous à votre compte sécurisé pour créer et conserver votre carte SOWIA.")
+    else:
+        st.markdown(
+            '<div class="partner-intro"><h3>Une carte professionnelle, un identifiant mondial</h3>'
+            '<p>Votre profil reste privé par défaut. Vous choisissez les informations publiques et décidez explicitement de sa publication.</p></div>',
+            unsafe_allow_html=True,
+        )
+        try:
+            profile = cloud_storage.get_my_global_profile(supabase_client, current_user) or {}
+            with st.form("sowia_global_id_profile_form", clear_on_submit=False):
+                display_name = st.text_input("Nom public / nom professionnel", value=profile.get("display_name") or "", max_chars=120)
+                app_name = st.text_input("Nom de votre application (facultatif)", value=profile.get("app_name") or "", max_chars=160)
+                organization = st.text_input("Entreprise / organisation (facultatif)", value=profile.get("organization") or "", max_chars=160)
+                country = st.text_input("Pays", value=profile.get("country") or "", max_chars=100)
+                languages = st.text_input("Langues (séparées par des virgules)", value=", ".join(profile.get("languages") or []), max_chars=300)
+                website = st.text_input("Site web public (facultatif)", value=profile.get("website") or "", max_chars=500)
+                short_description = st.text_area("Présentation publique", value=profile.get("short_description") or "", max_chars=600)
+                published = st.checkbox("Je souhaite publier ma carte dans l’annuaire SOWIA", value=bool(profile.get("is_published", False)))
+                saved = st.form_submit_button("Enregistrer ma carte", type="primary", use_container_width=True)
+            if saved:
+                try:
+                    cloud_storage.save_global_profile(
+                        supabase_client, current_user,
+                        display_name=display_name, app_name=app_name,
+                        organization=organization, country=country,
+                        languages=languages, website=website,
+                        short_description=short_description, is_published=published,
+                    )
+                    st.success("Votre carte SOWIA a été enregistrée.")
+                    st.rerun()
+                except ValueError as exc:
+                    st.error(str(exc))
+                except Exception as exc:
+                    st.error("Enregistrement indisponible. Vérifiez que la migration supabase_global_id.sql a été exécutée.")
+                    st.caption("Diagnostic : " + type(exc).__name__)
+            profile = cloud_storage.get_my_global_profile(supabase_client, current_user) or {}
+            if profile:
+                completeness = sowia_global_id.profile_completeness(profile)
+                left, middle, right = st.columns(3)
+                left.metric("Complétude", f"{completeness['percent']} %")
+                middle.metric("Identifiant public", profile.get("public_id", "En attente"))
+                verification_labels = {
+                    "unverified": "Non vérifié", "pending": "En attente",
+                    "verified": "Vérifié par SOWIA", "suspended": "Suspendu",
+                }
+                right.metric("Vérification", verification_labels.get(profile.get("verification_status"), "Non vérifié"))
+                with st.expander("Détail de la complétude du profil"):
+                    for criterion, passed in completeness["checks"].items():
+                        st.write(("✓ " if passed else "À compléter · ") + criterion.replace("_", " ").capitalize())
+                st.markdown("#### Aperçu de votre carte")
+                with st.container(border=True):
+                    st.markdown(f"### {profile.get('display_name') or 'Votre nom professionnel'}")
+                    if profile.get("app_name") or profile.get("organization"):
+                        st.write(" · ".join(x for x in [profile.get("app_name"), profile.get("organization")] if x))
+                    st.caption(" · ".join(x for x in [profile.get("country"), ", ".join(profile.get("languages") or [])] if x))
+                    if profile.get("short_description"):
+                        st.write(profile["short_description"])
+                    if profile.get("website"):
+                        st.write(profile["website"])
+                    st.caption(f"{profile.get('public_id')} · {verification_labels.get(profile.get('verification_status'), 'Non vérifié')}")
+                if profile.get("is_published"):
+                    st.success("Votre fiche est publiée dans l’annuaire des cartes SOWIA.")
+                else:
+                    st.info("Votre fiche est privée. Elle n’apparaîtra pas dans l’annuaire avant votre autorisation.")
+                st.caption("Le QR code et le lien public individuel seront activés après le déploiement de la page publique HTTPS. Aucun lien non fonctionnel n’est affiché.")
+            st.divider()
+            st.markdown("#### Annuaire public des cartes SOWIA")
+            public_profiles = cloud_storage.list_public_global_profiles(supabase_client, current_user, limit=100)
+            if not public_profiles:
+                st.info("Aucune carte publiée pour le moment.")
+            else:
+                for public_card in public_profiles:
+                    with st.container(border=True):
+                        st.markdown(f"**{public_card.get('display_name') or public_card.get('app_name') or 'Partenaire SOWIA'}**")
+                        st.caption(" · ".join(x for x in [public_card.get("organization"), public_card.get("country")] if x))
+                        if public_card.get("short_description"):
+                            st.write(public_card["short_description"])
+                        st.caption(f"{public_card.get('public_id')} · {verification_labels.get(public_card.get('verification_status'), 'Non vérifié')}")
+        except Exception as exc:
+            st.error("Le registre GLOBAL ID n’est pas encore disponible. Appliquez la migration Supabase dédiée.")
+            st.caption("Diagnostic : " + type(exc).__name__)
 
 elif page == "SOWIA NIGHT EXCHANGE":
     st.subheader("🌙 SOWIA NIGHT EXCHANGE")
