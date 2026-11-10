@@ -67,3 +67,6 @@ Apply `supabase_night_exchange_events.sql` after the app registry migration in t
 
 ## Activity journal — explicit matching analysis
 The Smart Opportunities view now offers a deliberate “Enregistrer cette analyse dans mon journal” action. It appends a `match_viewed` event scoped to the signed-in member and active workspace, with the source app and result count. Merely opening or refreshing the page does not create repeated events. The event is visible in the seven-day Morning Report. The separate meeting button remains a member declaration, not independent verification.
+
+## SOWIA TRUST & PARTNER SCORE — evidence-based first version
+The Smart Opportunities view now displays an explainable documentary-evidence index. It scores only facts present in the listing: SOWIA approval (30), dated verification (30), name (5), country (5), timezone (5), categories (5), services offered (10) and services wanted (10). The UI exposes passed and missing checks. This is a profile-completeness and verification index, not a commercial trust rating. It does not infer solvency, delivery quality, contract compliance, complaints or partner satisfaction. Those dimensions require separately designed, privacy-safe, auditable bilateral feedback and dispute workflows before they can be scored.
