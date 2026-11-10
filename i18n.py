@@ -73,7 +73,7 @@ _TRANSLATIONS = {
         "Retrouvez votre espace documentaire": "افتح مكتبة المستندات", "Consultez vos conversations": "راجع محادثاتك",
         "Découvrez l’espace Premium": "اكتشف Premium", "Trouvez des partenaires et préparez vos campagnes": "اعثر على شركاء وجهّز حملاتك",
         "Vérifiez votre configuration": "تحقق من الإعدادات", "Consultez les indications d’utilisation": "راجع دليل الاستخدام",
-    },,
+    },
     "English": {
         "💬 Mon Assistant IA": "💬 My AI assistant",
         "🧠 Ma mémoire — espace {workspace_label}": "🧠 My memory — {workspace_label} space",
