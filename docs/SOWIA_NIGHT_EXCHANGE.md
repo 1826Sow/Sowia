@@ -196,3 +196,11 @@ This is an on-demand research tool, not continuous background monitoring: it doe
 GLOBAL ALERTS converts a user-selected GLOBAL PULSE result into a private alert. The first classifier is deterministic and keyword-based: it suggests critical, high, medium or low priority and records the exact matched terms as its explanation. The user can review the original source, acknowledge the alert, close it or delete it. The classifier is a triage aid only; it does not establish the truth, severity or business impact of an event and must not trigger automatic decisions.
 
 Apply `supabase_global_alerts.sql` after `supabase_global_pulse.sql`. Both migrations are committed but have not been applied to the live Supabase project. Background monitoring, push/email delivery, automatic escalation and independent fact verification are not implemented in this version.
+
+
+## SOWIA GLOBAL STRATEGIC FORECAST — scenario planning
+The forecast workspace combines one saved GLOBAL INTELLIGENCE assessment with the user's open/acknowledged GLOBAL ALERTS for the same country. It produces five conditional scenarios: favorable, central, unfavorable, exceptional opportunity and strategic risk. The output includes the reference score, an alert-pressure indicator, a heuristic data-confidence indicator, scenario conditions, possible impacts and monitoring indicators. Users can review and save a private snapshot.
+
+The engine is deterministic and explainable. It does not estimate real-world probabilities, predict market prices, establish causality, verify source truth or provide investment/legal advice. The confidence indicator is a completeness heuristic based on the assessment evidence label and presence of matching alerts; it is not a probability of success. All scenarios require human review and independent source checks.
+
+Apply `supabase_global_forecast.sql` after `supabase_global_intelligence.sql` and `supabase_global_alerts.sql`. The migration is committed but has not been applied to the live Supabase project. RLS and production behavior remain unverified.
