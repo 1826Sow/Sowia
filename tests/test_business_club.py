@@ -39,3 +39,31 @@ def test_request_message_is_bounded_and_required():
 def test_unpublished_flag_must_be_boolean():
     with pytest.raises(ValueError, match="publication"):
         validate_profile(profile("A", offers=["x"], is_published="yes"))
+
+
+def test_meeting_schedule_normalizes_to_utc():
+    from datetime import datetime, timedelta, timezone
+    from business_club import validate_meeting_schedule
+    future = datetime.now(timezone.utc) + timedelta(days=3)
+    result = validate_meeting_schedule(future, "Europe/Paris", 30, "https://meet.example.com/room")
+    assert result["timezone"] == "Europe/Paris"
+    assert result["duration_minutes"] == 30
+    assert result["starts_at"].endswith("+00:00")
+
+
+def test_meeting_rejects_past_or_invalid_timezone_or_http_url():
+    from datetime import datetime, timedelta, timezone
+    from business_club import validate_meeting_schedule
+    with pytest.raises(ValueError, match="futur"):
+        validate_meeting_schedule(datetime.now(timezone.utc) - timedelta(days=1), "UTC", 30)
+    with pytest.raises(ValueError, match="Fuseau"):
+        validate_meeting_schedule(datetime.now(timezone.utc) + timedelta(days=1), "Mars/Atlantis", 30)
+    with pytest.raises(ValueError, match="https"):
+        validate_meeting_schedule(datetime.now(timezone.utc) + timedelta(days=1), "UTC", 30, "http://example.com")
+
+
+def test_meeting_rejects_unsupported_duration():
+    from datetime import datetime, timedelta, timezone
+    from business_club import validate_meeting_schedule
+    with pytest.raises(ValueError, match="durée"):
+        validate_meeting_schedule(datetime.now(timezone.utc) + timedelta(days=1), "UTC", 20)
