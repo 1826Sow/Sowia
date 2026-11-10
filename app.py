@@ -43,9 +43,17 @@ st.markdown(
     [data-testid="stAppViewContainer"], [data-testid="stMain"] { background: transparent !important; color: #172033 !important; }
     section[data-testid="stSidebar"] { background: #e8eff8 !important; border-right: 1px solid #d5dfed !important; }
     section[data-testid="stSidebar"] * { color: #24344d !important; }
-    .hero { padding: 1.5rem 1.8rem; border: 1px solid #d6e3f3; border-radius: 18px; background: linear-gradient(120deg, #ffffff, #e8f2ff); box-shadow: 0 8px 24px rgba(37,75,125,.08); }
-    .hero h1 { font-size: 2.5rem; margin: 0; color: #17365d !important; }
-    .hero p { color: #526782 !important; margin: .4rem 0 0; }
+    .hero { padding: 1.6rem 1.8rem; border: 1px solid #d6e3f3; border-radius: 22px; background: radial-gradient(circle at 90% 10%, #dcecff 0, transparent 34%), linear-gradient(120deg, #ffffff, #edf4fc); box-shadow: 0 12px 30px rgba(37,75,125,.09); margin: .4rem 0 1.2rem; }
+    .hero-kicker { color: #5278a5; font-size: .72rem; letter-spacing: .16em; font-weight: 800; margin-bottom: .35rem; }
+    .hero h1 { font-size: clamp(2rem, 5vw, 2.8rem); margin: 0; color: #17365d !important; letter-spacing: -.04em; }
+    .hero p { color: #526782 !important; margin: .45rem 0 0; font-size: 1.02rem; }
+    div[role="radiogroup"] { gap: .35rem .5rem; }
+    div[role="radiogroup"] label { border: 1px solid #d6e3f3; border-radius: 999px; background: #fff; padding: .42rem .8rem; margin: 0 !important; box-shadow: 0 2px 7px rgba(37,75,125,.04); }
+    div[role="radiogroup"] label:has(input:checked) { background: #173f6d; border-color: #173f6d; }
+    div[role="radiogroup"] label:has(input:checked) p { color: #fff !important; }
+    [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] { gap: 1rem; }
+    [data-testid="stButton"] button, [data-testid="stLinkButton"] a { border-radius: 12px !important; min-height: 2.8rem; font-weight: 650 !important; }
+    [data-testid="stMetric"] { background: #fff; border: 1px solid #dce6f2; border-radius: 15px; padding: .85rem 1rem; box-shadow: 0 3px 12px rgba(32,64,105,.04); }
     [data-testid="stChatMessage"] { background: #ffffff !important; border: 1px solid #dce6f2 !important; border-radius: 16px !important; padding: 1rem !important; box-shadow: 0 3px 12px rgba(32,64,105,.05); color: #172033 !important; }
     [data-testid="stChatMessage"] [data-testid="stMarkdownContainer"], [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] li { color: #172033 !important; }
     div[data-testid="stChatInput"] { background: #ffffff !important; border: 1px solid #b9cbe0 !important; border-radius: 14px !important; box-shadow: 0 4px 14px rgba(32,64,105,.07) !important; }
@@ -361,20 +369,21 @@ with st.sidebar:
             st.rerun()
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
-    page = st.radio(
-        "Navigation",
-        [
-            "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
-            "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-            "Abonnement", "Paramètres", "Aide",
-        ],
-        key="page_nav",
-    )
     st.divider()
-    st.caption("Version en développement — fonctions activées selon configuration.")
+    st.caption("Votre compte et vos espaces de travail")
 
+page = st.radio(
+    "Navigation rapide — retrouvez vos outils ici",
+    [
+        "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
+        "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
+        "Abonnement", "Paramètres", "Aide",
+    ],
+    key="page_nav",
+    horizontal=True,
+)
 st.markdown(
-    '<div class="hero"><h1>SOW IA</h1><p>Votre plateforme d’intelligence artificielle — explorez, apprenez, créez et transformez vos idées.</p></div>',
+    '<div class="hero"><div class="hero-kicker">VOTRE ASSISTANT INTELLIGENT</div><h1>🧠 SOW IA</h1><p>Un espace clair pour réfléchir, rechercher, analyser et créer.</p></div>',
     unsafe_allow_html=True,
 )
 st.write("")
@@ -988,12 +997,8 @@ elif page == "Historique":
             st.write(item["content"])
 
 elif page == "Abonnement":
-    st.subheader("👑 Version Premium")
-    st.write("L’espace Personnel reste gratuit. L’espace Professionnel sera accessible avec une offre Premium.")
-    st.info(
-        "L’abonnement mensuel récurrent est en préparation. "
-        "Aucun prélèvement automatique n’est actuellement proposé par SOW IA."
-    )
+    st.subheader("👑 Abonnement Premium")
+    st.write("Consultez ici l’état de votre accès Premium et les informations de votre abonnement.")
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre espace personnel pour consulter vos droits Premium.")
     else:
