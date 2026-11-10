@@ -376,16 +376,21 @@ NAV_GROUPS = {
         "SOW IA Business Club", "Opportunités et revenus", "Technologies & fournisseurs",
         "SOWIA GLOBAL COLLABORATION HUB",
     ],
-    "🧠 Intelligence & stratégie": [
+    "🧠 Intelligence & décisions": [
         "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE",
         "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE",
-        "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY",
-        "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT",
-        "SOWIA GLOBAL PORTFOLIO CONTROL", "SOWIA GLOBAL EXECUTIVE REPORTS",
-        "Stratégie & scénarios",
+        "SOWIA GLOBAL LEARNING ENGINE", "Stratégie & scénarios",
     ],
-    "💳 Finances & investissements": [
-        "Finance & investissements", "Revenus & paiements", "Abonnement",
+    "🏛️ Gouvernance & performance": [
+        "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL ACTION GOVERNANCE",
+        "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL",
+        "SOWIA GLOBAL EXECUTIVE REPORTS",
+    ],
+    "💶 Pilotage financier": [
+        "Finance & investissements", "Revenus & paiements",
+    ],
+    "💳 Abonnements & compte": [
+        "Abonnement",
     ],
     "🛡️ Administration & assistance": [
         "Centre de notifications", "SOWIA CONTROL CENTER", "Paramètres", "Aide",
