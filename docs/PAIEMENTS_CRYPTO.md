@@ -184,6 +184,8 @@ Le module `paypal_subscriptions.py` expose désormais `sync_completed_subscripti
 
 Les tests `tests/test_paypal_recurring_sync.py` et `tests/test_paypal_recurring_ledger.py` couvrent l'identification du propriétaire, les statuts non terminés, la pagination et l'idempotence.
 
-**Périmètre non couvert :** les transactions `PARTIALLY_REFUNDED` et `REFUNDED` ne sont pas encore enregistrées comme écritures de remboursement. Cette synchronisation est limitée à Sandbox tant que le parcours d'abonnement n'a pas été validé en environnement de test. Les événements webhook et le rapprochement des remboursements constituent la prochaine étape.
+Les statuts `PARTIALLY_REFUNDED` et `REFUNDED` sont désormais détectés pendant la synchronisation. Comme la liste des transactions d'abonnement expose le statut et l'identifiant de la capture, mais pas l'identifiant ni le montant de chaque remboursement individuel, SOW IA place la capture en `manual_review` au lieu d'inventer un montant de remboursement. Une capture ainsi signalée est exclue des totaux de revenus reconnus jusqu'au rapprochement exact. Le nombre de captures à contrôler est retourné par la synchronisation.
+
+**Limite restante :** les remboursements ne sont pas encore inscrits comme écritures `refund` individuelles. Il faudra récupérer les ressources de remboursement PayPal avec leurs identifiants et montants propres (ou traiter les événements webhook signés) avant de les comptabiliser. Cette synchronisation est limitée à Sandbox tant que le parcours d'abonnement n'a pas été validé en environnement de test.
 
 Référence technique officielle : [PayPal Subscriptions API — liste des transactions](https://developer.paypal.com/docs/api/subscriptions/v1/#subscriptions_transactions).
