@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL ACTION GOVERNANCE", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -3199,6 +3199,157 @@ elif page == "SOWIA GLOBAL ACTION GOVERNANCE":
         except Exception as ag_load_error:
             st.error("Le module de gouvernance n'est pas disponible.")
             st.caption("Appliquez supabase_global_action_governance.sql après les migrations précédentes. Diagnostic : "+type(ag_load_error).__name__)
+
+
+elif page == "SOWIA GLOBAL PERFORMANCE & IMPACT":
+    st.subheader("📈 SOWIA GLOBAL PERFORMANCE & IMPACT")
+    st.caption("Mesurez l'avancement, les dépenses cumulées et les résultats opérationnels, sociaux et environnementaux de vos plans approuvés.")
+    st.warning("Les mesures sont saisies par les utilisateurs. Les dépenses ne sont pas des écritures comptables rapprochées ; les justificatifs ne sont pas vérifiés automatiquement. Aucun score global d'impact n'est fabriqué.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous pour accéder à votre registre privé de performance.")
+    else:
+        import sowia_global_performance as performance_engine
+        performance_tabs = st.tabs(["＋ Nouvelle mesure", "📊 Tableau de bord", "📚 Historique"])
+        try:
+            performance_plans = cloud_storage.list_global_action_plans(
+                supabase_client, current_user, limit=200
+            )
+            measurable_plans = [
+                row for row in performance_plans
+                if row.get("status") in {"approved", "completed"}
+                and row.get("creator_id") == str(current_user.id)
+            ]
+            performance_rows = cloud_storage.list_global_performance_observations(
+                supabase_client, current_user, limit=500
+            )
+            with performance_tabs[0]:
+                if not measurable_plans:
+                    st.info("Aucun plan approuvé ou terminé n'est disponible. Créez un plan dans GLOBAL ACTION GOVERNANCE, faites-le approuver par le compte désigné, puis revenez ici.")
+                else:
+                    plan_map = {row["id"]: row for row in measurable_plans}
+                    with st.form("sowia_global_performance_form"):
+                        selected_plan_id = st.selectbox(
+                            "Plan d'action à mesurer",
+                            options=list(plan_map),
+                            format_func=lambda value: (
+                                f"{plan_map[value]['title']} · {plan_map[value]['country']} · "
+                                f"Budget : {plan_map[value]['budget_cap']} {plan_map[value]['currency']}"
+                            ),
+                        )
+                        selected_plan = plan_map[selected_plan_id]
+                        st.caption("Budget autorisé de référence : " + str(selected_plan["budget_cap"]) + " " + str(selected_plan["currency"]))
+                        actual_spend = st.number_input(
+                            "Dépenses cumulées à ce jour (" + str(selected_plan["currency"]) + ")",
+                            min_value=0.0, value=0.0, step=10.0,
+                        )
+                        progress = st.slider("Avancement réel du plan (%)", 0, 100, 0)
+                        st.markdown("**Indicateur de résultat (facultatif)**")
+                        metric_name = st.text_input("Nom de l'indicateur", max_chars=120, placeholder="Ex. emplois créés, utilisateurs actifs, délai moyen")
+                        metric_value_input = st.number_input("Valeur mesurée", value=0.0, step=1.0)
+                        metric_unit = st.text_input("Unité", max_chars=40, placeholder="Ex. emplois, utilisateurs, jours, tonnes CO₂")
+                        st.markdown("**Impacts documentés séparément**")
+                        social_note = st.text_area("Impact social observé", max_chars=1500, placeholder="Ex. emplois locaux, accès à un service, formation…")
+                        environmental_note = st.text_area("Impact environnemental observé", max_chars=1500, placeholder="Ex. énergie consommée, déchets évités, émissions mesurées…")
+                        evidence_level = st.selectbox(
+                            "Niveau de preuve déclaré",
+                            options=list(performance_engine.EVIDENCE_LEVELS),
+                            format_func=lambda value: {
+                                "self_reported": "Déclaratif",
+                                "documented": "Documenté — référence disponible",
+                                "independently_verified": "Déclaré comme vérifié indépendamment",
+                            }[value],
+                        )
+                        evidence_reference = st.text_input("Référence du justificatif (facultatif)", max_chars=500)
+                        observation_note = st.text_area("Commentaire de suivi", max_chars=2000)
+                        performance_submit = st.form_submit_button("Enregistrer cette mesure")
+                    if performance_submit:
+                        try:
+                            observation = performance_engine.build_performance_observation(
+                                selected_plan, actual_spend, progress,
+                                metric_name=metric_name,
+                                metric_value=(metric_value_input if metric_name.strip() else None),
+                                metric_unit=metric_unit,
+                                social_impact_note=social_note,
+                                environmental_impact_note=environmental_note,
+                                evidence_level=evidence_level,
+                                evidence_reference=evidence_reference,
+                                observation_note=observation_note,
+                            )
+                            cloud_storage.save_global_performance_observation(
+                                supabase_client, current_user, observation
+                            )
+                            st.success("Mesure ajoutée au journal. Les observations précédentes sont conservées.")
+                            st.rerun()
+                        except Exception as performance_save_error:
+                            st.error("Mesure non enregistrée : " + type(performance_save_error).__name__)
+            with performance_tabs[1]:
+                summary = performance_engine.summarize_performance(performance_rows)
+                p1, p2, p3 = st.columns(3)
+                p1.metric("Plans mesurés", summary["measured_plans"])
+                p2.metric("Avancement moyen", (
+                    f"{summary['average_progress_percent']} %"
+                    if summary["average_progress_percent"] is not None else "—"
+                ))
+                p3.metric("Plans au-dessus du budget", summary["over_budget_plans"])
+                p4, p5, p6 = st.columns(3)
+                p4.metric("Budget autorisé suivi", f'{summary["total_authorized_budget"]:,.2f}')
+                p5.metric("Dépenses cumulées", f'{summary["latest_cumulative_spend"]:,.2f}')
+                p6.metric("Écart budgétaire", f'{summary["budget_remaining"]:,.2f}')
+                st.caption("Les montants agrègent les budgets des plans mesurés. Les devises peuvent être différentes : ne pas interpréter le total comme une somme monétaire consolidée.")
+                st.markdown("#### Impacts enregistrés")
+                i1, i2 = st.columns(2)
+                i1.metric("Mesures avec impact social", summary["social_impact_records"])
+                i2.metric("Mesures avec impact environnemental", summary["environmental_impact_records"])
+                if performance_rows:
+                    latest_by_plan = {}
+                    for row in performance_rows:
+                        latest_by_plan.setdefault(row["action_plan_id"], row)
+                    st.dataframe([{
+                        "Plan": row["plan_title_snapshot"],
+                        "Pays": row["country_snapshot"],
+                        "Budget": f'{row["budget_cap_snapshot"]} {row["currency_snapshot"]}',
+                        "Dépenses cumulées": f'{row["actual_spend_cumulative"]} {row["currency_snapshot"]}',
+                        "Avancement": f'{row["progress_percent"]} %',
+                        "Indicateur": row["metric_name"] or "—",
+                        "Valeur": (
+                            f'{row["metric_value"]} {row["metric_unit"]}'.strip()
+                            if row["metric_value"] is not None else "—"
+                        ),
+                        "Mesure": row["observed_at"][:10],
+                    } for row in latest_by_plan.values()], use_container_width=True, hide_index=True)
+                else:
+                    st.info("Aucune mesure enregistrée pour le moment.")
+                with st.expander("Méthode, preuves et limites"):
+                    for limitation in summary["limitations"]:
+                        st.write("• " + limitation)
+                    st.write("Les dimensions financières, opérationnelles, sociales et environnementales restent distinctes.")
+            with performance_tabs[2]:
+                if not performance_rows:
+                    st.info("L'historique apparaîtra après la première mesure.")
+                for row in performance_rows:
+                    with st.container(border=True):
+                        st.markdown(f"**{row['plan_title_snapshot']} — {row['country_snapshot']}**")
+                        st.write(
+                            f"Dépenses cumulées : {row['actual_spend_cumulative']} {row['currency_snapshot']} · "
+                            f"Avancement : {row['progress_percent']} % · "
+                            f"Mesure : {row['observed_at'][:10]}"
+                        )
+                        if row.get("metric_name"):
+                            st.write(f"Indicateur : {row['metric_name']} — {row.get('metric_value')} {row.get('metric_unit')}")
+                        if row.get("social_impact_note"):
+                            st.write("Impact social : " + row["social_impact_note"])
+                        if row.get("environmental_impact_note"):
+                            st.write("Impact environnemental : " + row["environmental_impact_note"])
+                        st.caption(
+                            "Preuve déclarée : " + row["evidence_level"] +
+                            (" · Référence : " + row["evidence_reference"] if row.get("evidence_reference") else "")
+                        )
+                        if row.get("observation_note"):
+                            st.caption(row["observation_note"])
+            st.caption("Les mesures sont ajoutées sans écraser l'historique. Une correction doit être enregistrée comme nouvelle observation.")
+        except Exception as performance_load_error:
+            st.error("Le registre de performance n'est pas encore accessible.")
+            st.caption("Appliquez supabase_global_performance.sql après supabase_global_action_governance.sql. Diagnostic : " + type(performance_load_error).__name__)
 
 
 elif page == "SOWIA GLOBAL AUTONOMOUS STRATEGY":
