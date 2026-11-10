@@ -160,3 +160,11 @@ The notification inbox is private to its owner under RLS. Clients cannot insert 
 
 Apply `supabase_global_notifications.sql` AFTER `supabase_global_messenger.sql`. The full database migration order is GLOBAL ID, GLOBAL DIRECTORY, GLOBAL CONNECT, GLOBAL MESSENGER, then GLOBAL NOTIFICATIONS. The migration and application code are committed to GitHub; the migration is not confirmed applied to the live Supabase project. Automated checks and live two-account authorization tests remain to be verified before production use.
 
+## SOWIA GLOBAL TRUST — collaboration feedback and confidential safety reports
+
+GLOBAL TRUST adds a separate reputation and safety layer for members who have an accepted GLOBAL CONNECT relationship. Each participant may submit one 1–5 rating per accepted connection. Public profiles expose only the aggregate average and review count; individual reviewer identities and comments are not public. This first release intentionally has no public free-text reviews, reducing the risk of defamatory or personally identifying content.
+
+Participants can also submit a confidential 10–2,000 character report about the other party in an accepted connection. Reports are visible only to SOWIA administrators through the database policy; a dedicated moderation dashboard and response workflow still need to be built. A rating is a subjective account of one collaboration and must not be presented as proof of identity, solvency, legality or overall business reliability. GLOBAL ID verification remains a separate evidence-based process.
+
+Apply `supabase_global_trust.sql` AFTER `supabase_global_notifications.sql`. The full sequence is GLOBAL ID, GLOBAL DIRECTORY, GLOBAL CONNECT, GLOBAL MESSENGER, GLOBAL NOTIFICATIONS, then GLOBAL TRUST. Code and migration are committed to GitHub; the migration is not confirmed applied to the live Supabase project. The new page and database permissions have not yet been verified in the deployed app or with two real accounts.
+
