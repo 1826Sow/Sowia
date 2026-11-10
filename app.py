@@ -477,7 +477,7 @@ if privacy_screen:
             pointer-events: none !important;
             user-select: none !important;
         }
-        section[data-testid="stMain"]::before {
+        body::after {
             content: "🔒 Protection d'écran activée — désactivez l'option dans le menu latéral pour afficher le contenu";
             position: fixed;
             z-index: 999999;
