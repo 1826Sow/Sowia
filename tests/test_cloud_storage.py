@@ -255,3 +255,72 @@ def test_delete_growth_lead_is_scoped_to_owner_and_workspace():
     assert ("id", 9) in filters
     assert ("user_id", "user-123") in filters
     assert ("workspace_id", "professional") in filters
+
+
+
+def test_accessibility_preferences_default_to_safe_values():
+    class EmptyPreferenceQuery(FakeQuery):
+        def execute(self):
+            return SimpleNamespace(data=[])
+
+    class Client:
+        def table(self, name):
+            assert name == "sowia_user_preferences"
+            return EmptyPreferenceQuery()
+
+    assert cloud_storage.get_accessibility_preferences(Client(), User()) == {
+        "voice_readout": False,
+        "large_text": False,
+        "high_contrast": False,
+    }
+
+
+def test_accessibility_preferences_are_validated_and_saved_without_losing_language():
+    class PreferenceQuery(FakeQuery):
+        def execute(self):
+            if ("select", "language") in self.operations:
+                return SimpleNamespace(data=[{"language": "English"}])
+            return SimpleNamespace(data=[self.inserted])
+
+        def upsert(self, payload, on_conflict=None):
+            self.inserted = payload
+            self.operations.append(("upsert", on_conflict))
+            return self
+
+    class Client:
+        def __init__(self):
+            self.query = PreferenceQuery()
+
+        def table(self, name):
+            assert name == "sowia_user_preferences"
+            return self.query
+
+    client = Client()
+    saved = cloud_storage.set_accessibility_preferences(
+        client, User(),
+        {"voice_readout": True, "large_text": True, "high_contrast": False},
+    )
+    payload = saved[0]
+    assert payload["language"] == "English"
+    assert payload["user_id"] == "user-123"
+    assert payload["accessibility"] == {
+        "voice_readout": True, "large_text": True, "high_contrast": False
+    }
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        {"voice_readout": "yes"},
+        {"unknown_option": True},
+        ["voice_readout"],
+        None,
+    ],
+)
+def test_invalid_accessibility_preferences_are_rejected_before_database_write(invalid):
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid preferences")
+
+    with pytest.raises(ValueError):
+        cloud_storage.set_accessibility_preferences(Client(), User(), invalid)
