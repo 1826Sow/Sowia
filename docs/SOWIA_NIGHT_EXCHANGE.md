@@ -125,3 +125,10 @@ The Streamlit navigation now includes a GLOBAL ID page with a profile editor, pr
 The `sowia_business_card.py` module creates a landscape PNG card, a printable PDF and a vCard contact file. The QR code embeds the vCard data so a phone can offer to save the contact; it does not point to a nonexistent public profile route. The Streamlit GLOBAL ID page provides optional email/phone fields for the export only; those contact fields are not written to the profile database. The existing profile remains private by default, and the card export is a local download initiated by the signed-in user.
 
 **Limitations:** the QR encodes the contact details supplied at export time, not a live SOWIA profile URL. No public profile page, automatic sharing, or contact synchronization is implemented. Users should only include email/phone details they consent to share. Tests are added but not yet run in a confirmed CI result.
+
+
+## SOWIA GLOBAL DIRECTORY — international professional search
+
+The dedicated GLOBAL DIRECTORY page searches only the authenticated public view of GLOBAL ID profiles. Members can filter by country, language, professional sector, specialty and free text. Public profiles may optionally list up to 14 controlled sectors and 12 short specialties. The directory presents only profiles explicitly published by their owner and excludes suspended profiles. It does not expose account IDs, email addresses, phone numbers or verification evidence. A verified label means a documented SOWIA profile check, not a guarantee of business performance or financial reliability.
+
+The migration `supabase_global_directory.sql` adds the sector and specialty fields, database constraints, lookup indexes and the allowlisted public view fields. Apply it only AFTER `supabase_global_id.sql`. The migration is committed to GitHub but has not been applied to Supabase in this work session. The directory requires an authenticated session and the GLOBAL ID migrations; it has not yet been verified against the live database or Streamlit deployment.
