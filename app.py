@@ -2779,8 +2779,8 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 st.write("Intégrations approuvées : " + str(morning_report["counts"]["integration_approved"]))
                 if morning_report["spend_currencies"]:
                     st.write("Dépenses confirmées : " + " · ".join(
-                        f"{currency} {morning_report['confirmed_spend']:.2f}"
-                        for currency in morning_report["spend_currencies"]
+                        f"{currency} {amount:.2f}"
+                        for currency, amount in sorted(morning_report["confirmed_spend_by_currency"].items())
                     ))
                 else:
                     st.write("Dépenses confirmées : aucune enregistrée")
