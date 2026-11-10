@@ -19,7 +19,7 @@ def test_invalid_ratings(value):
 def test_report_reason_trimmed_and_bounded():
     assert validate_report_reason("  Incident signalé  ") == "Incident signalé"
     with pytest.raises(ValueError):
-        validate_report_reason("trop court")
+        validate_report_reason("court")
 
 
 def test_public_projection_only_contains_aggregate():
