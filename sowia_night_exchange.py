@@ -280,3 +280,41 @@ def build_morning_report(events: Iterable[dict]) -> dict:
         "has_recorded_activity": bool(sum(counts.values())),
         "scope": "Synthèse des événements fournis uniquement; aucun événement manquant n'est estimé.",
     }
+
+def assess_partner_evidence(record: dict) -> dict:
+    """Score only auditable listing evidence; never infer delivery reliability."""
+    if not isinstance(record, dict):
+        raise NightExchangeError("Fiche partenaire invalide.")
+    checks = {
+        "Fiche approuvée par SOWIA": record.get("status") == "approved",
+        "Vérification datée": bool(record.get("verified_at")),
+        "Nom renseigné": bool(str(record.get("app_name") or record.get("name") or "").strip()),
+        "Pays renseigné": bool(str(record.get("country") or "").strip()),
+        "Fuseau horaire renseigné": bool(str(record.get("timezone") or record.get("timezone_name") or "").strip()),
+        "Domaines renseignés": bool(_split_terms(record.get("categories"))),
+        "Services proposés renseignés": bool(_split_terms(record.get("services_offered"))),
+        "Besoins renseignés": bool(_split_terms(record.get("services_wanted"))),
+    }
+    weights = {
+        "Fiche approuvée par SOWIA": 30,
+        "Vérification datée": 30,
+        "Nom renseigné": 5,
+        "Pays renseigné": 5,
+        "Fuseau horaire renseigné": 5,
+        "Domaines renseignés": 5,
+        "Services proposés renseignés": 10,
+        "Besoins renseignés": 10,
+    }
+    score = sum(weights[label] for label, passed in checks.items() if passed)
+    return {
+        "score": score,
+        "checks": checks,
+        "positive_evidence": [label for label, passed in checks.items() if passed],
+        "missing_evidence": [label for label, passed in checks.items() if not passed],
+        "label": "Dossier documenté" if score >= 80 else "Dossier partiellement documenté" if score >= 50 else "Dossier à compléter",
+        "limitations": [
+            "Cet indice mesure uniquement les éléments présents dans la fiche.",
+            "Il ne prouve ni la solvabilité, ni la qualité des prestations, ni le respect des engagements.",
+            "Les avis, litiges et historiques de livraison ne sont pas encore collectés ni vérifiés.",
+        ],
+    }
