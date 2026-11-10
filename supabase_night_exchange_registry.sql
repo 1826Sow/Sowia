@@ -60,7 +60,7 @@ security invoker
 set search_path = ''
 as $$
 declare
-    is_admin boolean := coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin';
+    is_admin boolean := (coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin' or coalesce(auth.jwt() -> 'app_metadata' ->> 'sowia_admin', '') = 'true');
 begin
     if tg_op = 'INSERT' then
         new.status := 'pending';
@@ -127,3 +127,13 @@ $$;
 
 revoke all on function public.sowia_admin_review_nex_app(uuid, text, text) from public;
 grant execute on function public.sowia_admin_review_nex_app(uuid, text, text) to authenticated;
+
+-- Administrators can review the queue; regular users retain own/approved visibility.
+drop policy if exists "nex_admin_select_all" on public.sowia_night_exchange_apps;
+create policy "nex_admin_select_all"
+on public.sowia_night_exchange_apps for select to authenticated
+using (
+    coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin'
+    or coalesce(auth.jwt() -> 'app_metadata' ->> 'sowia_admin', '') = 'true'
+);
+
