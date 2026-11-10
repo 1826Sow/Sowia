@@ -68,9 +68,9 @@ def build_market_research_queries(country: str, offer: str) -> list[str]:
     name = profile["country"]
     return [
         f'"{name}" entreprises PME partenaires solutions IA {clean_offer}',
-        f'"{name}" réglementation données personnelles IA services numériques entreprises',
-        f'"{name}" moyens de paiement numériques fiscalité création entreprise partenaires',
-        f'"{name}" associations professionnelles incubateurs chambres de commerce technologies',
+        f'"{name}" réglementation données personnelles IA services numériques entreprises {clean_offer}',
+        f'"{name}" moyens de paiement numériques fiscalité création entreprise partenaires {clean_offer}',
+        f'"{name}" associations professionnelles incubateurs chambres de commerce technologies {clean_offer}',
     ]
 
 
