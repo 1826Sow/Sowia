@@ -90,6 +90,10 @@ if "session_id" not in st.session_state:
 if "pdf_text" not in st.session_state:
     st.session_state.pdf_text = ""
 
+# A safe default is needed by the unauthenticated GitHub login screen,
+# before the per-account language preference is loaded after sign-in.
+language = "Français"
+
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
 # Fail closed by default on hosted deployments; local development must opt out explicitly.
 auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "true")).strip().lower() in {"1", "true", "yes"}
