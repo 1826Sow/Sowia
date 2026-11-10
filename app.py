@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL", "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -3359,7 +3359,116 @@ elif page == "SOWIA GLOBAL PERFORMANCE & IMPACT":
 
 
 
-elif page == "SOWIA GLOBAL EXECUTIVE REPORTS":
+elif page == "SOWIA GLOBAL PORTFOLIO CONTROL":
+    st.subheader("🌐 SOWIA GLOBAL PORTFOLIO CONTROL")
+    st.caption("Centre de contrôle pour comparer les projets et marchés à partir des plans, échéances, mesures, budgets et alertes disponibles.")
+    st.warning("Outil d'aide à la revue uniquement : aucun budget n'est réaffecté, aucun paiement n'est déclenché et aucune décision n'est exécutée automatiquement.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous pour consulter votre portefeuille privé.")
+    else:
+        try:
+            import sowia_global_portfolio_control as portfolio_engine
+            with st.spinner("Consolidation des données privées du portefeuille…"):
+                portfolio_all_plans = cloud_storage.list_global_action_plans(
+                    supabase_client, current_user, limit=200
+                )
+                portfolio_plans = [
+                    row for row in portfolio_all_plans
+                    if str(row.get("creator_id")) == str(current_user.id)
+                ]
+                portfolio_performance = cloud_storage.list_global_performance_observations(
+                    supabase_client, current_user, limit=500
+                )
+                portfolio_alerts = cloud_storage.list_global_alerts(
+                    supabase_client, current_user, status="active", limit=200
+                )
+                portfolio_assessments = cloud_storage.list_global_intelligence_assessments(
+                    supabase_client, current_user, limit=200
+                )
+            portfolio = portfolio_engine.build_portfolio(
+                portfolio_plans, portfolio_performance, portfolio_alerts,
+                portfolio_assessments,
+            )
+            summary = portfolio["summary"]
+            k1, k2, k3 = st.columns(3)
+            k1.metric("Plans suivis", summary["plans"])
+            k2.metric("Plans avec mesure", summary["measured_plans"])
+            k3.metric("Pays / marchés", summary["countries"])
+            k4, k5, k6 = st.columns(3)
+            k4.metric("Échéances dépassées", summary["overdue_plans"])
+            k5.metric("Dépassements de plafond", summary["over_budget_plans"])
+            k6.metric("Alertes actives", summary["active_alerts"])
+
+            st.markdown("### Revue par pays")
+            st.caption("Les catégories signalent les points à examiner ; elles ne remplacent pas une analyse humaine.")
+            labels = {
+                "REVIEW_URGENTLY": "À examiner en priorité",
+                "INSUFFICIENT_DATA": "Données insuffisantes",
+                "MONITOR": "À surveiller",
+                "CONTINUE_TRACKING": "Suivi courant",
+            }
+            if not portfolio["countries"]:
+                st.info("Aucun plan d'action créé dans cet espace. Commencez par GLOBAL ACTION GOVERNANCE.")
+            for country_row in portfolio["countries"]:
+                with st.container(border=True):
+                    st.markdown(f"**{country_row['country']} — {labels[country_row['review_status']]}**")
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("Plans", country_row["plans"])
+                    c2.metric("En retard", country_row["overdue_plans"])
+                    c3.metric("Au-dessus du plafond", country_row["over_budget_plans"])
+                    c4.metric("Alertes critiques / élevées",
+                              country_row["active_alerts"]["critical"] + country_row["active_alerts"]["high"])
+                    st.write(" · ".join(country_row["review_reasons"]))
+                    st.caption(
+                        f"{country_row['measured_plans']} plan(s) mesuré(s) · "
+                        f"{country_row['market_assessments']} évaluation(s) de marché"
+                        + (f" · score indicatif moyen : {country_row['average_market_assessment']}/100"
+                           if country_row["average_market_assessment"] is not None else "")
+                    )
+
+            st.markdown("### Budgets et dépenses par devise")
+            if portfolio["currency_breakdown"]:
+                st.dataframe([{
+                    "Devise": currency,
+                    "Plafonds autorisés": values["authorized_budget"],
+                    "Dernières dépenses cumulées": values["latest_cumulative_spend"],
+                    "Écart indicatif": values["remaining_vs_cap"],
+                } for currency, values in portfolio["currency_breakdown"].items()],
+                    use_container_width=True, hide_index=True)
+            else:
+                st.info("Aucune mesure budgétaire disponible. Les devises ne sont jamais additionnées entre elles.")
+
+            st.markdown("### Détail des plans")
+            if portfolio["plans"]:
+                st.dataframe([{
+                    "Projet": row["title"], "Pays": row["country"], "Statut": row["status"],
+                    "Échéance": row["due_date"], "Plafond": (
+                        f"{row['budget_cap']} {row['currency']}" if row["budget_cap"] is not None else "—"
+                    ),
+                    "Dépenses cumulées": (
+                        f"{row['latest_spend']} {row['currency']}" if row["latest_spend"] is not None else "Non mesurées"
+                    ),
+                    "Avancement": (
+                        f"{row['progress_percent']} %" if row["progress_percent"] is not None else "—"
+                    ),
+                    "Revue": labels[next(
+                        item["review_status"] for item in portfolio["countries"]
+                        if item["country"].casefold() == row["country"].casefold()
+                    )],
+                } for row in portfolio["plans"]], use_container_width=True, hide_index=True)
+            with st.expander("Méthodologie, transparence et limites"):
+                for note in portfolio["methodology"]:
+                    st.write("• " + note)
+        except Exception as portfolio_error:
+            st.error("Le contrôle du portefeuille n'a pas pu être chargé.")
+            st.caption(
+                "Vérifiez que les migrations GLOBAL ACTION GOVERNANCE, GLOBAL PERFORMANCE & IMPACT, "
+                "GLOBAL ALERTS et GLOBAL INTELLIGENCE sont appliquées. Diagnostic : "
+                + type(portfolio_error).__name__
+            )
+
+
+if page == "SOWIA GLOBAL EXECUTIVE REPORTS":
     st.subheader("📑 SOWIA GLOBAL EXECUTIVE REPORTS")
     st.caption("Générez à la demande un rapport de direction réunissant vos marchés, alertes, scénarios, décisions, apprentissages et plans d'action.")
     st.warning("Le rapport reflète uniquement les données disponibles dans votre espace connecté. Il ne constitue ni un audit, ni une certification, ni une vérification indépendante. Les budgets restent séparés par devise.")
