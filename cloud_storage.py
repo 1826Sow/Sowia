@@ -48,3 +48,93 @@ def save_message(client, user, session_id, role, content, workspace_id="personal
         "user_id": _user_id(user), "workspace_id": _workspace_id(workspace_id), "session_id": str(session_id), "role": role,
         "content": str(content), "created_at": datetime.now(timezone.utc).isoformat()
     }).execute().data)
+
+GROWTH_LEAD_STATUSES = {
+    "À vérifier",
+    "À contacter",
+    "Contacté",
+    "Réponse reçue",
+    "En discussion",
+    "Partenaire confirmé",
+    "Non pertinent",
+}
+
+
+def list_growth_leads(client, user, workspace_id="personal", limit=300):
+    """List CRM leads owned by the authenticated user in the active workspace."""
+    safe_limit = min(max(int(limit), 1), 500)
+    return (
+        client.table("sowia_growth_leads")
+        .select("id, organization, country, region, partner_type, website, source_url, notes, status, created_at, updated_at")
+        .eq("user_id", _user_id(user))
+        .eq("workspace_id", _workspace_id(workspace_id))
+        .order("updated_at", desc=True)
+        .limit(safe_limit)
+        .execute().data
+    )
+
+
+def add_growth_lead(
+    client, user, organization, country, region, partner_type,
+    website, source_url="", notes="", workspace_id="personal",
+):
+    """Create a validated CRM lead; all writes are user/workspace scoped."""
+    organization = str(organization or "").strip()[:180]
+    country = str(country or "").strip()[:100]
+    region = str(region or "").strip()[:80]
+    partner_type = str(partner_type or "").strip()[:100]
+    website = str(website or "").strip()[:500]
+    source_url = str(source_url or "").strip()[:500]
+    notes = str(notes or "").strip()[:2000]
+    if not organization or not country:
+        raise ValueError("Le nom de l'organisation et le pays sont obligatoires.")
+    for candidate in (website, source_url):
+        if candidate:
+            from urllib.parse import urlparse
+            parsed = urlparse(candidate)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ValueError("Les liens doivent être des adresses HTTP ou HTTPS valides.")
+    return (
+        client.table("sowia_growth_leads")
+        .insert({
+            "user_id": _user_id(user),
+            "workspace_id": _workspace_id(workspace_id),
+            "organization": organization,
+            "country": country,
+            "region": region,
+            "partner_type": partner_type,
+            "website": website or None,
+            "source_url": source_url or None,
+            "notes": notes or None,
+            "status": "À vérifier",
+        })
+        .execute().data
+    )
+
+
+def update_growth_lead(client, user, lead_id, status, notes="", workspace_id="personal"):
+    """Update only CRM status and notes for the owner's selected lead."""
+    if status not in GROWTH_LEAD_STATUSES:
+        raise ValueError("Statut de prospection invalide.")
+    cleaned_notes = str(notes or "").strip()[:2000]
+    return (
+        client.table("sowia_growth_leads")
+        .update({"status": status, "notes": cleaned_notes or None})
+        .eq("id", lead_id)
+        .eq("user_id", _user_id(user))
+        .eq("workspace_id", _workspace_id(workspace_id))
+        .execute()
+    )
+
+
+def delete_growth_lead(client, user, lead_id, workspace_id="personal"):
+    """Delete only the owner's selected lead in the active workspace."""
+    return (
+        client.table("sowia_growth_leads")
+        .delete()
+        .eq("id", lead_id)
+        .eq("user_id", _user_id(user))
+        .eq("workspace_id", _workspace_id(workspace_id))
+        .execute()
+    )
+
