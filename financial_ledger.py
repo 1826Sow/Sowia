@@ -102,6 +102,7 @@ def record_paypal_billing_transaction(
         "user_id": user_id,
         "provider": "paypal",
         "provider_payment_id": transaction_id,
+        "paypal_subscription_id": subscription_id,
         "transaction_type": "payment",
         "status": "confirmed",
         "gross_amount": f"{gross_value:.2f}",
