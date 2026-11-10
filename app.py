@@ -245,9 +245,8 @@ if cloud_mode and current_user is not None:
         # ownership, plan and ACTIVE status directly with PayPal before granting Premium.
         returned_subscription_id = str(st.query_params.get("subscription_id") or "").strip()
         try:
-            admin_client = premium_access.create_admin_client()
             paypal_subscriptions.reconcile_returned_subscription(
-                admin_client, returned_subscription_id, str(current_user.id)
+                returned_subscription_id, str(current_user.id)
             )
             st.session_state["paypal_subscription_returned"] = "confirmed"
         except Exception as exc:
