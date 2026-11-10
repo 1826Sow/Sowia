@@ -12,6 +12,13 @@ set public = false,
 -- Remove both current policy names and names from the earlier compatibility
 -- script. PostgreSQL permissive policies are combined with OR, so leaving an
 -- older broader policy in place would weaken the workspace restrictions below.
+
+-- Remove legacy per-user policies detected by the production diagnostics.
+-- Leaving permissive policies in place would OR them with workspace rules.
+drop policy if exists "sowia_users_read_own_files" on storage.objects;
+drop policy if exists "sowia_users_upload_own_files" on storage.objects;
+drop policy if exists "sowia_users_delete_own_files" on storage.objects;
+
 drop policy if exists "SOW IA users read own documents" on storage.objects;
 drop policy if exists "SOW IA users upload own documents" on storage.objects;
 drop policy if exists "SOW IA users delete own documents" on storage.objects;
