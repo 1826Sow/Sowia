@@ -41,7 +41,7 @@ def test_summary_excludes_pending_and_rejected_reviews():
     rejected["status"] = "rejected"
     summary = summarize_printer_reviews([verified, pending, rejected])
     assert summary["review_count"] == 1
-    assert summary["average_score"] == Decimal("4.55"
+    assert summary["average_score"] == Decimal("4.55")
     assert summary["dimensions"]["quality_score"] == Decimal("5.00")
 
 def test_no_reviews_has_no_fake_zero_rating():
