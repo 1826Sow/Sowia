@@ -2006,6 +2006,21 @@ elif page == "SOW IA Business Club":
                         with st.container(border=True):
                             st.markdown(f"**{local_start.strftime('%d/%m/%Y à %H:%M')}** · {meeting['timezone']}")
                             st.caption(f"Durée : {meeting['duration_minutes']} min · Statut : {meeting['status']}")
+                            from business_club import build_meeting_ics
+                            try:
+                                calendar_data = build_meeting_ics({
+                                    "starts_at": meeting["starts_at"],
+                                    "duration_minutes": meeting["duration_minutes"],
+                                    "meeting_url": meeting.get("meeting_url"),
+                                    "summary": "SOW IA Business Club - rencontre professionnelle",
+                                })
+                                st.download_button(
+                                    "📆 Ajouter à mon agenda (.ics)", calendar_data,
+                                    file_name=f"sowia-rencontre-{meeting['id']}.ics",
+                                    mime="text/calendar", key=f"club_ics_{meeting['id']}",
+                                )
+                            except ValueError:
+                                st.caption("Fichier agenda indisponible : informations de rendez-vous invalides.")
                             if meeting.get("meeting_url"):
                                 st.link_button("Rejoindre la visioconférence", meeting["meeting_url"])
                             if meeting["status"] == "Proposée":
