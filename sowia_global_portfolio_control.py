@@ -58,6 +58,12 @@ def build_portfolio(plans, performance_observations, alerts, assessments, today=
             overdue = False
         if overdue:
             bucket["overdue_plans"] += 1
+        currency = str(plan.get("currency") or "N/A").upper()
+        totals = currency_totals.setdefault(currency, {"authorized_budget": 0.0, "latest_cumulative_spend": 0.0})
+        try:
+            totals["authorized_budget"] += float(plan.get("budget_cap") or 0)
+        except (TypeError, ValueError):
+            pass
         observation = latest.get(str(plan.get("id") or ""))
         spend = None
         progress = None
@@ -66,16 +72,13 @@ def build_portfolio(plans, performance_observations, alerts, assessments, today=
             bucket["measured_plans"] += 1
             try:
                 spend = float(observation.get("actual_spend_cumulative") or 0)
-                cap = float(plan.get("budget_cap") or 0)
+                cap = float(observation.get("budget_cap_snapshot", plan.get("budget_cap")) or 0)
                 over_budget = spend > cap
                 progress = float(observation.get("progress_percent"))
             except (TypeError, ValueError):
                 spend = None
             if over_budget:
                 bucket["over_budget_plans"] += 1
-            currency = str(plan.get("currency") or "N/A").upper()
-            totals = currency_totals.setdefault(currency, {"authorized_budget": 0.0, "latest_cumulative_spend": 0.0})
-            totals["authorized_budget"] += float(plan.get("budget_cap") or 0)
             if spend is not None:
                 totals["latest_cumulative_spend"] += spend
         plan_rows.append({
