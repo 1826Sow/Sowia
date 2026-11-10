@@ -11,7 +11,15 @@ with expected_tables(table_name) as (
         ('sowia_entitlements'),
         ('sowia_growth_leads'),
         ('sowia_user_preferences'),
-        ('sowia_business_opportunities')
+        ('sowia_business_opportunities', 'sowia_business_club_profiles', 'sowia_business_club_requests', 'sowia_global_messages', 'sowia_global_notifications', 'sowia_global_notification_preferences', 'sowia_global_trust_reviews', 'sowia_global_trust_reports', 'sowia_global_alerts'),
+        ('sowia_business_club_profiles'),
+        ('sowia_business_club_requests'),
+        ('sowia_global_messages'),
+        ('sowia_global_notifications'),
+        ('sowia_global_notification_preferences'),
+        ('sowia_global_trust_reviews'),
+        ('sowia_global_trust_reports'),
+        ('sowia_global_alerts')
 ),
 table_checks as (
     select
