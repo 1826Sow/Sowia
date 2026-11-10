@@ -362,3 +362,22 @@ La migration `supabase_accessibility_preferences.sql` doit être appliquée dans
 - vérification sur Android et sur plusieurs navigateurs.
 
 La synthèse vocale dépend des capacités du navigateur et des voix disponibles localement. Elle ne remplace pas les sous-titres, la transcription ni les aides auditives.
+
+
+### 14 ter. Transcription vocale dans l'interface
+
+Une première fonction de transcription en direct est ajoutée dans l'Assistant IA :
+- démarrage et arrêt explicites du microphone ;
+- affichage des résultats provisoires et définitifs dans une zone avec annonce accessible (`aria-live`) ;
+- langue alignée sur la langue d'interface parmi les six langues proposées ;
+- copie explicite du texte pour le coller dans le champ de conversation ; aucun envoi automatique à l'assistant ;
+- aucune conservation du texte par SOW IA dans cette première version.
+
+Limites et confidentialité :
+- la fonction utilise l'API de reconnaissance vocale du navigateur (`SpeechRecognition` / `webkitSpeechRecognition`) et n'est pas disponible sur tous les navigateurs ;
+- selon le navigateur et ses réglages, l'audio peut être transmis au fournisseur de reconnaissance vocale. Prévenir l'utilisateur avant activation et ne pas utiliser pour des échanges confidentiels ;
+- les autorisations du microphone et une connexion réseau peuvent être nécessaires ;
+- la transcription doit être relue, car elle peut comporter des erreurs ;
+- ce module transcrit la parole captée par le microphone ; il ne sous-titre pas encore un appel audio ou une vidéo externe.
+
+Avant généralisation : essais Android/Chrome, autres navigateurs, tests de permissions, clavier/lecteur d'écran et tests avec personnes concernées.
