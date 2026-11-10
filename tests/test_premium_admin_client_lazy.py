@@ -24,8 +24,8 @@ def test_premium_admin_client_is_created_only_inside_authenticated_paypal_flows(
         and node.func.value.id == "premium_access"
     ]
     # One call validates a returned checkout; two are explicit user-triggered
-    # synchronization actions in the authenticated revenue workspace.
-    assert len(admin_calls) == 3
+    # synchronization actions; one is the admin-only read-only control center.
+    assert len(admin_calls) == 4
 
     for call in admin_calls:
         ancestor = parents.get(call)
