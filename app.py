@@ -2824,12 +2824,16 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                             ] if value))
                             for reason in suggested["match_reasons"]:
                                 st.write("• " + reason)
+                            verification_status = suggested.get("verification_status", "unverified")
+                            if verification_status == "verified":
+                                st.success("✓ Profil vérifié par SOWIA")
+                            elif verification_status == "pending":
+                                st.warning("◷ Vérification en attente")
+                            else:
+                                st.info("ⓘ Profil non vérifié")
                             st.caption(
-                                "Vérification du profil : " + {
-                                    "verified": "Vérifié par SOWIA",
-                                    "pending": "En attente",
-                                    "unverified": "Non vérifié",
-                                }.get(suggested.get("verification_status"), "Non vérifié")
+                                "Le statut décrit uniquement le niveau de vérification documentaire du profil. "
+                                "Il ne certifie ni la qualité, ni la solvabilité, ni la fiabilité commerciale du partenaire."
                             )
             except Exception as partner_match_error:
                 st.info("Les suggestions de partenaires sont temporairement indisponibles.")
@@ -2862,13 +2866,14 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                         st.write(public_card["short_description"])
                     if public_card.get("website"):
                         st.link_button("Visiter le site officiel", public_card["website"])
-                    verification = {
-                        "verified": "Vérifié par SOWIA",
-                        "pending": "Vérification en attente",
-                        "unverified": "Non vérifié",
-                        "suspended": "Suspendu",
-                    }.get(public_card.get("verification_status"), "Non vérifié")
-                    st.caption(f"{public_card['public_id']} · {verification}")
+                    verification_status = public_card.get("verification_status", "unverified")
+                    if verification_status == "verified":
+                        st.success("✓ Profil vérifié par SOWIA")
+                    elif verification_status == "pending":
+                        st.warning("◷ Vérification en attente")
+                    else:
+                        st.info("ⓘ Profil non vérifié")
+                    st.caption(public_card["public_id"])
             st.caption(
                 "La mention « Vérifié par SOWIA » indique un contrôle documenté du profil ; "
                 "elle ne garantit ni la qualité commerciale ni la solvabilité du partenaire. "
