@@ -2559,7 +2559,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
         nex_is_admin = isinstance(nex_metadata, dict) and (
             nex_metadata.get("sowia_admin") is True or nex_metadata.get("role") == "admin"
         )
-        nex_tabs = ["🌐 Annuaire approuvé", "🏷️ Inscrire une application", "📂 Mes applications"]
+        nex_tabs = ["🌐 Annuaire approuvé", "🤝 Matching SOWIA", "🏷️ Inscrire une application", "📂 Mes applications"]
         if nex_is_admin:
             nex_tabs.append("🛡️ Modération")
         nex_tab_views = st.tabs(nex_tabs)
@@ -2589,6 +2589,48 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 st.caption(f"Diagnostic : {type(exc).__name__}")
 
         with nex_tab_views[1]:
+            st.markdown("#### Suggestions de partenaires compatibles")
+            st.caption("SOWIA compare les domaines, les services proposés et les besoins. Seules les applications déjà approuvées peuvent être proposées comme partenaires.")
+            try:
+                source_apps = cloud_storage.list_my_night_exchange_apps(
+                    supabase_client, current_user, workspace_id=nex_workspace, limit=200
+                )
+                candidate_apps = cloud_storage.list_approved_night_exchange_apps(
+                    supabase_client, current_user, limit=200
+                )
+                if not source_apps:
+                    st.info("Enregistrez d’abord une fiche application pour lancer le matching.")
+                elif not candidate_apps:
+                    st.info("L’annuaire ne contient pas encore de partenaire approuvé. Les suggestions apparaîtront après les premières validations.")
+                else:
+                    source_labels = {
+                        f"{row['app_name']} · {row['country']} · {row['status']}": row
+                        for row in source_apps
+                    }
+                    selected_source_label = st.selectbox(
+                        "Votre application", list(source_labels.keys()), key="nex_match_source"
+                    )
+                    source_record = source_labels[selected_source_label]
+                    matches = sowia_night_exchange.match_listing_records(source_record, candidate_apps)
+                    if not matches:
+                        st.info("Aucune compatibilité suffisamment identifiable. Complétez les services proposés et recherchés sur votre fiche.")
+                    else:
+                        by_id = {str(row["id"]): row for row in candidate_apps}
+                        for match in matches[:15]:
+                            partner = by_id.get(match.app_id)
+                            if not partner:
+                                continue
+                            with st.container(border=True):
+                                st.markdown(f"**{partner['app_name']}** · {partner['country']}")
+                                st.metric("Compatibilité indicative", f"{match.score}/100")
+                                st.write("Domaines communs : " + (", ".join(match.shared_categories) if match.shared_categories else "aucun"))
+                                st.write("Échange réciproque potentiel : " + ("Oui" if match.reciprocal_exchange else "À explorer"))
+                                st.caption("Suggestion algorithmique uniquement : aucun contact, partage de données ou intégration n’est déclenché.")
+            except Exception as exc:
+                st.error("Le matching n’est pas disponible tant que le registre Supabase n’est pas accessible.")
+                st.caption(f"Diagnostic : {type(exc).__name__}")
+
+        with nex_tab_views[2]:
             st.markdown("#### Déposer une candidature partenaire")
             st.info("Votre fiche sera enregistrée avec le statut « En attente ». Elle ne sera pas visible publiquement avant validation.")
             with st.form("nex_persistent_listing_form", clear_on_submit=False):
@@ -2616,7 +2658,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
                     st.error("Enregistrement impossible. Si la migration n’a pas encore été appliquée, exécutez d’abord supabase_night_exchange_registry.sql dans Supabase.")
                     st.caption(f"Diagnostic : {type(exc).__name__}")
 
-        with nex_tab_views[2]:
+        with nex_tab_views[3]:
             st.markdown("#### Suivi de mes candidatures")
             try:
                 own_apps = cloud_storage.list_my_night_exchange_apps(
@@ -2641,7 +2683,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 st.caption(f"Diagnostic : {type(exc).__name__}")
 
         if nex_is_admin:
-            with nex_tab_views[3]:
+            with nex_tab_views[4]:
                 st.markdown("#### Console de validation SOWIA")
                 st.caption("Les décisions de modération sont contrôlées par une fonction SQL qui vérifie le rôle administrateur signé.")
                 try:
