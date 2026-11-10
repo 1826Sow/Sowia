@@ -1686,6 +1686,182 @@ elif page == "Développement mondial":
             "La vérification humaine des dates, critères, budgets, conditions et sources reste obligatoire."
         )
 
+        st.divider()
+        st.markdown("#### 📚 Registre des opportunités")
+        st.caption(
+            "Conservez les pistes utiles, affectez un partenaire, fixez une échéance et suivez "
+            "leur progression. Les alertes affichées ici sont des rappels dans l'application, "
+            "pas des notifications envoyées en arrière-plan."
+        )
+        opportunity_statuses = [
+            "À vérifier", "À qualifier", "À préparer", "Candidature prête",
+            "Soumise", "En discussion", "Gagnée", "Perdue", "Archivée",
+        ]
+        with st.expander("➕ Ajouter une opportunité au registre", expanded=False):
+            with st.form("sowia_opportunity_register_add", clear_on_submit=True):
+                new_title = st.text_input("Intitulé de l'opportunité", max_chars=240)
+                form_cols = st.columns(2)
+                with form_cols[0]:
+                    new_country = st.text_input("Pays", value=radar_country, max_chars=100)
+                    new_category = st.selectbox(
+                        "Catégorie",
+                        ["Appels d'offres et marchés", "Innovation et financement",
+                         "Partenariats et entreprises", "Événements et réseaux",
+                         "Autre signal professionnel"],
+                    )
+                    new_partner = st.text_input("Partenaire associé (facultatif)", max_chars=180)
+                with form_cols[1]:
+                    new_source = st.text_input("Lien de la source officielle", max_chars=1000)
+                    new_priority = st.slider("Priorité", 1, 5, 3)
+                    new_status = st.selectbox("État", opportunity_statuses)
+                    new_has_deadline = st.checkbox("Cette opportunité a une date limite")
+                    new_deadline = st.date_input(
+                        "Date limite", value=datetime.now(timezone.utc).date(),
+                        disabled=not new_has_deadline,
+                    )
+                new_next_action = st.text_input("Prochaine action à effectuer", max_chars=300)
+                new_summary = st.text_area("Notes / critères / budget à vérifier", max_chars=2000)
+                add_opportunity = st.form_submit_button(
+                    "Enregistrer dans le registre", type="primary",
+                    disabled=not new_title.strip() or not new_country.strip(),
+                )
+            if add_opportunity:
+                payload = {
+                    "title": new_title.strip(), "country": new_country.strip(),
+                    "category": new_category, "source_url": new_source.strip() or None,
+                    "summary": new_summary.strip(), "partner_name": new_partner.strip(),
+                    "deadline": new_deadline.isoformat() if new_has_deadline else None,
+                    "priority": int(new_priority), "status": new_status,
+                    "next_action": new_next_action.strip(),
+                    "workspace_id": "professional",
+                }
+                if cloud_mode and current_user is not None:
+                    payload["user_id"] = str(current_user.id)
+                    try:
+                        supabase_client.table("sowia_opportunities").insert(payload).execute()
+                        st.success("Opportunité enregistrée dans votre registre cloud privé.")
+                        st.rerun()
+                    except Exception:
+                        st.session_state.setdefault("sowia_opportunity_register_local", []).append({
+                            **payload, "id": f"local-{uuid.uuid4()}",
+                        })
+                        st.warning(
+                            "Le registre cloud n'est pas encore disponible. Cette entrée est "
+                            "conservée uniquement dans la session. Vérifiez que la migration "
+                            "supabase_opportunity_register.sql a été appliquée et que les droits RLS sont actifs."
+                        )
+                else:
+                    st.session_state.setdefault("sowia_opportunity_register_local", []).append({
+                        **payload, "id": f"local-{uuid.uuid4()}",
+                    })
+                    st.success("Opportunité ajoutée à la session locale. Elle ne sera pas conservée après fermeture.")
+
+        register_rows = []
+        register_cloud_ready = False
+        register_load_error = False
+        if cloud_mode and current_user is not None:
+            try:
+                register_response = (
+                    supabase_client.table("sowia_opportunities")
+                    .select("*")
+                    .eq("user_id", str(current_user.id))
+                    .eq("workspace_id", "professional")
+                    .order("deadline", desc=False)
+                    .limit(200)
+                    .execute()
+                )
+                register_rows = register_response.data or []
+                register_cloud_ready = True
+            except Exception:
+                register_load_error = True
+        if not register_cloud_ready:
+            register_rows = st.session_state.get("sowia_opportunity_register_local", [])
+        if register_load_error:
+            st.warning(
+                "Le registre permanent Supabase n'est pas encore accessible. "
+                "Les entrées locales restent temporaires. Appliquez la migration "
+                "supabase_opportunity_register.sql pour activer l'historique privé."
+            )
+        today = datetime.now(timezone.utc).date()
+        dated_rows = []
+        for row in register_rows:
+            deadline_value = row.get("deadline")
+            try:
+                deadline_date = (
+                    deadline_value if hasattr(deadline_value, "year")
+                    else datetime.fromisoformat(str(deadline_value)).date()
+                ) if deadline_value else None
+            except (TypeError, ValueError):
+                deadline_date = None
+            if deadline_date and row.get("status") not in {"Gagnée", "Perdue", "Archivée"}:
+                dated_rows.append((deadline_date, row))
+        overdue_rows = [row for due, row in dated_rows if due < today]
+        upcoming_rows = [row for due, row in dated_rows if today <= due <= today + __import__("datetime").timedelta(days=14)]
+        alert_cols = st.columns(3)
+        alert_cols[0].metric("Pistes enregistrées", len(register_rows))
+        alert_cols[1].metric("Échéances dépassées", len(overdue_rows))
+        alert_cols[2].metric("Échéances sous 14 jours", len(upcoming_rows))
+        if overdue_rows:
+            st.error("Échéances dépassées : " + " · ".join(
+                f"{row.get('title', 'Sans titre')} ({row.get('deadline')})" for row in overdue_rows[:5]
+            ))
+        if upcoming_rows:
+            st.warning("Échéances proches : " + " · ".join(
+                f"{row.get('title', 'Sans titre')} ({row.get('deadline')})" for row in upcoming_rows[:5]
+            ))
+        if register_rows:
+            for row in register_rows:
+                label = f"{row.get('title', 'Sans titre')} · {row.get('country', 'Pays non précisé')}"
+                with st.expander(label):
+                    st.write(
+                        f"Catégorie : {row.get('category', '—')} · "
+                        f"Priorité : {row.get('priority', 3)}/5 · "
+                        f"État : {row.get('status', 'À vérifier')}"
+                    )
+                    if (row.get("source_url") or "").startswith(("https://", "http://")):
+                        st.markdown(f"[Ouvrir la source]({row['source_url']})")
+                    if row.get("partner_name"):
+                        st.write(f"Partenaire : {row['partner_name']}")
+                    if row.get("deadline"):
+                        st.write(f"Date limite : {row['deadline']}")
+                    if row.get("summary"):
+                        st.write(row["summary"])
+                    with st.form(f"update_opportunity_{row.get('id')}"):
+                        changed_status = st.selectbox(
+                            "Mettre à jour l'état", opportunity_statuses,
+                            index=opportunity_statuses.index(row.get("status"))
+                            if row.get("status") in opportunity_statuses else 0,
+                            key=f"opp_status_{row.get('id')}",
+                        )
+                        changed_action = st.text_input(
+                            "Prochaine action", value=row.get("next_action") or "",
+                            max_chars=300, key=f"opp_action_{row.get('id')}",
+                        )
+                        save_update = st.form_submit_button("Enregistrer le suivi")
+                    if save_update:
+                        if register_cloud_ready:
+                            try:
+                                supabase_client.table("sowia_opportunities").update({
+                                    "status": changed_status,
+                                    "next_action": changed_action.strip(),
+                                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                                }).eq("id", str(row["id"])).eq(
+                                    "user_id", str(current_user.id)
+                                ).eq("workspace_id", "professional").execute()
+                                st.success("Suivi mis à jour.")
+                                st.rerun()
+                            except Exception:
+                                st.error("Mise à jour impossible. Aucune modification n'a été confirmée.")
+                        else:
+                            for local_row in st.session_state.get("sowia_opportunity_register_local", []):
+                                if local_row.get("id") == row.get("id"):
+                                    local_row["status"] = changed_status
+                                    local_row["next_action"] = changed_action.strip()
+                            st.success("Suivi local mis à jour.")
+                            st.rerun()
+        else:
+            st.info("Le registre est vide. Enregistrez une piste pour commencer votre suivi.")
+
 
 elif page == "Recherche Web":
     st.subheader(translate_ui("🌐 Recherche Web", language))
