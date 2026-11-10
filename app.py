@@ -363,13 +363,63 @@ def delete_app_memory(memory_id):
         return cloud_storage.delete_memory(supabase_client, current_user, memory_id, st.session_state.get("workspace_id", "personal"))
     return local_delete_memory(memory_id, st.session_state.get("workspace_id", "personal"))
 
+NAV_GROUPS = {
+    "👤 Personnel & documents": [
+        "Accueil", "Hub SOWIA", "Assistant IA", "Ma mémoire", "Recherche Web",
+        "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
+    ],
+    "🌐 Écosystème mondial": [
+        "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID",
+        "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION",
+    ],
+    "🤝 Entreprises & opportunités": [
+        "SOW IA Business Club", "Opportunités et revenus", "Technologies & fournisseurs",
+        "SOWIA GLOBAL COLLABORATION HUB",
+    ],
+    "🧠 Intelligence & stratégie": [
+        "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE",
+        "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE",
+        "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY",
+        "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT",
+        "SOWIA GLOBAL PORTFOLIO CONTROL", "SOWIA GLOBAL EXECUTIVE REPORTS",
+        "Stratégie & scénarios",
+    ],
+    "💳 Finances & investissements": [
+        "Finance & investissements", "Revenus & paiements", "Abonnement",
+    ],
+    "🛡️ Administration & assistance": [
+        "SOWIA CONTROL CENTER", "Paramètres", "Aide",
+    ],
+}
+
+
+def category_for_page(page_name):
+    for category, pages in NAV_GROUPS.items():
+        if page_name in pages:
+            return category
+    return "👤 Personnel & documents"
+
+
+def choose_navigation_category():
+    selected_category = st.session_state.get("nav_category")
+    pages = NAV_GROUPS.get(selected_category, [])
+    if pages:
+        st.session_state.page_nav = pages[0]
+
+
+def sync_navigation_category():
+    st.session_state.nav_category = category_for_page(st.session_state.get("page_nav", "Accueil"))
+
+
 def go_to_page(page_name):
     st.session_state.page_nav = page_name
+    st.session_state.nav_category = category_for_page(page_name)
 
 
 def go_to_professional_page(page_name):
     st.session_state.workspace_choice = "Professionnel"
     st.session_state.page_nav = page_name
+    st.session_state.nav_category = category_for_page(page_name)
 
 
 def enable_privacy_screen():
@@ -565,25 +615,25 @@ if privacy_screen:
     )
 
 with st.sidebar:
+    active_page = st.session_state.get("page_nav", "Accueil")
+    if "nav_category" not in st.session_state:
+        st.session_state.nav_category = category_for_page(active_page)
+    else:
+        st.session_state.nav_category = category_for_page(active_page)
+    st.selectbox(
+        "📁 Dossier de navigation",
+        list(NAV_GROUPS.keys()),
+        key="nav_category",
+        format_func=lambda value: translate_ui(value, language),
+        on_change=choose_navigation_category,
+    )
+    selected_pages = NAV_GROUPS[st.session_state.nav_category]
     page = st.selectbox(
-        "🧭 Navigation",
-        [
-            "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
-            "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-            "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID",
-            "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION",
-            "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements",
-            "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE",
-            "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE",
-            "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY",
-            "SOWIA GLOBAL COLLABORATION HUB", "SOWIA GLOBAL ACTION GOVERNANCE",
-            "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL",
-            "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios",
-            "Technologies & fournisseurs", "Revenus & paiements", "SOWIA CONTROL CENTER",
-            "Paramètres", "Aide",
-        ],
+        "🧭 Outil à ouvrir",
+        selected_pages,
         key="page_nav",
         format_func=lambda value: translate_ui(value, language),
+        on_change=sync_navigation_category,
     )
 st.markdown(
     '<div class="hero"><div class="hero-kicker">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>'
