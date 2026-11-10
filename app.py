@@ -2282,6 +2282,12 @@ elif page == "Revenus & paiements":
                                 "Le contrôle peut être incomplet : ne validez pas les totaux comptables."
                             )
                         st.rerun()
+                    except PermissionError as exc:
+                        st.error(
+                            "Accès Transaction Search non autorisé. "
+                            "Vérifiez que l'autorisation Reporting / Transaction Search est activée "
+                            "dans l'application PayPal Sandbox. Aucun remboursement n'a été comptabilisé."
+                        )
                     except Exception as exc:
                         st.error(
                             "Le rapprochement individuel PayPal n'a pas abouti. "
