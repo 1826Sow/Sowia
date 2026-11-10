@@ -1591,7 +1591,7 @@ elif page == "Technologies & fournisseurs":
                             key=f"technology_score_{criterion}",
                         )
                 evidence_text = st.text_area(
-                    "Preuves consultées (une par ligne : documentation, audit, benchmark, tarifs…)",
+                    "Références consultées (une par ligne : documentation, audit, benchmark, tarifs…)",
                     max_chars=3000,
                 )
                 licence_verified = st.checkbox(
@@ -1608,7 +1608,8 @@ elif page == "Technologies & fournisseurs":
                         candidate_name,
                         score_values,
                         evidence=evidence,
-                        compliant=licence_verified,
+                        compliant=True,
+                        compliance_verified=licence_verified,
                         critical_incident=critical_incident,
                     )
                     record = {
