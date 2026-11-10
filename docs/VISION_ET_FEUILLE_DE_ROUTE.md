@@ -206,3 +206,48 @@ Le premier tableau ne constitue pas encore une comptabilité et n'enregistre auc
 ## Règle de transparence
 
 La feuille de route décrit l'ambition complète de SOW IA. Elle ne signifie pas que tous ces modules sont déjà opérationnels. Aucun rendement financier, partenariat, revenu, couverture mondiale ou avantage bancaire ne doit être annoncé comme acquis sans preuve vérifiable.
+
+
+### 11. Sélection et gouvernance des technologies SOW IA
+
+SOW IA doit choisir les meilleurs outils disponibles pour chaque besoin, plutôt que multiplier les intégrations sans méthode. La sélection est indépendante du fournisseur : aucun acteur ne bénéficie d'une préférence automatique.
+
+#### Grille de comparaison
+
+Chaque candidat est évalué sur une échelle commune de 0 à 5, à partir de preuves datées et conservées :
+
+| Critère | Pondération |
+| --- | ---: |
+| Qualité et précision | 22 % |
+| Fiabilité et disponibilité | 18 % |
+| Sécurité et confidentialité | 18 % |
+| Facilité d'intégration | 12 % |
+| Coût total et efficacité économique | 12 % |
+| Couverture internationale et langues | 8 % |
+| Support et documentation | 5 % |
+| Portabilité et réversibilité | 5 % |
+
+La note globale ne suffit pas : la sécurité et la fiabilité sont des seuils éliminatoires. Un incident critique non résolu ou une conformité non démontrée écarte le candidat, même si sa moyenne est élevée.
+
+#### Cycle de sélection
+
+1. Définir le besoin, les résultats attendus, le budget maximal, les données concernées et les contraintes réglementaires.
+2. Identifier plusieurs solutions et leurs alternatives, y compris les options open source lorsque leur maintenance et leur sécurité sont crédibles.
+3. Vérifier les sources : documentation officielle, conditions contractuelles, politique de données, statut des incidents, tarifs, limites d'usage et zones géographiques.
+4. Tester les candidats sur le même jeu d'essai représentatif, avec des critères mesurables : précision, latence, disponibilité, taux d'erreur, coût par tâche et qualité du support.
+5. Attribuer les notes uniquement avec des preuves ; sans preuve, le candidat reste « à documenter » et ne peut pas être présenté comme le meilleur.
+6. Comparer le coût total de possession : abonnement, consommation, intégration, maintenance, stockage, transfert de données, support et coût de sortie.
+7. Choisir le candidat qui offre le meilleur compromis vérifié, puis conserver une solution de secours lorsque le risque de dépendance le justifie.
+8. Réévaluer périodiquement les fournisseurs et après tout changement important de prix, de conditions, de qualité ou de sécurité.
+
+#### Règles de gouvernance
+
+- Aucun fournisseur ne doit être choisi uniquement parce qu'il est connu, sponsorisé ou partenaire commercial.
+- Les liens d'affiliation, commissions et conflits d'intérêts doivent être déclarés et ne modifient pas le score technique.
+- Les données confidentielles ne sont envoyées qu'après validation des garanties contractuelles et techniques.
+- Les intégrations doivent prévoir quotas, limites de dépenses, journalisation, mécanismes de coupure et solution de repli.
+- Les benchmarks et résultats doivent distinguer tests internes, avis externes et données déclarées par le fournisseur.
+- Le moteur de sélection peut recommander une option ; les migrations coûteuses, contrats, achats et changements de fournisseur restent soumis à validation.
+- Les scores sont des évaluations datées, pas une vérité permanente : ils expirent et doivent être actualisés.
+
+Le premier module logiciel fournit une grille de notation et un classement à partir de données fournies. Il ne réalise pas encore de benchmark automatique ni de veille continue des tarifs et incidents. Ces capacités seront ajoutées après raccordement à des sources fiables.
