@@ -170,13 +170,12 @@ begin
         return 'manual_review';
     end if;
 
-    -- Never overwrite an active PayPal entitlement with a crypto payment.
-    -- Resolve mixed-provider renewals through an explicit billing workflow.
+    -- Never overwrite any active entitlement (PayPal or crypto) with a
+    -- second checkout. Renewals/upgrades need an explicit billing workflow.
     if exists (
         select 1 from public.sowia_entitlements
          where user_id = v_order.user_id
            and status = 'active'
-           and provider = 'paypal'
     ) then
         update public.sowia_crypto_payment_events
            set processing_status = 'rejected', processed_at = now()
