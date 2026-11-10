@@ -274,3 +274,63 @@ def update_relationship_event_status(client, user, event_id, status, workspace_i
         .eq("workspace_id", _workspace_id(workspace_id))
         .execute()
     )
+
+
+def save_business_club_profile(client, user, profile, workspace_id="professional"):
+    from business_club import validate_profile
+    validated = validate_profile(profile)
+    return client.table("sowia_business_club_profiles").upsert({
+        "user_id": _user_id(user), "workspace_id": _workspace_id(workspace_id),
+        **validated, "updated_at": datetime.now(timezone.utc).isoformat(),
+    }, on_conflict="user_id,workspace_id").execute().data
+
+
+def get_business_club_profile(client, user, workspace_id="professional"):
+    rows = client.table("sowia_business_club_profiles").select(
+        "id, company_name, country, sector, description, offers, needs, objectives, website, is_published"
+    ).eq("user_id", _user_id(user)).eq("workspace_id", _workspace_id(workspace_id)).limit(1).execute().data
+    return rows[0] if rows else None
+
+
+def list_business_club_profiles(client, user, workspace_id="professional", limit=100):
+    return client.table("sowia_business_club_profiles").select(
+        "id, user_id, company_name, country, sector, description, offers, needs, objectives, website"
+    ).eq("is_published", True).eq("workspace_id", _workspace_id(workspace_id)).neq(
+        "user_id", _user_id(user)
+    ).order("updated_at", desc=True).limit(min(max(int(limit), 1), 200)).execute().data
+
+
+def create_business_club_request(client, user, profile_id, recipient_user_id, message):
+    from business_club import validate_request
+    cleaned = validate_request(message)
+    if str(recipient_user_id) == _user_id(user):
+        raise ValueError("Vous ne pouvez pas vous envoyer une demande.")
+    return client.table("sowia_business_club_requests").insert({
+        "profile_id": int(profile_id), "sender_user_id": _user_id(user),
+        "recipient_user_id": str(recipient_user_id), "message": cleaned, "status": "En attente",
+    }).execute().data
+
+
+def list_business_club_requests(client, user, direction="incoming", limit=100):
+    if direction not in {"incoming", "outgoing"}:
+        raise ValueError("Sens de demande invalide.")
+    column = "recipient_user_id" if direction == "incoming" else "sender_user_id"
+    return client.table("sowia_business_club_requests").select(
+        "id, profile_id, sender_user_id, recipient_user_id, message, status, created_at"
+    ).eq(column, _user_id(user)).order("created_at", desc=True).limit(
+        min(max(int(limit), 1), 200)
+    ).execute().data
+
+
+def update_business_club_request(client, user, request_id, status):
+    if status not in {"Acceptée", "Refusée", "Annulée"}:
+        raise ValueError("Réponse à la demande invalide.")
+    uid = _user_id(user)
+    query = client.table("sowia_business_club_requests").update({
+        "status": status, "updated_at": datetime.now(timezone.utc).isoformat()
+    }).eq("id", int(request_id))
+    if status == "Annulée":
+        query = query.eq("sender_user_id", uid).eq("status", "En attente")
+    else:
+        query = query.eq("recipient_user_id", uid).eq("status", "En attente")
+    return query.execute()
