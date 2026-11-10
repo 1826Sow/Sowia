@@ -475,7 +475,6 @@ def sync_completed_subscription_transactions(
     recorded = 0
     ignored = 0
     refunds_detected = 0
-    refunds_reconciled = 0
     fetched = 0
     page_count = 0
     has_more = False
@@ -509,21 +508,7 @@ def sync_completed_subscription_transactions(
                 financial_ledger.flag_paypal_refund_for_review(
                     admin_client, user_id=user_id, transaction=transaction
                 )
-                capture_id = str(transaction.get("id") or "").strip()
-                capture_response = requests.get(
-                    f"{config['base_url']}/v2/payments/captures/{capture_id}",
-                    headers=_api_headers(config, token),
-                    timeout=TIMEOUT_SECONDS,
-                )
-                capture_response.raise_for_status()
-                capture_details = capture_response.json()
-                if str(capture_details.get("id") or "").strip() != capture_id:
-                    raise PermissionError("PayPal a retourné une autre capture que celle demandée.")
-                financial_ledger.record_paypal_refund_total(
-                    admin_client, user_id=user_id, capture=capture_details
-                )
                 refunds_detected += 1
-                refunds_reconciled += 1
             else:
                 ignored += 1
         page_count += 1
@@ -549,7 +534,6 @@ def sync_completed_subscription_transactions(
         "recorded_or_already_present": recorded,
         "ignored_non_completed": ignored,
         "refunds_detected": refunds_detected,
-        "refunds_reconciled": refunds_reconciled,
         "pages_read": page_count,
         "has_more": has_more,
     }
