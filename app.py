@@ -564,17 +564,27 @@ if privacy_screen:
         unsafe_allow_html=True,
     )
 
-page = st.radio(
-    "Navigation rapide — retrouvez vos outils ici",
-    [
-        "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
-        "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL COLLABORATION HUB", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL", "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "SOWIA CONTROL CENTER", "Paramètres", "Aide",
-    ],
-    key="page_nav",
-    horizontal=True,
-    format_func=lambda value: translate_ui(value, language),
-)
+with st.sidebar:
+    page = st.selectbox(
+        "🧭 Navigation",
+        [
+            "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
+            "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
+            "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID",
+            "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION",
+            "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements",
+            "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE",
+            "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE",
+            "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY",
+            "SOWIA GLOBAL COLLABORATION HUB", "SOWIA GLOBAL ACTION GOVERNANCE",
+            "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL",
+            "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios",
+            "Technologies & fournisseurs", "Revenus & paiements", "SOWIA CONTROL CENTER",
+            "Paramètres", "Aide",
+        ],
+        key="page_nav",
+        format_func=lambda value: translate_ui(value, language),
+    )
 st.markdown(
     '<div class="hero"><div class="hero-kicker">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>'
     '<h1>🧠 SOW IA</h1>'
@@ -931,37 +941,70 @@ if page in ("Hub SOWIA", "Accueil"):
             st.rerun()
     with partner_cols[2]:
         st.caption("Notre priorité : des partenariats vérifiables, des objectifs mesurables et une création de valeur réciproque.")
-    st.write("Accédez directement à vos outils :")
-    shortcuts = [
-        ("💬", "Assistant IA", "Posez vos questions"),
-        ("🧠", "Ma mémoire", "Enregistrez vos informations utiles"),
-        ("🌐", "Recherche Web", "Recherchez des informations en ligne"),
-        ("📄", "Analyse PDF", "Importez et analysez un PDF"),
-        ("🪄", "Créer un PDF", "Préparez vos futurs documents PDF"),
-        ("📁", "Mes documents", "Retrouvez votre espace documentaire"),
-        ("🕘", "Historique", "Consultez vos conversations"),
-        ("👑", "Abonnement", "Découvrez l’espace Premium"),
-        ("🌍", "Développement mondial", "Trouvez des partenaires et préparez vos campagnes"),
-        ("🏛️", "SOW IA Business Club", "Rencontrez des entreprises et proposez des échanges virtuels"),
-        ("📈", "Opportunités et revenus", "Suivez vos niches, offres et prévisions commerciales"),
-        ("🧪", "Technologies & fournisseurs", "Comparez les solutions et choisissez sur preuves"),
-        ("⚙️", "Paramètres", "Vérifiez votre configuration"),
-        ("❓", "Aide", "Consultez les indications d’utilisation"),
+    st.markdown("### 🗂️ Vos espaces SOWIA")
+    st.caption("Les outils sont rangés par activité. Ouvrez uniquement la rubrique dont vous avez besoin ; la navigation complète reste accessible dans le menu latéral.")
+    home_sections = [
+        ("👤 Espace personnel", [
+            ("Assistant IA", "Dialoguer avec votre assistant"),
+            ("Ma mémoire", "Retrouver vos informations mémorisées"),
+            ("Recherche Web", "Rechercher des informations et des sources"),
+            ("Analyse PDF", "Analyser un document"),
+            ("Créer un PDF", "Créer un document PDF"),
+            ("Mes documents", "Gérer vos fichiers"),
+            ("Historique", "Consulter vos conversations"),
+        ]),
+        ("🌍 Écosystème & développement", [
+            ("Développement mondial", "Développer les partenariats internationaux"),
+            ("SOWIA NIGHT EXCHANGE", "Marché nocturne de l'écosystème"),
+            ("SOWIA GLOBAL ID", "Identité numérique de l'écosystème"),
+            ("SOWIA GLOBAL DIRECTORY", "Annuaire mondial"),
+            ("SOWIA GLOBAL TRUST", "Confiance et vérification"),
+            ("SOW IA Business Club", "Relations et partenariats professionnels"),
+            ("Opportunités et revenus", "Suivre les opportunités commerciales"),
+        ]),
+        ("🧠 Stratégie & intelligence", [
+            ("Décisions humaines vs SOW IA", "Comparer les décisions et leurs résultats"),
+            ("SOWIA GLOBAL INTELLIGENCE", "Outils d'intelligence globale"),
+            ("SOWIA GLOBAL PULSE", "Suivre les signaux et tendances"),
+            ("SOWIA GLOBAL STRATEGIC FORECAST", "Explorer les prévisions stratégiques"),
+            ("SOWIA GLOBAL DECISION ENGINE", "Structurer les décisions"),
+            ("SOWIA GLOBAL LEARNING ENGINE", "Capitaliser sur les apprentissages"),
+            ("SOWIA GLOBAL AUTONOMOUS STRATEGY", "Étudier les stratégies proposées"),
+            ("SOWIA GLOBAL COLLABORATION HUB", "Organiser la collaboration"),
+            ("SOWIA GLOBAL ACTION GOVERNANCE", "Encadrer les actions"),
+            ("SOWIA GLOBAL PERFORMANCE & IMPACT", "Suivre les résultats et impacts"),
+            ("SOWIA GLOBAL PORTFOLIO CONTROL", "Piloter le portefeuille de projets"),
+            ("SOWIA GLOBAL EXECUTIVE REPORTS", "Consulter les rapports de direction"),
+            ("Stratégie & scénarios", "Comparer plusieurs scénarios"),
+        ]),
+        ("💳 Finances & investissements", [
+            ("Finance & investissements", "Analyser les données financières"),
+            ("Revenus & paiements", "Consulter les paiements et rapprochements"),
+        ]),
+        ("🛡️ Administration & paramètres", [
+            ("SOWIA GLOBAL ADMIN & MODERATION", "Administration et modération"),
+            ("SOWIA CONTROL CENTER", "Centre de contrôle"),
+            ("Technologies & fournisseurs", "Comparer les solutions techniques"),
+            ("Abonnement", "Consulter les offres et l'accès Premium"),
+            ("Paramètres", "Gérer les préférences"),
+            ("Aide", "Consulter les indications d'utilisation"),
+        ]),
     ]
-    for start in range(0, len(shortcuts), 3):
-        cols = st.columns(3)
-        for col, (icon, title, desc) in zip(cols, shortcuts[start:start + 3]):
-            with col:
-                with st.container(border=True):
-                    st.markdown(f"### {icon} {translate_ui(title, language)}")
-                    st.caption(translate_ui(desc, language))
-                    st.button(
-                        f"{translate_ui('Ouvrir', language)} {translate_ui(title, language)}",
-                        key=f"open_{title}",
-                        use_container_width=True,
-                        on_click=go_to_page,
-                        args=(title,),
-                    )
+    for section_title, section_items in home_sections:
+        with st.expander(section_title, expanded=False):
+            for item_start in range(0, len(section_items), 2):
+                item_cols = st.columns(2)
+                for item_col, (destination, description) in zip(item_cols, section_items[item_start:item_start + 2]):
+                    with item_col:
+                        st.markdown(f"**{destination}**")
+                        st.caption(description)
+                        st.button(
+                            "Ouvrir",
+                            key=f"home_group_{destination}",
+                            use_container_width=True,
+                            on_click=go_to_page,
+                            args=(destination,),
+                        )
 
 elif page == "Assistant IA":
     st.subheader(translate_ui("💬 Mon Assistant IA", language))
