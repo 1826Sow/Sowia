@@ -340,3 +340,23 @@ La page « Assistant IA » propose désormais :
 La lecture vocale dépend du support et des voix installées sur le navigateur ou l'appareil. Elle n'est pas un service audio hébergé par SOW IA.
 
 **À développer avant de déclarer l'accessibilité complète :** transcription temps réel de la parole entrante, sous-titres synchronisés pendant les appels, choix de langue/voix, mémorisation des préférences par utilisateur, navigation clavier et lecteur d'écran testée, réglages visuels plus fins et essais avec des personnes sourdes ou malentendantes. Une transcription en direct nécessitera un moteur de reconnaissance vocale et une interface audio dédiée ; elle n'est pas encore implémentée.
+
+
+### 14 bis. Accessibilité de l'interface et de la conversation
+
+Fonctions intégrées dans le code :
+- lecture vocale facultative des réponses par la synthèse vocale du navigateur ;
+- sélection de la langue de lecture selon la langue active de SOW IA (français, anglais, espagnol, chinois, allemand ou arabe), sous réserve des voix installées sur l'appareil ;
+- agrandissement du texte et contraste renforcé dans la conversation ;
+- conservation des réponses en texte, même lorsque la lecture vocale est activée ;
+- stockage des préférences d'accessibilité par compte dans `sowia_user_preferences.accessibility`, avec validation des trois options prises en charge.
+
+La migration `supabase_accessibility_preferences.sql` doit être appliquée dans Supabase pour activer la conservation des préférences dans le cloud. Sans cette migration, les options restent utilisables dans la session mais ne sont pas enregistrées durablement.
+
+À développer et tester avant de présenter l'accessibilité comme complète :
+- transcription de la parole en texte et sous-titrage synchronisé ;
+- choix manuel de la voix et réglage du débit ;
+- navigation clavier, compatibilité lecteurs d'écran et tests avec des utilisateurs sourds ou malentendants ;
+- vérification sur Android et sur plusieurs navigateurs.
+
+La synthèse vocale dépend des capacités du navigateur et des voix disponibles localement. Elle ne remplace pas les sous-titres, la transcription ni les aides auditives.
