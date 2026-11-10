@@ -83,3 +83,35 @@ def match_profile(profile: Mapping[str, Any], candidate: Mapping[str, Any]) -> C
 
 def validate_request(message: Any) -> str:
     return _clean_text(message, "Message de présentation", 1200, True)
+
+
+def validate_meeting_schedule(starts_at, timezone, duration_minutes, meeting_url=""):
+    from datetime import datetime, timezone as dt_timezone
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    zone_name = _clean_text(timezone, "Fuseau horaire", 80, True)
+    try:
+        zone = ZoneInfo(zone_name)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise ValueError("Fuseau horaire non reconnu.")
+    if isinstance(starts_at, str):
+        try:
+            start = datetime.fromisoformat(starts_at)
+        except ValueError:
+            raise ValueError("Date et heure de rencontre invalides.")
+    elif isinstance(starts_at, datetime):
+        start = starts_at
+    else:
+        raise ValueError("Date et heure de rencontre invalides.")
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=zone)
+    if start <= datetime.now(dt_timezone.utc):
+        raise ValueError("La rencontre doit être programmée dans le futur.")
+    if isinstance(duration_minutes, bool) or duration_minutes not in {15, 30, 45, 60}:
+        raise ValueError("La durée doit être de 15, 30, 45 ou 60 minutes.")
+    url = _clean_text(meeting_url, "Lien de visioconférence", 1000)
+    if url:
+        parsed = urlparse(url)
+        if parsed.scheme != "https" or not parsed.netloc:
+            raise ValueError("Le lien de visioconférence doit commencer par https://.")
+    return {"starts_at": start.astimezone(dt_timezone.utc).isoformat(), "timezone": zone_name,
+            "duration_minutes": int(duration_minutes), "meeting_url": url or None}
