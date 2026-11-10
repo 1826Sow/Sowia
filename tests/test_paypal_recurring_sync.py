@@ -184,6 +184,8 @@ def test_sync_reconciles_exact_cumulative_refund_amounts(monkeypatch):
             "amount": {"currency_code": "EUR", "value": "9.90"},
             "seller_receivable_breakdown": {
                 "gross_amount": {"currency_code": "EUR", "value": "9.90"},
+                },
+            "seller_payable_breakdown": {
                 "total_refunded_amount": {"currency_code": "EUR", "value": "2.50"},
             },
             "update_time": "2026-11-10T10:30:00Z",
@@ -193,6 +195,8 @@ def test_sync_reconciles_exact_cumulative_refund_amounts(monkeypatch):
             "amount": {"currency_code": "EUR", "value": "9.90"},
             "seller_receivable_breakdown": {
                 "gross_amount": {"currency_code": "EUR", "value": "9.90"},
+                },
+            "seller_payable_breakdown": {
                 "total_refunded_amount": {"currency_code": "EUR", "value": "9.90"},
             },
             "update_time": "2026-11-10T11:30:00Z",
@@ -215,7 +219,7 @@ def test_sync_reconciles_exact_cumulative_refund_amounts(monkeypatch):
         financial_ledger, "record_paypal_refund_total",
         lambda *a, **k: reconciled.append(
             (k["capture"]["id"],
-             k["capture"]["seller_receivable_breakdown"]["total_refunded_amount"]["value"])
+             k["capture"]["seller_payable_breakdown"]["total_refunded_amount"]["value"])
         ),
     )
     monkeypatch.setattr(
