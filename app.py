@@ -1892,7 +1892,27 @@ elif page == "SOW IA Business Club":
             elif own_profile:
                 st.info("Votre profil est privé. Activez la publication pour apparaître dans l'annuaire.")
             st.divider()
-            directory_tab, incoming_tab, outgoing_tab, meetings_tab = st.tabs(["🌍 Annuaire international", "📥 Demandes reçues", "📤 Mes demandes", "📅 Rendez-vous"])
+            notifications_tab, directory_tab, incoming_tab, outgoing_tab, meetings_tab = st.tabs(["🔔 Notifications", "🌍 Annuaire international", "📥 Demandes reçues", "📤 Mes demandes", "📅 Rendez-vous"])
+            with notifications_tab:
+                st.markdown("#### Mon centre de notifications")
+                notifications = cloud_storage.list_business_club_notifications(supabase_client, current_user)
+                unread_count = sum(1 for item in notifications if not item.get("read_at"))
+                st.caption(f"{unread_count} notification(s) non lue(s)")
+                if not notifications:
+                    st.info("Aucune notification pour le moment. Les nouvelles demandes et les changements de rendez-vous apparaîtront ici.")
+                for notification in notifications:
+                    with st.container(border=True):
+                        ncol, action_col = st.columns([4, 1])
+                        ncol.write(notification["message"])
+                        ncol.caption(notification["created_at"])
+                        if not notification.get("read_at"):
+                            if action_col.button("Marquer lue", key=f"club_notification_read_{notification['id']}"):
+                                cloud_storage.mark_business_club_notification_read(
+                                    supabase_client, current_user, notification["id"]
+                                )
+                                st.rerun()
+                        else:
+                            action_col.caption("Lue")
             with directory_tab:
                 st.markdown("#### Entreprises membres")
                 directory = cloud_storage.list_business_club_profiles(supabase_client, current_user, club_workspace)
