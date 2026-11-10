@@ -1635,16 +1635,25 @@ elif page == "Technologies & fournisseurs":
                         "compliance_verified": licence_verified,
                         "critical_incident": critical_incident,
                     }
+                    persisted = not (cloud_mode and current_user is not None)
                     if cloud_mode and current_user is not None:
-                        from technology_storage import upsert_technology_candidate
-                        upsert_technology_candidate(
-                            supabase_client, current_user, technology_workspace, **record
-                        )
+                        try:
+                            from technology_storage import upsert_technology_candidate
+                            upsert_technology_candidate(
+                                supabase_client, current_user, technology_workspace, **record
+                            )
+                            persisted = True
+                        except Exception:
+                            st.warning(
+                                "Évaluation conservée dans cette session, mais pas encore dans le cloud. "
+                                "Vérifiez que la migration supabase_technology_candidates.sql a été appliquée."
+                            )
                     existing = st.session_state["technology_candidates"]
                     existing = [item for item in existing if item["name"].casefold() != evaluation.name.casefold()]
                     existing.append(record)
                     st.session_state["technology_candidates"] = existing
-                    st.success("Évaluation ajoutée au comparatif de cette session.")
+                    if persisted:
+                        st.success("Évaluation enregistrée dans le comparatif de cet espace.")
                     st.rerun()
                 except ValueError as exc:
                     st.error(str(exc))
