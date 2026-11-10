@@ -789,6 +789,40 @@ def cancel_global_connection_request(client, user, request_id):
     }).execute().data
 
 
+
+# SOWIA GLOBAL MESSENGER — private messages on accepted connections.
+def list_global_messages(client, user, request_id, limit=300):
+    """Read a conversation; Supabase RLS restricts rows to its participants."""
+    _user_id(user)
+    import sowia_global_messenger
+    conversation_id = str(request_id or "").strip()
+    if not conversation_id:
+        raise ValueError("Conversation invalide.")
+    rows = (
+        client.table("sowia_global_messages")
+        .select("id,request_id,sender_id,recipient_id,body,created_at")
+        .eq("request_id", conversation_id)
+        .order("created_at", desc=False)
+        .limit(min(max(int(limit), 1), 500))
+        .execute().data
+    )
+    return [sowia_global_messenger.safe_message_projection(row) for row in rows]
+
+
+def send_global_message(client, user, request_id, message):
+    """Send only through the server-side RPC, which verifies accepted status."""
+    _user_id(user)
+    import sowia_global_messenger
+    clean_message = sowia_global_messenger.validate_message(message)
+    conversation_id = str(request_id or "").strip()
+    if not conversation_id:
+        raise ValueError("Conversation invalide.")
+    return client.rpc("sowia_global_send_message", {
+        "p_request_id": conversation_id,
+        "p_message": clean_message,
+    }).execute().data
+
+
 # SOWIA GLOBAL ID — private profile registry and safe public directory.
 def _validate_global_profile(display_name, app_name="", organization="", country="",
                              languages="", website="", short_description="",
