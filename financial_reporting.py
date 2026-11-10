@@ -95,3 +95,30 @@ def summarize_financial_transactions(rows):
             "reference_is_settled_eur": False,
         })
     return result
+
+
+
+def load_user_financial_transactions(user_client, user, *, limit=500):
+    """Read only the authenticated user's financial ledger through RLS."""
+    user_id = str(getattr(user, "id", "") or "").strip()
+    if not user_id:
+        raise PermissionError("Connexion requise.")
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 2000:
+        raise ValueError("Limite de lecture invalide.")
+    response = (
+        user_client.table("sowia_financial_transactions")
+        .select(
+            "provider, provider_payment_id, transaction_type, status, "
+            "gross_amount, gross_currency, reference_amount_eur, "
+            "fee_amount, fee_currency, net_amount, net_currency, "
+            "tax_amount_eur, occurred_at"
+        )
+        .eq("user_id", user_id)
+        .order("occurred_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    rows = getattr(response, "data", None) or []
+    if not isinstance(rows, list):
+        raise RuntimeError("Réponse du registre financier invalide.")
+    return rows
