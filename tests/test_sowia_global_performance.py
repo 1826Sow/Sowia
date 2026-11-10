@@ -43,7 +43,7 @@ class GlobalPerformanceTests(unittest.TestCase):
              "progress_percent": 50, "environmental_impact_note": "B", "evidence_level": "documented"},
         ]
         summary = summarize_performance(rows)
-        self.assertEqual(summary["latest_cumulative_spend"], 450)
+        self.assertEqual(summary["currency_breakdown"]["N/A"]["cumulative_spend"], 450)
         self.assertEqual(summary["observations_count"], 2)
         self.assertEqual(summary["measured_plans"], 1)
         self.assertEqual(summary["average_progress_percent"], 50)
