@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -2998,6 +2998,100 @@ elif page == "SOWIA GLOBAL DIRECTORY":
         except Exception as exc:
             st.error("L’annuaire mondial n’est pas encore initialisé. Appliquez supabase_global_id.sql puis supabase_global_directory.sql dans Supabase.")
             st.caption("Diagnostic : " + type(exc).__name__)
+
+
+
+elif page == "SOWIA GLOBAL TRUST":
+    st.subheader("🛡️ SOWIA GLOBAL TRUST")
+    st.caption("Un cadre de confiance fondé sur les collaborations acceptées, des évaluations réciproques et des signalements confidentiels.")
+    if not cloud_mode or current_user is None:
+        st.warning("Connectez-vous à votre compte SOWIA pour accéder à GLOBAL TRUST.")
+    else:
+        try:
+            trust_incoming = cloud_storage.list_global_connection_requests(
+                supabase_client, current_user, direction="inbox", limit=100
+            )
+            trust_outgoing = cloud_storage.list_global_connection_requests(
+                supabase_client, current_user, direction="outbox", limit=100
+            )
+            trust_connections = [
+                ("Demande reçue", item) for item in trust_incoming if item.get("status") == "accepted"
+            ] + [
+                ("Demande envoyée", item) for item in trust_outgoing if item.get("status") == "accepted"
+            ]
+            st.markdown("#### Évaluer une collaboration")
+            st.caption("Une note peut être déposée uniquement entre les deux membres d’une mise en relation acceptée. Une seule note par participant et par connexion.")
+            if not trust_connections:
+                st.info("Vos collaborations acceptées apparaîtront ici. Les évaluations ne sont pas ouvertes aux profils sans connexion préalable.")
+            else:
+                trust_options = {
+                    f"{direction} · collaboration {item['id'][:8]}": item
+                    for direction, item in trust_connections
+                }
+                chosen_trust = st.selectbox(
+                    "Collaboration concernée",
+                    options=list(trust_options),
+                    key="global_trust_connection",
+                )
+                trust_request = trust_options[chosen_trust]
+                trust_request_id = trust_request["id"]
+                rating_col, action_col = st.columns([1, 2])
+                with rating_col:
+                    trust_rating = st.select_slider(
+                        "Votre évaluation",
+                        options=[1, 2, 3, 4, 5],
+                        value=5,
+                        key=f"global_trust_rating_{trust_request_id}",
+                    )
+                with action_col:
+                    st.caption("1 = expérience difficile · 5 = excellente collaboration")
+                    if st.button("Envoyer mon évaluation", key=f"global_trust_submit_{trust_request_id}"):
+                        try:
+                            cloud_storage.submit_global_trust_review(
+                                supabase_client, current_user, trust_request_id, trust_rating
+                            )
+                            st.success("Évaluation enregistrée.")
+                            st.rerun()
+                        except Exception as review_error:
+                            st.error("Évaluation non enregistrée : " + type(review_error).__name__)
+                            st.caption("Une seule évaluation est autorisée par membre et par connexion.")
+                with st.expander("Signaler un problème confidentiellement"):
+                    st.caption("Le signalement est transmis à l’espace de modération SOWIA. Il n’est pas publié sur le profil de l’autre membre.")
+                    report_reason = st.text_area(
+                        "Décrivez les faits (10 à 2 000 caractères)",
+                        max_chars=2000,
+                        key=f"global_trust_report_{trust_request_id}",
+                    )
+                    if st.button("Transmettre un signalement confidentiel", key=f"global_trust_report_send_{trust_request_id}"):
+                        try:
+                            cloud_storage.submit_global_trust_report(
+                                supabase_client, current_user, trust_request_id, report_reason
+                            )
+                            st.success("Signalement transmis de manière confidentielle.")
+                            st.rerun()
+                        except Exception as report_error:
+                            st.error("Signalement non transmis : " + type(report_error).__name__)
+
+            st.divider()
+            st.markdown("#### Indicateurs publics de confiance")
+            st.caption("Seules les moyennes et le nombre d’évaluations sont visibles. Aucun commentaire ni nom d’évaluateur n’est publié.")
+            trust_aggregates = cloud_storage.list_global_trust_aggregates(
+                supabase_client, current_user, limit=200
+            )
+            if trust_aggregates:
+                for aggregate in trust_aggregates:
+                    if aggregate.get("review_count", 0):
+                        st.write(
+                            f"**{aggregate['public_id']}** · "
+                            f"{aggregate['average_rating']}/5 · "
+                            f"{aggregate['review_count']} évaluation(s)"
+                        )
+            else:
+                st.info("Les indicateurs apparaîtront après les premières collaborations évaluées.")
+            st.info("Une note reflète une expérience déclarée par un partenaire. Elle ne certifie ni la solvabilité, ni la légalité, ni la qualité générale d’une entreprise. Les vérifications d’identité restent distinctes et nécessitent des preuves contrôlées par SOWIA.")
+        except Exception as trust_error:
+            st.error("GLOBAL TRUST nécessite les migrations GLOBAL ID, CONNECT et TRUST.")
+            st.caption("Diagnostic : " + type(trust_error).__name__)
 
 
 elif page == "SOWIA NIGHT EXCHANGE":
