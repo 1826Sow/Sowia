@@ -57,9 +57,11 @@ def normalize_market_observation(raw: Mapping[str, Any]) -> MarketObservation:
     provider = _required_text(raw, "provider", 100)
 
     currency = _required_text(raw, "currency", 3).upper()
-    if len(currency) != 3 or not currency.isalpha():
+    if len(currency) != 3 or not currency.isascii() or not currency.isalpha():
         raise ValueError("La devise doit être un code alphabétique ISO à 3 lettres.")
 
+    if isinstance(raw.get("price"), bool):
+        raise ValueError("Le cours doit être numérique.")
     try:
         price = float(raw.get("price"))
     except (TypeError, ValueError):
@@ -78,7 +80,8 @@ def normalize_market_observation(raw: Mapping[str, Any]) -> MarketObservation:
         raise ValueError("L'horodatage doit inclure un fuseau horaire.")
     observed_at = observed_at.astimezone(timezone.utc)
 
-    status = str(raw.get("status", "unknown")).strip().lower()
+    status_value = raw.get("status")
+    status = str(status_value or "unknown").strip().lower()
     if status not in VALID_STATUSES:
         raise ValueError("Statut de cotation non reconnu.")
 
