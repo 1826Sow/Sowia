@@ -1034,6 +1034,9 @@ elif page == "Abonnement":
 
             if subscription_config is None:
                 st.info("L’abonnement mensuel reste désactivé tant que le parcours Sandbox n’a pas été configuré et validé.")
+                missing_settings = paypal_subscriptions.paypal_subscription_configuration_status()
+                if missing_settings:
+                    st.caption("Configuration à vérifier : " + ", ".join(missing_settings))
             else:
                 if subscription_config["mode"] != "sandbox":
                     st.warning("Le mode PayPal réel est bloqué dans cette version. Aucun abonnement ne peut être créé avant validation explicite du lancement.")
