@@ -74,3 +74,28 @@ def test_morning_report_does_not_infer_events():
     report = nex.build_morning_report([])
     assert report["recognized_events"] == 0
     assert report["has_recorded_activity"] is False
+
+
+def test_morning_report_reads_only_server_confirmed_payment_payload():
+    report = nex.build_morning_report([
+        {
+            "event_type": "payment_confirmed",
+            "event_payload": {"payment_status": "confirmed", "amount": "10.00", "currency": "EUR"},
+        },
+        {
+            "event_type": "payment_confirmed",
+            "event_payload": {"payment_status": "pending", "amount": "90.00", "currency": "EUR"},
+        },
+    ])
+    assert report["confirmed_spend_by_currency"] == {"EUR": Decimal("10.00")}
+    assert report["counts"]["payment_confirmed"] == 1
+
+
+def test_morning_report_keeps_currency_totals_separate():
+    report = nex.build_morning_report([
+        {"event_type": "payment_confirmed", "payment_status": "confirmed", "amount": "10", "currency": "EUR"},
+        {"event_type": "payment_confirmed", "payment_status": "confirmed", "amount": "20", "currency": "USD"},
+    ])
+    assert report["confirmed_spend_by_currency"] == {
+        "EUR": Decimal("10.00"), "USD": Decimal("20.00")
+    }
