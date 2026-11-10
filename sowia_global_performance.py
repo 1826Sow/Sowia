@@ -121,14 +121,24 @@ def summarize_performance(observations):
         if plan_id not in latest or stamp > latest[plan_id][0]:
             latest[plan_id] = (stamp, row)
     current = [item[1] for item in latest.values()]
-    total_budget = sum(float(row.get("budget_cap_snapshot") or 0) for row in current)
-    total_spend = sum(float(row.get("actual_spend_cumulative") or 0) for row in current)
+    currency_totals = {}
+    for row in current:
+        currency = str(row.get("currency_snapshot") or "N/A")
+        bucket = currency_totals.setdefault(currency, {"authorized_budget": 0.0, "cumulative_spend": 0.0})
+        bucket["authorized_budget"] += float(row.get("budget_cap_snapshot") or 0)
+        bucket["cumulative_spend"] += float(row.get("actual_spend_cumulative") or 0)
+    currency_breakdown = {
+        currency: {
+            "authorized_budget": round(values["authorized_budget"], 2),
+            "cumulative_spend": round(values["cumulative_spend"], 2),
+            "budget_remaining": round(values["authorized_budget"] - values["cumulative_spend"], 2),
+        }
+        for currency, values in currency_totals.items()
+    }
     return {
         "observations_count": len(rows),
         "measured_plans": len(current),
-        "total_authorized_budget": round(total_budget, 2),
-        "latest_cumulative_spend": round(total_spend, 2),
-        "budget_remaining": round(total_budget - total_spend, 2),
+        "currency_breakdown": currency_breakdown,
         "over_budget_plans": sum(
             1 for row in current
             if float(row.get("actual_spend_cumulative") or 0) > float(row.get("budget_cap_snapshot") or 0)
