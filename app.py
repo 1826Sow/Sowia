@@ -2919,6 +2919,79 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                         except Exception as message_error:
                             st.error("Envoi impossible : " + type(message_error).__name__)
                             st.caption("Vérifiez que la migration supabase_global_messenger.sql a été appliquée.");
+
+                st.divider()
+                st.subheader("🔔 GLOBAL NOTIFICATIONS — centre de notifications")
+                try:
+                    notification_prefs = cloud_storage.get_global_notification_preferences(
+                        supabase_client, current_user
+                    )
+                    locale = notification_prefs.get("language", "fr")
+                    locale_names = {
+                        "fr": "Français", "en": "English", "es": "Español",
+                        "pt": "Português", "zh": "中文", "ar": "العربية",
+                    }
+                    locale_options = list(locale_names)
+                    pref_col, enabled_col = st.columns([2, 1])
+                    with pref_col:
+                        chosen_locale = st.selectbox(
+                            "Langue des notifications",
+                            options=locale_options,
+                            format_func=lambda value: locale_names[value],
+                            index=locale_options.index(locale) if locale in locale_options else 0,
+                            key="global_notification_language",
+                        )
+                    with enabled_col:
+                        notifications_enabled = st.toggle(
+                            "Notifications actives dans SOWIA",
+                            value=bool(notification_prefs.get("in_app_enabled", True)),
+                            key="global_notification_enabled",
+                        )
+                    if st.button("Enregistrer mes préférences", key="global_notification_save"):
+                        cloud_storage.set_global_notification_preferences(
+                            supabase_client, current_user, chosen_locale, notifications_enabled
+                        )
+                        st.success("Préférences enregistrées.")
+                        st.rerun()
+
+                    notification_text = sowia_global_notifications.MESSAGES.get(
+                        chosen_locale, sowia_global_notifications.MESSAGES["fr"]
+                    )
+                    notifications = cloud_storage.list_global_notifications(
+                        supabase_client, current_user, limit=100
+                    ) if notifications_enabled else []
+                    unread_count = sum(1 for item in notifications if not item.get("read_at"))
+                    st.caption(f"{unread_count} notification(s) non lue(s)")
+                    if notifications and unread_count:
+                        if st.button(notification_text["mark_all"], key="global_notification_mark_all"):
+                            cloud_storage.mark_all_global_notifications_read(
+                                supabase_client, current_user
+                            )
+                            st.rerun()
+                    if not notifications_enabled:
+                        st.info("Les notifications dans SOWIA sont désactivées. Vous pouvez les réactiver à tout moment.")
+                    elif not notifications:
+                        st.info(notification_text["empty"])
+                    else:
+                        for notification in notifications:
+                            with st.container(border=True):
+                                st.write(sowia_global_notifications.translate(
+                                    notification.get("event_type", ""), chosen_locale
+                                ))
+                                st.caption(str(notification.get("created_at", ""))[:16].replace("T", " "))
+                                if notification.get("read_at"):
+                                    st.caption(notification_text["read"])
+                                else:
+                                    st.caption(notification_text["unread"])
+                                    if st.button("Marquer comme lu", key=f"global_notification_read_{notification['id']}"):
+                                        cloud_storage.mark_global_notification_read(
+                                            supabase_client, current_user, notification["id"]
+                                        )
+                                        st.rerun()
+                    st.caption("Les alertes sont internes à SOWIA. Aucun e-mail, SMS ou notification push externe n’est envoyé par cette première version.")
+                except Exception as notification_error:
+                    st.error("Le centre de notifications nécessite la migration Supabase dédiée.")
+                    st.caption("Diagnostic : " + type(notification_error).__name__)
             except Exception as connect_error:
                 st.error("GLOBAL CONNECT nécessite la migration Supabase dédiée.")
                 st.caption("Diagnostic : " + type(connect_error).__name__)
