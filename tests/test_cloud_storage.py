@@ -279,7 +279,7 @@ def test_accessibility_preferences_default_to_safe_values():
 def test_accessibility_preferences_are_validated_and_saved_without_losing_language():
     class PreferenceQuery(FakeQuery):
         def execute(self):
-            if self.operations and self.operations[-1] == ("select", "language"):
+            if self.inserted is None:
                 return SimpleNamespace(data=[{"language": "English"}])
             return SimpleNamespace(data=[self.inserted])
 
