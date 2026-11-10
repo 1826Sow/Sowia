@@ -176,3 +176,11 @@ All privileged mutations are performed by SECURITY DEFINER database RPCs that ch
 
 Apply `supabase_global_moderation.sql` AFTER `supabase_global_trust.sql`. Full order: GLOBAL ID, GLOBAL DIRECTORY, GLOBAL CONNECT, GLOBAL MESSENGER, GLOBAL NOTIFICATIONS, GLOBAL TRUST, then GLOBAL MODERATION. The code and migration are committed; live Supabase application, real-admin authorization, and two-account isolation have not been verified.
 
+## SOWIA GLOBAL INTELLIGENCE — private market assessment workspace
+
+GLOBAL INTELLIGENCE provides a user-owned register of country/sector opportunities. Each assessment uses six weighted criteria: market demand (25%), strategic fit (20%), accessibility (15%), partner readiness (15%), regulatory readiness (15%), and evidence quality (10%). The resulting score is normalized to 0–100. Users classify the evidence as hypothesis, indicative, documented or verified and may preserve source notes. The interface compares saved assessments and supports deletion.
+
+Scores are subjective decision-support inputs, not automatically gathered market statistics. The word "verified" is an evidence label selected by the user, not a SOWIA certification. The MVP does not crawl markets, independently verify sources, predict revenue, or provide legal/financial advice. Each assessment is private to its owner under Supabase RLS; no global ranking of users or companies is exposed.
+
+Apply `supabase_global_intelligence.sql` AFTER `supabase_global_moderation.sql`. Full migration order now ends with GLOBAL TRUST, GLOBAL MODERATION, then GLOBAL INTELLIGENCE. Code and tests are committed to GitHub; the migration is not confirmed applied to the live Supabase project, and automated tests/deployment remain to be verified.
+
