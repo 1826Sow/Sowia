@@ -1,7 +1,7 @@
 import unittest
 
 from sowia_global_alerts import (
-    build_technical_alerts, classify_signal, validate_alert, validate_alert_status,
+    build_technical_alerts, classify_signal, prepare_incident_rows, validate_alert, validate_alert_status,
 )
 
 
@@ -43,6 +43,22 @@ class GlobalAlertsTests(unittest.TestCase):
     def test_technical_alerts_reject_invalid_input(self):
         with self.assertRaises(ValueError):
             build_technical_alerts("not-a-list")
+
+
+    def test_incident_fingerprint_is_stable_and_deduplicates(self):
+        alerts = [
+            {"component": "Registre", "level": "high", "status": "À vérifier", "message": "Table absente"},
+            {"component": "Registre", "level": "high", "status": "À vérifier", "message": "Table absente"},
+        ]
+        first = prepare_incident_rows(alerts, "admin-1")
+        second = prepare_incident_rows(alerts, "admin-1")
+        self.assertEqual(len(first), 1)
+        self.assertEqual(first[0]["fingerprint"], second[0]["fingerprint"])
+        self.assertEqual(first[0]["status"], "active")
+
+    def test_incident_journal_requires_admin_identity(self):
+        with self.assertRaises(ValueError):
+            prepare_incident_rows([], "")
 
 
 if __name__ == "__main__":
