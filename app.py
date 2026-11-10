@@ -555,7 +555,7 @@ page = st.radio(
     [
         "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "Opportunités et revenus", "Finance & investissements", "Stratégie & scénarios", "Technologies & fournisseurs", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "Opportunités et revenus", "Finance & investissements", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -2182,6 +2182,71 @@ elif page == "Finance & investissements":
             )
     except Exception:
         st.error("L'espace Finance est momentanément indisponible. Aucune opération financière n'a été exécutée.")
+
+
+elif page == "Revenus & paiements":
+    st.subheader("💶 Revenus & paiements")
+    st.caption(
+        "Vue privée des transactions confirmées enregistrées pour votre compte. "
+        "Les montants restent séparés par fournisseur et devise."
+    )
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous à votre compte SOW IA pour consulter le registre financier sécurisé.")
+    else:
+        try:
+            import financial_reporting
+            rows = financial_reporting.load_user_financial_transactions(
+                supabase_client, current_user, limit=500
+            )
+            summaries = financial_reporting.summarize_financial_transactions(rows)
+            if not rows:
+                st.info(
+                    "Aucune transaction n'est encore enregistrée dans le registre. "
+                    "Les anciens paiements ne sont pas importés automatiquement."
+                )
+            else:
+                st.metric("Écritures consultées", len(rows))
+                if summaries:
+                    st.markdown("#### Synthèse par fournisseur et devise")
+                    st.dataframe(
+                        [{
+                            "Prestataire": item["provider"].upper(),
+                            "Devise reçue": item["currency"],
+                            "Paiements bruts": item["payments_gross"],
+                            "Remboursements": item["refunds_gross"],
+                            "Brut après remboursements": item["gross_after_refunds"],
+                            "Frais connus": item["fees_reported"] or "À rapprocher",
+                            "Net déclaré": item["net_reported"] or "À rapprocher",
+                            "Référence EUR (non encaissée en EUR)": item["reference_eur_after_refunds"],
+                        } for item in summaries],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                st.markdown("#### Dernières transactions")
+                st.dataframe(
+                    [{
+                        "Date": row.get("occurred_at"),
+                        "Prestataire": row.get("provider"),
+                        "Type": row.get("transaction_type"),
+                        "Statut": row.get("status"),
+                        "Montant": f'{row.get("gross_amount")} {row.get("gross_currency")}',
+                        "Référence EUR": row.get("reference_amount_eur") or "—",
+                    } for row in rows],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+                st.caption(
+                    "Les frais et montants nets sont affichés uniquement s'ils sont fournis "
+                    "par le prestataire. La référence EUR d'un paiement crypto n'est pas un "
+                    "règlement en euros. Les écritures historiques et les abonnements récurrents "
+                    "ne sont pas encore réconciliés dans cette première vue."
+                )
+        except Exception:
+            st.error(
+                "Le registre financier n'est pas accessible. Vérifiez que la migration "
+                "supabase_crypto_payments.sql a été appliquée et que les droits RLS sont actifs."
+            )
+
 
 elif page == "Paramètres":
     st.subheader(translate_ui("⚙️ Paramètres", language))
