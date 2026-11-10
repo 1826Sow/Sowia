@@ -111,3 +111,11 @@ The standalone `sowia_global_id.py` module adds:
 - A stable HTTPS profile URL payload suitable for a future QR code. The module returns the URL only; it does not render a QR image.
 
 **Important implementation boundary:** this is a pure Python prototype. A public ID is an alias, not proof of legal identity, domain ownership or account control. The admin-role argument is not a substitute for server-side authentication and authorization. Before production, SOWIA needs a persistent profile table with a unique public ID, authenticated owner mapping, admin-only server-side RPC, auditable evidence records, RLS, consent and profile visibility settings, data-retention/deletion rules, and an actual HTTPS profile route. The profile URL domain is not yet deployed. The interface, database and QR rendering are not connected. Tests have been added but not executed.
+
+
+## SOWIA GLOBAL ID — Supabase registry and first interface
+The migration `supabase_global_id.sql` defines one profile per authenticated account, generates a stable public alias from the account UUID, and keeps the source account ID private. Owner reads/writes are restricted by RLS. A separate allowlisted public view exposes only explicitly published card fields; it omits account identifiers and verification evidence. A signed-admin RPC controls verification states and requires an evidence reference for `verified`. The trigger prevents members from changing their own identifier or verification status.
+
+The Streamlit navigation now includes a GLOBAL ID page with a profile editor, private-by-default publication checkbox, completeness indicator, card preview, published-card directory, and an administrator review panel. The card preview is available after applying the migration. No public profile URL route or QR image is deployed yet, so the interface deliberately does not display a fabricated QR or non-functional share link.
+
+**Activation steps:** apply `supabase_global_id.sql` in the connected Supabase project's SQL Editor, then reload the app and create a profile. This migration has only been committed to GitHub; it has not been applied to Supabase. The app deployment and database behavior have not been verified in production. Tests have been added but not executed.
