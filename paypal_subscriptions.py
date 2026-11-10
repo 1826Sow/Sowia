@@ -474,7 +474,7 @@ def sync_completed_subscription_transactions(
     }
     recorded = 0
     ignored = 0
-    manual_review = 0
+    refunds_detected = 0
     refunds_reconciled = 0
     fetched = 0
     page_count = 0
@@ -522,7 +522,7 @@ def sync_completed_subscription_transactions(
                 financial_ledger.record_paypal_refund_total(
                     admin_client, user_id=user_id, capture=capture_details
                 )
-                manual_review += 1
+                refunds_detected += 1
                 refunds_reconciled += 1
             else:
                 ignored += 1
@@ -548,7 +548,7 @@ def sync_completed_subscription_transactions(
         "fetched": fetched,
         "recorded_or_already_present": recorded,
         "ignored_non_completed": ignored,
-        "refunds_flagged_for_manual_review": manual_review,
+        "refunds_detected": refunds_detected,
         "refunds_reconciled": refunds_reconciled,
         "pages_read": page_count,
         "has_more": has_more,
