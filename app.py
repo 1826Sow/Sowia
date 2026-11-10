@@ -393,7 +393,7 @@ page = st.radio(
     [
         "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -458,7 +458,7 @@ if page == "Accueil":
         ("🪄", "Créer un PDF", "Préparez vos futurs documents PDF"),
         ("📁", "Mes documents", "Retrouvez votre espace documentaire"),
         ("🕘", "Historique", "Consultez vos conversations"),
-        ("👑", "Abonnement", "Découvrez l’espace Premium"),
+        ("👑", "Abonnement", "Découvrez l’espace Premium"),\n        ("🌍", "Développement mondial", "Trouvez des partenaires et préparez vos campagnes"),
         ("⚙️", "Paramètres", "Vérifiez votre configuration"),
         ("❓", "Aide", "Consultez les indications d’utilisation"),
     ]
@@ -564,6 +564,87 @@ elif page == "Ma mémoire":
             if st.button("Supprimer cette note", key=f"delete_memory_{item['id']}"):
                 delete_app_memory(item["id"])
                 st.rerun()
+
+elif page == "Développement mondial":
+    st.subheader("🌍 Développement mondial de SOW IA")
+    st.caption("Repérez des partenaires, préparez vos prises de contact et construisez votre promotion internationale. Rien n'est envoyé ou publié automatiquement.")
+    partner_tab, promo_tab = st.tabs(["🤝 Partenaires", "📣 Promotion multilingue"])
+
+    with partner_tab:
+        st.markdown("#### Prospection internationale")
+        region = st.selectbox("Zone géographique", list(__import__("growth_tools").REGIONS))
+        partner_type = st.selectbox("Type de partenaire", list(__import__("growth_tools").PARTNER_TYPES))
+        product_description = st.text_input(
+            "Présentation courte de SOW IA",
+            value="SOW IA, plateforme d'assistance IA pour particuliers et professionnels",
+            max_chars=240,
+        )
+        if st.button("Rechercher des partenaires", type="primary", disabled=not product_description.strip()):
+            try:
+                from growth_tools import build_partner_search_query, normalize_partner_result
+                partner_query = build_partner_search_query(region, partner_type, product_description)
+                with st.spinner("Recherche de partenaires potentiels…"):
+                    raw_results = search_web(partner_query, max_results=10)
+                st.session_state["growth_partner_results"] = [
+                    normalized for item in raw_results
+                    if (normalized := normalize_partner_result(item))
+                ]
+                st.session_state["growth_partner_region"] = region
+            except (RuntimeError, ValueError) as exc:
+                st.error(str(exc))
+            except Exception:
+                st.error("La prospection n'a pas abouti. Vérifiez le service de recherche puis réessayez.")
+
+        partner_results = st.session_state.get("growth_partner_results", [])
+        if partner_results:
+            st.success(f"{len(partner_results)} piste(s) trouvée(s) — à vérifier avant toute prise de contact.")
+            from growth_tools import build_partner_intro, LANGUAGES
+            intro_language = st.selectbox("Langue du message de prise de contact", LANGUAGES)
+            for index, lead in enumerate(partner_results):
+                with st.container(border=True):
+                    st.markdown(f"**{lead['title']}**")
+                    st.caption(lead["domain"])
+                    if lead["content"]:
+                        st.write(lead["content"])
+                    st.link_button("Consulter le site et vérifier le programme", lead["url"])
+                    draft = build_partner_intro(intro_language, lead["title"], product_description)
+                    st.text_area(
+                        "Brouillon de prise de contact — à relire avant envoi",
+                        value=draft,
+                        key=f"growth_partner_draft_{index}_{intro_language}",
+                        height=190,
+                    )
+        else:
+            st.info("Lancez une recherche pour découvrir des pistes de partenariat. Les résultats ne sont pas encore des partenaires validés.")
+
+    with promo_tab:
+        st.markdown("#### Préparer une campagne internationale")
+        campaign_language = st.selectbox("Langue de la campagne", ["Français", "English", "Español", "中文", "Deutsch", "العربية"])
+        channel = st.selectbox("Canal de diffusion", ["TikTok", "Instagram", "Facebook", "LinkedIn", "Pinterest", "Email"])
+        audience = st.text_input("Public visé", value="Particuliers et professionnels")
+        campaign_goal = st.selectbox("Objectif", ["Faire connaître SOW IA", "Obtenir des inscriptions", "Promouvoir l'abonnement Premium", "Trouver des partenaires"])
+        campaign_offer = st.text_area("Fonctionnalités ou offre à mettre en avant", value="Assistant IA, mémoire, analyse PDF, création de documents et espace professionnel", height=90)
+        if st.button("Préparer ma campagne", type="primary", disabled=not campaign_offer.strip()):
+            if not API_KEY:
+                st.warning("Le générateur de campagne nécessite un fournisseur IA configuré. La recherche de partenaires et les outils PDF restent disponibles.")
+            else:
+                campaign_prompt = (
+                    "Rédige une campagne marketing honnête et adaptée à la plateforme choisie. "
+                    "N'invente aucun tarif, résultat, témoignage, fonctionnalité disponible ou garantie. "
+                    "Ajoute un appel à l'action, 5 hashtags pertinents et une variante courte. "
+                    f"Langue : {campaign_language}. Canal : {channel}. Public : {audience}. "
+                    f"Objectif : {campaign_goal}. Offre connue : {campaign_offer}. "
+                    "Marque : SOW IA. Site : https://fm5aczcvvj5jgkhpxwqtcr.streamlit.app/"
+                )
+                with st.spinner("Préparation de la campagne…"):
+                    try:
+                        campaign_text = answer([{"role": "user", "content": campaign_prompt}])
+                        st.session_state["growth_campaign_draft"] = campaign_text
+                    except Exception:
+                        st.error("La génération de la campagne a échoué. Vérifiez le fournisseur IA et réessayez.")
+        if st.session_state.get("growth_campaign_draft"):
+            st.text_area("Campagne préparée — à valider avant publication", value=st.session_state["growth_campaign_draft"], height=360)
+            st.caption("La publication automatique sera ajoutée après connexion et validation des comptes sociaux. Aucun message n'est publié depuis cet écran.")
 
 elif page == "Recherche Web":
     st.subheader("🌐 Recherche Web")
