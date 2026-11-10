@@ -95,3 +95,21 @@ def test_user_ledger_read_includes_paypal_subscription_reference():
     assert rows[0]["paypal_subscription_id"] == "I-TEST12345"
     assert "paypal_subscription_id" in client.query.selected
     assert ("user_id", "user-123") in client.query.filters
+
+
+
+def test_fee_and_net_amounts_keep_their_own_currencies():
+    rows = [{'provider': 'example', 'gross_currency': 'USD', 'gross_amount': '20', 'transaction_type': 'payment', 'status': 'confirmed', 'fee_amount': '1.25', 'fee_currency': 'EUR', 'net_amount': '18.75', 'net_currency': 'USD'}]
+    result = summarize_financial_transactions(rows)[0]
+    assert result['fees_reported'] == '1.25' and result['fees_currency'] == 'EUR'
+    assert result['net_reported'] == '18.75' and result['net_currency'] == 'USD'
+
+
+def test_fee_and_net_are_unknown_when_currency_is_missing_or_mixed():
+    rows = [
+        {'provider': 'example', 'gross_currency': 'USD', 'gross_amount': '20', 'transaction_type': 'payment', 'status': 'confirmed', 'fee_amount': '1', 'fee_currency': 'EUR', 'net_amount': '19', 'net_currency': 'USD'},
+        {'provider': 'example', 'gross_currency': 'USD', 'gross_amount': '10', 'transaction_type': 'payment', 'status': 'confirmed', 'fee_amount': '0.5', 'fee_currency': 'USD', 'net_amount': '9.5', 'net_currency': None},
+    ]
+    result = summarize_financial_transactions(rows)[0]
+    assert result['fees_reported'] is None and result['fees_currency'] is None
+    assert result['net_reported'] is None and result['net_currency'] is None
