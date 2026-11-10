@@ -251,6 +251,10 @@ def build_morning_report(events: Iterable[dict]) -> dict:
     confirmed_spend = Decimal("0.00")
     currencies = set()
     for event in rows:
+        payload = event.get("event_payload") or {}
+        if not isinstance(payload, dict):
+            payload = {}
+        event = {**payload, **event}
         event_type = str(event.get("event_type") or "")
         if event_type not in allowed:
             continue
