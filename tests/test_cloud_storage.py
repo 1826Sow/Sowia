@@ -26,6 +26,11 @@ class FakeQuery:
     def delete(self):
         return self
 
+    def update(self, payload):
+        self.inserted = payload
+        self.operations.append(("update", payload))
+        return self
+
     def eq(self, field, value):
         self.filters.append((field, value))
         return self
@@ -170,3 +175,83 @@ def test_history_query_keeps_requested_user_session_and_workspace_together():
         ("workspace_id", "professional"),
         ("session_id", "professional-session"),
     ]
+
+
+def test_add_growth_lead_writes_user_workspace_and_validated_fields():
+    client = FakeClient()
+    cloud_storage.add_growth_lead(
+        client, User(), "Startup Example", "États-Unis", "Amérique du Nord",
+        "Accélérateur", "https://example.com", "https://example.com/partners",
+        "À examiner", "professional",
+    )
+    payload = client.tables["sowia_growth_leads"].inserted
+    assert payload["user_id"] == "user-123"
+    assert payload["workspace_id"] == "professional"
+    assert payload["organization"] == "Startup Example"
+    assert payload["country"] == "États-Unis"
+    assert payload["status"] == "À vérifier"
+
+
+@pytest.mark.parametrize("website", ["javascript:alert(1)", "file:///etc/passwd", "not a url"])
+def test_add_growth_lead_rejects_unsafe_urls_before_database_write(website):
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid input")
+
+    with pytest.raises(ValueError, match="HTTP"):
+        cloud_storage.add_growth_lead(
+            Client(), User(), "Startup", "France", "Europe", "SaaS", website
+        )
+
+
+def test_add_growth_lead_requires_organization_and_country():
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid input")
+
+    with pytest.raises(ValueError):
+        cloud_storage.add_growth_lead(
+            Client(), User(), " ", "France", "Europe", "SaaS", "https://example.com"
+        )
+    with pytest.raises(ValueError):
+        cloud_storage.add_growth_lead(
+            Client(), User(), "Startup", " ", "Europe", "SaaS", "https://example.com"
+        )
+
+
+def test_list_growth_leads_is_scoped_to_user_and_workspace():
+    client = FakeClient()
+    cloud_storage.list_growth_leads(client, User(), "professional")
+    filters = client.tables["sowia_growth_leads"].filters
+    assert ("user_id", "user-123") in filters
+    assert ("workspace_id", "professional") in filters
+
+
+def test_update_growth_lead_is_scoped_and_rejects_unknown_status():
+    client = FakeClient()
+    cloud_storage.update_growth_lead(
+        client, User(), 7, "Contacté", "Premier échange", "personal"
+    )
+    query = client.tables["sowia_growth_leads"]
+    assert query.inserted["status"] == "Contacté"
+    assert ("id", 7) in query.filters
+    assert ("user_id", "user-123") in query.filters
+    assert ("workspace_id", "personal") in query.filters
+
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid status")
+
+    with pytest.raises(ValueError, match="Statut"):
+        cloud_storage.update_growth_lead(
+            Client(), User(), 7, "Envoyer tout", "", "personal"
+        )
+
+
+def test_delete_growth_lead_is_scoped_to_owner_and_workspace():
+    client = FakeClient()
+    cloud_storage.delete_growth_lead(client, User(), 9, "professional")
+    filters = client.tables["sowia_growth_leads"].filters
+    assert ("id", 9) in filters
+    assert ("user_id", "user-123") in filters
+    assert ("workspace_id", "professional") in filters
