@@ -1538,7 +1538,7 @@ elif page == "Développement mondial":
         )
         market_name = (
             custom_market.strip()
-            if selected_market in {"Autre pays anglophone", "Autre pays / territoire"} and custom_market.strip()
+            if selected_market in {"Autre pays anglophone", "Pays en développement / marché émergent", "Autre pays / territoire"} and custom_market.strip()
             else selected_market
         )
         market_input_valid = (
