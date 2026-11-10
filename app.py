@@ -37,6 +37,7 @@ import premium_access
 import financial_ledger
 import decision_benchmark_ui
 import sowia_prioritization
+import sowia_night_exchange
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -562,7 +563,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -2538,6 +2539,102 @@ elif page == "Abonnement":
 # Impossible de vérifier votre abonnement auprès de Supabase.
 # Impossible de préparer le paiement PayPal.
 
+
+elif page == "SOWIA NIGHT EXCHANGE":
+    st.subheader("🌙 SOWIA NIGHT EXCHANGE")
+    st.caption("Place de marché nocturne internationale pour applications et services numériques.")
+    if not premium_active:
+        st.warning("Cet espace professionnel est réservé aux comptes Premium. Aucun achat ni engagement financier n'est possible depuis cet aperçu.")
+    else:
+        st.markdown(
+            '<div class="partner-intro"><h3>Le marché mondial qui travaille pendant la nuit</h3>'
+            '<p>Découvrez des applications compatibles, échangez des services et préparez des offres payantes avec des plafonds de dépenses explicites.</p></div>',
+            unsafe_allow_html=True,
+        )
+        market_tabs = st.tabs(["🌐 Présentation", "🏷️ Inscrire une application", "🤝 Compatibilité", "💶 Budget & règles"])
+        with market_tabs[0]:
+            st.markdown("#### Les six espaces du marché")
+            overview = [
+                ("Annuaire", "Profils d'applications, capacités, pays et langues."),
+                ("Échanges", "Services réciproques avec périmètre et livrables définis."),
+                ("Offres payantes", "Visibilité, intégration et prestations à prix plafonné."),
+                ("Sessions nocturnes", "Horaires calculés selon le fuseau local de chaque application."),
+                ("Matching SOWIA", "Compatibilité indicative et vérification préalable."),
+                ("Rapport du matin", "Résumé des offres, accords, dépenses confirmées et actions en attente."),
+            ]
+            for title, description in overview:
+                with st.container(border=True):
+                    st.markdown(f"**{title}**")
+                    st.write(description)
+            st.info("Phase actuelle : prototype de règles et interface de préparation. Le paiement, les échanges de données et les intégrations ne sont pas activés.")
+        with market_tabs[1]:
+            st.markdown("#### Préparer une fiche application")
+            app_name = st.text_input("Nom de l'application", max_chars=100, key="nex_app_name")
+            app_country = st.text_input("Pays principal", max_chars=80, key="nex_app_country")
+            app_timezone = st.text_input("Fuseau horaire IANA", value="Europe/Paris", max_chars=80, key="nex_app_timezone", help="Exemple : Europe/Paris, Asia/Singapore ou America/Sao_Paulo.")
+            app_categories = st.multiselect("Domaines", ["Intelligence artificielle", "Rencontres", "Commerce", "Finance", "Éducation", "Santé", "Voyage", "Divertissement", "Productivité", "Technologie"])
+            offered = st.text_input("Services proposés", max_chars=300, key="nex_services_offered")
+            wanted = st.text_input("Services recherchés", max_chars=300, key="nex_services_wanted")
+            night_start = st.time_input("Début de session nocturne locale", value=datetime.strptime("20:00", "%H:%M").time(), key="nex_night_start")
+            night_end = st.time_input("Fin de session nocturne locale", value=datetime.strptime("06:00", "%H:%M").time(), key="nex_night_end")
+            if st.button("Prévisualiser ma fiche", type="primary", key="nex_preview_listing"):
+                try:
+                    from zoneinfo import ZoneInfo
+                    ZoneInfo(app_timezone.strip())
+                    if not app_name.strip() or not app_country.strip() or not app_categories:
+                        raise ValueError("Renseignez le nom, le pays et au moins un domaine.")
+                    st.session_state["nex_listing_preview"] = {
+                        "name": app_name.strip(), "country": app_country.strip(),
+                        "timezone": app_timezone.strip(), "categories": app_categories,
+                        "offered": offered.strip(), "wanted": wanted.strip(),
+                        "night_start": night_start.strftime("%H:%M"), "night_end": night_end.strftime("%H:%M"),
+                    }
+                    st.success("Fiche préparée dans cette session. Elle n'est pas encore publiée.")
+                except Exception as exc:
+                    st.error(f"Fiche non valide : {exc}")
+            preview = st.session_state.get("nex_listing_preview")
+            if preview:
+                with st.container(border=True):
+                    st.markdown(f"**{preview['name']}** · {preview['country']}")
+                    st.write("Domaines : " + ", ".join(preview["categories"]))
+                    st.write(f"Fuseau : {preview['timezone']} · Session locale : {preview['night_start']}–{preview['night_end']}")
+                    st.write("Propose : " + (preview["offered"] or "Non renseigné"))
+                    st.write("Recherche : " + (preview["wanted"] or "Non renseigné"))
+                    st.caption("Brouillon temporaire : aucune publication ni vérification d'identité n'a eu lieu.")
+        with market_tabs[2]:
+            st.markdown("#### Compatibilité entre applications")
+            st.caption("Prototype de matching à partir des domaines et services renseignés. Les scores ne constituent pas une recommandation ou une certification.")
+            left = st.text_input("Domaines de votre application (séparés par des virgules)", key="nex_match_left")
+            right = st.text_input("Domaines de l'application candidate", key="nex_match_right")
+            left_services = st.text_input("Services que vous recherchez", key="nex_match_left_services")
+            right_services = st.text_input("Services que l'autre application propose", key="nex_match_right_services")
+            if st.button("Évaluer la compatibilité", key="nex_match_button"):
+                a = {x.strip().casefold() for x in left.split(",") if x.strip()}
+                b = {x.strip().casefold() for x in right.split(",") if x.strip()}
+                wanted_set = {x.strip().casefold() for x in left_services.split(",") if x.strip()}
+                offered_set = {x.strip().casefold() for x in right_services.split(",") if x.strip()}
+                overlap = sorted(a & b)
+                score = min(100, len(overlap) * 20 + (30 if wanted_set & offered_set else 0))
+                st.metric("Compatibilité indicative", f"{score}/100")
+                st.write("Domaines communs : " + (", ".join(overlap) if overlap else "Aucun identifié"))
+                st.write("Services correspondants : " + (", ".join(sorted(wanted_set & offered_set)) if wanted_set & offered_set else "Aucun identifié"))
+                st.caption("Le calcul est indicatif et ne remplace ni la diligence raisonnable ni la validation des deux parties.")
+        with market_tabs[3]:
+            st.markdown("#### Budgets et garde-fous")
+            currency = st.selectbox("Devise", ["EUR", "USD", "GBP", "CHF", "SGD", "CNY", "BRL", "XOF", "AED"])
+            daily_cap = st.number_input("Plafond quotidien", min_value=0.0, value=10.0, step=5.0)
+            weekly_cap = st.number_input("Plafond hebdomadaire", min_value=0.0, value=30.0, step=5.0)
+            monthly_cap = st.number_input("Plafond mensuel", min_value=0.0, value=100.0, step=10.0)
+            try:
+                budget = sowia_night_exchange.BudgetCap.create(currency, daily_cap, weekly_cap, monthly_cap)
+                st.success(f"Configuration cohérente : {budget.daily_limit} {currency}/jour · {budget.weekly_limit} {currency}/semaine · {budget.monthly_limit} {currency}/mois.")
+            except ValueError as exc:
+                st.error(str(exc))
+            st.warning("Ces plafonds sont une prévisualisation locale. Ils ne bloquent aucune transaction réelle tant que le registre budgétaire atomique côté serveur et le prestataire de paiement ne sont pas connectés.")
+            st.markdown("- Aucun achat automatique.")
+            st.markdown("- Validation explicite des administrateurs.")
+            st.markdown("- Arrêt des nouvelles dépenses si un plafond est atteint ou si le statut du paiement est incertain.")
+            st.markdown("- Vérification juridique, sécurité et confidentialité avant toute intégration.")
 
 elif page == "SOW IA Business Club":
     st.subheader("🏛️ SOW IA BUSINESS CLUB")
