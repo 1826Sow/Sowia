@@ -2554,6 +2554,10 @@ elif page == "SOWIA GLOBAL ID":
         )
         try:
             profile = cloud_storage.get_my_global_profile(supabase_client, current_user) or {}
+            verification_labels = {
+                "unverified": "Non vérifié", "pending": "En attente",
+                "verified": "Vérifié par SOWIA", "suspended": "Suspendu",
+            }
             with st.form("sowia_global_id_profile_form", clear_on_submit=False):
                 display_name = st.text_input("Nom public / nom professionnel", value=profile.get("display_name") or "", max_chars=120)
                 app_name = st.text_input("Nom de votre application (facultatif)", value=profile.get("app_name") or "", max_chars=160)
@@ -2586,10 +2590,6 @@ elif page == "SOWIA GLOBAL ID":
                 left, middle, right = st.columns(3)
                 left.metric("Complétude", f"{completeness['percent']} %")
                 middle.metric("Identifiant public", profile.get("public_id", "En attente"))
-                verification_labels = {
-                    "unverified": "Non vérifié", "pending": "En attente",
-                    "verified": "Vérifié par SOWIA", "suspended": "Suspendu",
-                }
                 right.metric("Vérification", verification_labels.get(profile.get("verification_status"), "Non vérifié"))
                 with st.expander("Détail de la complétude du profil"):
                     for criterion, passed in completeness["checks"].items():
