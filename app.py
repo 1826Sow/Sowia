@@ -2045,6 +2045,53 @@ elif page == "SOW IA Business Club":
                         else:
                             st.info("Aucun devis correspondant exactement à cette destination, quantité et devise.")
                     st.caption("Les offres non vérifiées restent identifiées comme telles. Aucune commande, aucun paiement et aucune transmission de coordonnées ne sont déclenchés.")
+                    user_metadata = getattr(current_user, "app_metadata", None) or {}
+                    if isinstance(user_metadata, dict) and user_metadata.get("sowia_admin") is True:
+                        st.divider()
+                        st.markdown("#### 🛡️ Administration SOW IA — validation des imprimeurs")
+                        st.caption("Accès administrateur détecté dans les métadonnées sécurisées du compte. La base Supabase vérifie également ce droit à chaque action.")
+                        supplier_rows = [row for row in candidates if row.get("status") != "suspended"]
+                        if supplier_rows:
+                            supplier_labels = {
+                                "{} — {} [{}]".format(row["name"], row["country"], row["status"]): row["id"]
+                                for row in supplier_rows
+                            }
+                            with st.form("sowia_admin_supplier_review"):
+                                selected_supplier_label = st.selectbox("Candidature à examiner", list(supplier_labels))
+                                supplier_decision = st.radio("Décision", ["verified", "candidate", "suspended"], horizontal=True,
+                                    format_func=lambda value: {"verified": "Valider", "candidate": "Maintenir en attente", "suspended": "Suspendre"}[value])
+                                supplier_review_submit = st.form_submit_button("Appliquer la décision")
+                            if supplier_review_submit:
+                                try:
+                                    cloud_storage.admin_set_vip_printer_supplier_status(
+                                        supabase_client, current_user, supplier_labels[selected_supplier_label], supplier_decision
+                                    )
+                                    st.success("Statut du fournisseur mis à jour dans Supabase.")
+                                    st.rerun()
+                                except Exception as exc:
+                                    st.error("Décision refusée par Supabase : " + str(exc))
+                        pending_quotes = [row for row in quotes if row.get("status") != "expired"]
+                        if pending_quotes:
+                            quote_labels = {
+                                "{} — {} cartes — {} {}".format(row["destination_country"], row["quantity"], row["printing_cost"], row["currency"]): row["id"]
+                                for row in pending_quotes
+                            }
+                            with st.form("sowia_admin_quote_review"):
+                                selected_quote_label = st.selectbox("Devis à examiner", list(quote_labels))
+                                quote_decision = st.radio("Décision sur le devis", ["validated", "received", "expired"], horizontal=True,
+                                    format_func=lambda value: {"validated": "Valider", "received": "Maintenir en attente", "expired": "Expirer"}[value])
+                                quote_review_submit = st.form_submit_button("Appliquer la décision au devis")
+                            if quote_review_submit:
+                                try:
+                                    cloud_storage.admin_set_vip_printer_quote_status(
+                                        supabase_client, current_user, quote_labels[selected_quote_label], quote_decision
+                                    )
+                                    st.success("Statut du devis mis à jour dans Supabase.")
+                                    st.rerun()
+                                except Exception as exc:
+                                    st.error("Décision refusée par Supabase : " + str(exc))
+                        if not supplier_rows and not pending_quotes:
+                            st.info("Aucune candidature ni aucun devis en attente d'examen.")
                 except Exception as exc:
                     st.warning("Le réseau persistant nécessite la migration Supabase supabase_vip_printer_network.sql. Détail technique : " + str(exc))
             with directory_tab:
