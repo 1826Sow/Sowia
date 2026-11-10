@@ -30,3 +30,18 @@ def test_global_profile_is_private_unless_explicitly_published():
         "SOWIA", organization="SOWIA", country="France"
     )
     assert result["is_published"] is False
+
+
+def test_global_profile_validates_and_normalizes_directory_fields():
+    result = _validate_global_profile(
+        "SOWIA", organization="SOWIA", country="France",
+        professional_sectors=["technology", "ai_data"],
+        specialties=" IA, Automatisation, IA ",
+    )
+    assert result["professional_sectors"] == ["technology", "ai_data"]
+    assert result["specialties"] == ["IA", "Automatisation"]
+    with pytest.raises(ValueError):
+        _validate_global_profile(
+            "SOWIA", organization="SOWIA", country="France",
+            professional_sectors=["unknown-sector"],
+        )
