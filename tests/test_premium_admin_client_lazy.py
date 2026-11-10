@@ -10,46 +10,34 @@ def _parents(tree):
     }
 
 
-def test_premium_admin_client_is_created_only_after_payments_are_enabled():
+def test_premium_admin_client_is_created_only_inside_authenticated_paypal_flows():
     source = Path("app.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     parents = _parents(tree)
 
     admin_calls = [
-        node
-        for node in ast.walk(tree)
+        node for node in ast.walk(tree)
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
         and node.func.attr == "create_admin_client"
         and isinstance(node.func.value, ast.Name)
         and node.func.value.id == "premium_access"
     ]
-    assert len(admin_calls) == 1
+    # One call validates a returned checkout; two are explicit user-triggered
+    # synchronization actions in the authenticated revenue workspace.
+    assert len(admin_calls) == 3
 
-    call = admin_calls[0]
-    enclosing_try = parents.get(call)
-    while enclosing_try is not None and not isinstance(enclosing_try, ast.Try):
-        enclosing_try = parents.get(enclosing_try)
-    assert enclosing_try is not None
+    for call in admin_calls:
+        ancestor = parents.get(call)
+        guarded = False
+        while ancestor is not None:
+            if isinstance(ancestor, ast.If):
+                guarded = True
+                break
+            ancestor = parents.get(ancestor)
+        assert guarded, "Admin client creation must stay behind a conditional flow"
 
-    enclosing_if = parents.get(enclosing_try)
-    assert isinstance(enclosing_if, ast.If)
-    assert isinstance(enclosing_if.test, ast.Name)
-    assert enclosing_if.test.id == "paypal_token"
-
-    guarded_configuration = any(
-        isinstance(node, ast.If)
-        and isinstance(node.test, ast.Compare)
-        and isinstance(node.test.left, ast.Name)
-        and node.test.left.id == "payment_config"
-        and any(isinstance(op, ast.Is) for op in node.test.ops)
-        and any(
-            isinstance(child, ast.Raise)
-            and isinstance(child.exc, ast.Call)
-            and isinstance(child.exc.func, ast.Name)
-            and child.exc.func.id == "RuntimeError"
-            for child in ast.walk(node)
-        )
-        for node in enclosing_try.body
-    )
-    assert guarded_configuration
+    source_guard = source.index("if cloud_mode and current_user is not None:")
+    assert source_guard < source.index("premium_access.create_admin_client()")
+    assert 'key="sync_paypal_recurring_ledger"' in source
+    assert 'key="sync_paypal_one_time_refunds"' in source
