@@ -66,3 +66,37 @@ def test_answer_reports_missing_api_key_without_calling_provider(monkeypatch):
 
     with pytest.raises(RuntimeError, match="Aucune clé API IA"):
         assistant.answer([{"role": "user", "content": "Bonjour"}])
+
+
+
+def test_groq_rate_limit_falls_back_to_openai_when_both_keys_are_configured(monkeypatch):
+    monkeypatch.setattr(assistant, "API_KEY", "groq-key")
+    monkeypatch.setattr(assistant, "BASE_URL", "https://api.groq.com/openai/v1")
+    monkeypatch.setattr(assistant, "MODEL", "openai/gpt-oss-20b")
+    monkeypatch.setattr(assistant, "GROQ_API_KEY", "groq-key")
+    monkeypatch.setattr(assistant, "OPENAI_API_KEY", "openai-key")
+    monkeypatch.setattr(assistant, "OPENAI_BASE_URL", None)
+    monkeypatch.setattr(assistant, "OPENAI_MODEL", "gpt-4o-mini")
+    calls = []
+
+    class FakeCompletions:
+        def __init__(self, provider):
+            self.provider = provider
+
+        def create(self, **kwargs):
+            calls.append((self.provider, kwargs["model"]))
+            if self.provider == "groq-key":
+                request = httpx.Request("POST", "https://api.groq.com")
+                response = httpx.Response(429, request=request)
+                raise openai.RateLimitError("throttled", response=response, body=None)
+            return type("Response", (), {"choices": [type("Choice", (), {"message": type("Message", (), {"content": "Réponse de secours"})()})()]})()
+
+    class FakeClient:
+        def __init__(self, api_key, base_url=None):
+            self.chat = type("Chat", (), {"completions": FakeCompletions(api_key)})()
+
+    monkeypatch.setattr(assistant, "OpenAI", FakeClient)
+    result = assistant.answer([{"role": "user", "content": "Bonjour"}])
+
+    assert result == "Réponse de secours"
+    assert calls == [("groq-key", "openai/gpt-oss-20b"), ("openai-key", "gpt-4o-mini")]
