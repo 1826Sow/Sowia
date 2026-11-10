@@ -815,3 +815,15 @@ def admin_set_global_id_verification(client, user, profile_id, status, evidence_
         "p_profile_id": str(profile_id), "p_status": status,
         "p_evidence_reference": evidence,
     }).execute()
+
+
+def list_global_profiles_for_admin(client, user, limit=200):
+    """Read GLOBAL ID review queue only for a signed administrator."""
+    _user_id(user)
+    metadata = getattr(user, "app_metadata", None) or {}
+    if not (metadata.get("sowia_admin") is True or metadata.get("role") == "admin"):
+        raise PermissionError("Accès administrateur requis.")
+    return (client.table("sowia_global_profiles")
+        .select("id,public_id,user_id,display_name,app_name,organization,country,languages,website,short_description,is_published,verification_status,created_at,updated_at")
+        .order("created_at", desc=False)
+        .limit(min(max(int(limit), 1), 500)).execute().data)
