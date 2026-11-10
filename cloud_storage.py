@@ -168,3 +168,57 @@ def set_language_preference(client, user, language):
         )
         .execute().data
     )
+
+
+ACCESSIBILITY_PREFERENCE_DEFAULTS = {
+    "voice_readout": False,
+    "large_text": False,
+    "high_contrast": False,
+}
+
+
+def _validated_accessibility_preferences(preferences):
+    if not isinstance(preferences, dict):
+        raise ValueError("Préférences d'accessibilité invalides.")
+    unknown = set(preferences) - set(ACCESSIBILITY_PREFERENCE_DEFAULTS)
+    if unknown:
+        raise ValueError("Option d'accessibilité non prise en charge.")
+    validated = dict(ACCESSIBILITY_PREFERENCE_DEFAULTS)
+    for key, value in preferences.items():
+        if not isinstance(value, bool):
+            raise ValueError("Les options d'accessibilité doivent être activées ou désactivées.")
+        validated[key] = value
+    return validated
+
+
+def get_accessibility_preferences(client, user):
+    """Return safe, account-scoped accessibility preferences."""
+    rows = (
+        client.table("sowia_user_preferences")
+        .select("accessibility")
+        .eq("user_id", _user_id(user))
+        .limit(1)
+        .execute().data
+    )
+    stored = rows[0].get("accessibility") if rows else None
+    if not isinstance(stored, dict):
+        stored = {}
+    return _validated_accessibility_preferences(stored)
+
+
+def set_accessibility_preferences(client, user, preferences):
+    """Persist validated accessibility preferences without resetting language."""
+    validated = _validated_accessibility_preferences(preferences)
+    language = get_language_preference(client, user)
+    return (
+        client.table("sowia_user_preferences")
+        .upsert(
+            {
+                "user_id": _user_id(user),
+                "language": language,
+                "accessibility": validated,
+            },
+            on_conflict="user_id",
+        )
+        .execute().data
+    )
