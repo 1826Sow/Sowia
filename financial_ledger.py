@@ -132,3 +132,66 @@ def _validated_optional_amount(value, field):
     if not amount.is_finite() or amount < 0 or amount > Decimal("9999.99"):
         raise ValueError(f"{field} PayPal hors limites.")
     return amount
+
+def flag_paypal_refund_for_review(admin_client, *, user_id, transaction):
+    """Exclude a refunded capture from recognized income until exact refund rows are reconciled.
+
+    The Subscriptions transactions endpoint identifies the capture and its
+    refund state, but does not provide each refund's own ID and amount. Never
+    infer a partial refund amount from the original capture gross amount.
+    """
+    if admin_client is None:
+        raise RuntimeError("Client d'administration Supabase indisponible.")
+    user_id = str(user_id or "").strip()
+    if not user_id or not isinstance(transaction, dict):
+        raise ValueError("Utilisateur ou transaction PayPal invalide.")
+    capture_id = str(transaction.get("id") or "").strip()
+    if not re.fullmatch(r"[A-Z0-9_-]{5,100}", capture_id):
+        raise ValueError("Identifiant de capture PayPal invalide.")
+    status = str(transaction.get("status") or "").strip().upper()
+    if status not in {"PARTIALLY_REFUNDED", "REFUNDED"}:
+        raise ValueError("Statut PayPal non remboursé.")
+    breakdown = transaction.get("amount_with_breakdown") or {}
+    gross = breakdown.get("gross_amount") or {}
+    currency = str(gross.get("currency_code") or "").strip().upper()
+    if currency != "EUR":
+        raise ValueError("La capture à contrôler doit être libellée en EUR.")
+    try:
+        gross_value = Decimal(str(gross.get("value"))).quantize(Decimal("0.01"))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError("Montant brut PayPal invalide.") from None
+    if not gross_value.is_finite() or gross_value <= 0 or gross_value > Decimal("9999.99"):
+        raise ValueError("Montant brut PayPal hors limites.")
+    occurred_at = str(transaction.get("time") or "").strip()
+    if not occurred_at:
+        raise ValueError("Date de transaction PayPal manquante.")
+
+    table = admin_client.table("sowia_financial_transactions")
+    update = (
+        table.update({"status": "manual_review"})
+        .eq("user_id", user_id)
+        .eq("provider", "paypal")
+        .eq("provider_payment_id", capture_id)
+        .eq("transaction_type", "payment")
+        .execute()
+    )
+    if getattr(update, "data", None):
+        return {"capture_id": capture_id, "updated": True, "status": "manual_review"}
+
+    payload = {
+        "user_id": user_id,
+        "provider": "paypal",
+        "provider_payment_id": capture_id,
+        "transaction_type": "payment",
+        "status": "manual_review",
+        "gross_amount": f"{gross_value:.2f}",
+        "gross_currency": currency,
+        "occurred_at": occurred_at,
+    }
+    table.upsert(
+        payload,
+        on_conflict="provider,provider_payment_id,transaction_type",
+        ignore_duplicates=True,
+    ).execute()
+    return {"capture_id": capture_id, "updated": False, "status": "manual_review"}
+
