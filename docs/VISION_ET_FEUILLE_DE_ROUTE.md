@@ -448,3 +448,17 @@ Le module `market_data.py` introduit une structure normalisée et des contrôles
 Des tests dédiés sont ajoutés dans `tests/test_market_data.py`.
 
 **Limite :** cette brique ne se connecte à aucun fournisseur, ne récupère aucune cotation et n'est pas encore exposée dans l'interface. Elle prépare une ingestion contrôlée ; elle ne constitue pas encore une veille boursière utilisable par l'utilisateur.
+
+### 17. Première brique d'analyse de portefeuille — calculs en lecture seule
+
+Le module `portfolio_analysis.py` ajoute une valorisation à partir de positions et de cotations explicitement fournies :
+- quantité, prix de revient et devise contrôlés ;
+- valeur investie, valeur de marché, plus ou moins-value latente et rendement latent ;
+- poids de chaque ligne dans la valeur totale valorisée ;
+- signalement explicite des positions sans cotation, sans inventer de prix ;
+- refus des portefeuilles multi-devises tant qu'une conversion FX sourcée n'est pas disponible ;
+- refus des cotations dans une devise différente de celle du portefeuille.
+
+Les tests correspondants sont dans `tests/test_portfolio_analysis.py`.
+
+**Limites :** aucune connexion bancaire ou courtier, aucun import de positions, aucun cours téléchargé, aucune persistance, aucune interface et aucune exécution d'ordre. Les résultats sont des calculs arithmétiques sur les données fournies ; ils ne constituent ni une recommandation personnalisée ni une prévision de rendement.
