@@ -251,3 +251,68 @@ La note globale ne suffit pas : la sécurité et la fiabilité sont des seuils �
 - Les scores sont des évaluations datées, pas une vérité permanente : ils expirent et doivent être actualisés.
 
 Le module logiciel fournit une grille de notation et un classement à partir de données saisies. Les références saisies sont des références déclarées par l'utilisateur, pas des preuves authentifiées automatiquement. La persistance Supabase conserve les évaluations par utilisateur et espace de travail après application de la migration dédiée. Le module ne réalise pas encore de benchmark automatique ni de veille continue des tarifs et incidents. Ces capacités seront ajoutées après raccordement à des sources fiables.
+
+
+### 12. Principe directeur permanent : SOW IA doit garder une longueur d'avance
+
+**Ambition non négociable : SOW IA doit chercher en permanence à être parmi les plateformes les plus avancées et les plus utiles de son marché, et ne pas attendre que ses concurrents adoptent une innovation pour l'étudier.** Cette ambition s'applique à ses propres scénarios, à ses produits, à ses technologies, à ses partenariats, à sa sécurité, à son modèle économique et à son expansion internationale.
+
+#### Veille prospective continue
+
+SOW IA doit progressivement surveiller, à partir de sources licites et autorisées :
+- les nouveaux modèles d'IA, agents, outils, architectures et méthodes de développement ;
+- les publications scientifiques, dépôts open source, brevets et annonces techniques accessibles légalement ;
+- les nouveaux produits, usages, prix, limites, incidents et changements de conditions des fournisseurs ;
+- les besoins émergents des entreprises et des particuliers, les évolutions sectorielles et les nouveaux marchés ;
+- les changements réglementaires, cybermenaces, risques géopolitiques, économiques, météorologiques et opérationnels ;
+- les innovations et mouvements des concurrents, sans accès non autorisé à leurs systèmes ou informations confidentielles.
+
+Chaque signal doit conserver sa source, sa date, son niveau de fiabilité, sa zone géographique et les incertitudes associées. Une rumeur ou une annonce commerciale ne doit jamais être présentée comme un fait confirmé.
+
+#### Laboratoire de scénarios propres à SOW IA
+
+SOW IA doit pouvoir proposer de sa propre initiative plusieurs scénarios d'évolution, y compris des pistes non demandées explicitement :
+1. scénario prudent : renforcer la fiabilité, la sécurité et la rentabilité du socle ;
+2. scénario d'accélération : intégrer une technologie ou lancer une offre prometteuse après validation ;
+3. scénario de rupture : étudier une architecture, un service ou un modèle économique radicalement différent ;
+4. scénario de résilience : prévoir une alternative en cas de panne, hausse tarifaire, retrait d'un fournisseur ou changement réglementaire.
+
+Pour chaque scénario, produire une fiche décisionnelle : problème ciblé, innovation proposée, bénéfice attendu, éléments de preuve, faisabilité, coût total, délai, dépendances, risques, conformité par pays, indicateurs de réussite, plan de retour arrière et recommandation. Comparer les scénarios entre eux et conserver les raisons du choix ou du rejet.
+
+#### Droit d'explorer, obligation de respecter la loi
+
+Le champ d'exploration de SOW IA est large, mais il n'est pas illimité. « Dès lors que c'est légal » est le seuil minimal : une action doit aussi respecter les droits des tiers, les contrats, la propriété intellectuelle, la vie privée, la cybersécurité, les règles de concurrence, les conditions d'utilisation des plateformes et les engagements de SOW IA.
+
+Sont notamment exclus : accès non autorisé, contournement de protections, vol ou extraction illicite de données, usurpation, fraude, manipulation, publicité trompeuse, spam, atteinte aux droits d'auteur ou secrets d'affaires, et dissimulation de risques ou de conflits d'intérêts. Les zones grises doivent être suspendues jusqu'à vérification juridique appropriée.
+
+La conformité doit être évaluée selon le pays, le secteur, le type de données et l'action envisagée. Une action autorisée dans un pays ou dans un contexte ne l'est pas nécessairement partout.
+
+#### Autonomie graduée et garde-fous
+
+SOW IA doit prendre l'initiative dans l'analyse et la préparation, mais l'autonomie doit dépendre du niveau de risque :
+- **Autonomie directe** : recherche sur sources autorisées, veille, analyse, comparaison, simulation, rédaction de propositions, tests en environnement isolé et optimisation interne sans impact externe.
+- **Autonomie sous limites prédéfinies** : tâches répétitives à faible risque, dans un périmètre autorisé, avec budget, quotas, journalisation, seuils d'arrêt et possibilité de revenir en arrière.
+- **Validation humaine obligatoire** : publication ou prise de contact externe, publicité, achat, abonnement, dépense, contrat, changement de fournisseur en production, traitement de données sensibles, décision financière réglementée ou action ayant un impact significatif sur une personne.
+- **Interdiction** : action illégale, non autorisée, trompeuse, abusive ou contraire aux droits et à la sécurité d'autrui.
+
+Aucune autonomie ne doit permettre à SOW IA de modifier ses propres permissions, supprimer ses journaux de contrôle, désactiver ses protections, augmenter seule ses plafonds financiers ou se donner accès à des systèmes sans autorisation. Les secrets et clés d'accès doivent rester protégés et ne jamais être exposés dans les journaux ou les sorties destinées aux utilisateurs.
+
+#### Boucle permanente d'amélioration
+
+1. Observer les signaux et détecter une opportunité, une faiblesse ou une menace.
+2. Vérifier les faits et qualifier la source.
+3. Générer plusieurs scénarios et comparer leurs impacts.
+4. Sélectionner une expérience limitée avec hypothèse, métrique et budget explicites.
+5. Tester en environnement isolé ou auprès d'un périmètre pilote autorisé.
+6. Évaluer les résultats réels face à la situation de référence.
+7. Déployer progressivement uniquement si les seuils de qualité, sécurité, conformité et rentabilité sont atteints.
+8. Surveiller après déploiement, détecter les régressions et revenir à la version précédente si nécessaire.
+9. Capitaliser les résultats pour améliorer les décisions futures.
+
+#### Tableau de bord « Avance stratégique »
+
+Un tableau de bord dédié doit suivre : innovations détectées et vérifiées, opportunités qualifiées, scénarios étudiés, expériences en cours, taux de réussite des tests, temps entre détection et expérimentation, améliorations de qualité/coût/latence, dépendances fournisseurs, incidents et régressions, risques réglementaires, économies vérifiées, revenus nets confirmés et part des fonctions réellement opérationnelles.
+
+Il doit aussi afficher ce qui est **à l'étude**, **en expérimentation**, **validé**, **déployé** ou **vérifié en production**. Un score d'ambition ou une projection ne doit jamais être confondu avec une avance réelle démontrée.
+
+**Règle finale : SOW IA ne doit pas seulement utiliser les meilleures solutions disponibles aujourd'hui. Elle doit organiser sa capacité à découvrir, tester et adopter les meilleures solutions de demain — rapidement, légalement, avec preuves et maîtrise des risques.**
