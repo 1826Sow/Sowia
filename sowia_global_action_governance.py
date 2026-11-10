@@ -5,13 +5,14 @@ STATUSES = ("draft", "submitted", "approved", "rejected", "completed", "cancelle
 CURRENCIES = ("EUR", "USD", "CNY", "SGD", "MYR", "TWD", "KRW", "XOF", "AED", "CHF", "BRL")
 
 
-def validate_action_plan(title, objective, country, owner_label, budget_cap,
+def validate_action_plan(title, objective, country, owner_label, approver_id, budget_cap,
                          currency, due_date, success_metric, stop_condition):
     clean = {
         "title": str(title or "").strip(),
         "objective": str(objective or "").strip(),
         "country": str(country or "").strip(),
         "owner_label": str(owner_label or "").strip(),
+        "approver_id": str(approver_id or "").strip(),
         "budget_cap": budget_cap,
         "currency": str(currency or "").strip().upper(),
         "due_date": str(due_date or "").strip(),
@@ -23,6 +24,11 @@ def validate_action_plan(title, objective, country, owner_label, budget_cap,
                          ("stop_condition", 500)):
         if not clean[key] or len(clean[key]) > maximum:
             raise ValueError(f"Champ invalide : {key}")
+    import uuid
+    try:
+        clean["approver_id"] = str(uuid.UUID(clean["approver_id"]))
+    except (ValueError, TypeError, AttributeError):
+        raise ValueError("Identifiant UUID du compte approbateur invalide.")
     try:
         cap = float(clean["budget_cap"])
     except (TypeError, ValueError):
