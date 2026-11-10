@@ -233,6 +233,6 @@ def test_sync_reconciles_exact_cumulative_refund_amounts(monkeypatch):
     )
     assert flagged == ["CAPTURE-PARTIAL", "CAPTURE-FULL"]
     assert reconciled == [("CAPTURE-PARTIAL", "2.50"), ("CAPTURE-FULL", "9.90")]
-    assert result["refunds_flagged_for_manual_review"] == 2
+    assert result["refunds_detected"] == 2
     assert result["refunds_reconciled"] == 2
     assert result["recorded_or_already_present"] == 0
