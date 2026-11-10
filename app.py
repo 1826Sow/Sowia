@@ -4537,14 +4537,25 @@ elif page == "SOWIA GLOBAL TRUST":
             trust_aggregates = cloud_storage.list_global_trust_aggregates(
                 supabase_client, current_user, limit=200
             )
-            if trust_aggregates:
-                for aggregate in trust_aggregates:
-                    if aggregate.get("review_count", 0):
+            import sowia_global_trust as trust_helpers
+            safe_aggregates = [
+                trust_helpers.safe_trust_aggregate(item) for item in trust_aggregates
+            ]
+            visible_aggregates = [item for item in safe_aggregates if item.get("review_count", 0)]
+            if visible_aggregates:
+                for aggregate in visible_aggregates:
+                    if "average_rating" in aggregate:
                         st.write(
                             f"**{aggregate['public_id']}** · "
                             f"{aggregate['average_rating']}/5 · "
+                            f"{aggregate['review_count']} évaluations"
+                        )
+                    else:
+                        st.write(
+                            f"**{aggregate.get('public_id', 'Profil SOWIA')}** · "
                             f"{aggregate['review_count']} évaluation(s)"
                         )
+                        st.caption("Moyenne masquée : au moins 3 évaluations sont nécessaires pour afficher une note publique.")
             else:
                 st.info("Les indicateurs apparaîtront après les premières collaborations évaluées.")
             st.info("Une note reflète une expérience déclarée par un partenaire. Elle ne certifie ni la solvabilité, ni la légalité, ni la qualité générale d’une entreprise. Les vérifications d’identité restent distinctes et nécessitent des preuves contrôlées par SOWIA.")
