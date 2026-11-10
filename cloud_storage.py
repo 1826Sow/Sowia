@@ -745,7 +745,7 @@ def list_night_exchange_events(client, user, workspace_id="professional",
 def _validate_global_profile(display_name, app_name="", organization="", country="",
                              languages="", website="", short_description="",
                              is_published=False, professional_sectors=None,
-                             specialties="")
+                             specialties=""):
     from urllib.parse import urlparse
     clean = {
         "display_name": str(display_name or "").strip()[:120],
