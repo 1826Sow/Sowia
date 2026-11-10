@@ -31,7 +31,7 @@ create policy "nex_events_insert_own_nonfinancial"
 on public.sowia_night_exchange_events for insert to authenticated
 with check (
     user_id = auth.uid()
-    and event_type in ('match_viewed', 'meeting_confirmed', 'offer_accepted', 'integration_approved')
+    and event_type in ('match_viewed', 'meeting_confirmed')
     and (app_id is null or exists (
         select 1 from public.sowia_night_exchange_apps a
         where a.id = app_id and a.user_id = auth.uid()
