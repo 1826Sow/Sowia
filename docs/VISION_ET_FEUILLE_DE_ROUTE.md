@@ -316,3 +316,15 @@ Un tableau de bord dédié doit suivre : innovations détectées et vérifiées,
 Il doit aussi afficher ce qui est **à l'étude**, **en expérimentation**, **validé**, **déployé** ou **vérifié en production**. Un score d'ambition ou une projection ne doit jamais être confondu avec une avance réelle démontrée.
 
 **Règle finale : SOW IA ne doit pas seulement utiliser les meilleures solutions disponibles aujourd'hui. Elle doit organiser sa capacité à découvrir, tester et adopter les meilleures solutions de demain — rapidement, légalement, avec preuves et maîtrise des risques.**
+
+## 13. Premier laboratoire de scénarios — état logiciel
+
+Le module `strategic_scenarios.py` et sa page « Stratégie & scénarios » constituent une première mise en œuvre de la gouvernance décrite au chapitre 12.
+
+- Quatre familles sont proposées : prudence, accélération, rupture et résilience.
+- Sept critères pondérés comparent l'alignement stratégique, la valeur client, la faisabilité, la valeur économique, la résilience, la qualité des preuves et la réversibilité.
+- Une interdiction ou absence d'autorisation bloque le scénario ; une conformité à vérifier empêche le passage en pilote.
+- Les risques élevés, dépenses, impacts externes et changements en production déclenchent une validation humaine obligatoire.
+- Un score élevé ne déclenche jamais une exécution automatique.
+
+**Limites actuelles :** les notes sont saisies manuellement, les scénarios restent en mémoire de session et aucune veille automatique, analyse juridique par pays, simulation financière ou exécution de pilote n'est encore raccordée à cette page. Les scénarios sont une aide à la décision, pas une preuve de conformité. La prochaine étape sera de relier des sources vérifiables, un historique persistant, des métriques de tests et un circuit d'approbation.
