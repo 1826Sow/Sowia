@@ -80,21 +80,23 @@ def build_qr_svg(card):
 
 
 def build_printable_card_html(card):
-    """Return a self-contained, print-friendly 90 x 50 mm card; no external assets."""
+    """Return a self-contained, print-friendly 90 x 50 mm card with an embedded offline QR."""
     card = validate_business_card(card)
     background, accent = STYLES[card["style"]]
     title = card["job_title"] or card["company"]
     details = [card["company"], card["email"], card["phone"], card["website"], card["country"]]
     details_html = "".join(f'<div class="detail">{escape(item)}</div>' for item in details if item)
+    qr_html = build_qr_svg(card)
     return f"""<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Carte de visite - {escape(card['display_name'])}</title>
 <style>
 @page {{ size: 90mm 50mm; margin: 0; }}
 * {{ box-sizing: border-box; }} body {{ margin: 0; font-family: Arial, sans-serif; }}
-.card {{ width: 90mm; height: 50mm; padding: 7mm; color: #fff; background: {background}; border: 1mm solid {accent}; display:flex; flex-direction:column; justify-content:center; overflow:hidden; }}
-.name {{ font-size: 19pt; font-weight:700; line-height:1.1; }} .role {{ color:{accent}; font-size:9pt; margin-top:2mm; }}
-.rule {{ width:16mm; border-top:0.6mm solid {accent}; margin:3mm 0; }} .detail {{ font-size:7.5pt; line-height:1.45; overflow-wrap:anywhere; }}
+.card {{ width: 90mm; height: 50mm; padding: 5mm; color: #fff; background: {background}; border: 1mm solid {accent}; display:flex; align-items:center; gap:3mm; overflow:hidden; }}
+.identity {{ flex:1; min-width:0; }} .name {{ font-size: 17pt; font-weight:700; line-height:1.1; overflow-wrap:anywhere; }} .role {{ color:{accent}; font-size:8.5pt; margin-top:2mm; }}
+.rule {{ width:13mm; border-top:0.6mm solid {accent}; margin:2.5mm 0; }} .detail {{ font-size:6.8pt; line-height:1.35; overflow-wrap:anywhere; }}
+.qr {{ width:22mm; height:22mm; flex:0 0 22mm; padding:1mm; background:#fff; }} .qr svg {{ display:block; width:100%; height:100%; }}
 @media screen {{ body {{ background:#e8e8e8; padding:20px; }} .card {{ box-shadow:0 8px 28px #0003; margin:auto; }} }}
-</style></head><body><main class="card"><div class="name">{escape(card['display_name'])}</div>
-<div class="role">{escape(title)}</div><div class="rule"></div>{details_html}</main></body></html>"""
+</style></head><body><main class="card"><section class="identity"><div class="name">{escape(card['display_name'])}</div>
+<div class="role">{escape(title)}</div><div class="rule"></div>{details_html}</section><div class="qr" aria-label="QR code des coordonnées">{qr_html}</div></main></body></html>"""
