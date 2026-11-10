@@ -720,7 +720,7 @@ if page in ("Hub SOWIA", "Accueil"):
                 ("Business Club", "SOW IA Business Club", "Relations professionnelles, membres et services partenaires."),
             ]),
             ("🌍 4. Développement international", [
-                ("Développement mondial", "Développement mondial", "Préparer une approche multilingue adaptée aux marchés."),
+                ("🌐 Collaboration mondiale", "SOWIA GLOBAL COLLABORATION HUB", "Organiser les échanges et les projets entre partenaires de l’écosystème SOWIA."),
                 ("Technologies & fournisseurs", "Technologies & fournisseurs", "Comparer les solutions techniques et leurs fournisseurs."),
             ]),
             ("💹 5. Finance & marchés", [
