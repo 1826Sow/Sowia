@@ -3,6 +3,7 @@ import uuid
 import html
 import streamlit as st
 from settings import get_setting
+from i18n import LANGUAGES as SOWIA_LANGUAGES, translate as translate_ui
 
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
@@ -341,11 +342,18 @@ premium_active = bool(premium_entitlement)
 
 with st.sidebar:
     st.markdown("## 🧠 SOW IA")
-    st.caption("Intelligence artificielle")
+    current_language = st.session_state.get("sowia_language", "Français")
+    if current_language not in SOWIA_LANGUAGES:
+        current_language = "Français"
+    language = st.selectbox(
+        "🌐 Langue / Language", SOWIA_LANGUAGES,
+        index=SOWIA_LANGUAGES.index(current_language), key="sowia_language",
+    )
+    st.caption(translate_ui("Intelligence artificielle", language))
     workspace_options = ["Personnel", "Professionnel"] if premium_active else ["Personnel"]
     if st.session_state.get("workspace_choice") not in workspace_options:
         st.session_state["workspace_choice"] = "Personnel"
-    workspace_choice = st.radio("Espace de travail", workspace_options, key="workspace_choice", horizontal=True)
+    workspace_choice = st.radio("Espace de travail", workspace_options, key="workspace_choice", horizontal=True, format_func=lambda value: translate_ui(value, language))
     if not premium_active:
         if premium_entitlement_unavailable:
             st.caption("Vérification Premium indisponible : l'espace Professionnel reste verrouillé par sécurité.")
@@ -397,15 +405,16 @@ page = st.radio(
     ],
     key="page_nav",
     horizontal=True,
+    format_func=lambda value: translate_ui(value, language),
 )
 st.markdown(
-    '<div class="hero"><div class="hero-kicker">VOTRE ASSISTANT INTELLIGENT</div><h1>🧠 SOW IA</h1><p>Un espace clair pour réfléchir, rechercher, analyser et créer.</p></div>',
+    '<div class="hero"><div class="hero-kicker">' + html.escape(translate_ui("VOTRE ASSISTANT INTELLIGENT", language)) + '</div><h1>🧠 SOW IA</h1><p>' + html.escape(translate_ui("Un espace clair pour réfléchir, rechercher, analyser et créer.", language)) + '</p></div>',
     unsafe_allow_html=True,
 )
 st.write("")
 
 if page == "Accueil":
-    st.subheader("Bienvenue sur SOW IA")
+    st.subheader(translate_ui("Bienvenue sur SOW IA", language))
     if st.session_state.get("workspace_id") == "professional":
         st.markdown("### Tableau de bord professionnel")
         st.caption("Vue d'ensemble de votre espace professionnel. Les indicateurs affichent uniquement les données de cet espace.")
@@ -468,10 +477,10 @@ if page == "Accueil":
         for col, (icon, title, desc) in zip(cols, shortcuts[start:start + 3]):
             with col:
                 with st.container(border=True):
-                    st.markdown(f"### {icon} {title}")
-                    st.caption(desc)
+                    st.markdown(f"### {icon} {translate_ui(title, language)}")
+                    st.caption(translate_ui(desc, language))
                     st.button(
-                        f"Ouvrir {title}",
+                        f"{translate_ui('Ouvrir', language)} {translate_ui(title, language)}",
                         key=f"open_{title}",
                         use_container_width=True,
                         on_click=go_to_page,
