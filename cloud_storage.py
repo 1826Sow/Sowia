@@ -174,6 +174,7 @@ ACCESSIBILITY_PREFERENCE_DEFAULTS = {
     "voice_readout": False,
     "large_text": False,
     "high_contrast": False,
+    "privacy_screen": False,
 }
 
 
