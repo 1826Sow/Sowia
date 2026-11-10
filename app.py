@@ -388,7 +388,7 @@ NAV_GROUPS = {
         "Finance & investissements", "Revenus & paiements", "Abonnement",
     ],
     "🛡️ Administration & assistance": [
-        "SOWIA CONTROL CENTER", "Paramètres", "Aide",
+        "Centre de notifications", "SOWIA CONTROL CENTER", "Paramètres", "Aide",
     ],
 }
 
@@ -775,6 +775,7 @@ if page == "Accueil":
             ("Revenus & paiements", "Paiements, remboursements et rapprochements"),
         ]),
         ("🛡️ 06 · Administration & assistance", [
+            ("Centre de notifications", "Alertes, échéances et points de vigilance"),
             ("SOWIA CONTROL CENTER", "Centre de contrôle"),
             ("Paramètres", "Préférences et configuration"),
             ("Abonnement", "Accès et formule Premium"),
@@ -6436,6 +6437,205 @@ elif page == "Revenus & paiements":
                 "Le registre financier n'est pas accessible. Vérifiez que la migration "
                 "supabase_crypto_payments.sql a été appliquée et que les droits RLS sont actifs."
             )
+
+
+elif page == "Centre de notifications":
+    st.subheader("🔔 Centre de notifications SOWIA")
+    st.caption(
+        "Un point de consultation unique pour vos notifications, alertes stratégiques, "
+        "échéances professionnelles et anomalies du registre financier. Les données sont "
+        "consultées en lecture seule, sauf les actions explicites de prise en compte/clôture."
+    )
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous pour consulter vos notifications et registres privés.")
+    else:
+        # Notifications in-app: respect the user's existing notification preference.
+        try:
+            notification_prefs = cloud_storage.get_global_notification_preferences(
+                supabase_client, current_user
+            )
+            notifications_enabled = bool(notification_prefs.get("in_app_enabled", True))
+            locale = notification_prefs.get("language", "fr")
+            notification_text = sowia_global_notifications.MESSAGES.get(
+                locale, sowia_global_notifications.MESSAGES["fr"]
+            )
+            notifications = cloud_storage.list_global_notifications(
+                supabase_client, current_user, limit=100
+            ) if notifications_enabled else []
+            unread_notifications = [item for item in notifications if not item.get("read_at")]
+            with st.expander("📨 Notifications de la plateforme", expanded=True):
+                st.metric("Non lues", len(unread_notifications))
+                if not notifications_enabled:
+                    st.info("Les notifications dans SOWIA sont désactivées dans vos préférences.")
+                elif not notifications:
+                    st.info(notification_text["empty"])
+                else:
+                    if unread_notifications and st.button(
+                        notification_text["mark_all"], key="central_notifications_mark_all"
+                    ):
+                        cloud_storage.mark_all_global_notifications_read(
+                            supabase_client, current_user
+                        )
+                        st.rerun()
+                    for item in notifications:
+                        with st.container(border=True):
+                            st.write(sowia_global_notifications.translate(
+                                item.get("event_type", ""), locale
+                            ))
+                            st.caption(str(item.get("created_at", ""))[:16].replace("T", " "))
+                            st.caption(notification_text["read"] if item.get("read_at") else "Non lue")
+        except Exception as notification_error:
+            st.warning("Les notifications de plateforme ne sont pas accessibles.")
+            st.caption("Diagnostic : " + type(notification_error).__name__)
+
+        # Strategic alerts already stored for this authenticated user.
+        try:
+            alert_rows = cloud_storage.list_global_alerts(
+                supabase_client, current_user, limit=200
+            )
+            active_alerts = [row for row in alert_rows if row.get("status") == "active"]
+            high_alerts = [
+                row for row in active_alerts if row.get("level") in {"critical", "high"}
+            ]
+            with st.expander("🌍 Alertes stratégiques", expanded=bool(high_alerts)):
+                alert_cols = st.columns(3)
+                alert_cols[0].metric("Actives", len(active_alerts))
+                alert_cols[1].metric("Priorité élevée", len(high_alerts))
+                alert_cols[2].metric("Dans le registre", len(alert_rows))
+                if not alert_rows:
+                    st.info("Aucune alerte stratégique enregistrée.")
+                level_labels = {
+                    "critical": "CRITIQUE", "high": "ÉLEVÉE",
+                    "medium": "MOYENNE", "low": "FAIBLE",
+                }
+                for alert_row in active_alerts[:20]:
+                    with st.container(border=True):
+                        st.write(
+                            f"**{level_labels.get(alert_row.get('level'), 'ALERTE')} · "
+                            f"{alert_row.get('title', 'Sans titre')}**"
+                        )
+                        st.caption(
+                            f"{alert_row.get('country', 'Pays non précisé')} · "
+                            f"{alert_row.get('category', 'Catégorie non précisée')} · "
+                            f"{alert_row.get('source_domain', 'Source non précisée')}"
+                        )
+                        st.write(alert_row.get("reason", "Aucun détail fourni."))
+                        source_url = alert_row.get("url", "")
+                        if isinstance(source_url, str) and source_url.startswith(("https://", "http://")):
+                            st.link_button("Vérifier la source", source_url)
+                        action_cols = st.columns(2)
+                        if action_cols[0].button(
+                            "Prendre en compte", key=f"central_alert_ack_{alert_row['id']}"
+                        ):
+                            cloud_storage.update_global_alert_status(
+                                supabase_client, current_user, alert_row["id"], "acknowledged"
+                            )
+                            st.rerun()
+                        if action_cols[1].button(
+                            "Clôturer", key=f"central_alert_close_{alert_row['id']}"
+                        ):
+                            cloud_storage.update_global_alert_status(
+                                supabase_client, current_user, alert_row["id"], "closed"
+                            )
+                            st.rerun()
+                acknowledged = sum(1 for row in alert_rows if row.get("status") == "acknowledged")
+                closed = sum(1 for row in alert_rows if row.get("status") == "closed")
+                st.caption(f"{acknowledged} prise(s) en compte · {closed} clôturée(s).")
+        except Exception as alert_error:
+            st.warning("Le registre des alertes stratégiques n'est pas accessible.")
+            st.caption("Vérifiez la migration GLOBAL ALERTS. Diagnostic : " + type(alert_error).__name__)
+
+        # Opportunity deadlines: use only rows owned by the signed-in user.
+        try:
+            opportunity_response = (
+                supabase_client.table("sowia_opportunities")
+                .select("id,title,country,deadline,status,priority,source_url")
+                .eq("user_id", str(current_user.id))
+                .eq("workspace_id", "professional")
+                .order("deadline", desc=False)
+                .limit(200)
+                .execute()
+            )
+            opportunity_rows = opportunity_response.data or []
+            today = datetime.now(timezone.utc).date()
+            overdue_items = []
+            upcoming_items = []
+            for row in opportunity_rows:
+                if not row.get("deadline") or row.get("status") in {"Gagnée", "Perdue", "Archivée"}:
+                    continue
+                try:
+                    due = datetime.fromisoformat(str(row["deadline"])).date()
+                except (TypeError, ValueError):
+                    continue
+                if due < today:
+                    overdue_items.append((due, row))
+                elif due <= today + timedelta(days=14):
+                    upcoming_items.append((due, row))
+            with st.expander("📅 Échéances professionnelles", expanded=bool(overdue_items)):
+                due_cols = st.columns(3)
+                due_cols[0].metric("Pistes suivies", len(opportunity_rows))
+                due_cols[1].metric("En retard", len(overdue_items))
+                due_cols[2].metric("Sous 14 jours", len(upcoming_items))
+                for due, row in (overdue_items + upcoming_items)[:20]:
+                    with st.container(border=True):
+                        urgency = "EN RETARD" if due < today else "À VENIR"
+                        st.write(f"**{urgency} · {row.get('title', 'Sans titre')}**")
+                        st.caption(
+                            f"{row.get('country', 'Pays non précisé')} · "
+                            f"Échéance : {due.isoformat()} · "
+                            f"Priorité : {row.get('priority', 3)}/5 · "
+                            f"{row.get('status', 'À vérifier')}"
+                        )
+                        if (row.get("source_url") or "").startswith(("https://", "http://")):
+                            st.link_button("Ouvrir la source", row["source_url"])
+                if not opportunity_rows:
+                    st.info("Aucune opportunité enregistrée dans le registre professionnel.")
+        except Exception as opportunity_error:
+            st.info("Le registre des échéances professionnelles n'est pas disponible.")
+            st.caption("Diagnostic : " + type(opportunity_error).__name__)
+
+        # Financial exceptions only: do not display or infer revenue totals here.
+        try:
+            import financial_reporting
+            financial_rows = financial_reporting.load_user_financial_transactions(
+                supabase_client, current_user, limit=500
+            )
+            manual_review_rows = [
+                row for row in financial_rows if row.get("status") == "manual_review"
+            ]
+            other_status_rows = [
+                row for row in financial_rows
+                if row.get("status") not in {"confirmed", "refunded", "manual_review"}
+            ]
+            with st.expander(
+                "💳 Points de vigilance financiers",
+                expanded=bool(manual_review_rows or other_status_rows),
+            ):
+                financial_cols = st.columns(3)
+                financial_cols[0].metric("Écritures consultées", len(financial_rows))
+                financial_cols[1].metric("À vérifier", len(manual_review_rows))
+                financial_cols[2].metric("Autres statuts", len(other_status_rows))
+                if manual_review_rows or other_status_rows:
+                    st.warning(
+                        "Certaines écritures ne sont pas confirmées. Elles ne sont pas "
+                        "comptabilisées comme revenus reconnus."
+                    )
+                    for row in (manual_review_rows + other_status_rows)[:20]:
+                        st.write(
+                            f"• {row.get('provider', 'Prestataire inconnu')} · "
+                            f"{row.get('transaction_type', 'Opération')} · "
+                            f"{row.get('status', 'Statut inconnu')} · "
+                            f"{row.get('currency', 'Devise inconnue')}"
+                        )
+                else:
+                    st.success("Aucune écriture en contrôle manuel ou avec un autre statut dans les lignes chargées.")
+                st.caption("Lecture seule · maximum 500 écritures chargées · aucune opération financière déclenchée.")
+        except Exception as financial_error:
+            st.info("Les points de vigilance financiers ne sont pas accessibles.")
+            st.caption("Diagnostic : " + type(financial_error).__name__)
+
+    st.divider()
+    st.caption("Ce centre regroupe les données déjà enregistrées. Il n'envoie pas d'e-mail, de SMS ou de notification push et ne surveille pas les événements en arrière-plan.")
 
 
 elif page == "SOWIA CONTROL CENTER":
