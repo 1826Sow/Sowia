@@ -6121,6 +6121,36 @@ elif page == "Revenus & paiements":
                             f"Détail technique : {type(exc).__name__}."
                         )
             summaries = financial_reporting.summarize_financial_transactions(rows)
+            # Read-only operational indicators: manual-review rows are never
+            # included in recognized payment/refund totals.
+            confirmed_payments = sum(
+                1 for row in rows
+                if row.get("transaction_type") == "payment"
+                and row.get("status") == "confirmed"
+            )
+            confirmed_refunds = sum(
+                1 for row in rows
+                if row.get("transaction_type") == "refund"
+                and row.get("status") == "refunded"
+            )
+            manual_review_count = sum(
+                1 for row in rows if row.get("status") == "manual_review"
+            )
+            other_status_count = sum(
+                1 for row in rows
+                if row.get("status") not in {"confirmed", "refunded", "manual_review"}
+            )
+            st.markdown("#### Indicateurs de contrôle")
+            metric_cols = st.columns(4)
+            metric_cols[0].metric("Paiements confirmés", confirmed_payments)
+            metric_cols[1].metric("Remboursements validés", confirmed_refunds)
+            metric_cols[2].metric("À vérifier", manual_review_count)
+            metric_cols[3].metric("Autres statuts", other_status_count)
+            st.caption(
+                "Les écritures « à vérifier » et les autres statuts sont exclus "
+                "des montants reconnus. Ces indicateurs comptent les écritures "
+                "chargées, dans la limite de 500 lignes."
+            )
             if not rows:
                 st.info(
                     "Aucune transaction n'est encore enregistrée dans le registre. "
