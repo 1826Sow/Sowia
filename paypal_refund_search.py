@@ -68,7 +68,7 @@ def _money(obj):
 def _fetch_refund_events(config, headers, start, end):
     events = []
     for window_start, window_end in _date_windows(start, end):
-        page = 0
+        page = 1
         while True:
             response = requests.get(
                 f"{config['base_url']}/v1/reporting/transactions",
@@ -87,7 +87,7 @@ def _fetch_refund_events(config, headers, start, end):
             payload = response.json()
             events.extend(payload.get("transaction_details") or [])
             total_pages = int(payload.get("total_pages") or 0)
-            if page + 1 >= total_pages:
+            if page >= total_pages:
                 break
             page += 1
             if page >= MAX_PAGES_PER_WINDOW:
@@ -111,8 +111,8 @@ def sync_verified_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
         raise PermissionError("Compte utilisateur ou stockage serveur manquant.")
     if isinstance(days, bool) or not isinstance(days, int) or not 1 <= days <= 366:
         raise ValueError("La période doit être comprise entre 1 et 366 jours.")
-    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 500:
-        raise ValueError("La limite doit être comprise entre 1 et 500 captures.")
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 2000:
+        raise ValueError("La limite doit être comprise entre 1 et 2 000 captures.")
 
     now = datetime.now(timezone.utc)
     end = now - timedelta(hours=REPORTING_LAG_HOURS)
@@ -123,7 +123,7 @@ def sync_verified_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
         .eq("user_id", user_id)
         .eq("provider", "paypal")
         .eq("transaction_type", "payment")
-        .gte("occurred_at", _iso(start))
+        .gte("occurred_at", _iso(end - timedelta(days=1095)))
         .order("occurred_at", desc=True)
         .limit(limit)
         .execute()
