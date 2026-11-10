@@ -91,3 +91,12 @@ The separate `sowia_partner_contract.py` module defines a bilateral agreement wo
 - The public status helper does not expose the amount or private dispute details.
 
 **Important implementation boundary:** this is a pure Python rules prototype. It is not an electronic signature, enforceable legal contract, identity verification, escrow, payment processor or persistent database workflow. Before production use, SOWIA needs authenticated party-to-app ownership mapping, server-side authorization, append-only contract version history, secure Supabase RLS/RPC, audit timestamps, notifications, moderation/mediation and jurisdiction-specific legal review. No live contract is currently created or signed through the app.
+
+## SOWIA PARTNER PROTECTION — conservative prototype
+The separate `sowia_partner_protection.py` module adds:
+- Explainable listing completeness signals (missing official website/contact, unapproved or unverified profile, missing basic information). These are review prompts, never fraud findings.
+- Confidential abuse-report validation with a controlled category list and bounded description length.
+- Human moderation outcomes with a named reviewer and written rationale.
+- A safe public status projection that never exposes the reporter identity or allegation details.
+
+No signal automatically blocks, suspends, labels or penalizes an application. Production deployment still requires verified user-to-app ownership, secure report storage and RLS, moderator authorization, evidence handling, retention/deletion policy, anti-retaliation controls, appeal workflow, and legal/privacy review. The current module does not verify real-world identity or investigate allegations.
