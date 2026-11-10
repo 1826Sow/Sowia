@@ -1,6 +1,7 @@
 -- SOW IA: READ-ONLY deployment diagnostic.
--- Run after supabase/schema.sql, supabase_workspaces.sql and
--- supabase_storage_policies.sql in the Supabase SQL Editor.
+-- Run after all installation scripts listed in README.md, including
+-- supabase/schema.sql, workspace, storage, growth CRM, language preferences,
+-- and business opportunities scripts.
 -- This script only reads PostgreSQL catalog and Storage metadata.
 
 with expected_tables(table_name) as (
@@ -9,7 +10,8 @@ with expected_tables(table_name) as (
         ('sowia_memory_items'),
         ('sowia_entitlements'),
         ('sowia_growth_leads'),
-        ('sowia_user_preferences')
+        ('sowia_user_preferences'),
+        ('sowia_business_opportunities')
 ),
 table_checks as (
     select
@@ -50,7 +52,15 @@ expected_columns(table_name, column_name) as (
         ('sowia_growth_leads', 'source_url'),
         ('sowia_user_preferences', 'user_id'),
         ('sowia_user_preferences', 'language'),
-        ('sowia_user_preferences', 'updated_at')
+        ('sowia_user_preferences', 'updated_at'),
+        ('sowia_business_opportunities', 'user_id'),
+        ('sowia_business_opportunities', 'workspace_id'),
+        ('sowia_business_opportunities', 'niche'),
+        ('sowia_business_opportunities', 'offer'),
+        ('sowia_business_opportunities', 'stage'),
+        ('sowia_business_opportunities', 'expected_monthly_revenue'),
+        ('sowia_business_opportunities', 'estimated_monthly_cost'),
+        ('sowia_business_opportunities', 'currency')
 ),
 column_checks as (
     select
@@ -77,7 +87,7 @@ select
         || '; WITH CHECK=' || coalesce(with_check, '<none>')
 from pg_policies
 where schemaname = 'public'
-  and tablename in ('sowia_messages', 'sowia_memory_items', 'sowia_entitlements', 'sowia_growth_leads', 'sowia_user_preferences')
+  and tablename in ('sowia_messages', 'sowia_memory_items', 'sowia_entitlements', 'sowia_growth_leads', 'sowia_user_preferences', 'sowia_business_opportunities')
 union all
 select
     'storage bucket'::text,
