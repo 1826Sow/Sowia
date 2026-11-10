@@ -1519,7 +1519,8 @@ elif page == "Développement mondial":
             "doivent aussi être prospectés."
         )
         market_options = list(market_strategy.PRIORITY_MARKETS) + [
-            "Autre pays anglophone", "Autre pays / territoire"
+            "Autre pays anglophone", "Pays en développement / marché émergent",
+            "Autre pays / territoire"
         ]
         selected_market = st.selectbox(
             "Marché à étudier", market_options, key="sowia_global_market_select"
@@ -1541,7 +1542,10 @@ elif page == "Développement mondial":
             else selected_market
         )
         market_input_valid = (
-            selected_market not in {"Autre pays anglophone", "Autre pays / territoire"}
+            selected_market not in {
+                "Autre pays anglophone", "Pays en développement / marché émergent",
+                "Autre pays / territoire",
+            }
             or bool(custom_market.strip())
         )
         if st.button(
@@ -1551,6 +1555,8 @@ elif page == "Développement mondial":
         ):
             try:
                 profile = market_strategy.normalize_market(market_name)
+                if selected_market == "Pays en développement / marché émergent":
+                    profile["segment"] = "Pays en développement / marché émergent"
                 queries = market_strategy.build_market_research_queries(market_name, market_offer)
                 combined = " OR ".join(queries)
                 with st.spinner(f"Recherche d'informations et de partenaires pour {profile['country']}…"):
