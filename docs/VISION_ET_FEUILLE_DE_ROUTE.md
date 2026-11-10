@@ -170,6 +170,19 @@ Aucun revenu ne doit dépendre d'une rémunération cachée, de recommandations 
 
 Évaluer chaque niche avec les mêmes indicateurs : prospects qualifiés, taux d'activation, conversion payante, revenu récurrent, marge brute, coût d'acquisition, délai de récupération du coût d'acquisition, rétention, taux de remboursement, coûts de support et risque réglementaire. Ne développer à grande échelle que les niches dont les résultats sont suffisamment documentés. Mettre en pause les offres dont les coûts dépassent les plafonds, dont la qualité baisse ou dont la conformité n'est plus assurée.
 
+
+### 10. Tableau de bord « Opportunités et revenus »
+
+Première brique opérationnelle du moteur multi-niches :
+- Enregistrer les niches, offres, étapes commerciales, sources, prévisions mensuelles et coûts estimés.
+- Séparer les prévisions des revenus réellement encaissés.
+- Agréger les prévisions par devise sans additionner des monnaies différentes.
+- Gérer le pipeline : à étudier, à tester, en lancement, active, suspendue, abandonnée.
+- Stocker les opportunités dans une table Supabase protégée par RLS, isolée par utilisateur et espace de travail.
+- Étape future : rapprocher les paiements PayPal confirmés, abonnements, remboursements, frais et coûts fournisseurs à partir de données officielles, sans double comptage.
+
+Le premier tableau ne constitue pas encore une comptabilité et n'enregistre aucun paiement confirmé. Le chiffre d'affaires réel restera à zéro tant qu'une source de paiement fiable n'est pas raccordée et vérifiée.
+
 ## Ordre de réalisation recommandé
 
 1. Stabiliser et vérifier le socle actuel : connexion, langues, espaces, documents, mémoire, Premium et CRM.
