@@ -474,6 +474,7 @@ def sync_completed_subscription_transactions(
     }
     recorded = 0
     ignored = 0
+    manual_review = 0
     fetched = 0
     page_count = 0
     has_more = False
@@ -494,16 +495,22 @@ def sync_completed_subscription_transactions(
             if not isinstance(transaction, dict):
                 ignored += 1
                 continue
-            if str(transaction.get("status") or "").upper() != "COMPLETED":
+            transaction_status = str(transaction.get("status") or "").upper()
+            if transaction_status == "COMPLETED":
+                financial_ledger.record_paypal_billing_transaction(
+                    admin_client,
+                    user_id=user_id,
+                    subscription_id=normalized_id,
+                    transaction=transaction,
+                )
+                recorded += 1
+            elif transaction_status in {"PARTIALLY_REFUNDED", "REFUNDED"}:
+                financial_ledger.flag_paypal_refund_for_review(
+                    admin_client, user_id=user_id, transaction=transaction
+                )
+                manual_review += 1
+            else:
                 ignored += 1
-                continue
-            financial_ledger.record_paypal_billing_transaction(
-                admin_client,
-                user_id=user_id,
-                subscription_id=normalized_id,
-                transaction=transaction,
-            )
-            recorded += 1
         page_count += 1
         links = payload.get("links") or []
         next_link = next((
@@ -526,6 +533,7 @@ def sync_completed_subscription_transactions(
         "fetched": fetched,
         "recorded_or_already_present": recorded,
         "ignored_non_completed": ignored,
+        "refunds_flagged_for_manual_review": manual_review,
         "pages_read": page_count,
         "has_more": has_more,
     }
