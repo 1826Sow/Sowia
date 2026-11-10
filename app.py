@@ -1124,7 +1124,7 @@ elif page == "Ma mémoire":
 elif page == "Développement mondial":
     st.subheader(translate_ui("🌍 Développement mondial de SOW IA", language))
     st.caption("Repérez des partenaires, préparez vos prises de contact et construisez votre promotion internationale. Rien n'est envoyé ou publié automatiquement.")
-    partner_tab, greeting_tab, agenda_tab, promo_tab, market_tab = st.tabs(["🤝 Partenaires", "🎉 Vœux internationaux", "🗓️ Agenda relationnel", "📣 Promotion multilingue", "🌐 Stratégie pays"])
+    partner_tab, greeting_tab, agenda_tab, promo_tab, market_tab, radar_tab = st.tabs(["🤝 Partenaires", "🎉 Vœux internationaux", "🗓️ Agenda relationnel", "📣 Promotion multilingue", "🌐 Stratégie pays", "📡 Radar opportunités"])
 
     with partner_tab:
         st.markdown("#### Prospection internationale")
@@ -1558,9 +1558,10 @@ elif page == "Développement mondial":
                 if selected_market == "Pays en développement / marché émergent":
                     profile["segment"] = "Pays en développement / marché émergent"
                 queries = market_strategy.build_market_research_queries(market_name, market_offer)
-                combined = " OR ".join(queries)
                 with st.spinner(f"Recherche d'informations et de partenaires pour {profile['country']}…"):
-                    results = search_web(combined, max_results=12)
+                    results = []
+                    for query in queries:
+                        results.extend(search_web(query, max_results=3))
                 st.session_state["sowia_market_research_profile"] = profile
                 st.session_state["sowia_market_research_results"] = results
             except Exception as exc:
@@ -1575,7 +1576,7 @@ elif page == "Développement mondial":
                 for item in results:
                     title = str(item.get("title", "Source consultée"))
                     url = str(item.get("url", ""))
-                    snippet = str(item.get("snippet", item.get("body", "")))
+                    snippet = str(item.get("content") or item.get("snippet") or item.get("body") or "")
                     if url.startswith("http"):
                         st.markdown(f"- [{title}]({url})")
                     else:
@@ -1612,6 +1613,79 @@ elif page == "Développement mondial":
             "SOWIA prépare les recherches et les dossiers. Elle ne contacte pas automatiquement "
             "les entreprises, ne crée pas de société et ne lance pas de campagne sans validation."
         )
+
+    with radar_tab:
+        import opportunity_radar
+        st.markdown("#### 📡 Radar mondial des opportunités")
+        st.write(
+            "Repérer des signaux publics de marchés : appels d’offres, programmes d’innovation, "
+            "accélérateurs, événements professionnels, partenariats et expansions d’entreprises."
+        )
+        radar_country = st.text_input(
+            "Pays ou marché à surveiller", value="Sénégal", max_chars=100,
+            key="sowia_radar_country",
+        )
+        radar_offer = st.text_input(
+            "Activité SOWIA concernée",
+            value="Plateforme IA, services numériques et accompagnement des entreprises",
+            max_chars=240, key="sowia_radar_offer",
+        )
+        if st.button(
+            "Lancer le radar sur ce marché", type="primary",
+            key="sowia_opportunity_radar_run",
+            disabled=not radar_country.strip() or not radar_offer.strip(),
+        ):
+            try:
+                radar_profile = market_strategy.normalize_market(radar_country)
+                radar_queries = opportunity_radar.build_radar_queries(
+                    radar_profile["country"], radar_offer
+                )
+                radar_results = []
+                with st.spinner(f"Analyse des signaux publics pour {radar_profile['country']}…"):
+                    for category, query in radar_queries:
+                        for item in search_web(query, max_results=3):
+                            radar_results.append({**item, "radar_category": category})
+                ranked = opportunity_radar.rank_opportunities(
+                    radar_results, country=radar_profile["country"]
+                )
+                st.session_state["sowia_radar_results"] = ranked
+                st.session_state["sowia_radar_country_result"] = radar_profile["country"]
+            except Exception as exc:
+                st.error(
+                    f"Radar non exécuté : {type(exc).__name__}. "
+                    "Vérifiez la configuration de recherche et réessayez."
+                )
+        saved_radar = st.session_state.get("sowia_radar_results", [])
+        saved_country = st.session_state.get("sowia_radar_country_result")
+        if saved_country:
+            st.markdown(f"**Dernière analyse : {saved_country}**")
+            if saved_radar:
+                st.caption(
+                    f"{len(saved_radar)} résultat(s) public(s) classé(s). "
+                    "Le classement aide au tri ; il ne confirme ni l’existence juridique "
+                    "d’une opportunité ni l’éligibilité de SOWIA."
+                )
+                for opportunity in saved_radar:
+                    st.markdown(
+                        f"**{opportunity['title']}** · {opportunity['category']} · "
+                        f"Pertinence indicative {opportunity['score']}/100"
+                    )
+                    if opportunity["url"]:
+                        st.markdown(f"[Consulter la source]({opportunity['url']})")
+                    if opportunity["summary"]:
+                        st.write(opportunity["summary"])
+                    st.caption(
+                        f"Pays : {opportunity['country']} · Statut : À vérifier · "
+                        f"Source : {opportunity['source_domain'] or 'non identifiée'}"
+                    )
+            else:
+                st.info("Aucun résultat public exploitable n’a été retourné.")
+        st.info(
+            "Le radar fonctionne à la demande, sur des sources accessibles publiquement. "
+            "Il ne contacte personne, ne dépose aucune candidature et ne passe aucune commande. "
+            "La vérification humaine des dates, critères, budgets, conditions et sources reste obligatoire."
+        )
+
 
 elif page == "Recherche Web":
     st.subheader(translate_ui("🌐 Recherche Web", language))
