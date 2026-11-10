@@ -204,3 +204,11 @@ The forecast workspace combines one saved GLOBAL INTELLIGENCE assessment with th
 The engine is deterministic and explainable. It does not estimate real-world probabilities, predict market prices, establish causality, verify source truth or provide investment/legal advice. The confidence indicator is a completeness heuristic based on the assessment evidence label and presence of matching alerts; it is not a probability of success. All scenarios require human review and independent source checks.
 
 Apply `supabase_global_forecast.sql` after `supabase_global_intelligence.sql` and `supabase_global_alerts.sql`. The migration is committed but has not been applied to the live Supabase project. RLS and production behavior remain unverified.
+
+
+## SOWIA GLOBAL DECISION ENGINE — explainable option comparison
+The decision workspace compares two to five user-defined options across five fixed criteria: strategic alignment (25%), expected impact (25%), feasibility (20%), cost efficiency (15%) and risk control (15%). Users enter 1–5 ratings and a general evidence level. Results show weighted scores, ranking, criteria weights and limitations. If the top two options are within three points, the engine deliberately withholds an automatic recommendation.
+
+This is a deterministic decision-support model, not an autonomous decision-maker. Ratings are user judgments, weights are fixed defaults, and the confidence indicator is a heuristic based on declared evidence and score completeness—not a probability of success. No external action, purchase, investment, publication or partner commitment is triggered. Human approval is required.
+
+Analyses can be saved in a private per-user archive using `supabase_global_decisions.sql`. Apply this migration after the GLOBAL INTELLIGENCE, GLOBAL ALERTS and GLOBAL STRATEGIC FORECAST migrations. The SQL is committed but has not been applied to the live Supabase project. Live RLS isolation and Streamlit deployment remain unverified.
