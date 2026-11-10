@@ -38,6 +38,8 @@ def capture(status="PARTIALLY_REFUNDED", refunded="2.50"):
         "amount": {"currency_code": "EUR", "value": "9.90"},
         "seller_receivable_breakdown": {
             "gross_amount": {"currency_code": "EUR", "value": "9.90"},
+            },
+        "seller_payable_breakdown": {
             "total_refunded_amount": {"currency_code": "EUR", "value": refunded},
         },
         "update_time": "2026-11-10T10:30:00Z",
@@ -75,6 +77,6 @@ def test_rejects_inconsistent_refund_details(details):
 
 def test_rejects_wrong_currency():
     details = capture()
-    details["seller_receivable_breakdown"]["total_refunded_amount"]["currency_code"] = "USD"
+    details["seller_payable_breakdown"]["total_refunded_amount"]["currency_code"] = "USD"
     with pytest.raises(ValueError):
         record_paypal_refund_total(Client(), user_id="u1", capture=details)
