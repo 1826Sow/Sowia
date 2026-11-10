@@ -22,7 +22,7 @@ def test_rejects_unsafe_website():
 def test_matches_complementary_offers_and_needs():
     result = match_profile(profile("A", offers=["capteurs"], needs=["distribution"]),
                            profile("B", offers=["distribution"], needs=["capteurs"]))
-    assert result.score == 50
+    assert result.score == 65  # 50 complementarity + 15 shared objective
     assert result.recommendation == "Proposer une rencontre exploratoire"
 
 def test_shared_objective_adds_transparent_score():
