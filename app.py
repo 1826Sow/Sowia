@@ -556,7 +556,7 @@ page = st.radio(
     [
         "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -655,6 +655,7 @@ if page == "Accueil":
         ("🕘", "Historique", "Consultez vos conversations"),
         ("👑", "Abonnement", "Découvrez l’espace Premium"),
         ("🌍", "Développement mondial", "Trouvez des partenaires et préparez vos campagnes"),
+        ("🏛️", "SOW IA Business Club", "Rencontrez des entreprises et proposez des échanges virtuels"),
         ("📈", "Opportunités et revenus", "Suivez vos niches, offres et prévisions commerciales"),
         ("🧪", "Technologies & fournisseurs", "Comparez les solutions et choisissez sur preuves"),
         ("⚙️", "Paramètres", "Vérifiez votre configuration"),
@@ -1841,6 +1842,127 @@ elif page == "Abonnement":
 # Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.
 # Impossible de vérifier votre abonnement auprès de Supabase.
 # Impossible de préparer le paiement PayPal.
+
+
+elif page == "SOW IA Business Club":
+    st.subheader("🏛️ SOW IA BUSINESS CLUB")
+    st.caption("Un réseau professionnel international. Votre profil n'apparaît dans l'annuaire que si vous activez explicitement sa publication.")
+    st.markdown(
+        '<div class="partner-intro"><h3>Rencontres professionnelles utiles</h3>'
+        '<p>Présentez votre entreprise, découvrez des profils complémentaires et envoyez des demandes de rencontre. '
+        'Les coordonnées privées ne sont pas affichées dans l’annuaire.</p></div>',
+        unsafe_allow_html=True,
+    )
+    if not cloud_mode or current_user is None:
+        st.warning("Connectez-vous à votre espace sécurisé pour créer un profil, consulter l'annuaire et échanger avec les membres.")
+    else:
+        club_workspace = st.session_state.get("workspace_id", "professional")
+        try:
+            own_profile = cloud_storage.get_business_club_profile(supabase_client, current_user, club_workspace)
+            with st.expander("🏢 Mon profil d'entreprise", expanded=own_profile is None):
+                with st.form("sowia_club_profile_form"):
+                    company_name = st.text_input("Nom de l'entreprise", value=(own_profile or {}).get("company_name", ""))
+                    country = st.text_input("Pays", value=(own_profile or {}).get("country", ""))
+                    sector = st.text_input("Secteur d'activité", value=(own_profile or {}).get("sector", ""))
+                    description = st.text_area("Présentation de l'entreprise", value=(own_profile or {}).get("description", ""), max_chars=1200)
+                    offers = st.text_input("Ce que votre entreprise propose (séparez par des virgules)", value=", ".join((own_profile or {}).get("offers") or []))
+                    needs = st.text_input("Ce que votre entreprise recherche", value=", ".join((own_profile or {}).get("needs") or []))
+                    objectives = st.text_input("Objectifs de collaboration", value=", ".join((own_profile or {}).get("objectives") or []))
+                    website = st.text_input("Site web (facultatif)", value=(own_profile or {}).get("website") or "")
+                    published = st.checkbox("Publier mon profil dans l'annuaire du Club", value=bool((own_profile or {}).get("is_published", False)))
+                    saved = st.form_submit_button("Enregistrer mon profil", type="primary")
+                    if saved:
+                        try:
+                            cloud_storage.save_business_club_profile(
+                                supabase_client, current_user,
+                                {
+                                    "company_name": company_name, "country": country, "sector": sector,
+                                    "description": description, "offers": offers, "needs": needs,
+                                    "objectives": objectives, "website": website, "is_published": published,
+                                }, club_workspace,
+                            )
+                            st.success("Profil enregistré. Sa visibilité respecte votre choix de publication.")
+                            st.rerun()
+                        except ValueError as exc:
+                            st.error(str(exc))
+                        except Exception:
+                            st.error("Enregistrement impossible. Vérifiez que la migration supabase_business_club.sql a été exécutée.")
+            if own_profile and own_profile.get("is_published"):
+                st.success("Votre profil est publié dans l'annuaire de ce club.")
+            elif own_profile:
+                st.info("Votre profil est privé. Activez la publication pour apparaître dans l'annuaire.")
+            st.divider()
+            directory_tab, incoming_tab, outgoing_tab = st.tabs(["🌍 Annuaire international", "📥 Demandes reçues", "📤 Mes demandes"])
+            with directory_tab:
+                st.markdown("#### Entreprises membres")
+                directory = cloud_storage.list_business_club_profiles(supabase_client, current_user, club_workspace)
+                if not directory:
+                    st.info("Aucun autre profil publié pour le moment. Les premiers membres apparaîtront ici après avoir choisi de publier leur profil.")
+                else:
+                    from business_club import match_profile
+                    for member in directory:
+                        with st.container(border=True):
+                            st.markdown(f"**{member['company_name']}** · {member['country']}")
+                            st.caption(f"{member['sector']} · Profil publié volontairement")
+                            if member.get("description"):
+                                st.write(member["description"])
+                            col_a, col_b = st.columns(2)
+                            col_a.write("**Offres :** " + (", ".join(member.get("offers") or []) or "Non renseignées"))
+                            col_b.write("**Besoins :** " + (", ".join(member.get("needs") or []) or "Non renseignés"))
+                            if member.get("website"):
+                                st.link_button("Consulter le site", member["website"])
+                            if own_profile:
+                                try:
+                                    match = match_profile(own_profile, member)
+                                    st.caption(f"Compatibilité indicative : {match.score}/100 — {match.recommendation}")
+                                    for reason in match.evidence:
+                                        st.caption("• " + reason)
+                                except ValueError:
+                                    pass
+                            with st.form(f"club_request_{member['id']}"):
+                                intro = st.text_area("Votre demande de rencontre", placeholder="Présentez brièvement votre entreprise et l'objet de l'échange.", max_chars=1200, key=f"club_message_{member['id']}")
+                                send = st.form_submit_button("Envoyer une demande de rencontre")
+                                if send:
+                                    try:
+                                        cloud_storage.create_business_club_request(
+                                            supabase_client, current_user, member["id"], member["user_id"], intro
+                                        )
+                                        st.success("Demande transmise au membre. Aucun rendez-vous n'est confirmé à ce stade.")
+                                        st.rerun()
+                                    except ValueError as exc:
+                                        st.error(str(exc))
+                                    except Exception:
+                                        st.error("Envoi impossible. Vérifiez la migration Supabase et réessayez.")
+            with incoming_tab:
+                requests = cloud_storage.list_business_club_requests(supabase_client, current_user, "incoming")
+                if not requests:
+                    st.info("Aucune demande reçue.")
+                for request in requests:
+                    with st.container(border=True):
+                        st.caption(f"Demande #{request['id']} · {request['status']}")
+                        st.write(request["message"])
+                        if request["status"] == "En attente":
+                            a, b = st.columns(2)
+                            if a.button("Accepter", key=f"club_accept_{request['id']}"):
+                                cloud_storage.update_business_club_request(supabase_client, current_user, request["id"], "Acceptée")
+                                st.rerun()
+                            if b.button("Refuser", key=f"club_decline_{request['id']}"):
+                                cloud_storage.update_business_club_request(supabase_client, current_user, request["id"], "Refusée")
+                                st.rerun()
+            with outgoing_tab:
+                requests = cloud_storage.list_business_club_requests(supabase_client, current_user, "outgoing")
+                if not requests:
+                    st.info("Vous n'avez envoyé aucune demande.")
+                for request in requests:
+                    with st.container(border=True):
+                        st.caption(f"Demande #{request['id']} · {request['status']}")
+                        st.write(request["message"])
+                        if request["status"] == "En attente" and st.button("Annuler la demande", key=f"club_cancel_{request['id']}"):
+                            cloud_storage.update_business_club_request(supabase_client, current_user, request["id"], "Annulée")
+                            st.rerun()
+        except Exception:
+            st.error("Le Club Entreprises n'est pas encore initialisé dans Supabase. La migration supabase_business_club.sql doit être exécutée une fois.")
+
 
 elif page == "Opportunités et revenus":
     st.subheader("📈 Opportunités et revenus de SOW IA")
