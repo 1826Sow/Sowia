@@ -66,6 +66,7 @@ Respecter cet ordre de dépendance :
 - `supabase_global_collaboration_verify.sql` — diagnostic en lecture seule, après `supabase_global_collaboration.sql`. **Point à clarifier :** son en-tête parle de quatre migrations préalables, alors que le script d’installation GLOBAL Collaboration n’en nomme que trois (GLOBAL ID, DIRECTORY, CONNECT). Le quatrième prérequis n’étant pas nommé, ne pas considérer ce contrôle comme validé avant clarification.
 - `supabase_decision_trials.sql` — essais comparatifs de décisions, indépendant des autres modules listés ici.
 - `supabase_technology_candidates.sql` — évaluations technologiques, indépendant des autres modules listés ici.
+- `supabase/migrations/20261110000200_sowia_technical_incidents.sql` — registre des incidents techniques, module opérationnel facultatif.
 
 ### Autres registres d’opportunités
 
