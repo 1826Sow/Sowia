@@ -139,3 +139,16 @@ The migration `supabase_global_directory.sql` adds the sector and specialty fiel
 GLOBAL CONNECT lets a member with a published GLOBAL ID profile send a 10–1,000 character introduction to another published profile. The recipient can accept or decline; the sender can cancel while pending. Requests are private to their two participants under Supabase RLS. No email address, phone number, private account identifier or external contact channel is revealed automatically. Acceptance records consent to connect inside SOWIA; it does not itself transmit contact details or authorize data sharing.
 
 Apply `supabase_global_connect.sql` AFTER `supabase_global_id.sql` and `supabase_global_directory.sql`. The migration creates the private request ledger and authenticated RPCs for sending, responding and cancelling. The app UI includes incoming and outgoing request lists. This code is committed to GitHub; the migration has not been applied to the live Supabase project and the workflow has not yet been verified in the deployed Streamlit app. Production readiness still requires live two-account RLS and RPC tests.
+
+## SOWIA GLOBAL MESSENGER — private messaging after consent
+
+The GLOBAL DIRECTORY workflow now includes an initial in-app messenger linked to GLOBAL CONNECT:
+- A conversation is available only when the related connection request has been accepted.
+- Messages are limited to 4,000 characters and trimmed before submission.
+- Sending is performed through a SECURITY DEFINER RPC that checks the authenticated participant and accepted request status; direct client inserts are revoked.
+- Members can read only messages belonging to a connection in which they participate. Messages are append-only from the client: no update or delete policy is provided.
+- A database-side rate limit currently caps each sender at 20 messages per minute.
+- The Streamlit interface shows accepted conversations and allows participants to exchange messages without automatically revealing email addresses or phone numbers.
+
+Apply `supabase_global_messenger.sql` AFTER `supabase_global_connect.sql`. The required migration order is GLOBAL ID, GLOBAL DIRECTORY, GLOBAL CONNECT, then GLOBAL MESSENGER. All migrations are committed to GitHub; none is confirmed applied to the live Supabase database in this work session. The interface and database workflow have not yet been verified in the deployed Streamlit app. Before production use, run two-account authorization tests, abuse/reporting and retention reviews, and security review. The current rate limit is a basic technical safeguard, not a complete anti-spam or moderation system.
+
