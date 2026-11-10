@@ -54,8 +54,11 @@ def render_decision_benchmark(supabase_client, current_user, workspace_id: str) 
         )
         return
 
-    with st.expander("＋ Enregistrer une nouvelle décision", expanded=not rows):
-        with st.form("sowia_human_ai_decision_form", clear_on_submit=True):
+    if "sowia_pending_decision_draft" not in st.session_state:
+        st.session_state["sowia_pending_decision_draft"] = None
+
+    with st.expander("＋ Étape 1 — enregistrer votre choix humain à l'aveugle", expanded=not rows):
+        with st.form("sowia_human_choice_form", clear_on_submit=True):
             title = st.text_input("Titre de la décision", max_chars=160)
             question = st.text_area("Question stratégique", max_chars=500)
             category = st.selectbox(
@@ -69,73 +72,93 @@ def render_decision_benchmark(supabase_client, current_user, workspace_id: str) 
                 "Contexte et éléments connus (sans données personnelles sensibles)",
                 max_chars=4000,
             )
-            st.markdown("**Présentez de 2 à 4 options**")
-            option_names = []
-            option_scores = []
-            option_controls = []
-            for index in range(4):
-                st.markdown(f"**Option {index + 1}**")
-                name = st.text_input(
-                    f"Nom de l'option {index + 1}",
-                    max_chars=120,
-                    key=f"decision_option_name_{index}",
-                )
-                option_names.append(name.strip())
+            option_names = [
+                st.text_input(f"Option {index + 1}", max_chars=120, key=f"blind_option_name_{index}")
+                for index in range(4)
+            ]
+            valid_names = [name.strip() for name in option_names if name.strip()]
+            human_choice = st.selectbox(
+                "Votre choix humain — SOW IA ne révèle pas encore son classement",
+                valid_names if valid_names else ["Renseignez d'abord les options"],
+            )
+            save_human = st.form_submit_button("Verrouiller mon choix humain", type="primary")
+        if save_human:
+            try:
+                if not title.strip() or not question.strip() or len(valid_names) < 2:
+                    raise ValueError("Renseignez le titre, la question et au moins deux options.")
+                if len({name.casefold() for name in valid_names}) != len(valid_names):
+                    raise ValueError("Les noms des options doivent être uniques.")
+                if human_choice not in valid_names:
+                    raise ValueError("Sélectionnez une option valide.")
+                st.session_state["sowia_pending_decision_draft"] = {
+                    "title": title.strip(), "question": question.strip(),
+                    "category": category, "context": context.strip(),
+                    "option_names": valid_names, "human_choice": human_choice,
+                }
+                st.success("Votre choix humain est verrouillé dans cette session. Passez à l'évaluation séparée de SOW IA.")
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
+
+    draft = st.session_state.get("sowia_pending_decision_draft")
+    if draft:
+        st.markdown("### Étape 2 — évaluation structurée de SOW IA")
+        st.write("**Décision :**", draft["title"])
+        st.write("**Choix humain déjà verrouillé :**", draft["human_choice"])
+        st.caption(
+            "Le choix SOW IA est calculé seulement maintenant. Les critères ci-dessous "
+            "constituent une évaluation structurée des options, et non une vérification "
+            "automatique de faits externes."
+        )
+        with st.form("sowia_ai_evaluation_form"):
+            options = []
+            for index, name in enumerate(draft["option_names"]):
+                st.markdown(f"**{name}**")
                 scores = {}
                 columns = st.columns(2)
                 for score_index, criterion in enumerate(CRITERIA):
                     with columns[score_index % 2]:
                         scores[criterion] = st.slider(
-                            f"{CRITERIA_LABELS[criterion]} · option {index + 1}",
+                            f"{CRITERIA_LABELS[criterion]} · {name}",
                             min_value=0.0, max_value=5.0, value=3.0, step=0.5,
-                            key=f"decision_{index}_{criterion}",
+                            key=f"blind_score_{index}_{criterion}",
                         )
                 legal = st.selectbox(
-                    f"Vérification juridique · option {index + 1}",
+                    f"État juridique · {name}",
                     ["review_required", "verified", "prohibited"],
                     format_func=lambda value: {
                         "review_required": "À vérifier",
-                        "verified": "Vérifiée pour ce périmètre",
-                        "prohibited": "Interdite / non autorisée",
+                        "verified": "Vérifié pour le périmètre étudié",
+                        "prohibited": "Interdit / non autorisé",
                     }[value],
-                    key=f"decision_legal_{index}",
+                    key=f"blind_legal_{index}",
                 )
                 risk = st.selectbox(
-                    f"Niveau de risque · option {index + 1}",
+                    f"Niveau de risque · {name}",
                     ["low", "medium", "high", "critical"],
                     format_func=lambda value: {
                         "low": "Faible", "medium": "Modéré",
                         "high": "Élevé", "critical": "Critique",
                     }[value],
-                    key=f"decision_risk_{index}",
+                    key=f"blind_risk_{index}",
                 )
-                option_scores.append({"name": name.strip(), "scores": scores,
-                                      "legal_state": legal, "risk_level": risk})
-                option_controls.append((legal, risk))
-            valid_names = [name for name in option_names if name]
-            human_choice = st.selectbox(
-                "Votre choix humain (enregistré avant affichage du choix IA)",
-                valid_names if valid_names else ["Renseignez d'abord les options"],
-            )
-            submit = st.form_submit_button("Enregistrer les deux décisions", type="primary")
-
-        if submit:
+                options.append({
+                    "name": name, "scores": scores,
+                    "legal_state": legal, "risk_level": risk,
+                })
+            save_both = st.form_submit_button("Calculer et enregistrer le choix SOW IA", type="primary")
+        if save_both:
             try:
-                options = [item for item in option_scores if item["name"]]
-                if len(options) < 2:
-                    raise ValueError("Renseignez au moins deux options nommées.")
                 record = create_decision_record(
-                    title=title, question=question, context=context,
-                    human_choice=human_choice, options=options,
-                    workspace_id=workspace_id,
+                    title=draft["title"], question=draft["question"],
+                    context=draft["context"], human_choice=draft["human_choice"],
+                    options=options, workspace_id=workspace_id,
                 )
                 payload = {
                     "user_id": str(current_user.id),
                     "workspace_id": workspace_id,
-                    "title": record["title"],
-                    "question": record["question"],
-                    "context": record["context"],
-                    "category": category,
+                    "title": record["title"], "question": record["question"],
+                    "context": record["context"], "category": draft["category"],
                     "human_choice": record["human_choice"],
                     "ai_choice": record["ai_choice"],
                     "ai_rationale": record["ai_rationale"],
@@ -144,7 +167,8 @@ def render_decision_benchmark(supabase_client, current_user, workspace_id: str) 
                     "decided_at": record["decided_at"],
                 }
                 supabase_client.table("sowia_decision_trials").insert(payload).execute()
-                st.success("Les deux décisions ont été enregistrées dans votre espace privé.")
+                st.session_state["sowia_pending_decision_draft"] = None
+                st.success("Les choix humain et SOW IA sont enregistrés séparément dans votre espace privé.")
                 st.rerun()
             except Exception as exc:
                 st.error(f"Enregistrement impossible : {type(exc).__name__} — {exc}")
