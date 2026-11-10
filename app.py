@@ -6419,6 +6419,7 @@ elif page == "Revenus & paiements":
                     [{
                         "Date": row.get("occurred_at"),
                         "Prestataire": row.get("provider"),
+                        "Abonnement PayPal": row.get("paypal_subscription_id") or "—",
                         "Type": row.get("transaction_type"),
                         "Statut": row.get("status"),
                         "Montant": f'{row.get("gross_amount")} {row.get("gross_currency")}',
@@ -6430,8 +6431,8 @@ elif page == "Revenus & paiements":
                 st.caption(
                     "Les frais et montants nets sont affichés uniquement s'ils sont fournis "
                     "par le prestataire. La référence EUR d'un paiement crypto n'est pas un "
-                    "règlement en euros. Les écritures historiques et les abonnements récurrents "
-                    "ne sont pas encore réconciliés dans cette première vue."
+                    "règlement en euros. Les échéances PayPal importées sont rattachées à leur "
+                    "abonnement ; les anciens paiements non importés restent hors de cette vue."
                 )
         except Exception:
             st.error(
