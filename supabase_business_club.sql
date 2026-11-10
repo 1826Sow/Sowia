@@ -60,6 +60,7 @@ create table if not exists public.sowia_business_club_meetings (
  organizer_user_id uuid not null references auth.users(id) on delete cascade,
  sender_user_id uuid not null references auth.users(id) on delete cascade,
  recipient_user_id uuid not null references auth.users(id) on delete cascade,
+ invitee_user_id uuid not null references auth.users(id) on delete cascade,
  starts_at timestamptz not null,
  timezone text not null check (char_length(timezone) between 1 and 80),
  duration_minutes integer not null check (duration_minutes in (15,30,45,60)),
@@ -69,6 +70,7 @@ create table if not exists public.sowia_business_club_meetings (
  check (sender_user_id <> recipient_user_id),
  check (organizer_user_id = sender_user_id or organizer_user_id = recipient_user_id)
 );
+alter table public.sowia_business_club_meetings add column if not exists invitee_user_id uuid references auth.users(id) on delete cascade;
 create index if not exists sowia_club_meetings_participants_idx
  on public.sowia_business_club_meetings (sender_user_id, recipient_user_id, starts_at);
 alter table public.sowia_business_club_meetings enable row level security;
@@ -87,8 +89,8 @@ create policy "Participants can propose club meetings" on public.sowia_business_
  );
 drop policy if exists "Invitees can respond to club meetings" on public.sowia_business_club_meetings;
 create policy "Invitees can respond to club meetings" on public.sowia_business_club_meetings
- for update to authenticated using ((select auth.uid()) = recipient_user_id and status = 'Proposée')
- with check ((select auth.uid()) = recipient_user_id and status in ('Confirmée','Refusée'));
+ for update to authenticated using ((select auth.uid()) = invitee_user_id and status = 'Proposée')
+ with check ((select auth.uid()) = invitee_user_id and status in ('Confirmée','Refusée'));
 drop policy if exists "Organizers can cancel proposed club meetings" on public.sowia_business_club_meetings;
 create policy "Organizers can cancel proposed club meetings" on public.sowia_business_club_meetings
  for update to authenticated using ((select auth.uid()) = organizer_user_id and status = 'Proposée')
