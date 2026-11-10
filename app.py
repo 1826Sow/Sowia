@@ -3125,7 +3125,7 @@ elif page == "SOWIA GLOBAL PULSE":
         st.warning("Connectez-vous à votre compte SOWIA pour conserver votre veille dans votre espace privé.")
     else:
         import sowia_global_pulse as global_pulse
-        pulse_tabs = st.tabs(["🔎 Lancer une veille", "📚 Mes sources sauvegardées"])
+        pulse_tabs = st.tabs(["🔎 Lancer une veille", "📚 Mes sources sauvegardées", "🚨 Centre des alertes"])
         with pulse_tabs[0]:
             with st.form("sowia_global_pulse_search_form"):
                 pulse_country = st.text_input("Pays ou marché ciblé", max_chars=100, placeholder="Ex. Sénégal, Chine, Suisse")
@@ -3155,6 +3155,24 @@ elif page == "SOWIA GLOBAL PULSE":
                     if pulse_row.get("snippet"):
                         st.write(pulse_row["snippet"])
                     st.link_button("Ouvrir la source", pulse_row["url"])
+                    alert_signal = __import__("sowia_global_alerts").classify_signal(
+                        pulse_row["title"], pulse_row.get("snippet", "")
+                    )
+                    st.caption("Priorité suggérée : " + alert_signal["level"].upper() + " — " + alert_signal["reason"])
+                    if st.button("Créer une alerte", key=f"pulse_alert_{idx}"):
+                        try:
+                            cloud_storage.create_global_alert(
+                                supabase_client, current_user,
+                                {
+                                    "title": pulse_row["title"], "url": pulse_row["url"],
+                                    "source_domain": pulse_row["source_domain"],
+                                    "country": pulse_row["country"], "category": pulse_row["category"],
+                                    "level": alert_signal["level"], "reason": alert_signal["reason"],
+                                },
+                            )
+                            st.success("Alerte ajoutée au centre des alertes.")
+                        except Exception as pulse_alert_error:
+                            st.error("Alerte non créée : " + type(pulse_alert_error).__name__)
                     if st.button("Sauvegarder cette source", key=f"pulse_save_{idx}"):
                         try:
                             cloud_storage.save_global_pulse_items(
@@ -3184,6 +3202,38 @@ elif page == "SOWIA GLOBAL PULSE":
             except Exception as pulse_history_error:
                 st.error("Le registre GLOBAL PULSE n'est pas disponible.")
                 st.caption("Appliquez supabase_global_pulse.sql après les migrations GLOBAL ID et GLOBAL INTELLIGENCE. Diagnostic : " + type(pulse_history_error).__name__)
+        with pulse_tabs[2]:
+            st.markdown("#### Alertes stratégiques à traiter")
+            try:
+                alert_rows = cloud_storage.list_global_alerts(supabase_client, current_user, limit=200)
+                active_alerts = [row for row in alert_rows if row.get("status") == "active"]
+                high_alerts = [row for row in active_alerts if row.get("level") in {"critical", "high"}]
+                ac1, ac2, ac3 = st.columns(3)
+                ac1.metric("Alertes actives", len(active_alerts))
+                ac2.metric("Priorité élevée", len(high_alerts))
+                ac3.metric("Total du registre", len(alert_rows))
+                if not alert_rows:
+                    st.info("Aucune alerte. Depuis les résultats de veille, utilisez « Créer une alerte » pour conserver un signal.")
+                level_labels = {"critical": "CRITIQUE", "high": "ÉLEVÉE", "medium": "MOYENNE", "low": "FAIBLE"}
+                for alert_row in alert_rows:
+                    with st.container(border=True):
+                        st.write(f"**{level_labels.get(alert_row['level'], alert_row['level'].upper())} · {alert_row['title']}**")
+                        st.caption(f"{alert_row['country']} · {alert_row['category']} · {alert_row['source_domain']} · {alert_row['status']}")
+                        st.write(alert_row["reason"])
+                        st.link_button("Vérifier la source", alert_row["url"])
+                        alert_actions = st.columns(3)
+                        if alert_row["status"] == "active" and alert_actions[0].button("Prendre en compte", key=f"alert_ack_{alert_row['id']}"):
+                            cloud_storage.update_global_alert_status(supabase_client, current_user, alert_row["id"], "acknowledged")
+                            st.rerun()
+                        if alert_row["status"] != "closed" and alert_actions[1].button("Clôturer", key=f"alert_close_{alert_row['id']}"):
+                            cloud_storage.update_global_alert_status(supabase_client, current_user, alert_row["id"], "closed")
+                            st.rerun()
+                        if alert_actions[2].button("Supprimer", key=f"alert_delete_{alert_row['id']}"):
+                            cloud_storage.delete_global_alert(supabase_client, current_user, alert_row["id"])
+                            st.rerun()
+            except Exception as alerts_error:
+                st.error("Le centre GLOBAL ALERTS n'est pas disponible.")
+                st.caption("Appliquez supabase_global_alerts.sql après supabase_global_pulse.sql. Diagnostic : " + type(alerts_error).__name__)
 
 
 elif page == "SOWIA GLOBAL ADMIN & MODERATION":
