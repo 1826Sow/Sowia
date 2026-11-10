@@ -769,19 +769,79 @@ elif page == "Développement mondial":
 
 elif page == "Recherche Web":
     st.subheader(translate_ui("🌐 Recherche Web", language))
-    query = st.text_input("Que souhaitez-vous rechercher ?")
-    if st.button("Rechercher", disabled=not query.strip()):
-        try:
-            for item in search_web(query):
-                st.markdown(f"**[{item.get('title', 'Résultat')}]({item.get('url', '#')})**")
-                st.write(item.get("content", ""))
-        except (RuntimeError, ValueError) as exc:
-            st.error(str(exc))
-        except Exception:
-            st.error(
-                "Une erreur inattendue a interrompu la recherche Web. "
-                "Réessayez dans quelques instants."
+    search_tab, verify_tab = st.tabs(["Recherche classique", "Vérifier une information"])
+
+    with search_tab:
+        query = st.text_input("Que souhaitez-vous rechercher ?", key="general_web_query")
+        if st.button("Rechercher", disabled=not query.strip(), key="general_web_search"):
+            try:
+                for item in search_web(query):
+                    title = str(item.get("title") or "Résultat")
+                    url = str(item.get("url") or "")
+                    if url.startswith(("https://", "http://")):
+                        st.markdown(f"**[{title}]({url})**")
+                    else:
+                        st.markdown(f"**{title}**")
+                    st.write(item.get("content", ""))
+            except (RuntimeError, ValueError) as exc:
+                st.error(str(exc))
+            except Exception:
+                st.error(
+                    "Une erreur inattendue a interrompu la recherche Web. "
+                    "Réessayez dans quelques instants."
+                )
+
+    with verify_tab:
+        st.markdown("#### Recouper une information")
+        st.caption(
+            "SOW IA recherche l'affirmation et une formulation de contre-vérification, "
+            "puis rassemble des sources candidates. Il ne déclare pas automatiquement "
+            "une information vraie ou fausse."
+        )
+        claim = st.text_area(
+            "Quelle affirmation souhaitez-vous vérifier ?",
+            max_chars=400,
+            key="information_verification_claim",
+        )
+        if st.button(
+            "Rechercher des éléments de vérification",
+            type="primary",
+            disabled=not claim.strip(),
+            key="run_information_verification",
+        ):
+            try:
+                from information_verification import (
+                    build_verification_queries,
+                    normalize_evidence_results,
+                )
+                collected = []
+                with st.spinner("Recherche et recoupement des sources…"):
+                    for verification_query in build_verification_queries(claim):
+                        collected.extend(search_web(verification_query, max_results=5))
+                evidence = normalize_evidence_results(collected)
+                st.session_state["information_verification_results"] = evidence
+                st.session_state["information_verification_claim_saved"] = claim.strip()
+            except (RuntimeError, ValueError) as exc:
+                st.error(str(exc))
+            except Exception:
+                st.error("La recherche de vérification a échoué. Réessayez plus tard.")
+
+        evidence = st.session_state.get("information_verification_results", [])
+        saved_claim = st.session_state.get("information_verification_claim_saved")
+        if saved_claim and evidence:
+            st.markdown("**Affirmation examinée :** " + saved_claim)
+            st.warning(
+                "Résultat : sources candidates à examiner. Cette recherche ne constitue "
+                "pas une conclusion factuelle. Vérifiez les dates, les auteurs, les sources "
+                "primaires et les éventuelles contradictions avant toute décision."
             )
+            for index, item in enumerate(evidence, start=1):
+                with st.expander(f"{index}. {item['title']} · {item['domain']}"):
+                    st.caption("Statut : À examiner")
+                    st.write(item["content"] or "Aucun extrait fourni par le moteur de recherche.")
+                    st.link_button("Ouvrir la source", item["url"])
+        elif saved_claim:
+            st.info("Aucune source exploitable n'a été retournée. Cela ne prouve pas que l'affirmation est fausse.")
 
 elif page == "Analyse PDF":
     st.subheader(translate_ui("📄 Analyse PDF", language))
