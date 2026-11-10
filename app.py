@@ -2742,6 +2742,21 @@ elif page == "SOWIA NIGHT EXCHANGE":
                             st.write("Le partenaire propose ce que vous recherchez : " + (", ".join(signals["partner_services_matching_my_needs"]) or "Non identifié"))
                             st.write("Vous proposez ce que le partenaire recherche : " + (", ".join(signals["my_services_matching_partner_needs"]) or "Non identifié"))
                             st.caption(opportunity["notice"] + " Aucun contact ou partage de données n'est déclenché.")
+                            if st.button("Enregistrer une rencontre confirmée", key=f"nex_meeting_{opportunity['app_id']}", use_container_width=True):
+                                try:
+                                    cloud_storage.record_night_exchange_event(
+                                        supabase_client, current_user, nex_workspace,
+                                        "meeting_confirmed", app_id=smart_source.get("id"),
+                                        event_payload={
+                                            "partner_app_id": opportunity["app_id"],
+                                            "partner_app_name": opportunity["app_name"],
+                                            "confirmation": "member_clicked_confirmed_meeting",
+                                        },
+                                    )
+                                    st.success("Confirmation enregistrée dans votre journal d'activité.")
+                                except Exception as exc:
+                                    st.error("La confirmation n'a pas pu être enregistrée.")
+                                    st.caption(f"Diagnostic : {type(exc).__name__}")
                 else:
                     st.info("Une fiche personnelle et au moins une application approuvée sont nécessaires.")
             except Exception as exc:
@@ -2749,13 +2764,47 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 st.caption(f"Diagnostic : {type(exc).__name__}")
 
         with nex_tab_views[6]:
-            st.markdown("#### Bilan de session du matin")
-            st.info("Le moteur de synthèse est prêt, mais le registre d'événements de session n'est pas encore connecté à Supabase. SOWIA n'affiche donc aucun chiffre de rencontres, d'offres acceptées ou de dépenses tant que ces événements ne sont pas réellement enregistrés.")
-            st.markdown("**Éléments prévus dans le bilan :**")
-            st.write("- Rencontres confirmées et opportunités consultées")
-            st.write("- Offres acceptées et intégrations explicitement approuvées")
-            st.write("- Dépenses uniquement après confirmation du prestataire de paiement")
-            st.caption("Aucun paiement ni rapport automatique n'est déclenché dans cette version.")
+            st.markdown("#### Bilan d'activité des 7 derniers jours")
+            st.caption("Synthèse de votre journal personnel/professionnel. Les dépenses ne sont comptées que si un événement de paiement confirmé est écrit par un processus serveur de confiance.")
+            try:
+                ledger_events = cloud_storage.list_night_exchange_events(
+                    supabase_client, current_user, workspace_id=nex_workspace, days=7, limit=500
+                )
+                morning_report = sowia_night_exchange.build_morning_report(ledger_events)
+                report_cols = st.columns(3)
+                report_cols[0].metric("Événements reconnus", morning_report["recognized_events"])
+                report_cols[1].metric("Rencontres confirmées", morning_report["counts"]["meeting_confirmed"])
+                report_cols[2].metric("Offres acceptées", morning_report["counts"]["offer_accepted"])
+                st.write("Consultations de matching : " + str(morning_report["counts"]["match_viewed"]))
+                st.write("Intégrations approuvées : " + str(morning_report["counts"]["integration_approved"]))
+                if morning_report["spend_currencies"]:
+                    st.write("Dépenses confirmées : " + " · ".join(
+                        f"{currency} {morning_report['confirmed_spend']:.2f}"
+                        for currency in morning_report["spend_currencies"]
+                    ))
+                else:
+                    st.write("Dépenses confirmées : aucune enregistrée")
+                if ledger_events:
+                    st.markdown("**Historique récent**")
+                    event_labels = {
+                        "match_viewed": "Matching consulté",
+                        "meeting_confirmed": "Rencontre confirmée par le membre",
+                        "offer_accepted": "Offre acceptée",
+                        "integration_approved": "Intégration approuvée",
+                        "payment_confirmed": "Paiement confirmé par serveur",
+                    }
+                    event_rows = [{
+                        "Date (UTC)": str(row.get("created_at", "")),
+                        "Événement": event_labels.get(row.get("event_type"), row.get("event_type")),
+                        "Détails": str(row.get("event_payload") or {}),
+                    } for row in ledger_events]
+                    st.dataframe(event_rows, use_container_width=True, hide_index=True)
+                else:
+                    st.info("Aucune activité enregistrée sur les 7 derniers jours.")
+                st.caption("Les rencontres confirmées sont des déclarations explicites du membre, pas une preuve qu'une réunion a effectivement eu lieu. Les paiements restent réservés aux événements serveur.")
+            except Exception as exc:
+                st.error("Le journal d'activité n'est pas disponible. Appliquez la migration Supabase dédiée.")
+                st.caption(f"Diagnostic : {type(exc).__name__}")
 
         if nex_is_admin:
             with nex_tab_views[7]:
