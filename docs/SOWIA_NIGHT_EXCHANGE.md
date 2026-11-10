@@ -44,3 +44,12 @@ The professional navigation now includes a SOWIA NIGHT EXCHANGE page, gated by t
 
 ## Matching international — prototype
 The Streamlit page includes an explainable matching tab. It compares a member listing with approved directory records using normalized categories and service terms, ranks candidates deterministically, and labels reciprocal exchange potential. It is advisory only: no messaging, integration, data sharing, or payment is initiated. Matching quality depends on the accuracy and specificity of submitted descriptions.
+
+
+## Global coordination prototype (current code)
+The rules module now includes:
+- `global_session_status(record, now)`: converts an aware timestamp into each approved app's IANA timezone, checks its configured local night window and calculates its next opening in local time and UTC. It does not run a scheduler or start a session.
+- `build_smart_opportunities(source, candidates)`: provides an explainable compatibility ranking with shared categories and reciprocal service signals. Scores are heuristic indicators, not forecasts or endorsements.
+- `build_morning_report(events)`: summarizes only explicitly supplied event records and includes payment spend only when the provider status is `confirmed`.
+
+The Streamlit page adds a global session table, an explainable opportunities view and a morning-report placeholder. The report event ledger is not yet connected to Supabase, so the UI intentionally does not display fabricated session counts or spending. The SQL registry migration still needs to be applied in Supabase. Automated tests have been added but have not yet been executed; production deployment has not been verified.
