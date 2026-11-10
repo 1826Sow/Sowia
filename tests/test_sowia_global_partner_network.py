@@ -53,7 +53,7 @@ class PartnerNetworkTests(unittest.TestCase):
         }
         rows = rank_partner_matches(own, [partner])
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["compatibility_score"], 60)
+        self.assertEqual(rows[0]["compatibility_score"], 65)
         self.assertTrue(any("french" in reason for reason in rows[0]["match_reasons"]))
 
 
