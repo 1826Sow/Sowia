@@ -1,6 +1,6 @@
 import pytest
 
-from financial_reporting import summarize_financial_transactions
+from financial_reporting import load_user_financial_transactions, summarize_financial_transactions
 
 
 def test_reports_confirmed_crypto_and_keeps_unknown_fees_unknown():
@@ -56,3 +56,42 @@ def test_rejects_invalid_amounts(gross):
 def test_rejects_non_list_input():
     with pytest.raises(ValueError):
         summarize_financial_transactions({})
+
+
+
+def test_user_ledger_read_includes_paypal_subscription_reference():
+    class Response:
+        data = [{"provider": "paypal", "paypal_subscription_id": "I-TEST12345"}]
+
+    class Query:
+        def __init__(self):
+            self.selected = None
+            self.filters = []
+        def select(self, columns):
+            self.selected = columns
+            return self
+        def eq(self, field, value):
+            self.filters.append((field, value))
+            return self
+        def order(self, *args, **kwargs):
+            return self
+        def limit(self, value):
+            return self
+        def execute(self):
+            return Response()
+
+    class Client:
+        def __init__(self):
+            self.query = Query()
+        def table(self, name):
+            assert name == "sowia_financial_transactions"
+            return self.query
+
+    class User:
+        id = "user-123"
+
+    client = Client()
+    rows = load_user_financial_transactions(client, User())
+    assert rows[0]["paypal_subscription_id"] == "I-TEST12345"
+    assert "paypal_subscription_id" in client.query.selected
+    assert ("user_id", "user-123") in client.query.filters
