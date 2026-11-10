@@ -195,3 +195,85 @@ def flag_paypal_refund_for_review(admin_client, *, user_id, transaction):
         ignore_duplicates=True,
     ).execute()
     return {"capture_id": capture_id, "updated": False, "status": "manual_review"}
+
+
+def record_paypal_refund_for_review(
+    admin_client, *, user_id, capture_row, refund
+):
+    """Persist an individually verified PayPal refund without recognizing it yet.
+
+    The refund ID, exact amount and parent capture must already have been
+    verified against PayPal's Reporting and Payments APIs. The row remains
+    manual_review until the reporting window is reconciled completely.
+    """
+    if admin_client is None:
+        raise RuntimeError("Client d'administration Supabase indisponible.")
+    user_id = str(user_id or "").strip()
+    if not user_id or not isinstance(capture_row, dict) or not isinstance(refund, dict):
+        raise ValueError("Utilisateur, capture ou remboursement invalide.")
+    capture_id = str(capture_row.get("provider_payment_id") or "").strip()
+    refund_id = str(refund.get("id") or "").strip()
+    if not re.fullmatch(r"[A-Z0-9_-]{5,100}", capture_id):
+        raise ValueError("Identifiant de capture PayPal invalide.")
+    if not re.fullmatch(r"[A-Z0-9_-]{5,100}", refund_id):
+        raise ValueError("Identifiant de remboursement PayPal invalide.")
+    if refund_id == capture_id:
+        raise ValueError("Le remboursement doit avoir son propre identifiant.")
+    amount_obj = refund.get("amount") or {}
+    currency = str(amount_obj.get("currency") or amount_obj.get("currency_code") or "").strip().upper()
+    if currency != "EUR":
+        raise ValueError("Seuls les remboursements EUR sont admis.")
+    try:
+        amount = Decimal(str(amount_obj.get("value"))).quantize(Decimal("0.01"))
+        capture_amount = Decimal(str(capture_row.get("gross_amount"))).quantize(Decimal("0.01"))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError("Montant de remboursement ou capture invalide.") from None
+    if (
+        not amount.is_finite() or amount <= 0 or amount > Decimal("9999.99")
+        or not capture_amount.is_finite() or capture_amount <= 0
+        or amount > capture_amount
+    ):
+        raise ValueError("Montant de remboursement hors limites.")
+    occurred_at = str(refund.get("update_time") or refund.get("create_time") or "").strip()
+    if not occurred_at:
+        raise ValueError("Date du remboursement PayPal manquante.")
+
+    table = admin_client.table("sowia_financial_transactions")
+    parent = (
+        table.select("provider_payment_id")
+        .eq("user_id", user_id)
+        .eq("provider", "paypal")
+        .eq("provider_payment_id", capture_id)
+        .eq("transaction_type", "payment")
+        .limit(1)
+        .execute()
+    )
+    if not getattr(parent, "data", None):
+        raise PermissionError("La capture parente n'appartient pas à cet utilisateur.")
+    payload = {
+        "user_id": user_id,
+        "provider": "paypal",
+        "provider_payment_id": refund_id,
+        "transaction_type": "refund",
+        "status": "manual_review",
+        "gross_amount": f"{amount:.2f}",
+        "gross_currency": "EUR",
+        "occurred_at": occurred_at,
+    }
+    saved = (
+        table.upsert(
+            payload,
+            on_conflict="provider,provider_payment_id,transaction_type",
+            ignore_duplicates=True,
+        )
+        .execute()
+    )
+    table.update({"status": "manual_review"}).eq("user_id", user_id).eq(
+        "provider", "paypal"
+    ).eq("provider_payment_id", capture_id).eq("transaction_type", "payment").execute()
+    return {
+        "capture_id": capture_id,
+        "refund_id": refund_id,
+        "status": "manual_review",
+        "inserted_or_present": bool(getattr(saved, "data", None)),
+    }
