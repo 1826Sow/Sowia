@@ -4360,6 +4360,26 @@ elif page == "SOWIA GLOBAL ADMIN & MODERATION":
                 moderation_reports = cloud_storage.list_global_moderation_reports(
                     supabase_client, current_user, limit=150
                 )
+                import sowia_global_moderation as moderation_helpers
+                pattern_summary = moderation_helpers.summarize_report_patterns(moderation_reports)
+                repeated_targets = pattern_summary["repeated_targets"]
+                repeated_reporters = pattern_summary["repeated_reporters"]
+                st.markdown("#### Indicateurs de répétition — aide au tri humain")
+                st.caption(
+                    "Un seuil de 3 signalements ouverts ou en cours déclenche uniquement un indicateur. "
+                    "Cela ne prouve aucun abus et ne déclenche aucune sanction automatique."
+                )
+                pattern_cols = st.columns(2)
+                pattern_cols[0].metric("Comptes signalés à répétition", len(repeated_targets))
+                pattern_cols[1].metric("Déclarants à répétition", len(repeated_reporters))
+                if repeated_targets:
+                    st.warning("Comptes recevant au moins 3 signalements non clôturés :")
+                    for item in repeated_targets:
+                        st.write(f"• Compte interne {item['account_id'][:8]} — {item['report_count']} signalements")
+                if repeated_reporters:
+                    st.info("Déclarants ayant effectué au moins 3 signalements non clôturés (à examiner pour contexte, sans présumer d'un abus) :")
+                    for item in repeated_reporters:
+                        st.write(f"• Compte interne {item['account_id'][:8]} — {item['report_count']} signalements")
                 if not moderation_reports:
                     st.info("Aucun signalement dans la file.")
                 for report in moderation_reports:
