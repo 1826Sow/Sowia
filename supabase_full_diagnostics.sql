@@ -7,7 +7,8 @@ with expected_tables(table_name) as (
     values
         ('sowia_messages'),
         ('sowia_memory_items'),
-        ('sowia_entitlements')
+        ('sowia_entitlements'),
+        ('sowia_growth_leads')
 ),
 table_checks as (
     select
@@ -39,7 +40,13 @@ expected_columns(table_name, column_name) as (
         ('sowia_entitlements', 'user_id'),
         ('sowia_entitlements', 'status'),
         ('sowia_entitlements', 'provider'),
-        ('sowia_entitlements', 'paypal_order_id')
+        ('sowia_entitlements', 'paypal_order_id'),
+        ('sowia_growth_leads', 'user_id'),
+        ('sowia_growth_leads', 'workspace_id'),
+        ('sowia_growth_leads', 'organization'),
+        ('sowia_growth_leads', 'country'),
+        ('sowia_growth_leads', 'status'),
+        ('sowia_growth_leads', 'source_url')
 ),
 column_checks as (
     select
@@ -66,7 +73,7 @@ select
         || '; WITH CHECK=' || coalesce(with_check, '<none>')
 from pg_policies
 where schemaname = 'public'
-  and tablename in ('sowia_messages', 'sowia_memory_items', 'sowia_entitlements')
+  and tablename in ('sowia_messages', 'sowia_memory_items', 'sowia_entitlements', 'sowia_growth_leads')
 union all
 select
     'storage bucket'::text,
