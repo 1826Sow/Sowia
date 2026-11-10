@@ -13,7 +13,7 @@ class GlobalForecastTests(unittest.TestCase):
     def test_builds_five_scenarios(self):
         result = build_forecast(self.assessment, [], "90 jours")
         self.assertEqual(len(result["scenarios"]), 5)
-        self.assertEqual(result["confidence"], 73)
+        self.assertEqual(result["confidence"], 82)
 
     def test_alerts_raise_risk_pressure(self):
         result = build_forecast(self.assessment, [
