@@ -173,6 +173,7 @@ def flag_paypal_refund_for_review(admin_client, *, user_id, transaction):
         .eq("provider", "paypal")
         .eq("provider_payment_id", capture_id)
         .eq("transaction_type", "payment")
+        .select("provider_payment_id")
         .execute()
     )
     if getattr(update, "data", None):
