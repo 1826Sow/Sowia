@@ -68,6 +68,16 @@ with check (
  )
 );
 
+drop policy if exists "SOW IA admins can inspect all printer records" on public.sowia_vip_printer_suppliers;
+create policy "SOW IA admins can inspect all printer records"
+on public.sowia_vip_printer_suppliers for select to authenticated
+using (coalesce(auth.jwt() -> 'app_metadata' ->> 'sowia_admin','false') = 'true');
+
+drop policy if exists "SOW IA admins can inspect all printer quotes" on public.sowia_vip_printer_quotes;
+create policy "SOW IA admins can inspect all printer quotes"
+on public.sowia_vip_printer_quotes for select to authenticated
+using (coalesce(auth.jwt() -> 'app_metadata' ->> 'sowia_admin','false') = 'true');
+
 -- Never grant members permission to change approval states.
 revoke all on public.sowia_vip_printer_suppliers from anon, authenticated;
 grant select, insert on public.sowia_vip_printer_suppliers to authenticated;
