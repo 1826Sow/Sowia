@@ -1540,7 +1540,15 @@ elif page == "Développement mondial":
             if selected_market in {"Autre pays anglophone", "Autre pays / territoire"} and custom_market.strip()
             else selected_market
         )
-        if st.button("Préparer l'étude et rechercher des opportunités", key="sowia_global_market_search", type="primary"):
+        market_input_valid = (
+            selected_market not in {"Autre pays anglophone", "Autre pays / territoire"}
+            or bool(custom_market.strip())
+        )
+        if st.button(
+            "Préparer l'étude et rechercher des opportunités",
+            key="sowia_global_market_search", type="primary",
+            disabled=not market_input_valid or not market_offer.strip(),
+        ):
             try:
                 profile = market_strategy.normalize_market(market_name)
                 queries = market_strategy.build_market_research_queries(market_name, market_offer)
