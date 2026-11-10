@@ -50,6 +50,7 @@ def test_records_completed_recurring_billing_idempotently():
     row = result[0]
     assert row["provider"] == "paypal"
     assert row["provider_payment_id"] == "BILLING123"
+    assert row["paypal_subscription_id"] == "I-TEST12345"
     assert row["transaction_type"] == "payment"
     assert row["status"] == "confirmed"
     assert row["gross_amount"] == "9.90"
