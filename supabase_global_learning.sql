@@ -86,9 +86,22 @@ begin
     if new.user_id <> old.user_id
        or new.decision_id <> old.decision_id
        or new.baseline_snapshot <> old.baseline_snapshot
-       or new.created_at <> old.created_at
-       or new.recommendation_alignment is distinct from old.recommendation_alignment then
+       or new.created_at <> old.created_at then
         raise exception 'Original decision snapshot is immutable';
+    end if;
+    if not exists (
+        select 1
+        from jsonb_array_elements(new.baseline_snapshot->'ranked_options') option_row
+        where option_row->>'name' = new.selected_option
+    ) then
+        raise exception 'Selected option must exist in the original decision';
+    end if;
+    if new.baseline_snapshot->>'recommended_option' is null
+       or new.baseline_snapshot->>'recommended_option' = 'null' then
+        new.recommendation_alignment := null;
+    else
+        new.recommendation_alignment :=
+            new.selected_option = new.baseline_snapshot->>'recommended_option';
     end if;
     return new;
 end;
