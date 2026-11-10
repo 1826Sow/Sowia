@@ -219,3 +219,14 @@ Le contrôle s'arrête quatre heures avant l'heure courante afin de tenir compte
 Tests ajoutés dans `tests/test_paypal_refund_search.py` pour la correspondance capture/remboursement, le contrôle du montant et de la devise, la validation du lien parent et le verrouillage Sandbox. Leur exécution en CI et un test réel dans PayPal Sandbox restent à confirmer.
 
 Références officielles : [Transaction Search API](https://developer.paypal.com/api/transaction-search/v1), [schéma des détails de transaction](https://developer.paypal.com/api/transaction-search/v1/definitions/transaction_detail/), [codes d'événement T1107](https://developer.paypal.com/docs/transaction-search/transaction-event-codes/), [consultation d'un remboursement](https://developer.paypal.com/api/payments/v2/refunds-get).
+
+
+### Protection contre les remboursements partiels cumulés
+
+Le registre ajoute `parent_capture_id` pour relier chaque écriture de remboursement à sa capture PayPal d'origine. Avant l'insertion, le service vérifie que la capture appartient au compte concerné et que le cumul des remboursements déjà liés, augmenté du nouveau remboursement, ne dépasse pas le montant brut de la capture. Une nouvelle tentative portant le même identifiant de remboursement est exclue du cumul pour préserver l'idempotence.
+
+La migration complémentaire `supabase_paypal_refund_parent_migration.sql` ajoute cette colonne et son index. Elle doit être exécutée dans Supabase après la migration principale `supabase_crypto_payments.sql`. Les anciennes écritures de remboursement non liées restent en contrôle manuel ; elles ne sont pas automatiquement rattachées par supposition.
+
+Le module accepte les champs de devise renvoyés par l'API PayPal Refund (`currency`) et par les rapports (`currency_code`). Cette différence de schéma est couverte par un test automatisé.
+
+**Statut :** les garde-fous et tests sont présents dans `main`. L'exécution complète des tests GitHub Actions, l'application de la migration Supabase et le rapprochement réel Sandbox doivent être vérifiés séparément. Aucun remboursement n'est encore présenté comme revenu net confirmé sur la seule base de ce code.
