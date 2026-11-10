@@ -646,6 +646,8 @@ if page in ("Hub SOWIA", "Accueil"):
         ("🧠 Mémoire", "Ma mémoire", "Retrouver vos informations utiles"),
         ("📄 Documents", "Mes documents", "Gérer vos fichiers personnels"),
         ("🌐 Recherche", "Recherche Web", "Explorer des informations et des sources"),
+        ("🪪 Identité mondiale", "SOWIA GLOBAL ID", "Créer votre carte professionnelle et choisir les informations publiées."),
+        ("📚 Annuaire mondial", "SOWIA GLOBAL DIRECTORY", "Découvrir les profils et organisations ayant choisi d’être visibles."),
     ]
     for start in range(0, len(personal_items), 4):
         cols = st.columns(4)
