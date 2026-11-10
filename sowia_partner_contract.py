@@ -99,9 +99,6 @@ def request_completion(contract, actor_id):
     confirmations = set(row.get("completion_confirmed_by") or [])
     confirmations.add(actor_id)
     row["completion_confirmed_by"] = sorted(confirmations)
-    if set(PARTY_FIELDS) & confirmations == set(PARTY_FIELDS):
-        # Party field names are keys, not IDs; use explicit IDs below.
-        pass
     parties = {row.get("proposer_id"), row.get("counterparty_id")}
     if confirmations >= parties:
         row["status"] = "completed"
