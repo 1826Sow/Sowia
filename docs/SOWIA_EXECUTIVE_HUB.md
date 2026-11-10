@@ -49,3 +49,12 @@ The international-development workspace includes an on-demand public-signal rada
 Results are normalized, deduplicated by URL where available, and sorted by a transparent heuristic relevance score. The score is a triage aid only: every result remains labelled "À vérifier". The radar does not prove that a call is open, that SOWIA is eligible, or that a source is authoritative. Users must check the original source, deadlines, eligibility, budget, legal requirements and contact details.
 
 The radar is on-demand and session-scoped. It does not run in the background, cover every country automatically, contact organizations, submit applications, or spend money. A scheduled monitoring service and persistent opportunity register remain future work.
+
+
+## Persistent opportunity register and deadline follow-up
+
+The radar findings can be saved into a per-user, professional-workspace opportunity register. Records include country, category, source URL, summary, optional partner, deadline, priority, status and next action. Users can add opportunities manually, update progress and review overdue deadlines or deadlines within the next 14 days.
+
+The Supabase migration is `supabase_opportunity_register.sql`. It creates user-scoped row-level security policies; records are isolated by authenticated user and professional workspace. Until the migration is applied, the UI may keep entries in Streamlit session state only, with an explicit warning that this is temporary.
+
+Deadline indicators are shown when the user opens the application. They are not push notifications, emails or background monitoring. No opportunity is submitted and no partner is contacted automatically. The register currently supports up to 200 records per user view; a future stage can add pagination, reminders and partner CRM linking.
