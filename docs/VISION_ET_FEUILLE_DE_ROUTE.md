@@ -392,3 +392,44 @@ Un interrupteur `🔒 Protection d'écran` est ajouté dans le menu latéral :
 - le réglage est inclus dans les préférences d'accessibilité du compte, après application de la migration Supabase.
 
 Limite importante : ce mode est une protection contre les regards indiscrets (shoulder surfing), pas un filtre de confidentialité matériel. Il ne protège pas contre les captures d'écran, les enregistrements, les notifications système, les autres appareils ni une personne qui regarde de très près. Il faut toujours verrouiller l'appareil pour une protection forte.
+
+## 15. Audit fonctionnel du 10 novembre 2026 — priorités de réalisation
+
+Cet audit porte sur le code de la branche `main` consulté le 10 novembre 2026. Il décrit la présence de code, pas une validation de la disponibilité en production.
+
+### Fonctions repérées dans le code
+
+| Domaine | État constaté dans le dépôt | Limite à ne pas masquer |
+| --- | --- | --- |
+| Recherche Web | Présente dans l'application | Dépend du fournisseur et de ses quotas |
+| Vérification d'information | Première interface et module de préparation de requêtes présents | Rassemble des sources candidates ; ne rend pas de verdict automatique ni ne garantit l'indépendance des sources |
+| CRM et développement mondial | Première brique de prospection et de suivi présente | Prospection et campagnes ne sont pas autonomes ; les contacts externes doivent rester approuvés |
+| Opportunités et revenus | Tableau de suivi des opportunités présent | Les prévisions ne sont pas des encaissements ; rapprochement réel des paiements et calcul de marge à compléter |
+| Scénarios stratégiques | Comparateur présent | Saisie manuelle et conservation limitée à la session |
+| Sélection technologique | Grille de comparaison présente | Pas encore de benchmark automatique ni de veille continue des fournisseurs |
+| Accessibilité et protection visuelle | Premières fonctions intégrées | Compatibilité Android et essais utilisateurs encore à confirmer |
+
+### Modules majeurs non repérés comme opérationnels dans cet audit
+
+- **Veille mondiale des marchés et cotations** : pas de connecteur de données financières vérifié ni de couverture boursière temps réel démontrée.
+- **Analyse de portefeuille** : pas encore de registre de positions, de calcul consolidé de performance, d'exposition, de diversification, de volatilité et de frais raccordé à des données de marché vérifiées.
+- **Veille météo-économique** : pas encore de chaîne opérationnelle reliant des alertes météorologiques sourcées aux secteurs, régions et risques économiques.
+- **Rapports financiers et alertes multi-marchés** : à construire après sélection et validation des fournisseurs de données.
+
+### Ordre d'exécution retenu
+
+1. Définir une couche commune de données externes : fournisseur, licence d'utilisation, source, horodatage, fuseau horaire, devise, unité, fréquence de mise à jour, délai éventuel et statut de disponibilité.
+2. Construire la veille des marchés sur un périmètre pilote clairement annoncé, avant d'élargir les places et instruments couverts.
+3. Ajouter le portefeuille en mode lecture/analyse : positions fournies volontairement par l'utilisateur, valorisations sourcées, frais, risques et simulations clairement séparées des performances réelles.
+4. Construire la veille météo-économique avec distinction entre observation, prévision et hypothèse d'impact, ainsi qu'un niveau d'incertitude.
+5. Relier les modules à des alertes, rapports et historiques persistants, avec contrôle d'accès par compte et espace de travail.
+
+### Conditions préalables non négociables
+
+- Vérifier les droits de réutilisation et de redistribution des données, leurs coûts et leurs limites commerciales avant toute intégration.
+- Ne jamais présenter une donnée différée ou indicative comme un cours temps réel.
+- Ne jamais fabriquer une cotation, une alerte, une source, une performance ou un revenu.
+- Ne pas exécuter d'ordre de marché ni gérer des actifs ; toute fonction réglementée exige un cadre et des partenaires habilités.
+- Prévoir des tests automatisés, des tests d'isolation des comptes, un contrôle des erreurs fournisseur et un essai sur l'application déployée avant toute annonce de disponibilité.
+
+**Statut de cet audit :** feuille de route mise à jour ; aucun nouveau module financier ou météorologique n'est déclaré livré par cette mise à jour documentaire.
