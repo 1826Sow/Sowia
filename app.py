@@ -2756,6 +2756,22 @@ elif page == "SOWIA NIGHT EXCHANGE":
                         with st.container(border=True):
                             st.markdown(f"**{opportunity['app_name']}** · {opportunity['country']}")
                             st.metric("Score indicatif", f"{opportunity['score']}/100")
+                            partner_record = next(
+                                (row for row in candidate_apps_smart
+                                 if str(row.get("id") or row.get("app_id") or "") == str(opportunity["app_id"])),
+                                {},
+                            )
+                            evidence = sowia_night_exchange.assess_partner_evidence(partner_record)
+                            st.markdown("**Indice de preuves documentaires**")
+                            st.metric(evidence["label"], f"{evidence['score']}/100")
+                            st.caption("Évalue uniquement les informations et validations présentes dans la fiche — ce n'est pas une garantie de fiabilité commerciale.")
+                            with st.expander("Voir les éléments vérifiés et manquants"):
+                                for evidence_item in evidence["positive_evidence"]:
+                                    st.write("✓ " + evidence_item)
+                                for evidence_item in evidence["missing_evidence"]:
+                                    st.write("À compléter : " + evidence_item)
+                                for limitation in evidence["limitations"]:
+                                    st.caption(limitation)
                             signals = opportunity["signals"]
                             st.write("Domaines communs : " + (", ".join(signals["shared_categories"]) or "Aucun"))
                             st.write("Le partenaire propose ce que vous recherchez : " + (", ".join(signals["partner_services_matching_my_needs"]) or "Non identifié"))
