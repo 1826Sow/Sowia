@@ -98,9 +98,9 @@ def _fetch_refund_events(config, headers, start, end):
             total_pages = int(payload.get("total_pages") or 0)
             if page >= total_pages:
                 break
-            page += 1
             if page >= MAX_PAGES_PER_WINDOW:
                 raise RuntimeError("Pagination PayPal trop volumineuse : contrôle interrompu sans écriture.")
+            page += 1
     return events
 
 
