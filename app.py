@@ -615,8 +615,93 @@ elif page == "Développement mondial":
                         key=f"growth_partner_draft_{index}_{intro_language}",
                         height=190,
                     )
+                    if st.button("Enregistrer dans mon CRM", key=f"save_growth_lead_{index}"):
+                        if not cloud_mode or current_user is None:
+                            st.warning("Connectez-vous à votre espace sécurisé pour conserver vos partenaires.")
+                        else:
+                            try:
+                                cloud_storage.add_growth_lead(
+                                    supabase_client,
+                                    current_user,
+                                    organization=lead["title"],
+                                    country=st.session_state.get("growth_partner_region", region),
+                                    region=st.session_state.get("growth_partner_region", region),
+                                    partner_type=partner_type,
+                                    website=lead["url"],
+                                    source_url=lead["url"],
+                                    notes=lead["content"],
+                                    workspace_id=st.session_state.get("workspace_id", "personal"),
+                                )
+                                st.success("Partenaire enregistré dans votre CRM.")
+                                st.rerun()
+                            except Exception:
+                                st.error("Enregistrement impossible. Vérifiez que le script supabase_growth_crm.sql a été exécuté dans Supabase.")
         else:
             st.info("Lancez une recherche pour découvrir des pistes de partenariat. Les résultats ne sont pas encore des partenaires validés.")
+
+        st.divider()
+        st.markdown("#### 📇 Mon carnet de partenaires")
+        st.caption("Vos pistes sont conservées dans votre compte et votre espace de travail. Seul votre compte peut les consulter.")
+        if not cloud_mode or current_user is None:
+            st.info("Connectez-vous pour utiliser le CRM permanent.")
+        else:
+            try:
+                crm_workspace = st.session_state.get("workspace_id", "personal")
+                saved_leads = cloud_storage.list_growth_leads(
+                    supabase_client, current_user, crm_workspace
+                )
+                total = len(saved_leads)
+                contacted = sum(item.get("status") in {"Contacté", "Réponse reçue", "En discussion", "Partenaire confirmé"} for item in saved_leads)
+                confirmed = sum(item.get("status") == "Partenaire confirmé" for item in saved_leads)
+                metric_cols = st.columns(3)
+                metric_cols[0].metric("Pistes enregistrées", total)
+                metric_cols[1].metric("Contacts engagés", contacted)
+                metric_cols[2].metric("Partenaires confirmés", confirmed)
+                if not saved_leads:
+                    st.info("Votre carnet est vide. Enregistrez une piste issue de la recherche pour commencer.")
+                else:
+                    statuses = list(cloud_storage.GROWTH_LEAD_STATUSES)
+                    for saved in saved_leads:
+                        with st.expander(f"{saved['organization']} · {saved['country']} · {saved['status']}"):
+                            st.caption(f"{saved.get('region') or 'Zone non précisée'} · {saved.get('partner_type') or 'Type non précisé'}")
+                            if saved.get("website"):
+                                st.link_button("Ouvrir le site", saved["website"])
+                            if saved.get("source_url") and saved.get("source_url") != saved.get("website"):
+                                st.link_button("Voir la source", saved["source_url"])
+                            selected_status = st.selectbox(
+                                "Étape de prospection",
+                                statuses,
+                                index=statuses.index(saved["status"]) if saved.get("status") in statuses else 0,
+                                key=f"crm_status_{saved['id']}",
+                            )
+                            edited_notes = st.text_area(
+                                "Notes de suivi",
+                                value=saved.get("notes") or "",
+                                max_chars=2000,
+                                key=f"crm_notes_{saved['id']}",
+                            )
+                            action_cols = st.columns(2)
+                            if action_cols[0].button("Enregistrer le suivi", key=f"crm_update_{saved['id']}"):
+                                try:
+                                    cloud_storage.update_growth_lead(
+                                        supabase_client, current_user, saved["id"],
+                                        selected_status, edited_notes, crm_workspace
+                                    )
+                                    st.success("Suivi mis à jour.")
+                                    st.rerun()
+                                except Exception:
+                                    st.error("La mise à jour du suivi a échoué.")
+                            if action_cols[1].button("Supprimer cette piste", key=f"crm_delete_{saved['id']}"):
+                                try:
+                                    cloud_storage.delete_growth_lead(
+                                        supabase_client, current_user, saved["id"], crm_workspace
+                                    )
+                                    st.success("Piste supprimée.")
+                                    st.rerun()
+                                except Exception:
+                                    st.error("La suppression de cette piste a échoué.")
+            except Exception:
+                st.warning("Le CRM permanent n'est pas encore initialisé. Exécutez le script supabase_growth_crm.sql dans Supabase > SQL Editor, puis rechargez cette page.")
 
     with promo_tab:
         st.markdown("#### Préparer une campagne internationale")
