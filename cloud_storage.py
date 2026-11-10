@@ -1341,3 +1341,58 @@ def list_global_performance_observations(client, user, limit=300):
         .order("observed_at", desc=True)
         .limit(min(max(int(limit), 1), 500)).execute().data
     )
+
+
+# SOWIA GLOBAL COLLABORATION HUB — consent-based shared projects.
+def create_global_project(client, user, project):
+    import sowia_global_collaboration as collaboration
+    clean = collaboration.validate_project(project.get("title"), project.get("objective"), project.get("country"), project.get("target_date"), project.get("success_metric"), project.get("description", ""))
+    return client.rpc("sowia_global_project_create", {"p_title": clean["title"], "p_objective": clean["objective"], "p_country": clean["country"], "p_target_date": clean["target_date"], "p_success_metric": clean["success_metric"], "p_description": clean["description"]}).execute().data
+
+def list_global_projects(client, user, limit=100):
+    _user_id(user)
+    return client.table("sowia_global_projects").select("id,owner_id,title,objective,country,target_date,success_metric,description,status,created_at,updated_at").order("created_at", desc=True).limit(min(max(int(limit),1),200)).execute().data
+
+def list_global_project_members(client, user, project_id, limit=100):
+    _user_id(user)
+    return client.table("sowia_global_project_members").select("id,project_id,user_id,role,status,invited_by,created_at,updated_at").eq("project_id",str(project_id)).order("created_at").limit(min(max(int(limit),1),200)).execute().data
+
+def list_global_project_invitations(client, user, limit=100):
+    return client.table("sowia_global_project_members").select("id,project_id,role,status,created_at").eq("user_id",_user_id(user)).eq("status","pending").order("created_at",desc=True).limit(min(max(int(limit),1),200)).execute().data
+
+def invite_global_project_member(client, user, project_id, public_id, role="contributor"):
+    _user_id(user)
+    if role not in {"coordinator","contributor","observer"}: raise ValueError("Rôle d'invitation invalide.")
+    return client.rpc("sowia_global_project_invite", {"p_project_id":str(project_id),"p_public_id":str(public_id).strip(),"p_role":role}).execute().data
+
+def respond_global_project_invitation(client, user, member_id, decision):
+    _user_id(user)
+    if decision not in {"accepted","declined"}: raise ValueError("Réponse invalide.")
+    return client.rpc("sowia_global_project_respond", {"p_member_id":str(member_id),"p_decision":decision}).execute().data
+
+def transition_global_project(client, user, project_id, status, note=""):
+    _user_id(user)
+    if status not in {"active","paused","completed","cancelled"}: raise ValueError("Statut invalide.")
+    return client.rpc("sowia_global_project_transition", {"p_project_id":str(project_id),"p_status":status,"p_note":str(note or "")[:1000]}).execute().data
+
+def add_global_project_contribution(client, user, project_id, contribution):
+    import sowia_global_collaboration as collaboration
+    clean=collaboration.validate_contribution(contribution.get("contribution_type"),contribution.get("description"),contribution.get("amount"),contribution.get("currency"),contribution.get("hours"))
+    return client.table("sowia_global_project_contributions").insert({"project_id":str(project_id),"contributor_id":_user_id(user),**clean}).execute().data
+
+def list_global_project_contributions(client, user, project_id, limit=200):
+    _user_id(user)
+    return client.table("sowia_global_project_contributions").select("id,project_id,contributor_id,contribution_type,description,amount,currency,hours,verification_status,created_at").eq("project_id",str(project_id)).order("created_at",desc=True).limit(min(max(int(limit),1),300)).execute().data
+
+def add_global_project_milestone(client, user, project_id, milestone):
+    import sowia_global_collaboration as collaboration
+    clean=collaboration.validate_milestone(milestone.get("title"),milestone.get("owner_label"),milestone.get("due_date"),milestone.get("status","pending"),milestone.get("description",""))
+    return client.table("sowia_global_project_milestones").insert({"project_id":str(project_id),"created_by":_user_id(user),**clean}).execute().data
+
+def list_global_project_milestones(client, user, project_id, limit=200):
+    _user_id(user)
+    return client.table("sowia_global_project_milestones").select("id,project_id,created_by,title,owner_label,due_date,status,description,created_at,updated_at").eq("project_id",str(project_id)).order("due_date").limit(min(max(int(limit),1),300)).execute().data
+
+def list_global_project_audit(client, user, project_id, limit=200):
+    _user_id(user)
+    return client.table("sowia_global_project_audit").select("id,project_id,actor_id,event_type,details,created_at").eq("project_id",str(project_id)).order("created_at",desc=True).limit(min(max(int(limit),1),300)).execute().data
