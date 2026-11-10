@@ -473,7 +473,10 @@ with st.sidebar:
     st.session_state.workspace_id = workspace_id
     if cloud_mode:
         st.success(f"Espace {workspace_choice.lower()} sécurisé")
-        st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
+        if st.session_state.get("sowia_privacy_screen", False):
+            st.caption("Compte connecté · identité masquée pendant la protection d'écran")
+        else:
+            st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
         if st.button("Se déconnecter", use_container_width=True):
             try:
                 sign_out(supabase_client)
