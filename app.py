@@ -563,16 +563,51 @@ if privacy_screen:
         unsafe_allow_html=True,
     )
 
-page = st.radio(
-    "Navigation rapide — retrouvez vos outils ici",
-    [
-        "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
-        "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL COLLABORATION HUB", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL", "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
-    ],
+# Navigation compacte : les valeurs internes des pages restent inchangées.
+# Le libellé indique la rubrique, sans supprimer ni renommer aucune fonctionnalité.
+navigation_pages = [
+    "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
+    "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
+    "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL COLLABORATION HUB", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL", "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+]
+navigation_group_by_page = {
+    "Hub SOWIA": "🏠 Accueil", "Accueil": "🏠 Accueil",
+    "Assistant IA": "👤 Espace personnel", "Ma mémoire": "👤 Espace personnel",
+    "Recherche Web": "👤 Espace personnel", "Analyse PDF": "👤 Espace personnel",
+    "Créer un PDF": "👤 Espace personnel", "Mes documents": "👤 Espace personnel",
+    "Historique": "👤 Espace personnel", "Paramètres": "👤 Espace personnel",
+    "Abonnement": "💼 Compte & services", "Développement mondial": "🌍 Écosystème mondial",
+    "SOWIA NIGHT EXCHANGE": "🌍 Écosystème mondial", "SOWIA GLOBAL ID": "🌍 Écosystème mondial",
+    "SOWIA GLOBAL DIRECTORY": "🌍 Écosystème mondial", "SOWIA GLOBAL TRUST": "🌍 Écosystème mondial",
+    "SOWIA GLOBAL ADMIN & MODERATION": "🌍 Écosystème mondial",
+    "SOW IA Business Club": "🤝 Business & opportunités",
+    "Opportunités et revenus": "🤝 Business & opportunités",
+    "Finance & investissements": "📊 Pilotage & stratégie",
+    "Décisions humaines vs SOW IA": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL INTELLIGENCE": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL PULSE": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL STRATEGIC FORECAST": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL DECISION ENGINE": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL LEARNING ENGINE": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL AUTONOMOUS STRATEGY": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL COLLABORATION HUB": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL ACTION GOVERNANCE": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL PERFORMANCE & IMPACT": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL PORTFOLIO CONTROL": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL EXECUTIVE REPORTS": "📊 Pilotage & stratégie",
+    "Stratégie & scénarios": "🛠️ Gestion & assistance",
+    "Technologies & fournisseurs": "🛠️ Gestion & assistance",
+    "Revenus & paiements": "💼 Compte & services",
+    "Aide": "🛠️ Gestion & assistance",
+}
+page = st.selectbox(
+    "Navigation SOWIA — choisissez une rubrique",
+    navigation_pages,
     key="page_nav",
-    horizontal=True,
-    format_func=lambda value: translate_ui(value, language),
+    format_func=lambda value: (
+        f"{navigation_group_by_page.get(value, 'SOWIA')} · "
+        f"{translate_ui(value, language)}"
+    ),
 )
 st.markdown(
     '<div class="hero"><div class="hero-kicker">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>'
