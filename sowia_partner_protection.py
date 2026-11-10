@@ -67,11 +67,8 @@ def validate_abuse_report(*, reporter_id, subject_app_id, category, description,
                           related_contract_id=None):
     reporter = str(reporter_id or "").strip()
     subject = str(subject_app_id or "").strip()
-    if not reporter or not subject or reporter == subject:
-        # reporter_id is a user identifier; subject_app_id is an app identifier,
-        # so equality is not a meaningful identity check. Only non-empty is needed.
-        if not reporter or not subject:
-            raise PartnerProtectionError("Déclarant et application concernée sont requis.")
+    if not reporter or not subject:
+        raise PartnerProtectionError("Déclarant et application concernée sont requis.")
     category = str(category or "").strip()
     if category not in ALLOWED_REPORT_CATEGORIES:
         raise PartnerProtectionError("Catégorie de signalement inconnue.")
