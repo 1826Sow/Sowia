@@ -462,3 +462,16 @@ Le module `portfolio_analysis.py` ajoute une valorisation à partir de positions
 Les tests correspondants sont dans `tests/test_portfolio_analysis.py`.
 
 **Limites :** aucune connexion bancaire ou courtier, aucun import de positions, aucun cours téléchargé, aucune persistance, aucune interface et aucune exécution d'ordre. Les résultats sont des calculs arithmétiques sur les données fournies ; ils ne constituent ni une recommandation personnalisée ni une prévision de rendement.
+
+### 18. Première brique météo-économique — rapprochement explicite des expositions
+
+Le module `weather_impact.py` permet de normaliser des événements météo sourcés et de les rapprocher d'expositions sectorielles documentées :
+- distinction stricte entre événement observé et prévision ;
+- phénomène, région, sévérité, probabilité (obligatoire pour une prévision), dates avec fuseau horaire, date d'émission et source HTTPS ;
+- vulnérabilité sectorielle explicitement fournie, avec justification, direction d'impact et région ;
+- rapprochement uniquement sur une région identique ou une exposition mondiale explicitement marquée `*` ;
+- indice de présélection transparent : sévérité × probabilité (si prévision) × vulnérabilité ; les résultats restent identifiés comme observations ou prévisions.
+
+Tests dédiés : `tests/test_weather_impact.py`.
+
+**Limites :** aucune donnée météo n'est téléchargée automatiquement, aucune alerte officielle n'est surveillée, aucune vulnérabilité sectorielle n'est devinée et aucune perte, variation de prix ou conséquence économique n'est prédite. L'indice sert uniquement à prioriser une analyse humaine ; ce n'est pas une probabilité de perte, un modèle financier ni un conseil d'investissement. La connexion à des fournisseurs météo, la vérification de leurs licences, l'historique, les alertes et l'interface restent à réaliser.
