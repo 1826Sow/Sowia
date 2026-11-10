@@ -2742,6 +2742,43 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                 limit=200,
             )
             st.metric("Cartes correspondant à la recherche", len(matches))
+
+            st.divider()
+            st.subheader("✨ SOWIA GLOBAL PARTNER NETWORK — suggestions de partenaires")
+            st.caption("Suggestions indicatives fondées sur les secteurs, spécialités, langues et pays déclarés. Elles ne constituent pas une garantie de qualité ni de réussite commerciale.")
+            try:
+                import sowia_global_partner_network as partner_network
+                own_partner_profile = cloud_storage.get_my_global_profile(
+                    supabase_client, current_user
+                )
+                suggested_partners = partner_network.rank_partner_matches(
+                    own_partner_profile, directory_profiles, limit=5
+                )
+                if not own_partner_profile or not own_partner_profile.get("is_published"):
+                    st.info("Publiez votre carte dans SOWIA GLOBAL ID pour recevoir des suggestions personnalisées.")
+                elif not suggested_partners:
+                    st.info("Aucun autre profil public disponible pour le moment.")
+                else:
+                    for suggested in suggested_partners:
+                        with st.container(border=True):
+                            suggested_name = suggested.get("display_name") or suggested.get("app_name") or "Partenaire SOWIA"
+                            st.markdown(f"**{suggested_name}** · {suggested['compatibility_score']}/100")
+                            st.caption(" · ".join(value for value in [
+                                suggested.get("organization", ""),
+                                suggested.get("country", ""),
+                            ] if value))
+                            for reason in suggested["match_reasons"]:
+                                st.write("• " + reason)
+                            st.caption(
+                                "Vérification du profil : " + {
+                                    "verified": "Vérifié par SOWIA",
+                                    "pending": "En attente",
+                                    "unverified": "Non vérifié",
+                                }.get(suggested.get("verification_status"), "Non vérifié")
+                            )
+            except Exception as partner_match_error:
+                st.info("Les suggestions de partenaires sont temporairement indisponibles.")
+                st.caption("Diagnostic : " + type(partner_match_error).__name__)
             if not matches:
                 st.info("Aucune carte publiée ne correspond à ces critères. Essayez d’élargir la recherche ou revenez plus tard.")
             for public_card in matches:
