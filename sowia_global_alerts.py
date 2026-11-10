@@ -54,3 +54,39 @@ def validate_alert_status(status):
     if status not in ALERT_STATUSES:
         raise ValueError("Statut d'alerte invalide.")
     return status
+
+
+
+def build_technical_alerts(checks):
+    """Build non-persistent operational alerts from read-only component checks.
+
+    Deliberately disabled payment features are not treated as incidents.
+    """
+    if not isinstance(checks, (list, tuple)):
+        raise ValueError("La liste des contrôles techniques est invalide.")
+
+    alerts = []
+    for item in checks:
+        if not isinstance(item, dict):
+            continue
+        component = str(item.get("Composant") or "Composant inconnu").strip()[:120]
+        status = str(item.get("État") or "").strip()
+        detail = str(item.get("Détail") or "").strip()[:500]
+
+        if status == "À vérifier":
+            alerts.append({
+                "level": "high",
+                "component": component,
+                "status": status,
+                "message": detail or "Un contrôle technique nécessite une vérification.",
+            })
+        elif status in {"Non configuré", "Non vérifié"}:
+            alerts.append({
+                "level": "medium",
+                "component": component,
+                "status": status,
+                "message": detail or "Ce composant n'a pas pu être contrôlé.",
+            })
+        # "Désactivé ou incomplet" is intentionally omitted: e.g. PayPal
+        # subscriptions remain disabled until the owner completes Sandbox tests.
+    return alerts
