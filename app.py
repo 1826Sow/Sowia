@@ -1124,7 +1124,7 @@ elif page == "Ma mémoire":
 elif page == "Développement mondial":
     st.subheader(translate_ui("🌍 Développement mondial de SOW IA", language))
     st.caption("Repérez des partenaires, préparez vos prises de contact et construisez votre promotion internationale. Rien n'est envoyé ou publié automatiquement.")
-    partner_tab, greeting_tab, agenda_tab, promo_tab = st.tabs(["🤝 Partenaires", "🎉 Vœux internationaux", "🗓️ Agenda relationnel", "📣 Promotion multilingue"])
+    partner_tab, greeting_tab, agenda_tab, promo_tab, market_tab = st.tabs(["🤝 Partenaires", "🎉 Vœux internationaux", "🗓️ Agenda relationnel", "📣 Promotion multilingue", "🌐 Stratégie pays"])
 
     with partner_tab:
         st.markdown("#### Prospection internationale")
@@ -1498,6 +1498,106 @@ elif page == "Développement mondial":
         if st.session_state.get("growth_campaign_draft"):
             st.text_area("Campagne préparée — à valider avant publication", value=st.session_state["growth_campaign_draft"], height=360)
             st.caption("La publication automatique sera ajoutée après connexion et validation des comptes sociaux. Aucun message n'est publié depuis cet écran.")
+
+
+    with market_tab:
+        import international_market_strategy as market_strategy
+        st.markdown("#### 🌍 Déploiement mondial : aucun pays oublié")
+        st.write(
+            "SOWIA doit prospecter les marchés prioritaires, les pays anglophones et "
+            "les pays en développement, tout en restant ouverte à chaque pays du monde."
+        )
+        st.markdown("**Marchés prioritaires de lancement**")
+        st.write(
+            "Chine · Singapour · Malaisie · Taïwan · Corée du Sud · Sénégal · "
+            "Émirats arabes unis (avec Dubaï comme hub) · Pays-Bas · Brésil · "
+            "Bahamas · Suisse"
+        )
+        st.caption(
+            "La liste est un point de départ stratégique et non une limite. "
+            "Les pays anglophones et les pays à revenu faible ou intermédiaire "
+            "doivent aussi être prospectés."
+        )
+        market_options = list(market_strategy.PRIORITY_MARKETS) + [
+            "Autre pays anglophone", "Autre pays / territoire"
+        ]
+        selected_market = st.selectbox(
+            "Marché à étudier", market_options, key="sowia_global_market_select"
+        )
+        custom_market = st.text_input(
+            "Nom du pays si autre marché", max_chars=100,
+            placeholder="Saisir n'importe quel pays du monde",
+            key="sowia_global_market_custom",
+        )
+        market_offer = st.text_input(
+            "Activité SOWIA à développer", value=(
+                "Plateforme d'intelligence artificielle, services numériques, "
+                "partenariats professionnels et accompagnement des entreprises"
+            ), max_chars=240, key="sowia_global_market_offer"
+        )
+        market_name = (
+            custom_market.strip()
+            if selected_market in {"Autre pays anglophone", "Autre pays / territoire"} and custom_market.strip()
+            else selected_market
+        )
+        if st.button("Préparer l'étude et rechercher des opportunités", key="sowia_global_market_search", type="primary"):
+            try:
+                profile = market_strategy.normalize_market(market_name)
+                queries = market_strategy.build_market_research_queries(market_name, market_offer)
+                combined = " OR ".join(queries)
+                with st.spinner(f"Recherche d'informations et de partenaires pour {profile['country']}…"):
+                    results = search_web(combined, max_results=12)
+                st.session_state["sowia_market_research_profile"] = profile
+                st.session_state["sowia_market_research_results"] = results
+            except Exception as exc:
+                st.error(f"Étude non réalisée : {type(exc).__name__}. Vérifiez la recherche et réessayez.")
+        profile = st.session_state.get("sowia_market_research_profile")
+        results = st.session_state.get("sowia_market_research_results", [])
+        if profile:
+            st.markdown(f"**Marché étudié : {profile['country']}**")
+            st.write(f"Segment : {profile['segment']} · Zone : {profile['region']}")
+            st.write(f"Axes de recherche : {profile['focus']}")
+            if results:
+                for item in results:
+                    title = str(item.get("title", "Source consultée"))
+                    url = str(item.get("url", ""))
+                    snippet = str(item.get("snippet", item.get("body", "")))
+                    if url.startswith("http"):
+                        st.markdown(f"- [{title}]({url})")
+                    else:
+                        st.markdown(f"- **{title}**")
+                    if snippet:
+                        st.caption(snippet[:500])
+            else:
+                st.info("Aucun résultat exploitable retourné pour cette recherche.")
+        st.markdown("#### 📊 Évaluation du potentiel local")
+        st.caption(
+            "Notes à renseigner après vérification des sources : demande, accessibilité, "
+            "partenaires, accessibilité économique et maîtrise des risques."
+        )
+        market_cols = st.columns(2)
+        with market_cols[0]:
+            market_demand = st.slider("Demande potentielle", 0.0, 5.0, 3.0, 0.5, key="sowia_market_demand")
+            market_access = st.slider("Accessibilité du marché", 0.0, 5.0, 3.0, 0.5, key="sowia_market_access")
+            market_partners = st.slider("Disponibilité de partenaires", 0.0, 5.0, 3.0, 0.5, key="sowia_market_partners")
+        with market_cols[1]:
+            market_affordability = st.slider("Accessibilité économique", 0.0, 5.0, 3.0, 0.5, key="sowia_market_affordability")
+            market_risk = st.slider("Maîtrise des risques locaux", 0.0, 5.0, 3.0, 0.5, key="sowia_market_risk")
+        market_score = market_strategy.score_market(
+            demand=market_demand, accessibility=market_access,
+            partner_readiness=market_partners, affordability=market_affordability,
+            risk_control=market_risk,
+        )
+        st.metric("Score indicatif du marché", f"{market_score}/100")
+        st.caption(
+            "Ce score repose sur vos évaluations, pas sur des statistiques nationales automatisées. "
+            "Avant toute implantation : vérifier réglementation IA et données, fiscalité, sanctions, "
+            "langues, paiements, transferts de données, propriété intellectuelle et partenaires locaux."
+        )
+        st.info(
+            "SOWIA prépare les recherches et les dossiers. Elle ne contacte pas automatiquement "
+            "les entreprises, ne crée pas de société et ne lance pas de campagne sans validation."
+        )
 
 elif page == "Recherche Web":
     st.subheader(translate_ui("🌐 Recherche Web", language))
