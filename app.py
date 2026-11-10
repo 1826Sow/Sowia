@@ -1,6 +1,7 @@
 """SOW IA — application web Streamlit."""
 import uuid
 import html
+from datetime import datetime, timezone
 import streamlit as st
 from settings import get_setting
 from i18n import LANGUAGES as SOWIA_LANGUAGES, translate as translate_ui
@@ -531,7 +532,7 @@ page = st.radio(
     [
         "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "Opportunités et revenus", "Stratégie & scénarios", "Technologies & fournisseurs", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "Opportunités et revenus", "Finance & investissements", "Stratégie & scénarios", "Technologies & fournisseurs", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -2010,6 +2011,154 @@ elif page == "Technologies & fournisseurs":
             st.caption("Aucune solution évaluée. Commencez par ajouter deux candidats pour obtenir un comparatif utile.")
     except Exception:
         st.error("Le comparateur de technologies est momentanément indisponible. Aucune solution n'a été sélectionnée.")
+
+elif page == "Finance & investissements":
+    st.subheader("💹 SOWIA Finance — Bourse, Crypto & Investissements")
+    st.caption(
+        "Première version : suivi et calculs en lecture seule à partir de données saisies par vous. "
+        "Aucune cotation n'est téléchargée automatiquement et aucun ordre n'est passé."
+    )
+    st.warning(
+        "Les cours saisis manuellement ne sont pas vérifiés par SOWIA. "
+        "Le statut temps réel n'est volontairement pas attribuable dans cette interface. "
+        "Vérifiez toujours la source, l'heure, les frais et la devise avant toute décision."
+    )
+    try:
+        from market_data import normalize_market_observation
+        from portfolio_analysis import analyze_portfolio, normalize_portfolio_line
+
+        finance_key = f"{getattr(current_user, 'id', 'local')}:{st.session_state.get('workspace_id', 'personal')}"
+        if st.session_state.get("finance_portfolio_owner") != finance_key:
+            st.session_state["finance_portfolio_owner"] = finance_key
+            st.session_state["finance_positions"] = []
+            st.session_state["finance_quotes"] = {}
+
+        st.markdown("#### Ajouter une position")
+        with st.form("finance_add_position", clear_on_submit=True):
+            asset_cols = st.columns(3)
+            with asset_cols[0]:
+                asset_type = st.selectbox(
+                    "Type d'actif",
+                    ["Cryptomonnaie", "Action", "ETF", "Obligation", "Matière première", "Autre"],
+                )
+                symbol = st.text_input("Symbole", placeholder="BTC, ETH, AAPL…", max_chars=32)
+                asset_name = st.text_input("Nom de l'actif", placeholder="Bitcoin, Ethereum…", max_chars=160)
+            with asset_cols[1]:
+                exchange = st.text_input("Plateforme / place", placeholder="Exchange ou marché", max_chars=80)
+                quantity = st.number_input("Quantité détenue", min_value=0.00000001, value=1.0, format="%.8f")
+                average_cost = st.number_input("Prix moyen d'achat par unité", min_value=0.0, value=0.0, format="%.8f")
+            with asset_cols[2]:
+                current_price = st.number_input("Dernier prix observé par vous", min_value=0.0, value=0.0, format="%.8f")
+                currency = st.selectbox("Devise de valorisation", ["EUR", "USD", "GBP", "CHF", "CAD", "JPY"])
+                provider = st.text_input("Source / fournisseur du cours", value="Saisie utilisateur", max_chars=100)
+            source_url = st.text_input("Lien HTTPS de la source (facultatif)", max_chars=500)
+            quote_status = st.selectbox(
+                "Statut de la cotation",
+                ["unknown", "indicative", "delayed"],
+                format_func=lambda value: {
+                    "unknown": "Inconnu / non vérifié",
+                    "indicative": "Indicatif",
+                    "delayed": "Différé",
+                }[value],
+            )
+            delay_minutes = st.number_input(
+                "Délai en minutes (si différé)",
+                min_value=0, value=15, step=1,
+                disabled=quote_status != "delayed",
+            )
+            if st.form_submit_button("Ajouter au portefeuille", type="primary", use_container_width=True):
+                try:
+                    normalized_position = normalize_portfolio_line({
+                        "symbol": symbol, "quantity": quantity,
+                        "average_cost": average_cost, "currency": currency,
+                    })
+                    observation = normalize_market_observation({
+                        "symbol": normalized_position.symbol,
+                        "name": asset_name.strip() or normalized_position.symbol,
+                        "exchange": exchange.strip() or "Non précisé",
+                        "asset_type": asset_type,
+                        "price": current_price,
+                        "currency": currency,
+                        "provider": provider.strip() or "Source non précisée",
+                        "source_url": source_url.strip() or None,
+                        "observed_at": datetime.now(timezone.utc).isoformat(),
+                        "status": quote_status,
+                        "delay_minutes": int(delay_minutes) if quote_status == "delayed" else None,
+                    })
+                    existing = [
+                        item for item in st.session_state["finance_positions"]
+                        if item["symbol"] != normalized_position.symbol
+                    ]
+                    existing.append({
+                        "symbol": normalized_position.symbol,
+                        "quantity": normalized_position.quantity,
+                        "average_cost": normalized_position.average_cost,
+                        "currency": normalized_position.currency,
+                    })
+                    st.session_state["finance_positions"] = existing
+                    st.session_state["finance_quotes"][normalized_position.symbol] = observation
+                    st.success("Position ajoutée. Les valeurs restent des données saisies et non vérifiées.")
+                    st.rerun()
+                except Exception as exc:
+                    st.error("Position non ajoutée : " + str(exc))
+
+        positions = st.session_state.get("finance_positions", [])
+        quotes = st.session_state.get("finance_quotes", {})
+        if positions:
+            st.markdown("#### Synthèse du portefeuille")
+            try:
+                summary = analyze_portfolio(positions, quotes)
+                metric_cols = st.columns(4)
+                metric_cols[0].metric("Capital investi", f"{summary.invested_amount:,.2f} {summary.currency}")
+                metric_cols[1].metric("Valeur observée", f"{summary.market_value:,.2f} {summary.currency}")
+                metric_cols[2].metric("Plus / moins-value latente", f"{summary.unrealized_pnl:+,.2f} {summary.currency}")
+                metric_cols[3].metric(
+                    "Variation latente",
+                    "Indisponible" if summary.unrealized_return_pct is None
+                    else f"{summary.unrealized_return_pct:+.2f} %",
+                )
+                st.dataframe(
+                    [{
+                        "Symbole": item.symbol,
+                        "Quantité": item.quantity,
+                        "Prix de revient": item.average_cost,
+                        "Dernier prix saisi": item.market_price,
+                        "Devise": item.currency,
+                        "Valeur observée": item.market_value,
+                        "P/L latent": item.unrealized_pnl,
+                        "Poids du portefeuille": f"{item.portfolio_weight_pct:.2f} %",
+                        "Statut du cours": quotes[item.symbol].status,
+                        "Source": quotes[item.symbol].provider,
+                        "Horodatage UTC": quotes[item.symbol].observed_at.isoformat(),
+                    } for item in summary.positions],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+                if summary.missing_quotes:
+                    st.warning("Cours manquants : " + ", ".join(summary.missing_quotes))
+                st.caption(
+                    "La plus ou moins-value est calculée sur les cours que vous avez saisis. "
+                    "Elle ne tient pas compte des frais, impôts, staking, dividendes, conversions FX "
+                    "ou opérations intervenues après la saisie."
+                )
+            except Exception as exc:
+                st.warning("Analyse indisponible : " + str(exc))
+            if st.button("Vider le portefeuille de cette session", key="clear_finance_portfolio"):
+                st.session_state["finance_positions"] = []
+                st.session_state["finance_quotes"] = {}
+                st.rerun()
+        else:
+            st.info("Ajoutez une première position pour commencer le suivi de vos actifs, y compris Bitcoin et Ethereum.")
+        with st.expander("Périmètre et prochaines évolutions"):
+            st.markdown(
+                "- Données de marché sous licence et cotations crypto multi-plateformes à connecter.\\n"
+                "- Import sécurisé de relevés et historique des transactions à développer.\\n"
+                "- Conversion multi-devises, frais, fiscalité et analyse de risque à compléter.\\n"
+                "- Alertes, veille mondiale et comparaison des actifs à développer.\\n"
+                "- Toute recommandation personnalisée réglementée ou exécution d'ordre nécessite un cadre autorisé."
+            )
+    except Exception:
+        st.error("L'espace Finance est momentanément indisponible. Aucune opération financière n'a été exécutée.")
 
 elif page == "Paramètres":
     st.subheader(translate_ui("⚙️ Paramètres", language))
