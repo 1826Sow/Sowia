@@ -67,3 +67,23 @@ def test_meeting_rejects_unsupported_duration():
     from business_club import validate_meeting_schedule
     with pytest.raises(ValueError, match="durée"):
         validate_meeting_schedule(datetime.now(timezone.utc) + timedelta(days=1), "UTC", 20)
+
+
+def test_builds_calendar_invite_with_utc_duration_and_video_link():
+    from datetime import datetime, timedelta, timezone
+    from business_club import build_meeting_ics
+    start = datetime.now(timezone.utc) + timedelta(days=2)
+    ics = build_meeting_ics({
+        "starts_at": start.isoformat(), "duration_minutes": 30,
+        "meeting_url": "https://video.example.com/room", "summary": "Partenariat, Europe"
+    })
+    assert "BEGIN:VCALENDAR" in ics
+    assert "SUMMARY:Partenariat\\, Europe" in ics
+    assert "URL:https://video.example.com/room" in ics
+    assert "DTEND:" in ics
+
+
+def test_calendar_invite_rejects_invalid_meeting():
+    from business_club import build_meeting_ics
+    with pytest.raises(ValueError, match="incomplètes"):
+        build_meeting_ics({"starts_at": "not-a-date", "duration_minutes": 30})
