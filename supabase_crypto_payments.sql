@@ -80,6 +80,43 @@ revoke all on public.sowia_crypto_payment_events from anon, authenticated;
 commit;
 
 
+-- Append-only financial ledger. Client access is read-only and owner-scoped.
+-- Unknown provider fees/net amounts stay NULL; never estimate them.
+create table if not exists public.sowia_financial_transactions (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users(id) on delete cascade,
+    order_id uuid references public.sowia_crypto_orders(id) on delete set null,
+    provider text not null check (char_length(provider) between 1 and 40),
+    provider_payment_id text not null,
+    transaction_type text not null check (transaction_type in ('payment','refund','fee_adjustment')),
+    status text not null check (status in ('confirmed','refunded','reversed','manual_review')),
+    gross_amount numeric(30,12) not null check (gross_amount >= 0),
+    gross_currency text not null check (char_length(gross_currency) between 3 and 12),
+    reference_amount_eur numeric(12,2),
+    fee_amount numeric(30,12),
+    fee_currency text,
+    net_amount numeric(30,12),
+    net_currency text,
+    tax_amount_eur numeric(12,2),
+    occurred_at timestamptz not null,
+    created_at timestamptz not null default now(),
+    unique (provider, provider_payment_id, transaction_type)
+);
+
+create index if not exists sowia_financial_transactions_user_date_idx
+    on public.sowia_financial_transactions (user_id, occurred_at desc);
+
+alter table public.sowia_financial_transactions enable row level security;
+drop policy if exists "Users can read their own SOW IA financial transactions" on public.sowia_financial_transactions;
+create policy "Users can read their own SOW IA financial transactions"
+    on public.sowia_financial_transactions
+    for select to authenticated
+    using ((select auth.uid()) = user_id);
+
+revoke all on public.sowia_financial_transactions from anon, authenticated;
+grant select on public.sowia_financial_transactions to authenticated;
+
+
 -- Atomic confirmation function. It trusts only the server-side adapter's
 -- signature_verified flag; the adapter MUST verify the provider signature first.
 -- Execution is restricted to service_role. Never call this from a browser.
@@ -207,6 +244,17 @@ begin
            amount = excluded.amount,
            currency = 'EUR',
            updated_at = now();
+
+    insert into public.sowia_financial_transactions (
+        user_id, order_id, provider, provider_payment_id,
+        transaction_type, status, gross_amount, gross_currency,
+        reference_amount_eur, occurred_at
+    ) values (
+        v_order.user_id, v_order.id, p_provider, p_payment_id,
+        'payment', 'confirmed', p_received_amount, v_order.asset_code,
+        v_order.reference_amount_eur, now()
+    )
+    on conflict (provider, provider_payment_id, transaction_type) do nothing;
 
     update public.sowia_crypto_payment_events
        set processing_status = 'processed', processed_at = now()
