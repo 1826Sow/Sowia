@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -3000,6 +3000,121 @@ elif page == "SOWIA GLOBAL DIRECTORY":
             st.caption("Diagnostic : " + type(exc).__name__)
 
 
+
+
+
+elif page == "SOWIA GLOBAL INTELLIGENCE":
+    st.subheader("🌐 SOWIA GLOBAL INTELLIGENCE")
+    st.caption("Laboratoire de veille et d'aide à la décision pour comparer les marchés, structurer les opportunités et conserver les preuves.")
+    st.info("Les notes et classements sont des estimations de travail saisies par l'utilisateur. Ils ne constituent pas des statistiques de marché vérifiées ni des recommandations financières ou juridiques.")
+    if not cloud_mode or current_user is None:
+        st.warning("Connectez-vous à votre compte SOWIA pour enregistrer vos évaluations dans votre espace privé.")
+    else:
+        intel_tabs = st.tabs(["📊 Vue stratégique", "＋ Évaluer un marché", "📁 Mon registre"])
+        with intel_tabs[0]:
+            st.markdown("#### Six critères communs pour comparer les opportunités")
+            st.write("Demande du marché · Alignement stratégique · Accessibilité · Partenaires disponibles · Préparation réglementaire · Qualité des preuves")
+            try:
+                intel_rows = cloud_storage.list_global_intelligence_assessments(
+                    supabase_client, current_user, limit=200
+                )
+                if intel_rows:
+                    sorted_rows = sorted(intel_rows, key=lambda row: row.get("weighted_score", 0), reverse=True)
+                    st.metric("Marchés et opportunités étudiés", len(sorted_rows))
+                    best = sorted_rows[0]
+                    st.metric("Meilleure piste selon vos critères", f"{best['weighted_score']}/100", best["country"])
+                    st.markdown("##### Classement indicatif")
+                    for row in sorted_rows[:10]:
+                        with st.container(border=True):
+                            st.write(f"**{row['name']}** · {row['country']} · {row['sector']}")
+                            st.progress(int(row["weighted_score"]))
+                            st.caption(
+                                f"{row['weighted_score']}/100 · "
+                                f"{__import__('sowia_global_intelligence').classify_score(row['weighted_score'])} · "
+                                f"Preuves : {row['evidence_level']}"
+                            )
+                else:
+                    st.info("Votre tableau stratégique apparaîtra après votre première évaluation.")
+            except Exception as intel_error:
+                st.error("Le registre n'est pas encore disponible. Vérifiez la migration GLOBAL INTELLIGENCE.")
+                st.caption("Diagnostic : " + type(intel_error).__name__)
+
+        with intel_tabs[1]:
+            st.markdown("#### Évaluer une opportunité internationale")
+            with st.form("sowia_global_intelligence_assessment_form", clear_on_submit=True):
+                intel_name = st.text_input("Nom de l'opportunité", max_chars=120, placeholder="Ex. Déploiement de SOWIA au Sénégal")
+                intel_country = st.text_input("Pays ou marché", max_chars=100, placeholder="Ex. Sénégal")
+                intel_sector = st.selectbox(
+                    "Secteur",
+                    ["Technologie & IA", "Commerce", "Finance", "Éducation", "Santé & bien-être",
+                     "Agriculture & alimentation", "Tourisme", "Industrie & logistique",
+                     "Énergie & environnement", "Services professionnels", "Autre"],
+                )
+                st.caption("Attribuez une note de 1 (faible) à 5 (fort) selon les informations dont vous disposez.")
+                intel_score_labels = {
+                    "market_demand": "Demande du marché",
+                    "strategic_fit": "Alignement avec SOWIA",
+                    "accessibility": "Accessibilité du marché",
+                    "partner_readiness": "Disponibilité de partenaires",
+                    "regulatory_readiness": "Préparation réglementaire",
+                    "evidence_quality": "Qualité des preuves",
+                }
+                intel_scores = {}
+                for key, label in intel_score_labels.items():
+                    intel_scores[key] = st.select_slider(
+                        label, options=[1, 2, 3, 4, 5], value=3, key=f"intel_score_{key}"
+                    )
+                intel_evidence = st.selectbox(
+                    "Niveau de preuve",
+                    ["hypothesis", "indicative", "documented", "verified"],
+                    format_func=lambda value: {
+                        "hypothesis": "Hypothèse — intuition à vérifier",
+                        "indicative": "Indicatif — premiers indices",
+                        "documented": "Documenté — sources conservées",
+                        "verified": "Vérifié — contrôle indépendant effectué",
+                    }[value],
+                )
+                intel_source_note = st.text_area(
+                    "Sources, liens ou observations (facultatif)",
+                    max_chars=1500,
+                    placeholder="Indiquez les dates, organismes, liens et limites des informations consultées.",
+                )
+                intel_submit = st.form_submit_button("Enregistrer mon évaluation")
+            if intel_submit:
+                try:
+                    cloud_storage.save_global_intelligence_assessment(
+                        supabase_client, current_user, {
+                            "name": intel_name, "country": intel_country, "sector": intel_sector,
+                            "scores": intel_scores, "evidence_level": intel_evidence,
+                            "source_note": intel_source_note,
+                        }
+                    )
+                    st.success("Évaluation enregistrée dans votre registre privé.")
+                    st.rerun()
+                except Exception as save_error:
+                    st.error("Évaluation non enregistrée : " + type(save_error).__name__)
+
+        with intel_tabs[2]:
+            st.markdown("#### Historique de vos évaluations")
+            try:
+                intel_rows = cloud_storage.list_global_intelligence_assessments(
+                    supabase_client, current_user, limit=200
+                )
+                if not intel_rows:
+                    st.info("Aucune évaluation enregistrée.")
+                for row in intel_rows:
+                    with st.expander(f"{row['name']} · {row['country']} · {row['weighted_score']}/100"):
+                        st.write(f"Secteur : {row['sector']}")
+                        st.write(f"Niveau de preuve : {row['evidence_level']}")
+                        st.write(row.get("source_note") or "Aucune note de source.")
+                        if st.button("Supprimer cette évaluation", key=f"delete_intel_{row['id']}"):
+                            cloud_storage.delete_global_intelligence_assessment(
+                                supabase_client, current_user, row["id"]
+                            )
+                            st.success("Évaluation supprimée.")
+                            st.rerun()
+            except Exception as history_error:
+                st.error("Historique indisponible : " + type(history_error).__name__)
 
 
 elif page == "SOWIA GLOBAL ADMIN & MODERATION":
