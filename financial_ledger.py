@@ -250,10 +250,36 @@ def record_paypal_refund_for_review(
     )
     if not getattr(parent, "data", None):
         raise PermissionError("La capture parente n'appartient pas à cet utilisateur.")
+
+    # Keep the exact parent relationship so cumulative partial refunds can be
+    # bounded against the original capture. Exclude this refund ID on retries.
+    existing_refunds = (
+        table.select("provider_payment_id,gross_amount")
+        .eq("user_id", user_id)
+        .eq("provider", "paypal")
+        .eq("parent_capture_id", capture_id)
+        .eq("transaction_type", "refund")
+        .execute()
+    )
+    refunded_total = Decimal("0")
+    for row in (getattr(existing_refunds, "data", None) or []):
+        if str(row.get("provider_payment_id") or "") == refund_id:
+            continue
+        try:
+            prior_amount = Decimal(str(row.get("gross_amount")))
+        except (InvalidOperation, TypeError, ValueError):
+            raise RuntimeError("Historique de remboursements incohérent : contrôle manuel requis.") from None
+        if not prior_amount.is_finite() or prior_amount < 0:
+            raise RuntimeError("Historique de remboursements incohérent : contrôle manuel requis.")
+        refunded_total += prior_amount
+    if refunded_total + amount > capture_amount:
+        raise ValueError("Le cumul des remboursements dépasserait le montant de la capture.")
+
     payload = {
         "user_id": user_id,
         "provider": "paypal",
         "provider_payment_id": refund_id,
+        "parent_capture_id": capture_id,
         "transaction_type": "refund",
         "status": "manual_review",
         "gross_amount": f"{amount:.2f}",
