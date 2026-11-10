@@ -6399,7 +6399,44 @@ elif page == "Revenus & paiements":
             else:
                 st.metric("Écritures consultées", len(rows))
                 if summaries:
-                    st.markdown("#### Synthèse par fournisseur et devise")
+                    st.markdown("#### Vue rapide des montants")
+                    st.caption(
+                        "Chaque bloc reste séparé par fournisseur et devise : "
+                        "aucune addition entre devises différentes n'est effectuée."
+                    )
+                    for item in summaries:
+                        currency = item["currency"]
+                        provider_label = item["provider"].upper()
+                        st.markdown(f"##### {provider_label} · {currency}")
+                        amount_cols = st.columns(4)
+                        amount_cols[0].metric(
+                            "Paiements encaissés (brut)",
+                            f'{item["payments_gross"]} {currency}',
+                            help="Somme des paiements confirmés enregistrés."
+                        )
+                        amount_cols[1].metric(
+                            "Remboursements validés",
+                            f'{item["refunds_gross"]} {currency}',
+                            help="Somme des remboursements dont le statut est validé."
+                        )
+                        amount_cols[2].metric(
+                            "Après remboursements",
+                            f'{item["gross_after_refunds"]} {currency}',
+                            help="Paiements bruts moins remboursements validés ; ce n'est pas nécessairement le net bancaire."
+                        )
+                        amount_cols[3].metric(
+                            "Frais déclarés",
+                            "À rapprocher" if item["fees_reported"] is None
+                            else f'{item["fees_reported"]} {currency}',
+                            help="Affichés uniquement lorsque les frais sont connus pour toutes les écritures du groupe."
+                        )
+                        st.metric(
+                            "Net déclaré par le prestataire",
+                            "À rapprocher" if item["net_reported"] is None
+                            else f'{item["net_reported"]} {currency}',
+                            help="Ce montant n'est pas calculé à partir du brut : il reprend uniquement les montants nets fournis."
+                        )
+                    st.markdown("#### Détail comptable par fournisseur et devise")
                     st.dataframe(
                         [{
                             "Prestataire": item["provider"].upper(),
