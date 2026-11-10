@@ -227,6 +227,62 @@ def ensure_premium_plan(admin_client):
     ).execute()
     return str(plan_id)
 
+
+def reconcile_returned_subscription(admin_client, subscription_id: str, user_id: str):
+    """Validate PayPal's browser return server-side and persist an ACTIVE subscription.
+
+    The query parameter is only an identifier; ownership, plan and status are
+    re-fetched from PayPal using the server credentials before Premium is granted.
+    """
+    config = paypal_subscription_configuration()
+    if not config or config["mode"] != "sandbox":
+        raise RuntimeError("La réconciliation du retour est limitée à PayPal Sandbox.")
+    if admin_client is None:
+        raise RuntimeError("Le stockage serveur Supabase n'est pas configuré.")
+    normalized_user_id = str(user_id or "").strip()
+    normalized_subscription_id = str(subscription_id or "").strip()
+    if not normalized_user_id or not SUBSCRIPTION_ID_RE.fullmatch(normalized_subscription_id):
+        raise ValueError("Identifiants de retour PayPal invalides.")
+
+    details = get_premium_subscription(normalized_subscription_id)
+    if str(details.get("custom_id") or "").strip() != normalized_user_id:
+        raise PermissionError("Cet abonnement PayPal n'appartient pas au compte SOW IA connecté.")
+
+    catalog = (
+        admin_client.table("sowia_paypal_catalog")
+        .select("paypal_plan_id")
+        .eq("mode", config["mode"])
+        .maybe_single()
+        .execute()
+    )
+    catalog_data = getattr(catalog, "data", None)
+    expected_plan_id = str((catalog_data or {}).get("paypal_plan_id") or "").strip()
+    if not expected_plan_id or str(details.get("plan_id") or "").strip() != expected_plan_id:
+        raise PermissionError("Le forfait PayPal ne correspond pas au forfait SOW IA Premium.")
+
+    status = str(details.get("status") or "").strip().upper()
+    if status != "ACTIVE":
+        raise RuntimeError("PayPal n'a pas encore confirmé un abonnement actif.")
+
+    billing = details.get("billing_info") or {}
+    last_payment = billing.get("last_payment") or {}
+    amount = (last_payment.get("amount") or {})
+    payload = {
+        "user_id": normalized_user_id,
+        "provider": "paypal",
+        "paypal_subscription_id": normalized_subscription_id,
+        "paypal_plan_id": expected_plan_id,
+        "status": "active",
+        "currency": amount.get("currency_code") or "EUR",
+        "amount": amount.get("value") or PREMIUM_PRICE,
+        "next_billing_time": billing.get("next_billing_time"),
+        "last_payment_at": last_payment.get("time"),
+    }
+    admin_client.table("sowia_subscriptions").upsert(
+        payload, on_conflict="paypal_subscription_id"
+    ).execute()
+    return payload
+
 def create_premium_subscription(user_id: str, plan_id: str | None = None):
     """Create an approval-pending monthly subscription for the signed-in user."""
     config = paypal_subscription_configuration()
