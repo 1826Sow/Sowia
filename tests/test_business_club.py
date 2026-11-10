@@ -87,3 +87,22 @@ def test_calendar_invite_rejects_invalid_meeting():
     from business_club import build_meeting_ics
     with pytest.raises(ValueError, match="incomplètes"):
         build_meeting_ics({"starts_at": "not-a-date", "duration_minutes": 30})
+
+
+@pytest.mark.parametrize("language", ["Français", "English", "Español", "中文", "Deutsch", "العربية"])
+def test_meeting_invitation_draft_is_available_in_six_languages(language):
+    from datetime import datetime, timedelta, timezone
+    from business_club import build_meeting_invitation
+    meeting = {"starts_at": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(),
+               "timezone": "Europe/Paris", "duration_minutes": 30,
+               "meeting_url": "https://meet.example.com/room"}
+    draft = build_meeting_invitation(meeting, language)
+    assert draft["subject"]
+    assert "30" in draft["body"]
+    assert "https://meet.example.com/room" in draft["body"]
+
+
+def test_meeting_invitation_rejects_unsupported_language():
+    from business_club import build_meeting_invitation
+    with pytest.raises(ValueError, match="Langue"):
+        build_meeting_invitation({}, "Klingon")
