@@ -216,7 +216,12 @@ def record_paypal_refund_total(admin_client, *, user_id, capture):
 
     breakdown = capture.get("seller_receivable_breakdown") or {}
     original = breakdown.get("gross_amount") or capture.get("amount") or {}
-    refunded = breakdown.get("total_refunded_amount") or {}
+    refund_breakdown = capture.get("seller_payable_breakdown") or {}
+    refunded = (
+        refund_breakdown.get("total_refunded_amount")
+        or breakdown.get("total_refunded_amount")
+        or {}
+    )
     currency = str(original.get("currency_code") or "").strip().upper()
     if currency != "EUR" or str(refunded.get("currency_code") or "").strip().upper() != currency:
         raise ValueError("La devise du remboursement PayPal doit être EUR.")
