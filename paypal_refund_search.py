@@ -83,7 +83,16 @@ def _fetch_refund_events(config, headers, start, end):
                 },
                 timeout=paypal_payments.TIMEOUT_SECONDS,
             )
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as exc:
+                if getattr(response, "status_code", None) == 403:
+                    raise PermissionError(
+                        "PayPal refuse Transaction Search (HTTP 403). "
+                        "L'autorisation Reporting / Transaction Search doit être activée "
+                        "pour l'application PayPal Sandbox."
+                    ) from None
+                raise
             payload = response.json()
             events.extend(payload.get("transaction_details") or [])
             total_pages = int(payload.get("total_pages") or 0)
