@@ -1697,7 +1697,7 @@ elif page == "Technologies & fournisseurs":
                         st.caption("Référence déclarée : " + str(reference))
                     for reason in item.reasons:
                         st.warning(reason)
-            if st.button("Effacer le comparatif de cette session", key="clear_technology_candidates"):
+            if st.button("Effacer le comparatif de cet espace", key="clear_technology_candidates"):
                 if cloud_mode and current_user is not None:
                     from technology_storage import delete_all_technology_candidates
                     delete_all_technology_candidates(supabase_client, current_user, technology_workspace)
