@@ -32,6 +32,7 @@ def evaluate_candidate(
     *,
     evidence: tuple[str, ...] | list[str] = (),
     compliant: bool = True,
+    compliance_verified: bool = True,
     critical_incident: bool = False,
 ) -> CandidateEvaluation:
     """Score un fournisseur sur 5 ; les seuils éliminatoires priment sur la moyenne."""
@@ -61,7 +62,9 @@ def evaluate_candidate(
     )
     reasons = []
     if not compliant:
-        reasons.append("Conformité non validée : candidat écarté.")
+        reasons.append("Non-conformité établie : candidat écarté.")
+    elif not compliance_verified:
+        reasons.append("Licences, droits d'utilisation et conditions contractuelles à documenter.")
     if critical_incident:
         reasons.append("Incident critique non résolu : candidat écarté.")
     for criterion, minimum in MINIMUM_GATES.items():
@@ -82,7 +85,7 @@ def evaluate_candidate(
         normalized[key] < minimum for key, minimum in MINIMUM_GATES.items()
     ):
         decision = "Écarter"
-    elif not evidence_items:
+    elif not compliance_verified or not evidence_items:
         decision = "À documenter"
     elif score >= 85:
         decision = "Prioritaire"
