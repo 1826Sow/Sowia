@@ -78,7 +78,7 @@ def filter_directory(records, *, country="", language="", sector="", specialty="
             continue
         if country and country not in item["country"].casefold():
             continue
-        if language and not any(language == value.casefold() for value in item["languages"]):
+        if language and not any(language in value.casefold() for value in item["languages"]):
             continue
         if sector and sector not in item["professional_sectors"]:
             continue
@@ -86,7 +86,8 @@ def filter_directory(records, *, country="", language="", sector="", specialty="
             continue
         searchable = " ".join([
             item["display_name"], item["app_name"], item["organization"],
-            item["country"], item["short_description"], *item["specialties"],
+            item["country"], item["website"], item["short_description"],
+            *item["languages"], *item["professional_sectors"], *item["specialties"],
         ]).casefold()
         if query and query not in searchable:
             continue

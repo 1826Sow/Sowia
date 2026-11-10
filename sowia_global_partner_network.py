@@ -1,13 +1,45 @@
 """Explainable matching for public SOWIA partner profiles."""
+import re
+import unicodedata
+
 from sowia_global_directory import normalize_directory_profile
 
 
-def _norm(values):
+_LANGUAGE_ALIASES = {
+    "fr": "french", "francais": "french", "french": "french",
+    "en": "english", "anglais": "english", "english": "english",
+    "es": "spanish", "espanol": "spanish", "spanish": "spanish",
+    "pt": "portuguese", "portugues": "portuguese", "portuguese": "portuguese",
+    "zh": "chinese", "chinois": "chinese", "中文": "chinese", "chinese": "chinese",
+    "ar": "arabic", "arabe": "arabic", "العربية": "arabic", "arabic": "arabic",
+    "de": "german", "allemand": "german", "deutsch": "german", "german": "german",
+    "da": "danish", "danois": "danish", "dansk": "danish", "danish": "danish",
+    "nl": "dutch", "neerlandais": "dutch", "nederlands": "dutch", "dutch": "dutch",
+    "fi": "finnish", "finnois": "finnish", "suomi": "finnish", "finnish": "finnish",
+    "sv": "swedish", "suedois": "swedish", "svenska": "swedish", "swedish": "swedish",
+    "no": "norwegian", "norvegien": "norwegian", "norsk": "norwegian", "norwegian": "norwegian",
+}
+
+
+def _canonical(value):
+    text = str(value or "").strip().casefold()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    return " ".join(re.sub(r"[^\w]+", " ", text, flags=re.UNICODE).split())
+
+
+def _norm(values, *, language=False):
     if isinstance(values, str):
         values = values.replace(";", ",").split(",")
     if not isinstance(values, (list, tuple, set)):
         return set()
-    return {" ".join(str(value).strip().casefold().split()) for value in values if str(value).strip()}
+    normalized = set()
+    for value in values:
+        item = _canonical(value)
+        if not item:
+            continue
+        normalized.add(_LANGUAGE_ALIASES.get(item, item) if language else item)
+    return normalized
 
 
 def rank_partner_matches(my_profile, public_profiles, *, limit=5):
@@ -17,8 +49,8 @@ def rank_partner_matches(my_profile, public_profiles, *, limit=5):
     own_id = str(my_profile.get("public_id") or "")
     own_sectors = _norm(my_profile.get("professional_sectors"))
     own_specialties = _norm(my_profile.get("specialties"))
-    own_languages = _norm(my_profile.get("languages"))
-    own_country = " ".join(str(my_profile.get("country") or "").casefold().split())
+    own_languages = _norm(my_profile.get("languages"), language=True)
+    own_country = _canonical(my_profile.get("country"))
     ranked = []
     for raw in public_profiles or []:
         partner = normalize_directory_profile(raw)
@@ -26,8 +58,8 @@ def rank_partner_matches(my_profile, public_profiles, *, limit=5):
             continue
         sectors = own_sectors & _norm(partner.get("professional_sectors"))
         specialties = own_specialties & _norm(partner.get("specialties"))
-        languages = own_languages & _norm(partner.get("languages"))
-        partner_country = " ".join(str(partner.get("country") or "").casefold().split())
+        languages = own_languages & _norm(partner.get("languages"), language=True)
+        partner_country = _canonical(partner.get("country"))
         cross_border = bool(own_country and partner_country and own_country != partner_country)
         # Scores express profile-field overlap, not commercial quality or success probability.
         score = min(100, len(sectors) * 20 + len(specialties) * 15 + len(languages) * 10 + (10 if cross_border else 0))

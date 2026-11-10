@@ -563,16 +563,51 @@ if privacy_screen:
         unsafe_allow_html=True,
     )
 
-page = st.radio(
-    "Navigation rapide — retrouvez vos outils ici",
-    [
-        "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
-        "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL COLLABORATION HUB", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL", "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
-    ],
+# Navigation compacte : les valeurs internes des pages restent inchangées.
+# Le libellé indique la rubrique, sans supprimer ni renommer aucune fonctionnalité.
+navigation_pages = [
+    "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
+    "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
+    "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL COLLABORATION HUB", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL", "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+]
+navigation_group_by_page = {
+    "Hub SOWIA": "🏠 Accueil", "Accueil": "🏠 Accueil",
+    "Assistant IA": "👤 Espace personnel", "Ma mémoire": "👤 Espace personnel",
+    "Recherche Web": "👤 Espace personnel", "Analyse PDF": "👤 Espace personnel",
+    "Créer un PDF": "👤 Espace personnel", "Mes documents": "👤 Espace personnel",
+    "Historique": "👤 Espace personnel", "Paramètres": "👤 Espace personnel",
+    "Abonnement": "💼 Compte & services", "Développement mondial": "🌍 Écosystème mondial",
+    "SOWIA NIGHT EXCHANGE": "🌍 Écosystème mondial", "SOWIA GLOBAL ID": "🌍 Écosystème mondial",
+    "SOWIA GLOBAL DIRECTORY": "🌍 Écosystème mondial", "SOWIA GLOBAL TRUST": "🌍 Écosystème mondial",
+    "SOWIA GLOBAL ADMIN & MODERATION": "🌍 Écosystème mondial",
+    "SOW IA Business Club": "🤝 Business & opportunités",
+    "Opportunités et revenus": "🤝 Business & opportunités",
+    "Finance & investissements": "📊 Pilotage & stratégie",
+    "Décisions humaines vs SOW IA": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL INTELLIGENCE": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL PULSE": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL STRATEGIC FORECAST": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL DECISION ENGINE": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL LEARNING ENGINE": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL AUTONOMOUS STRATEGY": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL COLLABORATION HUB": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL ACTION GOVERNANCE": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL PERFORMANCE & IMPACT": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL PORTFOLIO CONTROL": "📊 Pilotage & stratégie",
+    "SOWIA GLOBAL EXECUTIVE REPORTS": "📊 Pilotage & stratégie",
+    "Stratégie & scénarios": "🛠️ Gestion & assistance",
+    "Technologies & fournisseurs": "🛠️ Gestion & assistance",
+    "Revenus & paiements": "💼 Compte & services",
+    "Aide": "🛠️ Gestion & assistance",
+}
+page = st.selectbox(
+    "Navigation SOWIA — choisissez une rubrique",
+    navigation_pages,
     key="page_nav",
-    horizontal=True,
-    format_func=lambda value: translate_ui(value, language),
+    format_func=lambda value: (
+        f"{navigation_group_by_page.get(value, 'SOWIA')} · "
+        f"{translate_ui(value, language)}"
+    ),
 )
 st.markdown(
     '<div class="hero"><div class="hero-kicker">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>'
@@ -611,6 +646,8 @@ if page in ("Hub SOWIA", "Accueil"):
         ("🧠 Mémoire", "Ma mémoire", "Retrouver vos informations utiles"),
         ("📄 Documents", "Mes documents", "Gérer vos fichiers personnels"),
         ("🌐 Recherche", "Recherche Web", "Explorer des informations et des sources"),
+        ("🪪 Identité mondiale", "SOWIA GLOBAL ID", "Créer votre carte professionnelle et choisir les informations publiées."),
+        ("📚 Annuaire mondial", "SOWIA GLOBAL DIRECTORY", "Découvrir les profils et organisations ayant choisi d’être visibles."),
     ]
     for start in range(0, len(personal_items), 4):
         cols = st.columns(4)
@@ -685,7 +722,7 @@ if page in ("Hub SOWIA", "Accueil"):
                 ("Business Club", "SOW IA Business Club", "Relations professionnelles, membres et services partenaires."),
             ]),
             ("🌍 4. Développement international", [
-                ("Développement mondial", "Développement mondial", "Préparer une approche multilingue adaptée aux marchés."),
+                ("🌐 Collaboration mondiale", "SOWIA GLOBAL COLLABORATION HUB", "Organiser les échanges et les projets entre partenaires de l’écosystème SOWIA."),
                 ("Technologies & fournisseurs", "Technologies & fournisseurs", "Comparer les solutions techniques et leurs fournisseurs."),
             ]),
             ("💹 5. Finance & marchés", [
@@ -2566,10 +2603,28 @@ elif page == "SOWIA GLOBAL ID":
                 display_name = st.text_input("Nom public / nom professionnel", value=profile.get("display_name") or "", max_chars=120)
                 app_name = st.text_input("Nom de votre application (facultatif)", value=profile.get("app_name") or "", max_chars=160)
                 organization = st.text_input("Entreprise / organisation (facultatif)", value=profile.get("organization") or "", max_chars=160)
-                country = st.text_input("Pays", value=profile.get("country") or "", max_chars=100)
-                languages = st.text_input("Langues (séparées par des virgules)", value=", ".join(profile.get("languages") or []), max_chars=300)
+                country = st.text_input(
+                    "Pays",
+                    value=profile.get("country") or "",
+                    max_chars=100,
+                    placeholder="Ex. : Sénégal, France, Singapour, Brésil",
+                    help="Indiquez le pays où votre activité est principalement établie.",
+                )
+                languages = st.text_input(
+                    "Langues (séparées par des virgules)",
+                    value=", ".join(profile.get("languages") or []),
+                    max_chars=300,
+                    placeholder="Ex. : français, English, العربية, 中文",
+                    help="Vous pouvez indiquer plusieurs langues, séparées par des virgules.",
+                )
                 website = st.text_input("Site web public (facultatif)", value=profile.get("website") or "", max_chars=500)
-                short_description = st.text_area("Présentation publique", value=profile.get("short_description") or "", max_chars=600)
+                short_description = st.text_area(
+                    "Présentation publique",
+                    value=profile.get("short_description") or "",
+                    max_chars=600,
+                    placeholder="Présentez brièvement votre activité, votre application ou les services que vous proposez.",
+                    help="N'indiquez ici que les informations que vous acceptez de rendre publiques si vous activez la publication.",
+                )
                 sector_options = list(sowia_global_directory.SECTORS)
                 selected_sectors = st.multiselect(
                     "Secteurs professionnels",
@@ -2769,12 +2824,16 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                             ] if value))
                             for reason in suggested["match_reasons"]:
                                 st.write("• " + reason)
+                            verification_status = suggested.get("verification_status", "unverified")
+                            if verification_status == "verified":
+                                st.success("✓ Profil vérifié par SOWIA")
+                            elif verification_status == "pending":
+                                st.warning("◷ Vérification en attente")
+                            else:
+                                st.info("ⓘ Profil non vérifié")
                             st.caption(
-                                "Vérification du profil : " + {
-                                    "verified": "Vérifié par SOWIA",
-                                    "pending": "En attente",
-                                    "unverified": "Non vérifié",
-                                }.get(suggested.get("verification_status"), "Non vérifié")
+                                "Le statut décrit uniquement le niveau de vérification documentaire du profil. "
+                                "Il ne certifie ni la qualité, ni la solvabilité, ni la fiabilité commerciale du partenaire."
                             )
             except Exception as partner_match_error:
                 st.info("Les suggestions de partenaires sont temporairement indisponibles.")
@@ -2807,13 +2866,14 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                         st.write(public_card["short_description"])
                     if public_card.get("website"):
                         st.link_button("Visiter le site officiel", public_card["website"])
-                    verification = {
-                        "verified": "Vérifié par SOWIA",
-                        "pending": "Vérification en attente",
-                        "unverified": "Non vérifié",
-                        "suspended": "Suspendu",
-                    }.get(public_card.get("verification_status"), "Non vérifié")
-                    st.caption(f"{public_card['public_id']} · {verification}")
+                    verification_status = public_card.get("verification_status", "unverified")
+                    if verification_status == "verified":
+                        st.success("✓ Profil vérifié par SOWIA")
+                    elif verification_status == "pending":
+                        st.warning("◷ Vérification en attente")
+                    else:
+                        st.info("ⓘ Profil non vérifié")
+                    st.caption(public_card["public_id"])
             st.caption(
                 "La mention « Vérifié par SOWIA » indique un contrôle documenté du profil ; "
                 "elle ne garantit ni la qualité commerciale ni la solvabilité du partenaire. "
@@ -4300,6 +4360,26 @@ elif page == "SOWIA GLOBAL ADMIN & MODERATION":
                 moderation_reports = cloud_storage.list_global_moderation_reports(
                     supabase_client, current_user, limit=150
                 )
+                import sowia_global_moderation as moderation_helpers
+                pattern_summary = moderation_helpers.summarize_report_patterns(moderation_reports)
+                repeated_targets = pattern_summary["repeated_targets"]
+                repeated_reporters = pattern_summary["repeated_reporters"]
+                st.markdown("#### Indicateurs de répétition — aide au tri humain")
+                st.caption(
+                    "Un seuil de 3 signalements ouverts ou en cours déclenche uniquement un indicateur. "
+                    "Cela ne prouve aucun abus et ne déclenche aucune sanction automatique."
+                )
+                pattern_cols = st.columns(2)
+                pattern_cols[0].metric("Comptes signalés à répétition", len(repeated_targets))
+                pattern_cols[1].metric("Déclarants à répétition", len(repeated_reporters))
+                if repeated_targets:
+                    st.warning("Comptes recevant au moins 3 signalements non clôturés :")
+                    for item in repeated_targets:
+                        st.write(f"• Compte interne {item['account_id'][:8]} — {item['report_count']} signalements")
+                if repeated_reporters:
+                    st.info("Déclarants ayant effectué au moins 3 signalements non clôturés (à examiner pour contexte, sans présumer d'un abus) :")
+                    for item in repeated_reporters:
+                        st.write(f"• Compte interne {item['account_id'][:8]} — {item['report_count']} signalements")
                 if not moderation_reports:
                     st.info("Aucun signalement dans la file.")
                 for report in moderation_reports:
@@ -4477,14 +4557,25 @@ elif page == "SOWIA GLOBAL TRUST":
             trust_aggregates = cloud_storage.list_global_trust_aggregates(
                 supabase_client, current_user, limit=200
             )
-            if trust_aggregates:
-                for aggregate in trust_aggregates:
-                    if aggregate.get("review_count", 0):
+            import sowia_global_trust as trust_helpers
+            safe_aggregates = [
+                trust_helpers.safe_trust_aggregate(item) for item in trust_aggregates
+            ]
+            visible_aggregates = [item for item in safe_aggregates if item.get("review_count", 0)]
+            if visible_aggregates:
+                for aggregate in visible_aggregates:
+                    if "average_rating" in aggregate:
                         st.write(
                             f"**{aggregate['public_id']}** · "
                             f"{aggregate['average_rating']}/5 · "
+                            f"{aggregate['review_count']} évaluations"
+                        )
+                    else:
+                        st.write(
+                            f"**{aggregate.get('public_id', 'Profil SOWIA')}** · "
                             f"{aggregate['review_count']} évaluation(s)"
                         )
+                        st.caption("Moyenne masquée : au moins 3 évaluations sont nécessaires pour afficher une note publique.")
             else:
                 st.info("Les indicateurs apparaîtront après les premières collaborations évaluées.")
             st.info("Une note reflète une expérience déclarée par un partenaire. Elle ne certifie ni la solvabilité, ni la légalité, ni la qualité générale d’une entreprise. Les vérifications d’identité restent distinctes et nécessitent des preuves contrôlées par SOWIA.")

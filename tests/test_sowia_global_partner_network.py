@@ -40,6 +40,22 @@ class PartnerNetworkTests(unittest.TestCase):
         self.assertEqual(rank_partner_matches({**self.own, "is_published": False}, self.profiles), [])
         self.assertEqual(rank_partner_matches(None, self.profiles), [])
 
+    def test_language_aliases_and_accented_specialties_match(self):
+        own = {
+            "public_id": "SOWIA-LOCAL", "is_published": True,
+            "country": "France", "professional_sectors": ["technology"],
+            "specialties": ["e-commerce"], "languages": ["fr", "en"],
+        }
+        partner = {
+            "public_id": "SOWIA-INTL", "display_name": "International",
+            "country": "Sénégal", "professional_sectors": ["technology"],
+            "specialties": ["E commerce"], "languages": ["Français", "English"],
+        }
+        rows = rank_partner_matches(own, [partner])
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["compatibility_score"], 65)
+        self.assertTrue(any("french" in reason for reason in rows[0]["match_reasons"]))
+
 
 if __name__ == "__main__":
     unittest.main()
