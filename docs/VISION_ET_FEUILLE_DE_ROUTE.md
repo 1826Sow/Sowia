@@ -107,6 +107,69 @@ La carte Gold est une ambition à long terme, et non une carte bancaire que SOW 
 
 Aucune promesse d'accès, de crédit, de rendement ou d'avantage bancaire ne doit être faite avant accord formel du partenaire émetteur.
 
+
+### 9. Moteur multi-niches et portefeuille de revenus SOW IA
+
+Objectif : repérer en continu les marchés où les compétences de SOW IA répondent à un besoin réel et solvable, tester les offres à petite échelle, puis développer celles qui démontrent une rentabilité durable. « Être présent dans chaque niche » signifie couvrir progressivement les niches pertinentes, pas lancer aveuglément des offres dans tous les secteurs.
+
+#### Niches à étudier en priorité
+
+1. **TPE, PME et indépendants** : assistants métier, automatisation administrative, devis, comptes rendus, CRM, support client et tableaux de bord.
+2. **Marketing et commerce numérique** : recherche de marché, fiches produits, campagnes multilingues, analyse de performance et préparation de contenus.
+3. **Documents et productivité** : extraction, classement, synthèse, comparaison, génération de rapports et workflows documentaires.
+4. **Formation et éducation professionnelle** : assistants pédagogiques, supports de cours, parcours de formation et outils de révision, avec validation humaine des contenus sensibles.
+5. **E-commerce et commerce de détail** : veille concurrentielle, catalogue, service client, analyse de tendances et opérations.
+6. **Immobilier et gestion locative** : analyse documentaire, veille de marché, qualification de demandes et suivi administratif, sans se substituer aux professionnels réglementés.
+7. **Tourisme, hôtellerie et restauration** : réponses multilingues, gestion de demandes, contenus, veille locale et optimisation opérationnelle.
+8. **Recrutement et ressources humaines** : rédaction d'offres, organisation de candidatures et assistance administrative ; pas de décision automatisée défavorable sur les personnes.
+9. **Agriculture, énergie, transport et logistique** : météo-économie, alertes de risques, veille des prix et aide à la planification.
+10. **Finance et assurance** : analyse documentaire, veille, tableaux de bord et outils destinés aux professionnels autorisés ; toute activité réglementée passe par des partenaires habilités.
+11. **Cybersécurité, conformité et gestion des risques** : sensibilisation, préparation documentaire et veille, sans prétendre remplacer un audit ou un conseil certifié.
+12. **Développeurs, startups et éditeurs logiciels** : API, intégrations, agents spécialisés, automatisation et offres en marque blanche.
+
+Chaque niche doit faire l'objet d'une validation distincte : taille et accessibilité du marché, problème client, concurrence, disposition à payer, coûts des données et services tiers, réglementation, marge et capacité de support.
+
+#### Sources de revenus à combiner
+
+- Abonnements individuels et professionnels avec paliers de fonctionnalités.
+- Facturation à l'usage pour les traitements coûteux ou spécialisés, avec prix affiché avant consommation.
+- Licences d'équipe, entreprise et déploiements privés.
+- API, intégrations et offres en marque blanche.
+- Place de marché d'agents, modèles, connecteurs et services spécialisés.
+- Commissions d'affiliation ou d'apport d'affaires uniquement avec contrats transparents, divulgation des liens commerciaux et partenaires vérifiés.
+- Services professionnels et accompagnement réalisés par SOW IA ou des prestataires qualifiés.
+- Club Privé : adhésion ou services premium si une valeur réelle et des conditions claires le justifient.
+- Partenariats de distribution et revente, avec partage de revenus contractuel.
+
+Aucun revenu ne doit dépendre d'une rémunération cachée, de recommandations biaisées ou de la vente de données personnelles.
+
+#### Boucle d'automatisation commerciale
+
+1. Scanner les secteurs, appels à projets, tendances, demandes publiques et signaux de besoins à partir de sources autorisées.
+2. Identifier les niches et problèmes récurrents, puis enregistrer les sources, dates et niveaux de confiance.
+3. Noter chaque opportunité selon la demande observable, la disposition à payer, la concurrence, le coût de lancement, la marge potentielle, la difficulté technique, le risque réglementaire et le délai de vente.
+4. Générer une fiche d'opportunité : clientèle cible, problème, offre minimale, prix à tester, concurrents, partenaires, coûts et risques.
+5. Préparer une page de présentation, une démonstration, un contenu multilingue et une campagne de test.
+6. Soumettre à validation humaine tout lancement commercial, tarif engageant, publicité payante, prise de contact externe ou accord partenaire.
+7. Après autorisation, publier et suivre les résultats via des intégrations officielles et des quotas maîtrisés.
+8. Mesurer inscriptions, activation, conversion payante, revenu net, coûts variables, marge brute, rétention, remboursements, charge de support et satisfaction.
+9. Renforcer les offres rentables, corriger celles qui sous-performent et suspendre automatiquement les tests qui dépassent leurs budgets ou seuils de risque.
+10. Produire un rapport périodique expliquant les décisions, les résultats vérifiés et les prochaines expériences recommandées.
+
+#### Gouvernance des revenus et des coûts
+
+- Tableau de bord consolidé par niche, pays, canal, offre, partenaire et source de revenu.
+- Séparer chiffre d'affaires brut, commissions, remboursements, taxes, frais de paiement, coûts IA, coûts fournisseurs et marge nette estimée ou confirmée.
+- Rapprocher les paiements avec les événements confirmés des prestataires ; ne jamais comptabiliser une commande non payée comme un revenu.
+- Définir des plafonds de dépenses, alertes et mécanismes d'arrêt.
+- Exiger une validation avant toute dépense, modification tarifaire à fort impact, remboursement exceptionnel, engagement contractuel ou campagne externe.
+- Respecter les règles de prospection, consentement, protection des données, propriété intellectuelle, publicité et réglementation sectorielle de chaque pays.
+- Ne jamais garantir un chiffre d'affaires, une rentabilité ou un rendement.
+
+#### Indicateurs de sélection et d'arrêt
+
+Évaluer chaque niche avec les mêmes indicateurs : prospects qualifiés, taux d'activation, conversion payante, revenu récurrent, marge brute, coût d'acquisition, délai de récupération du coût d'acquisition, rétention, taux de remboursement, coûts de support et risque réglementaire. Ne développer à grande échelle que les niches dont les résultats sont suffisamment documentés. Mettre en pause les offres dont les coûts dépassent les plafonds, dont la qualité baisse ou dont la conformité n'est plus assurée.
+
 ## Ordre de réalisation recommandé
 
 1. Stabiliser et vérifier le socle actuel : connexion, langues, espaces, documents, mémoire, Premium et CRM.
