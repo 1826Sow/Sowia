@@ -16,8 +16,9 @@ class Query:
         self.operation = "select"
 
     def select(self, *_args):
-        self.operation = "select"
-        return self
+        query = Query(self.client)
+        query.operation = "select"
+        return query
 
     def eq(self, key, value):
         self.filters.append((key, value))
@@ -27,14 +28,16 @@ class Query:
         return self
 
     def update(self, payload):
-        self.operation = "update"
-        self.payload = payload
-        return self
+        query = Query(self.client)
+        query.operation = "update"
+        query.payload = payload
+        return query
 
     def upsert(self, payload, **_kwargs):
-        self.operation = "upsert"
-        self.payload = payload
-        return self
+        query = Query(self.client)
+        query.operation = "upsert"
+        query.payload = payload
+        return query
 
     def execute(self):
         rows = list(self.client.rows)
