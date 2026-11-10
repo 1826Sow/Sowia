@@ -739,3 +739,79 @@ def list_night_exchange_events(client, user, workspace_id="professional",
         .limit(min(max(int(limit), 1), 1000))
         .execute().data
     )
+
+
+# SOWIA GLOBAL ID — private profile registry and safe public directory.
+def _validate_global_profile(display_name, app_name="", organization="", country="",
+                             languages="", website="", short_description="",
+                             is_published=False):
+    from urllib.parse import urlparse
+    clean = {
+        "display_name": str(display_name or "").strip()[:120],
+        "app_name": str(app_name or "").strip()[:160],
+        "organization": str(organization or "").strip()[:160],
+        "country": str(country or "").strip()[:100],
+        "languages": list(dict.fromkeys(
+            item.strip()[:40] for item in str(languages or "").replace(";", ",").split(",")
+            if item.strip()
+        ))[:12],
+        "website": str(website or "").strip()[:500],
+        "short_description": str(short_description or "").strip()[:600],
+        "is_published": bool(is_published),
+    }
+    if len(clean["display_name"]) < 2:
+        raise ValueError("Le nom public doit contenir au moins 2 caractères.")
+    if not clean["country"]:
+        raise ValueError("Le pays est obligatoire.")
+    if not (clean["app_name"] or clean["organization"]):
+        raise ValueError("Indiquez une application ou une organisation.")
+    if clean["website"]:
+        parsed = urlparse(clean["website"])
+        if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+            raise ValueError("Le site public doit être une adresse HTTPS valide.")
+    return clean
+
+
+def get_my_global_profile(client, user):
+    """Read only the signed-in user's private GLOBAL ID profile."""
+    return (client.table("sowia_global_profiles")
+        .select("id,public_id,user_id,display_name,app_name,organization,country,languages,website,short_description,is_published,verification_status,verified_at,created_at,updated_at")
+        .eq("user_id", _user_id(user)).limit(1).execute().data or [None])[0]
+
+
+def save_global_profile(client, user, *, display_name, app_name="", organization="",
+                        country="", languages="", website="", short_description="",
+                        is_published=False):
+    """Create/update only the current user's profile; SQL protects verification fields."""
+    payload = _validate_global_profile(
+        display_name, app_name, organization, country, languages,
+        website, short_description, is_published
+    )
+    payload["user_id"] = _user_id(user)
+    return client.table("sowia_global_profiles").upsert(
+        payload, on_conflict="user_id"
+    ).execute().data
+
+
+def list_public_global_profiles(client, user, limit=100):
+    """Read the allowlisted public view; database view exposes no private account fields."""
+    _user_id(user)
+    return (client.table("sowia_global_profiles_public")
+        .select("public_id,display_name,app_name,organization,country,languages,website,short_description,verification_status")
+        .order("display_name").limit(min(max(int(limit), 1), 200)).execute().data)
+
+
+def admin_set_global_id_verification(client, user, profile_id, status, evidence_reference):
+    """Change verification only through the signed-admin SQL RPC."""
+    _user_id(user)
+    if status not in {"pending", "verified", "suspended", "unverified"}:
+        raise ValueError("Statut de vérification invalide.")
+    evidence = str(evidence_reference or "").strip()
+    if status == "verified" and not evidence:
+        raise ValueError("Une référence de preuve est requise.")
+    if len(evidence) > 240:
+        raise ValueError("Référence de preuve trop longue.")
+    return client.rpc("sowia_admin_set_global_id_verification", {
+        "p_profile_id": str(profile_id), "p_status": status,
+        "p_evidence_reference": evidence,
+    }).execute()
