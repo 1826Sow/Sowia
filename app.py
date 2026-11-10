@@ -334,6 +334,14 @@ def go_to_page(page_name):
     st.session_state.page_nav = page_name
 
 
+def enable_privacy_screen():
+    st.session_state["sowia_privacy_screen"] = True
+
+
+def disable_privacy_screen():
+    st.session_state["sowia_privacy_screen"] = False
+
+
 # Premium access is checked server-side. If the entitlement cannot be read,
 # the Professional workspace stays unavailable (fail closed).
 premium_entitlement = None
@@ -402,10 +410,26 @@ with st.sidebar:
             st.session_state[f"sowia_{setting_name}"] = setting_value
         st.session_state["sowia_accessibility_loaded_for"] = preference_owner
         st.session_state["sowia_accessibility_saved"] = dict(defaults)
+    if st.session_state.get("sowia_privacy_screen", False):
+        st.button(
+            "🔓 Déverrouiller l'écran",
+            key="sowia_privacy_unlock",
+            on_click=disable_privacy_screen,
+            use_container_width=True,
+            type="primary",
+        )
+    else:
+        st.button(
+            "🔒 Verrouiller maintenant",
+            key="sowia_privacy_lock",
+            on_click=enable_privacy_screen,
+            use_container_width=True,
+            type="primary",
+        )
     privacy_screen = st.toggle(
-        "🔒 Protection d'écran",
+        "Protection d'écran",
         key="sowia_privacy_screen",
-        help="Floute le contenu principal de SOW IA pour limiter les regards indiscrets. Désactivez cette option pour retrouver l'affichage normal.",
+        help="Masque le contenu principal. Le bouton ci-dessus permet de verrouiller ou déverrouiller immédiatement.",
     )
     privacy_values = {
         "voice_readout": bool(st.session_state.get("sowia_voice_readout", False)),
