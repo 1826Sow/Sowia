@@ -1396,3 +1396,10 @@ def list_global_project_milestones(client, user, project_id, limit=200):
 def list_global_project_audit(client, user, project_id, limit=200):
     _user_id(user)
     return client.table("sowia_global_project_audit").select("id,project_id,actor_id,event_type,details,created_at").eq("project_id",str(project_id)).order("created_at",desc=True).limit(min(max(int(limit),1),300)).execute().data
+
+
+def transition_global_project_milestone(client, user, milestone_id, status):
+    _user_id(user)
+    if status not in {"pending","in_progress","blocked","completed","cancelled"}:
+        raise ValueError("Statut de jalon invalide.")
+    return client.rpc("sowia_global_milestone_transition", {"p_milestone_id":str(milestone_id),"p_status":status}).execute().data
