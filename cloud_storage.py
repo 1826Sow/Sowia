@@ -874,6 +874,38 @@ def mark_all_global_notifications_read(client, user):
     return client.rpc("sowia_global_notifications_mark_all_read", {}).execute().data
 
 
+
+# SOWIA GLOBAL TRUST — post-connection ratings and private reports.
+def list_global_trust_aggregates(client, user, limit=200):
+    _user_id(user)
+    rows = (
+        client.table("sowia_global_trust_public")
+        .select("public_id,average_rating,review_count")
+        .limit(min(max(int(limit), 1), 500))
+        .execute().data
+    )
+    import sowia_global_trust
+    return [sowia_global_trust.safe_trust_aggregate(row) for row in rows]
+
+
+def submit_global_trust_review(client, user, request_id, rating):
+    _user_id(user)
+    import sowia_global_trust
+    score = sowia_global_trust.validate_rating(rating)
+    return client.rpc("sowia_global_trust_review", {
+        "p_request_id": str(request_id), "p_rating": score,
+    }).execute().data
+
+
+def submit_global_trust_report(client, user, request_id, reason):
+    _user_id(user)
+    import sowia_global_trust
+    clean_reason = sowia_global_trust.validate_report_reason(reason)
+    return client.rpc("sowia_global_trust_report", {
+        "p_request_id": str(request_id), "p_reason": clean_reason,
+    }).execute().data
+
+
 # SOWIA GLOBAL ID — private profile registry and safe public directory.
 def _validate_global_profile(display_name, app_name="", organization="", country="",
                              languages="", website="", short_description="",
