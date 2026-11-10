@@ -90,3 +90,91 @@ def build_technical_alerts(checks):
         # "Désactivé ou incomplet" is intentionally omitted: e.g. PayPal
         # subscriptions remain disabled until the owner completes Sandbox tests.
     return alerts
+
+
+# Persistent technical incident journal (admin-only through the Supabase service client).
+import hashlib
+from datetime import datetime, timezone
+
+
+def prepare_incident_rows(alerts, admin_user_id):
+    """Create deterministic, de-duplicated incident records for one diagnostic run."""
+    if not isinstance(alerts, (list, tuple)):
+        raise ValueError("La liste des alertes est invalide.")
+    actor = str(admin_user_id or "").strip()
+    if not actor:
+        raise ValueError("Identifiant administrateur manquant.")
+    now = datetime.now(timezone.utc).isoformat()
+    rows = []
+    seen = set()
+    for alert in alerts:
+        if not isinstance(alert, dict):
+            continue
+        component = str(alert.get("component") or "").strip()[:120]
+        level = str(alert.get("level") or "").strip()
+        status = str(alert.get("status") or "").strip()[:80]
+        message = str(alert.get("message") or "").strip()[:500]
+        if not component or level not in {"critical", "high", "medium", "low"} or not message:
+            continue
+        fingerprint_source = "|".join((component.casefold(), level, status.casefold(), message.casefold()))
+        fingerprint = hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest()
+        if fingerprint in seen:
+            continue
+        seen.add(fingerprint)
+        rows.append({
+            "fingerprint": fingerprint,
+            "component": component,
+            "severity": level,
+            "component_status": status,
+            "message": message,
+            "status": "active",
+            "last_seen_at": now,
+            "last_seen_by": actor,
+        })
+    return rows
+
+
+def record_technical_incidents(admin_client, alerts, admin_user_id):
+    """Upsert current incidents; does not write financial or payment records."""
+    if admin_client is None:
+        raise RuntimeError("Client administratif Supabase indisponible.")
+    rows = prepare_incident_rows(alerts, admin_user_id)
+    if rows:
+        admin_client.table("sowia_technical_incidents").upsert(
+            rows, on_conflict="fingerprint"
+        ).execute()
+    return len(rows)
+
+
+def list_technical_incidents(admin_client, limit=100):
+    if admin_client is None:
+        raise RuntimeError("Client administratif Supabase indisponible.")
+    safe_limit = max(1, min(int(limit), 200))
+    result = (
+        admin_client.table("sowia_technical_incidents")
+        .select("id,component,severity,component_status,message,status,first_seen_at,last_seen_at,resolved_at")
+        .order("last_seen_at", desc=True)
+        .limit(safe_limit)
+        .execute()
+    )
+    return getattr(result, "data", None) or []
+
+
+def resolve_technical_incident(admin_client, incident_id, admin_user_id):
+    if admin_client is None:
+        raise RuntimeError("Client administratif Supabase indisponible.")
+    normalized_id = str(incident_id or "").strip()
+    actor = str(admin_user_id or "").strip()
+    if not normalized_id or not actor:
+        raise ValueError("Identifiant d'incident ou administrateur manquant.")
+    return (
+        admin_client.table("sowia_technical_incidents")
+        .update({
+            "status": "resolved",
+            "resolved_at": datetime.now(timezone.utc).isoformat(),
+            "resolved_by": actor,
+        })
+        .eq("id", normalized_id)
+        .eq("status", "active")
+        .execute()
+    )
