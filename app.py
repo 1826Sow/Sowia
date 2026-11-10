@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -3113,6 +3113,74 @@ elif page == "SOWIA GLOBAL DECISION ENGINE":
             except Exception as decision_history_error:
                 st.error("L'archive des décisions n'est pas disponible.")
                 st.caption("Appliquez supabase_global_decisions.sql. Diagnostic : " + type(decision_history_error).__name__)
+
+
+elif page == "SOWIA GLOBAL AUTONOMOUS STRATEGY":
+    st.subheader("🌍 SOWIA GLOBAL AUTONOMOUS STRATEGY")
+    st.caption("Un tableau de priorités qui rassemble les marchés évalués, les alertes actives, les scénarios et les résultats passés.")
+    st.warning("SOWIA prépare des recommandations de travail, mais n'engage aucun budget, ne contacte aucun partenaire et ne lance aucune opération. Une validation humaine est obligatoire.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous pour analyser vos données stratégiques privées.")
+    else:
+        try:
+            import sowia_global_autonomous_strategy as strategy_engine
+            strategy_assessments = cloud_storage.list_global_intelligence_assessments(
+                supabase_client, current_user, limit=200
+            )
+            strategy_alerts = cloud_storage.list_global_alerts(
+                supabase_client, current_user, limit=200
+            )
+            strategy_forecasts = cloud_storage.list_global_forecasts(
+                supabase_client, current_user, limit=200
+            )
+            strategy_decisions = cloud_storage.list_global_decisions(
+                supabase_client, current_user, limit=200
+            )
+            strategy_learning = cloud_storage.list_global_learning_records(
+                supabase_client, current_user, limit=300
+            )
+            strategy_result = strategy_engine.build_strategy(
+                strategy_assessments, strategy_alerts, strategy_forecasts,
+                strategy_decisions, strategy_learning,
+            )
+            st.markdown("### Vue d'ensemble du portefeuille")
+            portfolio = strategy_result["portfolio"]
+            sm1, sm2, sm3 = st.columns(3)
+            sm1.metric("Marchés évalués", portfolio["assessments"])
+            sm2.metric("Alertes actives", portfolio["active_alerts"])
+            sm3.metric("Décisions enregistrées", portfolio["saved_decisions"])
+            sm4, sm5, sm6 = st.columns(3)
+            sm4.metric("Prévisions archivées", portfolio["forecasts"])
+            sm5.metric("Résultats observés", portfolio["evaluated_outcomes"])
+            sm6.metric("Décisions proches", portfolio["close_call_decisions"])
+            if portfolio["recommendation_alignment_rate"] is not None:
+                st.metric("Alignement historique avec les recommandations", f"{portfolio['recommendation_alignment_rate']} %")
+                st.caption("Mesure descriptive sur les décisions évaluées disposant d'une recommandation initiale ; elle ne démontre pas que la recommandation cause le résultat.")
+            st.divider()
+            st.markdown("### Priorités stratégiques proposées")
+            if not strategy_result["priorities"]:
+                st.info("Aucune priorité ne peut être classée. Créez d'abord des évaluations dans GLOBAL INTELLIGENCE.")
+            for rank, priority in enumerate(strategy_result["priorities"], start=1):
+                with st.container(border=True):
+                    st.markdown(f"**{rank}. {priority['country']} — {priority['action']}**")
+                    p1, p2 = st.columns(2)
+                    p1.metric("Opportunité indicative", f"{priority['opportunity_score']}/100")
+                    p2.metric("Pression de risque", f"{priority['risk_pressure']}/100")
+                    st.progress(int(priority["opportunity_score"]))
+                    st.write(priority["rationale"])
+                    st.caption(
+                        f"{priority['assessment_count']} évaluation(s) · "
+                        f"{priority['open_alert_count']} alerte(s) active(s) · "
+                        f"{priority['forecast_count']} projection(s)"
+                    )
+            with st.expander("Règles de fonctionnement et limites"):
+                for rule in strategy_result["operating_rules"]:
+                    st.write("• " + rule)
+                st.caption("Dernière synthèse : " + strategy_result["generated_at"])
+            st.success("Mode de sécurité : validation humaine obligatoire · exécution automatique désactivée.")
+        except Exception as strategy_error:
+            st.error("La synthèse stratégique n'est pas disponible.")
+            st.caption("Vérifiez les migrations des modules GLOBAL INTELLIGENCE, ALERTS, STRATEGIC FORECAST, DECISION ENGINE et LEARNING ENGINE. Diagnostic : " + type(strategy_error).__name__)
 
 
 elif page == "SOWIA GLOBAL LEARNING ENGINE":
