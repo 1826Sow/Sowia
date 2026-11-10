@@ -7,7 +7,10 @@ from openai import (
     AuthenticationError,
     RateLimitError,
 )
-from config import API_KEY, BASE_URL, MODEL, SYSTEM_PROMPT
+from config import (
+    API_KEY, BASE_URL, MODEL, SYSTEM_PROMPT,
+    GROQ_API_KEY, OPENAI_API_KEY, GROQ_MODEL, OPENAI_MODEL, OPENAI_BASE_URL,
+)
 
 
 def _offline_reply(messages):
@@ -99,34 +102,52 @@ def answer(messages, memories=None, document_context=None):
 
     system_prompt = build_system_prompt(memories=memories, document_context=document_context)
 
-    client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
-    try:
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=[{"role": "system", "content": system_prompt}, *messages],
-            temperature=0.4,
-        )
-    except AuthenticationError as exc:
-        raise RuntimeError(
-            "Le fournisseur IA refuse la clé API (erreur 401). La connexion de SOW IA fonctionne, "
-            "mais la clé enregistrée n'est pas acceptée par le fournisseur configuré. Dans Streamlit > "
-            "Paramètres > Secrets, vérifiez GROQ_API_KEY (si vous utilisez Groq) ou "
-            "OPENAI_API_KEY (si vous utilisez OpenAI). Vérifiez également l'adresse API "
-            "configurée et le nom du modèle. Ne communiquez jamais votre clé."
-        ) from exc
-    except RateLimitError:
-        return _offline_reply(messages)
-    except APITimeoutError as exc:
-        raise RuntimeError(
-            "Le fournisseur IA met trop de temps à répondre. Vérifiez votre connexion et réessayez dans quelques instants."
-        ) from exc
-    except APIConnectionError as exc:
-        raise RuntimeError(
-            "SOW IA ne parvient pas à joindre le fournisseur IA. Vérifiez votre connexion ou réessayez plus tard."
-        ) from exc
-    except APIStatusError as exc:
-        raise RuntimeError(
-            "Le fournisseur IA a rencontré un problème temporaire. Réessayez plus tard."
-        ) from exc
+    # Use the configured primary provider first. If both supported keys exist,
+    # keep OpenAI available as a secondary route when Groq is throttled or down.
+    providers = [{"api_key": API_KEY, "base_url": BASE_URL, "model": MODEL}]
+    if GROQ_API_KEY and OPENAI_API_KEY and API_KEY == GROQ_API_KEY:
+        providers.append({
+            "api_key": OPENAI_API_KEY,
+            "base_url": OPENAI_BASE_URL,
+            "model": OPENAI_MODEL,
+        })
 
-    return response.choices[0].message.content or ""
+    last_error = None
+    for index, provider in enumerate(providers):
+        try:
+            client = OpenAI(api_key=provider["api_key"], base_url=provider["base_url"])
+            response = client.chat.completions.create(
+                model=provider["model"],
+                messages=[{"role": "system", "content": system_prompt}, *messages],
+                temperature=0.4,
+            )
+            return response.choices[0].message.content or ""
+        except (AuthenticationError, RateLimitError, APITimeoutError, APIConnectionError, APIStatusError) as exc:
+            last_error = exc
+            retryable = isinstance(exc, (AuthenticationError, RateLimitError, APITimeoutError, APIConnectionError))
+            if isinstance(exc, APIStatusError):
+                retryable = exc.status_code >= 500 or exc.status_code == 429
+            if retryable and index + 1 < len(providers):
+                continue
+            if isinstance(exc, RateLimitError):
+                return _offline_reply(messages)
+            if isinstance(exc, AuthenticationError):
+                raise RuntimeError(
+                    "Le fournisseur IA refuse la clé API (erreur 401). Vérifiez la clé, l'adresse API et le nom du modèle dans les secrets Streamlit. Ne communiquez jamais votre clé."
+                ) from exc
+            if isinstance(exc, APITimeoutError):
+                raise RuntimeError(
+                    "Le fournisseur IA met trop de temps à répondre. Vérifiez votre connexion et réessayez dans quelques instants."
+                ) from exc
+            if isinstance(exc, APIConnectionError):
+                raise RuntimeError(
+                    "SOW IA ne parvient pas à joindre le fournisseur IA. Vérifiez votre connexion ou réessayez plus tard."
+                ) from exc
+            raise RuntimeError(
+                "Le fournisseur IA a rencontré un problème temporaire. Réessayez plus tard."
+            ) from exc
+
+    # Defensive guard: the provider list always contains at least one entry.
+    if last_error:
+        raise RuntimeError("Aucun fournisseur IA n'a pu répondre.") from last_error
+    return _offline_reply(messages)
