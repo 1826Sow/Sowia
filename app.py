@@ -1122,6 +1122,30 @@ elif page == "Développement mondial":
                 agenda_events = cloud_storage.list_relationship_events(
                     supabase_client, current_user, agenda_workspace
                 )
+                from relationship_advisor import recommend_next_actions
+                next_actions = recommend_next_actions(agenda_contacts, agenda_events)
+                st.markdown("#### 🧭 Prochaines actions recommandées par SOW IA")
+                st.caption(
+                    "Suggestions explicables calculées à partir des statuts CRM et des échéances. "
+                    "Elles ne déclenchent aucun contact externe."
+                )
+                if not next_actions:
+                    st.info("Aucune action prioritaire détectée. Votre suivi est à jour selon les informations enregistrées.")
+                else:
+                    for action_index, suggestion in enumerate(next_actions):
+                        priority_label = {
+                            1: "Urgent", 2: "Aujourd'hui", 3: "À examiner",
+                            4: "Suivi", 5: "Fidélisation",
+                        }.get(suggestion["priority"], "Suggestion")
+                        with st.container(border=True):
+                            st.markdown(f"**{priority_label} · {suggestion['title']}**")
+                            st.caption(suggestion["kind"])
+                            st.write(suggestion["reason"])
+                            st.write("**Action proposée :** " + suggestion["action"])
+                            if suggestion.get("contact_authorized"):
+                                st.caption("Autorisation de contact enregistrée : à revérifier avant tout envoi.")
+                            else:
+                                st.caption("Aucune autorisation d'envoi enregistrée : suggestion interne uniquement.")
                 if not agenda_events:
                     st.info("Votre agenda relationnel est vide. Ajoutez une première échéance ci-dessus.")
                 else:
