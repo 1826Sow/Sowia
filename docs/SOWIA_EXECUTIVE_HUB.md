@@ -17,3 +17,7 @@ The Hub is the platform's main entry point. It groups existing features without 
 ## Current limits
 - This is a navigation and dashboard consolidation, not a new billing, brokerage, partner marketplace or fulfilment integration.
 - Admin links point to existing modules. New centralized role management and cross-module analytics are separate future work.
+
+## Global pilotage overview
+
+The professional Hub includes a six-pillar overview. It reports live counts only for the user/workspace-scoped CRM and decision-trial reads when those reads succeed. Unavailable reads are labelled unavailable, not zero. The other pillars explicitly state when centralized indicators or live providers are not connected. This is an operational overview, not a compliance audit or proof of business performance.
