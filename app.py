@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -2999,6 +2999,126 @@ elif page == "SOWIA GLOBAL DIRECTORY":
             st.error("L’annuaire mondial n’est pas encore initialisé. Appliquez supabase_global_id.sql puis supabase_global_directory.sql dans Supabase.")
             st.caption("Diagnostic : " + type(exc).__name__)
 
+
+
+
+elif page == "SOWIA GLOBAL ADMIN & MODERATION":
+    st.subheader("🛡️ SOWIA GLOBAL ADMIN & MODERATION")
+    st.caption("Centre réservé aux administrateurs SOWIA : signalements, contrôle des profils et journal des décisions.")
+    admin_metadata = getattr(current_user, "app_metadata", None) or {} if current_user is not None else {}
+    is_sowia_admin = isinstance(admin_metadata, dict) and (
+        admin_metadata.get("sowia_admin") is True or admin_metadata.get("role") == "admin"
+    )
+    if not cloud_mode or current_user is None:
+        st.warning("Connectez-vous avec un compte administrateur SOWIA autorisé.")
+    elif not is_sowia_admin:
+        st.error("Accès refusé. Cette section est réservée aux administrateurs SOWIA.")
+    else:
+        admin_tabs = st.tabs(["🚩 Signalements", "🪪 Profils & vérification", "📜 Journal d'audit"])
+        with admin_tabs[0]:
+            st.markdown("#### File des signalements confidentiels")
+            try:
+                moderation_reports = cloud_storage.list_global_moderation_reports(
+                    supabase_client, current_user, limit=150
+                )
+                if not moderation_reports:
+                    st.info("Aucun signalement dans la file.")
+                for report in moderation_reports:
+                    with st.container(border=True):
+                        st.write(f"**Signalement {report['id'][:8]}** · {report.get('created_at', '')}")
+                        st.write(f"Statut : **{report.get('status', 'open')}**")
+                        st.caption(f"Compte signalé : {report.get('reported_user_id', '')} · Déclarant : {report.get('reporter_id', '')}")
+                        st.write(report.get("reason", ""))
+                        with st.form(f"moderation_report_form_{report['id']}"):
+                            report_status = st.selectbox(
+                                "Décision",
+                                ["open", "reviewing", "resolved", "dismissed"],
+                                index=["open", "reviewing", "resolved", "dismissed"].index(report.get("status", "open")),
+                                key=f"moderation_report_status_{report['id']}",
+                            )
+                            report_note = st.text_area(
+                                "Note interne (facultative, max. 1 000 caractères)",
+                                max_chars=1000,
+                                key=f"moderation_report_note_{report['id']}",
+                            )
+                            if st.form_submit_button("Enregistrer la décision"):
+                                try:
+                                    cloud_storage.update_global_moderation_report(
+                                        supabase_client, current_user, report["id"],
+                                        report_status, report_note,
+                                    )
+                                    st.success("Décision enregistrée dans le journal d'audit.")
+                                    st.rerun()
+                                except Exception as moderation_error:
+                                    st.error("Décision non enregistrée : " + type(moderation_error).__name__)
+            except Exception as queue_error:
+                st.error("La file de modération n'est pas disponible.")
+                st.caption("Vérifiez que les migrations GLOBAL TRUST et GLOBAL MODERATION sont appliquées et que le compte possède les droits administrateur.")
+
+        with admin_tabs[1]:
+            st.markdown("#### Registre des profils SOWIA GLOBAL ID")
+            st.caption("Vérifiez les justificatifs dans un processus sécurisé séparé. Ne téléversez pas de pièces d'identité dans une note interne.")
+            try:
+                moderation_profiles = cloud_storage.list_global_moderation_profiles(
+                    supabase_client, current_user, limit=150
+                )
+                if not moderation_profiles:
+                    st.info("Aucun profil enregistré.")
+                for profile in moderation_profiles:
+                    with st.container(border=True):
+                        st.write(f"**{profile.get('display_name', '')}** · {profile.get('public_id', '')}")
+                        st.write(
+                            f"{profile.get('app_name') or profile.get('organization') or 'Organisation non renseignée'} · "
+                            f"{profile.get('country', '')}"
+                        )
+                        st.caption(
+                            f"Statut : {profile.get('verification_status', 'unverified')} · "
+                            f"Publication : {'oui' if profile.get('is_published') else 'non'} · "
+                            f"ID interne : {profile.get('id', '')}"
+                        )
+                        with st.form(f"moderation_profile_form_{profile['id']}"):
+                            profile_status = st.selectbox(
+                                "Statut de vérification",
+                                ["unverified", "pending", "verified", "suspended"],
+                                index=["unverified", "pending", "verified", "suspended"].index(profile.get("verification_status", "unverified")),
+                                key=f"moderation_profile_status_{profile['id']}",
+                            )
+                            evidence_ref = st.text_input(
+                                "Référence de preuve (obligatoire pour verified, max. 240 caractères)",
+                                max_chars=240,
+                                key=f"moderation_profile_evidence_{profile['id']}",
+                            )
+                            profile_note = st.text_area(
+                                "Motif interne (facultatif, max. 1 000 caractères)",
+                                max_chars=1000,
+                                key=f"moderation_profile_note_{profile['id']}",
+                            )
+                            if st.form_submit_button("Mettre à jour le profil"):
+                                try:
+                                    cloud_storage.update_global_moderation_profile(
+                                        supabase_client, current_user, profile["id"],
+                                        profile_status, evidence_ref, profile_note,
+                                    )
+                                    st.success("Statut du profil mis à jour et décision journalisée.")
+                                    st.rerun()
+                                except Exception as profile_error:
+                                    st.error("Modification refusée : " + type(profile_error).__name__)
+            except Exception as profiles_error:
+                st.error("Le registre des profils n'est pas disponible.")
+                st.caption("Vérifiez la migration GLOBAL ID et les droits administrateur.")
+
+        with admin_tabs[2]:
+            st.markdown("#### Historique des décisions administratives")
+            try:
+                audit_rows = cloud_storage.list_global_moderation_audit(
+                    supabase_client, current_user, limit=150
+                )
+                if audit_rows:
+                    st.dataframe(audit_rows, use_container_width=True, hide_index=True)
+                else:
+                    st.info("Aucune décision de modération enregistrée.")
+            except Exception as audit_error:
+                st.error("Journal indisponible : vérifiez la migration GLOBAL MODERATION.")
 
 
 elif page == "SOWIA GLOBAL TRUST":
