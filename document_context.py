@@ -65,8 +65,13 @@ def select_relevant_pdf_context(document_text, question, max_chars=24000):
             score += 3
         scored.append((score, position, page_number, body))
 
-    # Prefer relevant pages; ties and no-match fallbacks retain document order.
-    ranked = sorted(scored, key=lambda item: (-item[0], item[1]))
+    # If the question matches any page, exclude unrelated pages entirely.
+    # Otherwise retain the opening pages as a useful general-summary fallback.
+    matching_pages = [item for item in scored if item[0] > 0]
+    ranked = sorted(
+        matching_pages if matching_pages else scored,
+        key=lambda item: (-item[0], item[1]),
+    )
     selected = []
     used = 0
     for score, position, page_number, body in ranked:
