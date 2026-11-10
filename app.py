@@ -734,6 +734,7 @@ if page == "Accueil":
     st.caption("Chaque dossier rassemble les fonctions d'un même domaine. Dépliez uniquement celui dont vous avez besoin.")
     home_folders = [
         ("👤 01 · Personnel & documents", [
+            ("Hub SOWIA", "Vue centrale de vos espaces et services"),
             ("Assistant IA", "Conversation avec SOWIA"),
             ("Ma mémoire", "Informations mémorisées"),
             ("Recherche Web", "Recherche et sources"),
