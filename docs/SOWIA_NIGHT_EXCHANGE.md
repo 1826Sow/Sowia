@@ -168,3 +168,11 @@ Participants can also submit a confidential 10–2,000 character report about th
 
 Apply `supabase_global_trust.sql` AFTER `supabase_global_notifications.sql`. The full sequence is GLOBAL ID, GLOBAL DIRECTORY, GLOBAL CONNECT, GLOBAL MESSENGER, GLOBAL NOTIFICATIONS, then GLOBAL TRUST. Code and migration are committed to GitHub; the migration is not confirmed applied to the live Supabase project. The new page and database permissions have not yet been verified in the deployed app or with two real accounts.
 
+## SOWIA GLOBAL ADMIN & MODERATION — restricted control center
+
+The admin-only workspace provides three views: confidential GLOBAL TRUST reports, GLOBAL ID profile verification/suspension, and an audit history of moderation decisions. Report statuses are open, reviewing, resolved or dismissed. Profile statuses are unverified, pending, verified or suspended. A verified profile requires a documented evidence reference; suspending a profile also removes it from publication. Do not store identity-document images or sensitive evidence in internal notes: the evidence review process must use an appropriately secured channel.
+
+All privileged mutations are performed by SECURITY DEFINER database RPCs that check the authenticated JWT app metadata for `sowia_admin=true` or `role=admin`. The UI check is only a usability guard; database authorization is authoritative. The audit table is readable only by administrators and records the actor, action, subject, status transition, note and timestamp. This MVP does not yet include automated fraud detection, appeal handling, SLA workflows, or a separate encrypted evidence vault.
+
+Apply `supabase_global_moderation.sql` AFTER `supabase_global_trust.sql`. Full order: GLOBAL ID, GLOBAL DIRECTORY, GLOBAL CONNECT, GLOBAL MESSENGER, GLOBAL NOTIFICATIONS, GLOBAL TRUST, then GLOBAL MODERATION. The code and migration are committed; live Supabase application, real-admin authorization, and two-account isolation have not been verified.
+
