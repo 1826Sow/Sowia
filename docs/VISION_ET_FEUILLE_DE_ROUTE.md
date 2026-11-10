@@ -475,3 +475,20 @@ Le module `weather_impact.py` permet de normaliser des événements météo sour
 Tests dédiés : `tests/test_weather_impact.py`.
 
 **Limites :** aucune donnée météo n'est téléchargée automatiquement, aucune alerte officielle n'est surveillée, aucune vulnérabilité sectorielle n'est devinée et aucune perte, variation de prix ou conséquence économique n'est prédite. L'indice sert uniquement à prioriser une analyse humaine ; ce n'est pas une probabilité de perte, un modèle financier ni un conseil d'investissement. La connexion à des fournisseurs météo, la vérification de leurs licences, l'historique, les alertes et l'interface restent à réaliser.
+
+### 19. Évaluation initiale des fournisseurs météo (10 novembre 2026)
+
+Une première revue des conditions officielles conduit à retenir **MET Norway / MET Weather API comme candidat prioritaire à un pilote commercial**, sous réserve de configurer une identification valide et de respecter les conditions d'usage :
+- le catalogue annonce une couverture mondiale pour Locationforecast et Frost ; les alertes MetAlerts sont, elles, limitées à la Norvège ;
+- les données sont annoncées comme réutilisables à des fins commerciales sous CC BY 4.0, avec attribution ;
+- chaque requête doit identifier l'application dans un User-Agent et fournir un moyen de contact ; les réponses doivent être mises en cache et les limites de trafic respectées ;
+- le service ne garantit pas de SLA de livraison.
+
+Sources officielles consultées :
+- MET Weather API, catalogue et couverture : https://api.met.no/
+- Conditions de service : https://api.met.no/doc/TermsOfService
+- FAQ et réutilisation commerciale : https://api.met.no/doc/FAQ
+
+**Open-Meteo** reste un candidat technique intéressant pour prototypage et comparaison multi-modèles, mais son API gratuite est réservée à l'usage non commercial ; l'utilisation commerciale nécessite une licence/abonnement. Elle ne doit donc pas être branchée gratuitement dans une offre commerciale SOW IA sans accord adapté. Source officielle : https://open-meteo.com/en/pricing et https://github.com/open-meteo/open-meteo.
+
+**Décision d'architecture :** ne pas coder une collecte planifiée ni afficher de météo réelle avant d'avoir configuré le User-Agent avec un contact approprié, implémenté le cache, vérifié la provenance/horodatage et ajouté les tests de résilience. Le premier pilote doit utiliser des coordonnées ou régions explicitement choisies par l'utilisateur ; aucune géolocalisation automatique n'est requise. Les alertes météo nationales et la couverture mondiale des prévisions doivent rester deux produits de données distincts.
