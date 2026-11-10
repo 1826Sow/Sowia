@@ -24,11 +24,8 @@ alter table public.sowia_global_profiles
 alter table public.sowia_global_profiles
     add constraint sowia_global_profiles_specialties_valid check (
         pg_catalog.cardinality(specialties) <= 12
-        and not exists (
-            select 1 from pg_catalog.unnest(specialties) as specialty
-            where pg_catalog.char_length(specialty) > 60
-               or pg_catalog.btrim(specialty) = ''
-        )
+        and pg_catalog.length(pg_catalog.array_to_string(specialties, ',')) <= 720
+        and pg_catalog.array_position(specialties, '') is null
     );
 
 create index if not exists sowia_global_profiles_directory_country_idx
