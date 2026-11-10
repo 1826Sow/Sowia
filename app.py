@@ -1916,7 +1916,7 @@ elif page == "SOW IA Business Club":
             with cards_tab:
                 st.markdown("#### Atelier Cartes VIP")
                 st.caption("Créez une carte personnelle ou au nom de votre entreprise. Les fichiers générés restent sous votre contrôle : rien n'est publié automatiquement.")
-                from business_cards import build_printable_card_html, build_vcard
+                from business_cards import build_printable_card_html, build_vcard, build_qr_svg
                 with st.form("sowia_vip_business_card_form"):
                     card_name = st.text_input("Nom et prénom à afficher")
                     card_role = st.text_input("Fonction (facultatif)")
@@ -1954,6 +1954,7 @@ elif page == "SOW IA Business Club":
                         c1, c2 = st.columns(2)
                         c1.download_button("Télécharger la carte imprimable (HTML)", html_card, file_name="carte_vip_sowia.html", mime="text/html")
                         c2.download_button("Télécharger le contact (vCard)", build_vcard(card_data), file_name="contact_sowia.vcf", mime="text/vcard")
+                        st.download_button("Télécharger le QR code du contact (SVG)", build_qr_svg(card_data), file_name="qr_contact_sowia.svg", mime="image/svg+xml")
                         st.info("Pour une impression physique, ouvrez le fichier HTML puis utilisez l'impression du navigateur à l'échelle 100 % (format 90 × 50 mm). La commande et la livraison par imprimeur partenaire seront activées dans une prochaine étape.")
                     except ValueError as exc:
                         st.error(str(exc))
