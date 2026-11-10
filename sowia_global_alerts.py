@@ -130,6 +130,8 @@ def prepare_incident_rows(alerts, admin_user_id):
             "status": "active",
             "last_seen_at": now,
             "last_seen_by": actor,
+            "resolved_at": None,
+            "resolved_by": None,
         })
     return rows
 
