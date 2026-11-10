@@ -2544,97 +2544,139 @@ elif page == "SOWIA NIGHT EXCHANGE":
     st.subheader("🌙 SOWIA NIGHT EXCHANGE")
     st.caption("Place de marché nocturne internationale pour applications et services numériques.")
     if not premium_active:
-        st.warning("Cet espace professionnel est réservé aux comptes Premium. Aucun achat ni engagement financier n'est possible depuis cet aperçu.")
+        st.warning("Cet espace professionnel est réservé aux comptes Premium.")
+    elif not cloud_mode or current_user is None:
+        st.warning("Connectez-vous à votre compte sécurisé pour enregistrer une application partenaire. En mode local, aucune fiche ne sera conservée dans le registre mondial.")
     else:
         st.markdown(
             '<div class="partner-intro"><h3>Le marché mondial qui travaille pendant la nuit</h3>'
-            '<p>Découvrez des applications compatibles, échangez des services et préparez des offres payantes avec des plafonds de dépenses explicites.</p></div>',
+            '<p>Inscrivez votre application, indiquez vos besoins et préparez des collaborations internationales. '
+            'Chaque nouvelle fiche est privée et soumise à validation avant toute apparition dans l’annuaire public.</p></div>',
             unsafe_allow_html=True,
         )
-        market_tabs = st.tabs(["🌐 Présentation", "🏷️ Inscrire une application", "🤝 Compatibilité", "💶 Budget & règles"])
-        with market_tabs[0]:
-            st.markdown("#### Les six espaces du marché")
-            overview = [
-                ("Annuaire", "Profils d'applications, capacités, pays et langues."),
-                ("Échanges", "Services réciproques avec périmètre et livrables définis."),
-                ("Offres payantes", "Visibilité, intégration et prestations à prix plafonné."),
-                ("Sessions nocturnes", "Horaires calculés selon le fuseau local de chaque application."),
-                ("Matching SOWIA", "Compatibilité indicative et vérification préalable."),
-                ("Rapport du matin", "Résumé des offres, accords, dépenses confirmées et actions en attente."),
-            ]
-            for title, description in overview:
-                with st.container(border=True):
-                    st.markdown(f"**{title}**")
-                    st.write(description)
-            st.info("Phase actuelle : prototype de règles et interface de préparation. Le paiement, les échanges de données et les intégrations ne sont pas activés.")
-        with market_tabs[1]:
-            st.markdown("#### Préparer une fiche application")
-            app_name = st.text_input("Nom de l'application", max_chars=100, key="nex_app_name")
-            app_country = st.text_input("Pays principal", max_chars=80, key="nex_app_country")
-            app_timezone = st.text_input("Fuseau horaire IANA", value="Europe/Paris", max_chars=80, key="nex_app_timezone", help="Exemple : Europe/Paris, Asia/Singapore ou America/Sao_Paulo.")
-            app_categories = st.multiselect("Domaines", ["Intelligence artificielle", "Rencontres", "Commerce", "Finance", "Éducation", "Santé", "Voyage", "Divertissement", "Productivité", "Technologie"])
-            offered = st.text_input("Services proposés", max_chars=300, key="nex_services_offered")
-            wanted = st.text_input("Services recherchés", max_chars=300, key="nex_services_wanted")
-            night_start = st.time_input("Début de session nocturne locale", value=datetime.strptime("20:00", "%H:%M").time(), key="nex_night_start")
-            night_end = st.time_input("Fin de session nocturne locale", value=datetime.strptime("06:00", "%H:%M").time(), key="nex_night_end")
-            if st.button("Prévisualiser ma fiche", type="primary", key="nex_preview_listing"):
-                try:
-                    from zoneinfo import ZoneInfo
-                    ZoneInfo(app_timezone.strip())
-                    if not app_name.strip() or not app_country.strip() or not app_categories:
-                        raise ValueError("Renseignez le nom, le pays et au moins un domaine.")
-                    st.session_state["nex_listing_preview"] = {
-                        "name": app_name.strip(), "country": app_country.strip(),
-                        "timezone": app_timezone.strip(), "categories": app_categories,
-                        "offered": offered.strip(), "wanted": wanted.strip(),
-                        "night_start": night_start.strftime("%H:%M"), "night_end": night_end.strftime("%H:%M"),
-                    }
-                    st.success("Fiche préparée dans cette session. Elle n'est pas encore publiée.")
-                except Exception as exc:
-                    st.error(f"Fiche non valide : {exc}")
-            preview = st.session_state.get("nex_listing_preview")
-            if preview:
-                with st.container(border=True):
-                    st.markdown(f"**{preview['name']}** · {preview['country']}")
-                    st.write("Domaines : " + ", ".join(preview["categories"]))
-                    st.write(f"Fuseau : {preview['timezone']} · Session locale : {preview['night_start']}–{preview['night_end']}")
-                    st.write("Propose : " + (preview["offered"] or "Non renseigné"))
-                    st.write("Recherche : " + (preview["wanted"] or "Non renseigné"))
-                    st.caption("Brouillon temporaire : aucune publication ni vérification d'identité n'a eu lieu.")
-        with market_tabs[2]:
-            st.markdown("#### Compatibilité entre applications")
-            st.caption("Prototype de matching à partir des domaines et services renseignés. Les scores ne constituent pas une recommandation ou une certification.")
-            left = st.text_input("Domaines de votre application (séparés par des virgules)", key="nex_match_left")
-            right = st.text_input("Domaines de l'application candidate", key="nex_match_right")
-            left_services = st.text_input("Services que vous recherchez", key="nex_match_left_services")
-            right_services = st.text_input("Services que l'autre application propose", key="nex_match_right_services")
-            if st.button("Évaluer la compatibilité", key="nex_match_button"):
-                a = {x.strip().casefold() for x in left.split(",") if x.strip()}
-                b = {x.strip().casefold() for x in right.split(",") if x.strip()}
-                wanted_set = {x.strip().casefold() for x in left_services.split(",") if x.strip()}
-                offered_set = {x.strip().casefold() for x in right_services.split(",") if x.strip()}
-                overlap = sorted(a & b)
-                score = min(100, len(overlap) * 20 + (30 if wanted_set & offered_set else 0))
-                st.metric("Compatibilité indicative", f"{score}/100")
-                st.write("Domaines communs : " + (", ".join(overlap) if overlap else "Aucun identifié"))
-                st.write("Services correspondants : " + (", ".join(sorted(wanted_set & offered_set)) if wanted_set & offered_set else "Aucun identifié"))
-                st.caption("Le calcul est indicatif et ne remplace ni la diligence raisonnable ni la validation des deux parties.")
-        with market_tabs[3]:
-            st.markdown("#### Budgets et garde-fous")
-            currency = st.selectbox("Devise", ["EUR", "USD", "GBP", "CHF", "SGD", "CNY", "BRL", "XOF", "AED"])
-            daily_cap = st.number_input("Plafond quotidien", min_value=0.0, value=10.0, step=5.0)
-            weekly_cap = st.number_input("Plafond hebdomadaire", min_value=0.0, value=30.0, step=5.0)
-            monthly_cap = st.number_input("Plafond mensuel", min_value=0.0, value=100.0, step=10.0)
+        nex_workspace = st.session_state.get("workspace_id", "professional")
+        nex_metadata = getattr(current_user, "app_metadata", None) or {}
+        nex_is_admin = isinstance(nex_metadata, dict) and (
+            nex_metadata.get("sowia_admin") is True or nex_metadata.get("role") == "admin"
+        )
+        nex_tabs = ["🌐 Annuaire approuvé", "🏷️ Inscrire une application", "📂 Mes applications"]
+        if nex_is_admin:
+            nex_tabs.append("🛡️ Modération")
+        nex_tab_views = st.tabs(nex_tabs)
+
+        with nex_tab_views[0]:
+            st.markdown("#### Applications partenaires validées")
+            st.caption("Seules les fiches approuvées par SOWIA sont visibles dans cet annuaire.")
+            filter_country = st.text_input("Filtrer par pays (facultatif)", key="nex_directory_country")
+            if st.button("Actualiser l’annuaire", key="nex_directory_refresh"):
+                st.session_state["nex_directory_refresh_nonce"] = str(uuid.uuid4())
             try:
-                budget = sowia_night_exchange.BudgetCap.create(currency, daily_cap, weekly_cap, monthly_cap)
-                st.success(f"Configuration cohérente : {budget.daily_limit} {currency}/jour · {budget.weekly_limit} {currency}/semaine · {budget.monthly_limit} {currency}/mois.")
-            except ValueError as exc:
-                st.error(str(exc))
-            st.warning("Ces plafonds sont une prévisualisation locale. Ils ne bloquent aucune transaction réelle tant que le registre budgétaire atomique côté serveur et le prestataire de paiement ne sont pas connectés.")
-            st.markdown("- Aucun achat automatique.")
-            st.markdown("- Validation explicite des administrateurs.")
-            st.markdown("- Arrêt des nouvelles dépenses si un plafond est atteint ou si le statut du paiement est incertain.")
-            st.markdown("- Vérification juridique, sécurité et confidentialité avant toute intégration.")
+                approved_apps = cloud_storage.list_approved_night_exchange_apps(
+                    supabase_client, current_user, country=filter_country or None, limit=200
+                )
+                if approved_apps:
+                    for app in approved_apps:
+                        with st.container(border=True):
+                            st.markdown(f"**{app['app_name']}** · {app['country']}")
+                            st.caption("Domaines : " + ", ".join(app.get("categories") or []))
+                            st.write("Propose : " + (app.get("services_offered") or "Non renseigné"))
+                            st.write("Recherche : " + (app.get("services_wanted") or "Non renseigné"))
+                            st.caption(f"Fuseau : {app['timezone']} · Session locale : {str(app['night_start'])[:5]}–{str(app['night_end'])[:5]}")
+                else:
+                    st.info("Aucune application approuvée ne correspond encore à ce filtre. L’annuaire se remplira au fil des validations.")
+            except Exception as exc:
+                st.error("Le registre Supabase n’est pas encore disponible. Vérifiez que la migration NIGHT EXCHANGE a été exécutée dans Supabase.")
+                st.caption(f"Diagnostic : {type(exc).__name__}")
+
+        with nex_tab_views[1]:
+            st.markdown("#### Déposer une candidature partenaire")
+            st.info("Votre fiche sera enregistrée avec le statut « En attente ». Elle ne sera pas visible publiquement avant validation.")
+            with st.form("nex_persistent_listing_form", clear_on_submit=False):
+                app_name = st.text_input("Nom de l’application", max_chars=160, key="nex_persist_name")
+                app_country = st.text_input("Pays principal", max_chars=100, key="nex_persist_country")
+                app_timezone = st.text_input("Fuseau horaire IANA", value="Europe/Paris", max_chars=80, key="nex_persist_timezone", help="Exemples : Europe/Paris, Asia/Singapore, Africa/Dakar, America/Sao_Paulo.")
+                category_options = sorted(cloud_storage.NIGHT_EXCHANGE_CATEGORIES)
+                app_categories = st.multiselect("Domaines d’activité", category_options, key="nex_persist_categories")
+                offered = st.text_area("Services proposés", max_chars=2000, key="nex_persist_offered")
+                wanted = st.text_area("Services recherchés", max_chars=2000, key="nex_persist_wanted")
+                night_start = st.time_input("Début de session nocturne locale", value=datetime.strptime("20:00", "%H:%M").time(), key="nex_persist_start")
+                night_end = st.time_input("Fin de session nocturne locale", value=datetime.strptime("06:00", "%H:%M").time(), key="nex_persist_end")
+                submitted = st.form_submit_button("Enregistrer ma candidature", type="primary", use_container_width=True)
+            if submitted:
+                try:
+                    created = cloud_storage.create_night_exchange_app(
+                        supabase_client, current_user, app_name, app_country, app_timezone,
+                        app_categories, offered, wanted,
+                        night_start.strftime("%H:%M"), night_end.strftime("%H:%M"),
+                        workspace_id=nex_workspace,
+                    )
+                    st.success("Candidature enregistrée. Son statut est « En attente de validation ».")
+                    st.session_state["nex_last_created_at"] = datetime.now(timezone.utc).isoformat()
+                except Exception as exc:
+                    st.error("Enregistrement impossible. Si la migration n’a pas encore été appliquée, exécutez d’abord supabase_night_exchange_registry.sql dans Supabase.")
+                    st.caption(f"Diagnostic : {type(exc).__name__}")
+
+        with nex_tab_views[2]:
+            st.markdown("#### Suivi de mes candidatures")
+            try:
+                own_apps = cloud_storage.list_my_night_exchange_apps(
+                    supabase_client, current_user, workspace_id=nex_workspace, limit=200
+                )
+                if not own_apps:
+                    st.info("Vous n’avez pas encore enregistré de candidature dans cet espace.")
+                for app in own_apps:
+                    with st.container(border=True):
+                        status_labels = {
+                            "pending": "En attente", "approved": "Approuvée",
+                            "rejected": "Refusée", "suspended": "Suspendue",
+                        }
+                        st.markdown(f"**{app['app_name']}** · {app['country']}")
+                        st.caption("Statut : " + status_labels.get(app["status"], app["status"]))
+                        st.write("Domaines : " + ", ".join(app.get("categories") or []))
+                        if app.get("moderation_note"):
+                            st.info("Note de modération : " + app["moderation_note"])
+                        st.caption(f"Fuseau : {app['timezone']} · {str(app['night_start'])[:5]}–{str(app['night_end'])[:5]}")
+            except Exception as exc:
+                st.error("Impossible de lire vos candidatures. Vérifiez l’application de la migration Supabase.")
+                st.caption(f"Diagnostic : {type(exc).__name__}")
+
+        if nex_is_admin:
+            with nex_tab_views[3]:
+                st.markdown("#### Console de validation SOWIA")
+                st.caption("Les décisions de modération sont contrôlées par une fonction SQL qui vérifie le rôle administrateur signé.")
+                try:
+                    pending_apps = cloud_storage.list_night_exchange_apps_for_admin(
+                        supabase_client, current_user, limit=200
+                    )
+                    if not pending_apps:
+                        st.success("Aucune candidature à traiter.")
+                    for app in pending_apps:
+                        with st.container(border=True):
+                            st.markdown(f"**{app['app_name']}** · {app['country']}")
+                            st.caption(f"Statut : {app['status']} · Fuseau : {app['timezone']}")
+                            st.write("Domaines : " + ", ".join(app.get("categories") or []))
+                            st.write("Propose : " + (app.get("services_offered") or "Non renseigné"))
+                            st.write("Recherche : " + (app.get("services_wanted") or "Non renseigné"))
+                            note = st.text_area("Note de modération", key=f"nex_admin_note_{app['id']}", max_chars=1000)
+                            action_cols = st.columns(3)
+                            for col, action, label in zip(
+                                action_cols, ["approved", "rejected", "suspended"],
+                                ["Approuver", "Refuser", "Suspendre"]
+                            ):
+                                with col:
+                                    if st.button(label, key=f"nex_admin_{action}_{app['id']}", use_container_width=True):
+                                        try:
+                                            cloud_storage.admin_review_night_exchange_app(
+                                                supabase_client, current_user, app["id"], action, note
+                                            )
+                                            st.success("Décision enregistrée.")
+                                            st.rerun()
+                                        except Exception as exc:
+                                            st.error("Décision refusée par le contrôle de sécurité ou indisponible.")
+                                            st.caption(f"Diagnostic : {type(exc).__name__}")
+                except Exception as exc:
+                    st.error("La console de modération n’est pas disponible. Vérifiez la migration et les droits administrateur Supabase.")
+                    st.caption(f"Diagnostic : {type(exc).__name__}")
 
 elif page == "SOW IA Business Club":
     st.subheader("🏛️ SOW IA BUSINESS CLUB")
