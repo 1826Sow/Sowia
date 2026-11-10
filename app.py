@@ -711,6 +711,42 @@ if page in ("Hub SOWIA", "Accueil"):
             with admin_cols[1]:
                 st.button("Ouvrir les paramètres", key="hub_pillar_admin_settings",
                           use_container_width=True, on_click=go_to_page, args=("Paramètres",))
+        st.divider()
+        st.markdown("### 🎛️ Centre de pilotage global")
+        st.caption(
+            "Vue de synthèse des six piliers. Les compteurs sont affichés uniquement "
+            "lorsqu'une lecture réelle des données a abouti ; les fonctions non reliées "
+            "à un indicateur centralisé sont signalées comme telles."
+        )
+        crm_measure = (
+            f"{leads_count} piste(s) CRM · {active_leads_count} en suivi"
+            if leads_count is not None and active_leads_count is not None
+            else "Données CRM indisponibles"
+        )
+        decision_measure = (
+            f"{decision_count} décision(s) · {completed_decisions} évaluée(s)"
+            if decision_count is not None and completed_decisions is not None
+            else "Données du laboratoire indisponibles"
+        )
+        pilotage_rows = [
+            {"Pilier": "1 · Intelligence & décisions", "Mesure disponible": decision_measure,
+             "Prochaine priorité": "Renseigner les résultats réels pour alimenter les comparaisons."},
+            {"Pilier": "2 · Entreprises & collaborations", "Mesure disponible": crm_measure,
+             "Prochaine priorité": "Qualifier les pistes et suivre les réponses des partenaires."},
+            {"Pilier": "3 · Club Privé & VIP", "Mesure disponible": "Indicateurs centralisés non connectés",
+             "Prochaine priorité": "Activer la base Business Club et vérifier les accès membres."},
+            {"Pilier": "4 · Développement international", "Mesure disponible": "Indicateurs centralisés non connectés",
+             "Prochaine priorité": "Structurer les marchés cibles et les campagnes par pays."},
+            {"Pilier": "5 · Finance & marchés", "Mesure disponible": "Suivi manuel ; cotations live non connectées",
+             "Prochaine priorité": "Connecter des sources de marché fiables avant toute analyse temps réel."},
+            {"Pilier": "6 · Sécurité & administration", "Mesure disponible": "Contrôles d'accès existants",
+             "Prochaine priorité": "Finaliser les migrations restantes et contrôler les droits RLS."},
+        ]
+        st.dataframe(pilotage_rows, use_container_width=True, hide_index=True)
+        st.caption(
+            "Cette vue ne constitue pas un audit de conformité ni une mesure de performance. "
+            "Les lignes indiquées comme non connectées ne sont pas comptées comme zéro."
+        )
     else:
         st.info("L’espace Professionnel complet est réservé à un accès Premium actif. Les outils personnels restent disponibles.")
         st.button("Découvrir Premium", key="hub_premium", on_click=go_to_page, args=("Abonnement",))
