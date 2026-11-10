@@ -127,3 +127,15 @@ La fonction atomique refuse maintenant de remplacer **tout droit Premium déjà 
 - deux webhooks simultanés pour une même commande : une seule transaction peut confirmer la commande grâce au verrouillage `FOR UPDATE`.
 
 Ces tests SQL restent à exécuter dans un projet Supabase de test. La migration n'est pas une preuve d'exécution ni de conformité réglementaire.
+
+
+## Préparation du parcours de commande
+
+Deux modules neutres vis-à-vis du prestataire sont maintenant ajoutés :
+
+- `crypto_checkout.py` valide côté serveur l'utilisateur, l'espace, le produit, le prix EUR, l'actif, le réseau, le montant crypto et l'expiration (5 à 60 minutes), puis prépare un objet de commande `pending`.
+- `validate_hosted_checkout_url` n'accepte que les liens HTTPS dont l'hôte exact figure dans une liste blanche explicite.
+
+Tests écrits dans `tests/test_crypto_checkout.py` pour les commandes valides, les valeurs hors limites, les dates sans fuseau, les actifs/réseaux non autorisés et les liens de paiement non fiables.
+
+Ces fonctions ne créent pas encore de commande dans Supabase et ne contactent aucun prestataire. Le taux de conversion EUR/crypto doit venir du prestataire au moment de créer le checkout, avec horodatage et durée de validité ; il ne doit jamais être inventé par SOW IA. Le module ne doit pas être branché à l'interface client tant qu'un prestataire n'est pas retenu et que son domaine officiel n'est pas vérifié.
