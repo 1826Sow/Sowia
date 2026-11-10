@@ -13,8 +13,8 @@ create table if not exists public.sowia_global_action_plans (
     due_date date not null,
     success_metric text not null check (char_length(btrim(success_metric)) between 1 and 500),
     stop_condition text not null check (char_length(btrim(stop_condition)) between 1 and 500),
+    approver_id uuid not null references auth.users(id),
     status text not null default 'draft' check (status in ('draft','submitted','approved','rejected','completed','cancelled')),
-    approver_id uuid references auth.users(id),
     approval_note text not null default '' check (char_length(approval_note) <= 1000),
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
@@ -46,7 +46,7 @@ grant select, insert on public.sowia_global_action_plans to authenticated;
 grant select on public.sowia_global_action_audit to authenticated;
 drop policy if exists sowia_action_plan_insert on public.sowia_global_action_plans;
 create policy sowia_action_plan_insert on public.sowia_global_action_plans
-for insert to authenticated with check (creator_id = auth.uid() and status = 'draft' and approver_id is null);
+for insert to authenticated with check (creator_id = auth.uid() and status = 'draft' and approver_id <> creator_id);
 create or replace function public.sowia_action_transition(p_plan_id uuid, p_next_status text, p_note text default '')
 returns void language plpgsql security definer set search_path = public, auth as $$
 declare p public.sowia_global_action_plans%rowtype;
@@ -58,8 +58,8 @@ begin
  if char_length(coalesce(p_note,'')) > 1000 then raise exception 'Note too long'; end if;
  if p.status = 'draft' and p_next_status = 'submitted' and p.creator_id = actor then
    update public.sowia_global_action_plans set status='submitted', updated_at=now() where id=p.id;
- elsif p.status = 'submitted' and p_next_status in ('approved','rejected') and p.creator_id <> actor then
-   update public.sowia_global_action_plans set status=p_next_status, approver_id=actor,
+ elsif p.status = 'submitted' and p_next_status in ('approved','rejected') and p.approver_id = actor and p.creator_id <> actor then
+   update public.sowia_global_action_plans set status=p_next_status,
      approval_note=coalesce(p_note,''), approved_at=case when p_next_status='approved' then now() else null end,
      updated_at=now() where id=p.id;
  elsif p.status = 'approved' and p_next_status='completed' and p.creator_id=actor then
