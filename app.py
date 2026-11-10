@@ -2253,6 +2253,33 @@ elif page == "Revenus & paiements":
                             "La synchronisation PayPal n'a pas abouti. "
                             "Aucune échéance non vérifiée n'a été ajoutée."
                         )
+            if st.button(
+                "Vérifier les remboursements PayPal des achats ponctuels (90 jours)",
+                key="sync_paypal_one_time_refunds",
+            ):
+                admin_client = premium_access.create_admin_client()
+                if admin_client is None:
+                    st.error("Synchronisation indisponible : accès serveur Supabase manquant.")
+                else:
+                    try:
+                        refund_result = paypal_payments.sync_one_time_paypal_refunds(
+                            admin_client, str(current_user.id), days=90, limit=500
+                        )
+                        st.success(
+                            f"Contrôle terminé : {refund_result['captures_checked']} capture(s) vérifiée(s), "
+                            f"{refund_result['refunds_reconciled']} remboursement(s) rapproché(s) au montant exact."
+                        )
+                        if refund_result["limit_reached"]:
+                            st.warning(
+                                "La limite de 500 captures est atteinte. Une période plus courte "
+                                "ou une pagination sera nécessaire pour contrôler tout l'historique."
+                            )
+                        st.rerun()
+                    except Exception:
+                        st.error(
+                            "Le contrôle des remboursements ponctuels PayPal a échoué. "
+                            "Aucune somme non vérifiée n'a été ajoutée au registre."
+                        )
             summaries = financial_reporting.summarize_financial_transactions(rows)
             if not rows:
                 st.info(
