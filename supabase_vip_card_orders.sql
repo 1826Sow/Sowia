@@ -60,3 +60,17 @@ begin
 end; $$;
 revoke all on function public.sowia_admin_update_vip_card_order(uuid,text,numeric,text,date,text,text) from public,anon;
 grant execute on function public.sowia_admin_update_vip_card_order(uuid,text,numeric,text,date,text,text) to authenticated;
+
+
+-- The customer, not an administrator, explicitly accepts a published quote.
+create or replace function public.sowia_member_approve_vip_card_quote(p_order_id uuid)
+returns void language plpgsql security definer set search_path=public,auth as $$
+begin
+ update public.sowia_vip_card_orders set status='approved',updated_at=now()
+ where id=p_order_id and user_id=(select auth.uid()) and status='quoted'
+ and quote_amount is not null and currency is not null
+ and (quote_valid_until is null or quote_valid_until >= current_date);
+ if not found then raise exception 'No valid quote is available for approval'; end if;
+end; $$;
+revoke all on function public.sowia_member_approve_vip_card_quote(uuid) from public,anon;
+grant execute on function public.sowia_member_approve_vip_card_quote(uuid) to authenticated;
