@@ -151,7 +151,7 @@ def test_sync_rejects_external_pagination_host(monkeypatch):
         raise AssertionError("External pagination host must be rejected")
 
 
-def test_sync_reconciles_exact_cumulative_refund_amounts(monkeypatch):
+def test_sync_flags_refunds_for_manual_review_without_inventing_amounts(monkeypatch):
     monkeypatch.setattr(paypal, "paypal_subscription_configuration", lambda: {
         "mode": "sandbox", "base_url": "https://api-m.sandbox.paypal.com",
         "client_id": "id", "client_secret": "secret",
@@ -170,57 +170,12 @@ def test_sync_reconciles_exact_cumulative_refund_amounts(monkeypatch):
                 {"id": "CAPTURE-FULL", "status": "REFUNDED"},
             ], "links": []}
 
-    class CaptureResponse:
-        def __init__(self, capture):
-            self.capture = capture
-        def raise_for_status(self):
-            pass
-        def json(self):
-            return self.capture
-
-    capture_details = {
-        "CAPTURE-PARTIAL": {
-            "id": "CAPTURE-PARTIAL", "status": "PARTIALLY_REFUNDED",
-            "amount": {"currency_code": "EUR", "value": "9.90"},
-            "seller_receivable_breakdown": {
-                "gross_amount": {"currency_code": "EUR", "value": "9.90"},
-                },
-            "seller_payable_breakdown": {
-                "total_refunded_amount": {"currency_code": "EUR", "value": "2.50"},
-            },
-            "update_time": "2026-11-10T10:30:00Z",
-        },
-        "CAPTURE-FULL": {
-            "id": "CAPTURE-FULL", "status": "REFUNDED",
-            "amount": {"currency_code": "EUR", "value": "9.90"},
-            "seller_receivable_breakdown": {
-                "gross_amount": {"currency_code": "EUR", "value": "9.90"},
-                },
-            "seller_payable_breakdown": {
-                "total_refunded_amount": {"currency_code": "EUR", "value": "9.90"},
-            },
-            "update_time": "2026-11-10T11:30:00Z",
-        },
-    }
-    def fake_get(url, **kwargs):
-        if "/v1/billing/subscriptions/" in url:
-            return PageResponse()
-        capture_id = url.rsplit("/", 1)[-1]
-        return CaptureResponse(capture_details[capture_id])
-    monkeypatch.setattr(paypal.requests, "get", fake_get)
-
+    monkeypatch.setattr(paypal.requests, "get", lambda *a, **k: PageResponse())
     import financial_ledger
-    flagged, reconciled = [], []
+    flagged = []
     monkeypatch.setattr(
         financial_ledger, "flag_paypal_refund_for_review",
         lambda *a, **k: flagged.append(k["transaction"]["id"]),
-    )
-    monkeypatch.setattr(
-        financial_ledger, "record_paypal_refund_total",
-        lambda *a, **k: reconciled.append(
-            (k["capture"]["id"],
-             k["capture"]["seller_payable_breakdown"]["total_refunded_amount"]["value"])
-        ),
     )
     monkeypatch.setattr(
         financial_ledger, "record_paypal_billing_transaction",
@@ -232,7 +187,6 @@ def test_sync_reconciles_exact_cumulative_refund_amounts(monkeypatch):
         "2026-11-01T00:00:00+00:00", "2026-11-11T00:00:00+00:00",
     )
     assert flagged == ["CAPTURE-PARTIAL", "CAPTURE-FULL"]
-    assert reconciled == [("CAPTURE-PARTIAL", "2.50"), ("CAPTURE-FULL", "9.90")]
     assert result["refunds_detected"] == 2
-    assert result["refunds_reconciled"] == 2
+    assert "refunds_reconciled" not in result
     assert result["recorded_or_already_present"] == 0
