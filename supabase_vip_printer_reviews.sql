@@ -21,9 +21,10 @@ create index if not exists sowia_vip_printer_reviews_public_idx
 alter table public.sowia_vip_printer_reviews enable row level security;
 
 drop policy if exists "Members read own or verified reviews" on public.sowia_vip_printer_reviews;
-create policy "Members read own or verified reviews"
+drop policy if exists "Members read own printer reviews" on public.sowia_vip_printer_reviews;
+create policy "Members read own printer reviews"
 on public.sowia_vip_printer_reviews for select to authenticated
-using (reviewer_user_id=(select auth.uid()) or status='verified');
+using (reviewer_user_id=(select auth.uid()));
 
 drop policy if exists "SOW IA admins read all printer reviews" on public.sowia_vip_printer_reviews;
 create policy "SOW IA admins read all printer reviews"
@@ -57,3 +58,18 @@ begin
 end; $$;
 revoke all on function public.sowia_admin_moderate_printer_review(uuid,text,text) from public,anon;
 grant execute on function public.sowia_admin_moderate_printer_review(uuid,text,text) to authenticated;
+
+-- Public rating data is deliberately de-identified: no reviewer ID, order reference,
+-- moderation note, or free-text comment is exposed through this function.
+create or replace function public.sowia_public_vip_printer_review_scores()
+returns table (
+ supplier_id uuid, quality_score smallint, deadline_score smallint,
+ price_score smallint, communication_score smallint
+) language sql stable security definer set search_path=public as $$
+ select r.supplier_id,r.quality_score,r.deadline_score,r.price_score,r.communication_score
+ from public.sowia_vip_printer_reviews r
+ where r.status='verified'
+ and exists(select 1 from public.sowia_vip_printer_suppliers s where s.id=r.supplier_id and s.status='verified');
+$$;
+revoke all on function public.sowia_public_vip_printer_review_scores() from public,anon;
+grant execute on function public.sowia_public_vip_printer_review_scores() to authenticated;
