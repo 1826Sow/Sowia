@@ -223,3 +223,54 @@ def set_accessibility_preferences(client, user, preferences):
         )
         .execute().data
     )
+
+
+RELATIONSHIP_EVENT_STATUSES = {"À faire", "Terminé", "Annulé"}
+
+
+def add_relationship_event(
+    client, user, title, event_type, due_date, notes="",
+    lead_id=None, contact_authorized=False, workspace_id="personal",
+):
+    """Create a private reminder in the authenticated user's workspace."""
+    from relationship_calendar import validate_event
+    event = validate_event(title, event_type, due_date, notes, contact_authorized)
+    return (
+        client.table("sowia_relationship_events")
+        .insert({
+            "user_id": _user_id(user),
+            "workspace_id": _workspace_id(workspace_id),
+            "lead_id": int(lead_id) if lead_id is not None else None,
+            **event,
+            "status": "À faire",
+        })
+        .execute().data
+    )
+
+
+def list_relationship_events(client, user, workspace_id="personal", limit=300):
+    """List only the authenticated user's reminders in the active workspace."""
+    safe_limit = min(max(int(limit), 1), 500)
+    return (
+        client.table("sowia_relationship_events")
+        .select("id, lead_id, title, event_type, due_date, notes, contact_authorized, status, created_at, updated_at")
+        .eq("user_id", _user_id(user))
+        .eq("workspace_id", _workspace_id(workspace_id))
+        .order("due_date")
+        .limit(safe_limit)
+        .execute().data
+    )
+
+
+def update_relationship_event_status(client, user, event_id, status, workspace_id="personal"):
+    """Change the status of an owned reminder; never sends an external message."""
+    if status not in RELATIONSHIP_EVENT_STATUSES:
+        raise ValueError("Statut de rappel invalide.")
+    return (
+        client.table("sowia_relationship_events")
+        .update({"status": status, "updated_at": datetime.now(timezone.utc).isoformat()})
+        .eq("id", event_id)
+        .eq("user_id", _user_id(user))
+        .eq("workspace_id", _workspace_id(workspace_id))
+        .execute()
+    )
