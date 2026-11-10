@@ -151,7 +151,7 @@ def test_sync_rejects_external_pagination_host(monkeypatch):
         raise AssertionError("External pagination host must be rejected")
 
 
-def test_sync_flags_partial_and_full_refunds_for_manual_review(monkeypatch):
+def test_sync_reconciles_exact_cumulative_refund_amounts(monkeypatch):
     monkeypatch.setattr(paypal, "paypal_subscription_configuration", lambda: {
         "mode": "sandbox", "base_url": "https://api-m.sandbox.paypal.com",
         "client_id": "id", "client_secret": "secret",
@@ -161,27 +161,62 @@ def test_sync_flags_partial_and_full_refunds_for_manual_review(monkeypatch):
     })
     monkeypatch.setattr(paypal, "_access_token", lambda _config: "token")
 
-    class RefundResponse:
+    class PageResponse:
         def raise_for_status(self):
             pass
         def json(self):
             return {"transactions": [
-                {"id": "CAPTURE-PARTIAL", "status": "PARTIALLY_REFUNDED",
-                 "time": "2026-11-10T10:00:00Z",
-                 "amount_with_breakdown": {"gross_amount": {
-                     "currency_code": "EUR", "value": "9.90"}}},
-                {"id": "CAPTURE-FULL", "status": "REFUNDED",
-                 "time": "2026-11-10T11:00:00Z",
-                 "amount_with_breakdown": {"gross_amount": {
-                     "currency_code": "EUR", "value": "9.90"}}},
+                {"id": "CAPTURE-PARTIAL", "status": "PARTIALLY_REFUNDED"},
+                {"id": "CAPTURE-FULL", "status": "REFUNDED"},
             ], "links": []}
 
-    monkeypatch.setattr(paypal.requests, "get", lambda *a, **k: RefundResponse())
+    class CaptureResponse:
+        def __init__(self, capture):
+            self.capture = capture
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return self.capture
+
+    capture_details = {
+        "CAPTURE-PARTIAL": {
+            "id": "CAPTURE-PARTIAL", "status": "PARTIALLY_REFUNDED",
+            "amount": {"currency_code": "EUR", "value": "9.90"},
+            "seller_receivable_breakdown": {
+                "gross_amount": {"currency_code": "EUR", "value": "9.90"},
+                "total_refunded_amount": {"currency_code": "EUR", "value": "2.50"},
+            },
+            "update_time": "2026-11-10T10:30:00Z",
+        },
+        "CAPTURE-FULL": {
+            "id": "CAPTURE-FULL", "status": "REFUNDED",
+            "amount": {"currency_code": "EUR", "value": "9.90"},
+            "seller_receivable_breakdown": {
+                "gross_amount": {"currency_code": "EUR", "value": "9.90"},
+                "total_refunded_amount": {"currency_code": "EUR", "value": "9.90"},
+            },
+            "update_time": "2026-11-10T11:30:00Z",
+        },
+    }
+    def fake_get(url, **kwargs):
+        if "/v1/billing/subscriptions/" in url:
+            return PageResponse()
+        capture_id = url.rsplit("/", 1)[-1]
+        return CaptureResponse(capture_details[capture_id])
+    monkeypatch.setattr(paypal.requests, "get", fake_get)
+
     import financial_ledger
-    flagged = []
+    flagged, reconciled = [], []
     monkeypatch.setattr(
         financial_ledger, "flag_paypal_refund_for_review",
         lambda *a, **k: flagged.append(k["transaction"]["id"]),
+    )
+    monkeypatch.setattr(
+        financial_ledger, "record_paypal_refund_total",
+        lambda *a, **k: reconciled.append(
+            (k["capture"]["id"],
+             k["capture"]["seller_receivable_breakdown"]["total_refunded_amount"]["value"])
+        ),
     )
     monkeypatch.setattr(
         financial_ledger, "record_paypal_billing_transaction",
@@ -193,6 +228,7 @@ def test_sync_flags_partial_and_full_refunds_for_manual_review(monkeypatch):
         "2026-11-01T00:00:00+00:00", "2026-11-11T00:00:00+00:00",
     )
     assert flagged == ["CAPTURE-PARTIAL", "CAPTURE-FULL"]
+    assert reconciled == [("CAPTURE-PARTIAL", "2.50"), ("CAPTURE-FULL", "9.90")]
     assert result["refunds_flagged_for_manual_review"] == 2
+    assert result["refunds_reconciled"] == 2
     assert result["recorded_or_already_present"] == 0
-
