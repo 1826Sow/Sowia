@@ -328,3 +328,15 @@ Le module `strategic_scenarios.py` et sa page « Stratégie & scénarios » cons
 - Un score élevé ne déclenche jamais une exécution automatique.
 
 **Limites actuelles :** les notes sont saisies manuellement, les scénarios restent en mémoire de session et aucune veille automatique, analyse juridique par pays, simulation financière ou exécution de pilote n'est encore raccordée à cette page. Les scénarios sont une aide à la décision, pas une preuve de conformité. La prochaine étape sera de relier des sources vérifiables, un historique persistant, des métriques de tests et un circuit d'approbation.
+
+## 14. Accessibilité de l'interface IA — première livraison
+
+La page « Assistant IA » propose désormais :
+- réponses conservées à l'écran en texte, y compris lorsque la lecture vocale est activée ;
+- lecture vocale facultative des réponses via l'API de synthèse vocale du navigateur/appareil ;
+- bouton explicite pour démarrer et arrêter la lecture ;
+- réglage de taille de texte et contraste renforcé.
+
+La lecture vocale dépend du support et des voix installées sur le navigateur ou l'appareil. Elle n'est pas un service audio hébergé par SOW IA.
+
+**À développer avant de déclarer l'accessibilité complète :** transcription temps réel de la parole entrante, sous-titres synchronisés pendant les appels, choix de langue/voix, mémorisation des préférences par utilisateur, navigation clavier et lecteur d'écran testée, réglages visuels plus fins et essais avec des personnes sourdes ou malentendantes. Une transcription en direct nécessitera un moteur de reconnaissance vocale et une interface audio dédiée ; elle n'est pas encore implémentée.
