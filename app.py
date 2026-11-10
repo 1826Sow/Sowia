@@ -426,7 +426,7 @@ page = st.radio(
     [
         "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "Opportunités et revenus", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -494,6 +494,7 @@ if page == "Accueil":
         ("🕘", "Historique", "Consultez vos conversations"),
         ("👑", "Abonnement", "Découvrez l’espace Premium"),
         ("🌍", "Développement mondial", "Trouvez des partenaires et préparez vos campagnes"),
+        ("📈", "Opportunités et revenus", "Suivez vos niches, offres et prévisions commerciales"),
         ("⚙️", "Paramètres", "Vérifiez votre configuration"),
         ("❓", "Aide", "Consultez les indications d’utilisation"),
     ]
@@ -1388,6 +1389,117 @@ elif page == "Abonnement":
 # Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.
 # Impossible de vérifier votre abonnement auprès de Supabase.
 # Impossible de préparer le paiement PayPal.
+
+elif page == "Opportunités et revenus":
+    st.subheader("📈 Opportunités et revenus de SOW IA")
+    st.caption(
+        "Pilotez les niches commerciales, les offres et les prévisions. "
+        "Les montants saisis ici sont des estimations, pas des ventes encaissées."
+    )
+    if not cloud_mode or current_user is None:
+        st.warning("Connectez-vous à votre espace sécurisé pour enregistrer durablement vos opportunités.")
+    else:
+        try:
+            from business_revenue import (
+                CURRENCIES, NICHE_CATEGORIES, STAGES,
+                add_opportunity, delete_opportunity, list_opportunities,
+                opportunity_metrics, update_opportunity_stage,
+            )
+            business_workspace = st.session_state.get("workspace_id", "personal")
+            opportunities = list_opportunities(supabase_client, current_user, business_workspace)
+            metrics = opportunity_metrics(opportunities)
+
+            metric_cols = st.columns(3)
+            metric_cols[0].metric("Niches / offres suivies", metrics["total"])
+            metric_cols[1].metric("Offres actives", metrics["active"])
+            metric_cols[2].metric("Revenus confirmés", "0", help="Aucun paiement n'est comptabilisé dans ce tableau de prévisions.")
+            st.info(
+                "Les revenus encaissés ne sont pas encore rapprochés automatiquement ici. "
+                "Les prévisions restent séparées des paiements PayPal réellement confirmés."
+            )
+            if metrics["by_currency"]:
+                st.markdown("#### Prévisions mensuelles par devise")
+                forecast_rows = [
+                    {
+                        "Devise": currency,
+                        "Revenu potentiel": values["forecast_monthly"],
+                        "Coûts estimés": values["estimated_cost_monthly"],
+                        "Potentiel des offres actives": values["active_forecast_monthly"],
+                    }
+                    for currency, values in metrics["by_currency"].items()
+                ]
+                st.dataframe(forecast_rows, use_container_width=True, hide_index=True)
+            else:
+                st.caption("Aucune prévision enregistrée pour le moment.")
+
+            with st.expander("＋ Ajouter une opportunité commerciale", expanded=not opportunities):
+                with st.form("business_opportunity_form", clear_on_submit=True):
+                    niche = st.selectbox("Niche", NICHE_CATEGORIES)
+                    offer = st.text_input("Offre ou problème client à résoudre", max_chars=240)
+                    stage = st.selectbox("Étape", STAGES)
+                    value_cols = st.columns(3)
+                    expected = value_cols[0].number_input("Revenu mensuel potentiel", min_value=0.0, max_value=1000000000.0, value=0.0, step=50.0)
+                    cost = value_cols[1].number_input("Coût mensuel estimé", min_value=0.0, max_value=1000000000.0, value=0.0, step=10.0)
+                    currency = value_cols[2].selectbox("Devise", CURRENCIES)
+                    source_url = st.text_input("Source ou étude de marché (facultatif)", max_chars=500)
+                    submitted = st.form_submit_button("Enregistrer l'opportunité", type="primary")
+                if submitted:
+                    try:
+                        add_opportunity(
+                            supabase_client, current_user, business_workspace,
+                            niche=niche, offer=offer, stage=stage,
+                            expected_monthly_revenue=expected,
+                            estimated_monthly_cost=cost, currency=currency,
+                            source_url=source_url,
+                        )
+                        st.success("Opportunité enregistrée dans votre espace.")
+                        st.rerun()
+                    except (ValueError, PermissionError) as exc:
+                        st.error(str(exc))
+                    except Exception:
+                        st.error("Enregistrement impossible. Vérifiez que supabase_business_opportunities.sql a été exécuté dans Supabase.")
+
+            st.markdown("#### Pipeline commercial")
+            if not opportunities:
+                st.info("Ajoutez une première niche ou offre pour commencer à mesurer son potentiel.")
+            for item in opportunities:
+                title = f"{item['niche']} · {item['offer']} · {item['stage']}"
+                with st.expander(title):
+                    st.caption(
+                        f"Prévision : {float(item.get('expected_monthly_revenue') or 0):,.2f} "
+                        f"{item.get('currency', 'EUR')} / mois · Coût estimé : "
+                        f"{float(item.get('estimated_monthly_cost') or 0):,.2f} {item.get('currency', 'EUR')} / mois"
+                    )
+                    if item.get("source_url"):
+                        st.link_button("Consulter la source", item["source_url"])
+                    selected_stage = st.selectbox(
+                        "Faire évoluer l'étape", STAGES,
+                        index=STAGES.index(item["stage"]) if item.get("stage") in STAGES else 0,
+                        key=f"business_stage_{item['id']}",
+                    )
+                    action_cols = st.columns(2)
+                    if action_cols[0].button("Enregistrer l'étape", key=f"business_update_{item['id']}"):
+                        try:
+                            update_opportunity_stage(
+                                supabase_client, current_user, item["id"],
+                                selected_stage, business_workspace,
+                            )
+                            st.success("Étape mise à jour.")
+                            st.rerun()
+                        except Exception:
+                            st.error("La mise à jour a échoué.")
+                    if action_cols[1].button("Supprimer", key=f"business_delete_{item['id']}"):
+                        try:
+                            delete_opportunity(supabase_client, current_user, item["id"], business_workspace)
+                            st.success("Opportunité supprimée.")
+                            st.rerun()
+                        except Exception:
+                            st.error("La suppression a échoué.")
+        except Exception:
+            st.error(
+                "Le tableau des opportunités n'est pas encore initialisé. "
+                "Exécutez supabase_business_opportunities.sql dans Supabase > SQL Editor, puis rechargez l'application."
+            )
 
 elif page == "Paramètres":
     st.subheader(translate_ui("⚙️ Paramètres", language))
