@@ -665,3 +665,16 @@ def list_approved_night_exchange_apps(client, user, country=None, limit=100):
         min(max(int(limit), 1), 200)
     ).execute().data
 
+def admin_review_night_exchange_app(client, user, app_id, status, moderation_note=""):
+    """Review a listing through a SQL RPC that checks the signed admin claim."""
+    _user_id(user)
+    if status not in {"approved", "rejected", "suspended"}:
+        raise ValueError("Statut de modération invalide.")
+    if not isinstance(moderation_note, str) or len(moderation_note) > 1000:
+        raise ValueError("Note de modération invalide.")
+    return client.rpc("sowia_admin_review_nex_app", {
+        "p_app_id": str(app_id),
+        "p_status": status,
+        "p_moderation_note": moderation_note,
+    }).execute()
+
