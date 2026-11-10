@@ -2050,7 +2050,7 @@ elif page == "SOW IA Business Club":
                         st.divider()
                         st.markdown("#### 🛡️ Administration SOW IA — validation des imprimeurs")
                         st.caption("Accès administrateur détecté dans les métadonnées sécurisées du compte. La base Supabase vérifie également ce droit à chaque action.")
-                        supplier_rows = [row for row in candidates if row.get("status") != "suspended"]
+                        supplier_rows = list(candidates)
                         if supplier_rows:
                             supplier_labels = {
                                 "{} — {} [{}]".format(row["name"], row["country"], row["status"]): row["id"]
@@ -2070,7 +2070,7 @@ elif page == "SOW IA Business Club":
                                     st.rerun()
                                 except Exception as exc:
                                     st.error("Décision refusée par Supabase : " + str(exc))
-                        pending_quotes = [row for row in quotes if row.get("status") != "expired"]
+                        pending_quotes = list(quotes)
                         if pending_quotes:
                             quote_labels = {
                                 "{} — {} cartes — {} {}".format(row["destination_country"], row["quantity"], row["printing_cost"], row["currency"]): row["id"]
