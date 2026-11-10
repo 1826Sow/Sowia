@@ -1,6 +1,6 @@
 """Timezone-aware SOWIA Night Exchange rules; no payment or scheduler integration."""
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Iterable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
