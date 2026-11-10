@@ -250,6 +250,7 @@ def build_morning_report(events: Iterable[dict]) -> dict:
     counts = {name: 0 for name in sorted(allowed)}
     confirmed_spend = Decimal("0.00")
     currencies = set()
+    spend_by_currency = {}
     for event in rows:
         payload = event.get("event_payload") or {}
         if not isinstance(payload, dict):
@@ -266,6 +267,7 @@ def build_morning_report(events: Iterable[dict]) -> dict:
             if len(currency) != 3 or not currency.isalpha():
                 raise NightExchangeError("Devise invalide dans un événement de paiement.")
             confirmed_spend += amount
+            spend_by_currency[currency] = spend_by_currency.get(currency, Decimal("0.00")) + amount
             currencies.add(currency)
         counts[event_type] += 1
     return {
@@ -274,6 +276,7 @@ def build_morning_report(events: Iterable[dict]) -> dict:
         "counts": counts,
         "confirmed_spend": confirmed_spend,
         "spend_currencies": sorted(currencies),
+        "confirmed_spend_by_currency": spend_by_currency,
         "has_recorded_activity": bool(sum(counts.values())),
         "scope": "Synthèse des événements fournis uniquement; aucun événement manquant n'est estimé.",
     }
