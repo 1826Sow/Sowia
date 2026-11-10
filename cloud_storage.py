@@ -678,3 +678,18 @@ def admin_review_night_exchange_app(client, user, app_id, status, moderation_not
         "p_moderation_note": moderation_note,
     }).execute()
 
+def list_night_exchange_apps_for_admin(client, user, limit=200):
+    """Read the moderation queue; SQL RLS restricts this to signed administrators."""
+    _user_id(user)
+    metadata = getattr(user, "app_metadata", None) or {}
+    if not (metadata.get("sowia_admin") is True or metadata.get("role") == "admin"):
+        raise PermissionError("Accès administrateur requis.")
+    return (
+        client.table("sowia_night_exchange_apps")
+        .select("id,user_id,workspace_id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,status,created_at,updated_at")
+        .in_("status", ["pending", "rejected", "suspended"])
+        .order("created_at", desc=False)
+        .limit(min(max(int(limit), 1), 500))
+        .execute().data
+    )
+
