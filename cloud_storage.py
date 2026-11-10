@@ -1085,6 +1085,33 @@ def delete_global_alert(client, user, alert_id):
         .eq("user_id", _user_id(user)).eq("id", str(alert_id)).execute().data
     )
 
+
+
+# SOWIA GLOBAL STRATEGIC FORECAST — private scenario archive.
+def save_global_forecast(client, user, forecast):
+    from sowia_global_forecast import validate_saved_forecast
+    uid = _user_id(user)
+    clean = validate_saved_forecast(forecast)
+    row = {"user_id": uid, **clean}
+    return client.table("sowia_global_forecasts").insert(row).execute().data
+
+
+def list_global_forecasts(client, user, limit=100):
+    return (
+        client.table("sowia_global_forecasts")
+        .select("id,title,country,sector,horizon,assessment_score,confidence,evidence_level,scenarios,assumptions,alert_counts,risk_pressure,opportunity_signal,created_at")
+        .eq("user_id", _user_id(user))
+        .order("created_at", desc=True)
+        .limit(min(max(int(limit), 1), 200)).execute().data
+    )
+
+
+def delete_global_forecast(client, user, forecast_id):
+    return (
+        client.table("sowia_global_forecasts").delete()
+        .eq("user_id", _user_id(user)).eq("id", str(forecast_id)).execute().data
+    )
+
 # SOWIA GLOBAL ID — private profile registry and safe public directory.
 def _validate_global_profile(display_name, app_name="", organization="", country="",
                              languages="", website="", short_description="",
