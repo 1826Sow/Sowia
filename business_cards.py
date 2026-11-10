@@ -3,6 +3,10 @@ from __future__ import annotations
 
 from html import escape
 from urllib.parse import urlparse
+from io import BytesIO
+
+import qrcode
+import qrcode.image.svg
 
 
 STYLES = {"Noir & or": ("#151515", "#d6b56d"), "Vert & ivoire": ("#173d32", "#f3eddf"), "Bleu professionnel": ("#17365d", "#e8eef6")}
@@ -64,6 +68,15 @@ def build_vcard(card):
         lines.append(f"ADR;TYPE=WORK:;;;;;;{esc(card['country'])}")
     lines.extend(["END:VCARD", ""])
     return "\r\n".join(lines)
+
+
+def build_qr_svg(card):
+    """Create an offline QR code containing the member's vCard contact details."""
+    payload = build_vcard(card)
+    image = qrcode.make(payload, image_factory=qrcode.image.svg.SvgPathImage, box_size=6, border=3)
+    output = BytesIO()
+    image.save(output)
+    return output.getvalue().decode("utf-8")
 
 
 def build_printable_card_html(card):
