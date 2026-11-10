@@ -2240,8 +2240,8 @@ elif page == "Revenus & paiements":
                             f"Synchronisation terminée : "
                             f"{sum(x['recorded_or_already_present'] for x in sync_results)} "
                             f"échéance(s) confirmée(s), "
-                            f"{sum(x.get('refunds_reconciled', 0) for x in sync_results)} "
-                            f"remboursement(s) rapproché(s) au montant PayPal exact, "
+                            f"{sum(x.get('refunds_detected', 0) for x in sync_results)} "
+                            f"remboursement(s) détecté(s) et placé(s) en contrôle manuel, "
                             f"{sum(x['ignored_non_completed'] for x in sync_results)} "
                             f"transaction(s) non terminée(s) ignorée(s)."
                         )
@@ -2267,7 +2267,7 @@ elif page == "Revenus & paiements":
                         )
                         st.success(
                             f"Contrôle terminé : {refund_result['captures_checked']} capture(s) vérifiée(s), "
-                            f"{refund_result['refunds_reconciled']} remboursement(s) rapproché(s) au montant exact."
+                            f"{refund_result['refunds_flagged_for_manual_review']} remboursement(s) détecté(s) et placé(s) en contrôle manuel."
                         )
                         if refund_result["limit_reached"]:
                             st.warning(
