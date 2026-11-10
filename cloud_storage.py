@@ -398,3 +398,53 @@ def mark_business_club_notification_read(client, user, notification_id):
     }).eq("id", int(notification_id)).eq("user_id", uid).is_(
         "read_at", "null"
     ).execute()
+
+
+def create_vip_printer_supplier(client, user, supplier):
+    """Persist a member-submitted supplier as an unverified candidate."""
+    from printer_network import validate_printer_candidate
+    from uuid import UUID
+    clean = validate_printer_candidate(supplier)
+    try:
+        supplier_id = str(UUID(clean["id"]))
+    except (ValueError, TypeError, AttributeError):
+        raise ValueError("Identifiant d'imprimeur invalide.")
+    payload = {
+        "id": supplier_id, "submitted_by": _user_id(user),
+        "name": clean["name"], "country": clean["country"],
+        "website": clean["website"], "capabilities": clean["capabilities"],
+        "status": "candidate",
+    }
+    return client.table("sowia_vip_printer_suppliers").insert(payload).execute().data
+
+
+def list_vip_printer_suppliers(client, user, limit=200):
+    """RLS exposes only own candidates and verified suppliers."""
+    _user_id(user)
+    return client.table("sowia_vip_printer_suppliers").select(
+        "id,name,country,website,capabilities,status,created_at"
+    ).order("created_at", desc=True).limit(min(max(int(limit), 1), 500)).execute().data
+
+
+def create_vip_printer_quote(client, user, quote):
+    """Persist a received quote; approval remains an administrator-only SQL action."""
+    from printer_network import validate_printer_quote
+    clean = validate_printer_quote(quote)
+    payload = {
+        "id": clean["id"], "supplier_id": clean["supplier_id"],
+        "submitted_by": _user_id(user), "destination_country": clean["destination_country"],
+        "quantity": clean["quantity"], "currency": clean["currency"],
+        "printing_cost": str(clean["printing_cost"]), "shipping_cost": str(clean["shipping_cost"]),
+        "lead_days": clean["lead_days"], "paper_finish": clean["paper_finish"],
+        "valid_until": clean["valid_until"], "status": "received",
+    }
+    return client.table("sowia_vip_printer_quotes").insert(payload).execute().data
+
+
+def list_vip_printer_quotes(client, user, limit=300):
+    """RLS exposes own received quotes and validated quotes for verified suppliers."""
+    _user_id(user)
+    return client.table("sowia_vip_printer_quotes").select(
+        "id,supplier_id,destination_country,quantity,currency,printing_cost,shipping_cost,"
+        "lead_days,paper_finish,valid_until,status,created_at"
+    ).order("created_at", desc=True).limit(min(max(int(limit), 1), 500)).execute().data
