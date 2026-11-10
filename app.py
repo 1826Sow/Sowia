@@ -1958,6 +1958,105 @@ elif page == "SOW IA Business Club":
                         st.info("Pour une impression physique, ouvrez le fichier HTML puis utilisez l'impression du navigateur à l'échelle 100 % (format 90 × 50 mm). La commande et la livraison par imprimeur partenaire seront activées dans une prochaine étape.")
                     except ValueError as exc:
                         st.error(str(exc))
+                st.markdown("#### 📦 Commander des cartes physiques")
+                st.caption("Cette demande ne déclenche ni paiement ni commande chez un imprimeur. SOW IA prépare d'abord un devis contrôlé.")
+                try:
+                    from vip_card_orders import validate_vip_card_order
+                    with st.form("sowia_vip_card_order_request"):
+                        order_name_default = card_data.get("display_name", "") if card_data else ""
+                        order_company_default = card_data.get("company", "") if card_data else ""
+                        order_name = st.text_input("Nom à imprimer", value=order_name_default)
+                        order_company = st.text_input("Entreprise", value=order_company_default)
+                        order_destination = st.text_input("Pays de livraison")
+                        order_style = st.selectbox("Modèle", ["Noir & or", "Vert & ivoire", "Bleu professionnel"],
+                            index=["Noir & or", "Vert & ivoire", "Bleu professionnel"].index(card_data["style"]) if card_data else 0)
+                        order_quantity = st.number_input("Quantité souhaitée", min_value=50, max_value=10000, value=500, step=50)
+                        order_notes = st.text_area("Précisions pour le devis (papier, finition, coins arrondis…)", max_chars=1000)
+                        order_consent = st.checkbox("Je confirme l'envoi de cette demande de devis à SOW IA.")
+                        order_submit = st.form_submit_button("Envoyer ma demande de devis", type="primary")
+                    if order_submit:
+                        if not order_consent:
+                            st.error("Confirmez l'envoi de la demande avant de continuer.")
+                        else:
+                            clean_order = validate_vip_card_order({
+                                "cardholder_name": order_name, "company": order_company,
+                                "destination_country": order_destination, "style": order_style,
+                                "quantity": int(order_quantity), "notes": order_notes,
+                            })
+                            cloud_storage.create_vip_card_order(supabase_client, current_user, clean_order)
+                            st.success("Demande enregistrée. Elle reste au statut « reçue » : aucun paiement n'a été effectué.")
+                            st.rerun()
+                    card_orders = cloud_storage.list_vip_card_orders(supabase_client, current_user)
+                    if card_orders:
+                        st.markdown("**Mes demandes et leur suivi**")
+                        status_labels = {
+                            "requested": "Demande reçue", "quoted": "Devis disponible",
+                            "approved": "Devis accepté", "paid": "Paiement confirmé",
+                            "in_production": "En fabrication", "shipped": "Expédiée",
+                            "delivered": "Livrée", "cancelled": "Annulée",
+                        }
+                        for card_order in card_orders:
+                            with st.container(border=True):
+                                st.write("**{}** · {} cartes · {}".format(
+                                    card_order["cardholder_name"], card_order["quantity"],
+                                    status_labels.get(card_order["status"], card_order["status"])
+                                ))
+                                st.caption("{} · Modèle {}".format(
+                                    card_order["destination_country"], card_order["style"]
+                                ))
+                                if card_order.get("quote_amount") is not None:
+                                    st.write("Devis : {} {}".format(card_order["quote_amount"], card_order.get("currency") or ""))
+                                    if card_order.get("quote_valid_until"):
+                                        st.caption("Valable jusqu'au " + str(card_order["quote_valid_until"]))
+                                if card_order.get("tracking_reference"):
+                                    st.write("Suivi : " + card_order["tracking_reference"])
+                                if card_order.get("admin_note"):
+                                    st.caption(card_order["admin_note"])
+                    user_metadata = getattr(current_user, "app_metadata", None) or {}
+                    if isinstance(user_metadata, dict) and user_metadata.get("sowia_admin") is True:
+                        st.divider()
+                        st.markdown("**Administration — devis et suivi des commandes VIP**")
+                        admin_orders = card_orders
+                        if admin_orders:
+                            order_labels = {
+                                "{} · {} cartes · {}".format(row["cardholder_name"], row["quantity"], row["created_at"]): row["id"]
+                                for row in admin_orders
+                            }
+                            with st.form("sowia_admin_vip_card_order"):
+                                chosen_order_label = st.selectbox("Demande à traiter", list(order_labels))
+                                admin_order_status = st.selectbox(
+                                    "Étape", ["quoted", "approved", "paid", "in_production", "shipped", "delivered", "cancelled"],
+                                    format_func=lambda value: {
+                                        "quoted": "Préparer le devis", "approved": "Devis accepté par le client",
+                                        "paid": "Paiement confirmé manuellement", "in_production": "En fabrication",
+                                        "shipped": "Expédiée", "delivered": "Livrée", "cancelled": "Annulée",
+                                    }[value],
+                                )
+                                admin_quote_amount = st.number_input("Montant total du devis", min_value=0.0, value=0.0, step=1.0)
+                                admin_currency = st.selectbox("Devise du devis", ["EUR", "USD", "GBP", "CHF", "CAD", "CNY", "JPY"])
+                                admin_quote_date = st.date_input("Validité du devis")
+                                admin_tracking = st.text_input("Référence de suivi (si expédiée)")
+                                admin_order_note = st.text_area("Information communiquée au client", max_chars=1000)
+                                admin_order_submit = st.form_submit_button("Enregistrer l'étape")
+                            if admin_order_submit:
+                                try:
+                                    cloud_storage.admin_update_vip_card_order(
+                                        supabase_client, current_user, order_labels[chosen_order_label],
+                                        admin_order_status,
+                                        quote_amount=admin_quote_amount if admin_order_status == "quoted" else None,
+                                        currency=admin_currency if admin_order_status == "quoted" else None,
+                                        quote_valid_until=admin_quote_date if admin_order_status == "quoted" else None,
+                                        tracking_reference=admin_tracking,
+                                        admin_note=admin_order_note,
+                                    )
+                                    st.success("Étape de commande mise à jour.")
+                                    st.rerun()
+                                except Exception as exc:
+                                    st.error("Mise à jour refusée : " + str(exc))
+                        else:
+                            st.info("Aucune demande de carte physique à traiter.")
+                except Exception as exc:
+                    st.warning("Le suivi des commandes physiques nécessite la migration supabase_vip_card_orders.sql. Détail : " + str(exc))
                 st.markdown("#### 🌐 Réseau international d'imprimeurs")
                 st.caption("Les candidats et devis sont conservés dans Supabase. Les statuts de validation sont réservés à l'administration SOW IA.")
                 import printer_network
