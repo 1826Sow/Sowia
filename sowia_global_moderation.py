@@ -26,3 +26,39 @@ def validate_profile_status(value, evidence_reference=""):
     if value == "verified" and not evidence:
         raise ValueError("Une référence de preuve est obligatoire pour vérifier un profil.")
     return value, evidence
+
+
+
+REPORT_PATTERN_THRESHOLD = 3
+
+
+def summarize_report_patterns(reports, threshold=REPORT_PATTERN_THRESHOLD):
+    """Flag repeated report patterns for human review; never infer guilt or auto-sanction."""
+    try:
+        minimum = max(2, int(threshold))
+    except (TypeError, ValueError):
+        minimum = REPORT_PATTERN_THRESHOLD
+    target_counts = {}
+    reporter_counts = {}
+    for report in reports or []:
+        if not isinstance(report, dict) or report.get("status") in {"dismissed", "resolved"}:
+            continue
+        target = str(report.get("reported_user_id") or "").strip()
+        reporter = str(report.get("reporter_id") or "").strip()
+        if target:
+            target_counts[target] = target_counts.get(target, 0) + 1
+        if reporter:
+            reporter_counts[reporter] = reporter_counts.get(reporter, 0) + 1
+    repeated_targets = [
+        {"account_id": account, "report_count": count}
+        for account, count in target_counts.items() if count >= minimum
+    ]
+    repeated_reporters = [
+        {"account_id": account, "report_count": count}
+        for account, count in reporter_counts.items() if count >= minimum
+    ]
+    return {
+        "threshold": minimum,
+        "repeated_targets": sorted(repeated_targets, key=lambda item: (-item["report_count"], item["account_id"])),
+        "repeated_reporters": sorted(repeated_reporters, key=lambda item: (-item["report_count"], item["account_id"])),
+    }
