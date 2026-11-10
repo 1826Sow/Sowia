@@ -203,3 +203,75 @@ def capture_premium_order(order_id: str, user_id: str):
         return _validate_completed_capture(result, normalized_order_id, user_id, config)
     except PermissionError as exc:
         raise RuntimeError("Les détails de la capture PayPal ne correspondent pas à l'achat Premium.") from exc
+
+
+def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, limit: int = 500):
+    """Reconcile refunded one-time captures already present in this user's ledger.
+
+    The ledger supplies the user-to-capture association; PayPal remains the
+    authority for the current capture/refund status and cumulative EUR amount.
+    """
+    from datetime import datetime, timedelta, timezone
+    import financial_ledger
+
+    config = paypal_configuration()
+    if not config or config["mode"] != "sandbox":
+        raise RuntimeError("La synchronisation des remboursements ponctuels est limitée à PayPal Sandbox.")
+    normalized_user_id = str(user_id or "").strip()
+    if not normalized_user_id or admin_client is None:
+        raise PermissionError("Compte utilisateur ou stockage serveur manquant.")
+    if not isinstance(days, int) or not 1 <= days <= 366:
+        raise ValueError("La période doit être comprise entre 1 et 366 jours.")
+    if not isinstance(limit, int) or not 1 <= limit <= 500:
+        raise ValueError("La limite doit être comprise entre 1 et 500 captures.")
+
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    result = (
+        admin_client.table("sowia_financial_transactions")
+        .select("provider_payment_id, occurred_at")
+        .eq("user_id", normalized_user_id)
+        .eq("provider", "paypal")
+        .eq("transaction_type", "payment")
+        .eq("status", "confirmed")
+        .gte("occurred_at", since)
+        .order("occurred_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    rows = getattr(result, "data", None) or []
+    token = _access_token(config)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    checked = 0
+    detected = 0
+    reconciled = 0
+    for row in rows:
+        capture_id = str((row or {}).get("provider_payment_id") or "").strip()
+        if not re.fullmatch(r"[A-Z0-9_-]{5,100}", capture_id):
+            continue
+        response = requests.get(
+            f"{config['base_url']}/v2/payments/captures/{capture_id}",
+            headers=headers,
+            timeout=TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        capture = response.json()
+        if str(capture.get("id") or "").strip() != capture_id:
+            raise PermissionError("PayPal a retourné une capture différente de celle demandée.")
+        checked += 1
+        if str(capture.get("status") or "").upper() in {"PARTIALLY_REFUNDED", "REFUNDED"}:
+            detected += 1
+            financial_ledger.record_paypal_refund_total(
+                admin_client, user_id=normalized_user_id, capture=capture
+            )
+            reconciled += 1
+    return {
+        "captures_checked": checked,
+        "refunds_detected": detected,
+        "refunds_reconciled": reconciled,
+        "limit_reached": len(rows) >= limit,
+    }
+
