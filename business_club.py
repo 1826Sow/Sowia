@@ -170,6 +170,7 @@ _MEETING_INVITATIONS = {
 def build_meeting_invitation(meeting, language="Français"):
     """Create a shareable invitation draft; it is never sent automatically."""
     from datetime import datetime
+    from zoneinfo import ZoneInfo
     if not isinstance(meeting, Mapping):
         raise ValueError("Rendez-vous invalide.")
     if language not in _MEETING_INVITATIONS:
@@ -182,6 +183,7 @@ def build_meeting_invitation(meeting, language="Français"):
         if duration not in {15, 30, 45, 60}:
             raise ValueError
         zone = _clean_text(meeting["timezone"], "Fuseau horaire", 80, True)
+        start = start.astimezone(ZoneInfo(zone))
         url = _clean_text(str(meeting.get("meeting_url") or ""), "Lien", 1000)
         if url and (urlparse(url).scheme != "https" or not urlparse(url).netloc):
             raise ValueError
