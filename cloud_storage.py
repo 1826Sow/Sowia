@@ -1112,6 +1112,31 @@ def delete_global_forecast(client, user, forecast_id):
         .eq("user_id", _user_id(user)).eq("id", str(forecast_id)).execute().data
     )
 
+
+
+# SOWIA GLOBAL DECISION ENGINE — private decision archive.
+def save_global_decision(client, user, decision):
+    from sowia_global_decision import validate_saved_decision
+    clean = validate_saved_decision(decision)
+    row = {"user_id": _user_id(user), **clean}
+    return client.table("sowia_global_decisions").insert(row).execute().data
+
+
+def list_global_decisions(client, user, limit=100):
+    return (
+        client.table("sowia_global_decisions")
+        .select("id,title,evidence_level,context_note,criteria,ranked_options,recommended_option,decision_status,score_gap,confidence,interpretation,limitations,created_at")
+        .eq("user_id", _user_id(user)).order("created_at", desc=True)
+        .limit(min(max(int(limit), 1), 200)).execute().data
+    )
+
+
+def delete_global_decision(client, user, decision_id):
+    return (
+        client.table("sowia_global_decisions").delete()
+        .eq("user_id", _user_id(user)).eq("id", str(decision_id)).execute().data
+    )
+
 # SOWIA GLOBAL ID — private profile registry and safe public directory.
 def _validate_global_profile(display_name, app_name="", organization="", country="",
                              languages="", website="", short_description="",
