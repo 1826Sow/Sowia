@@ -2198,6 +2198,57 @@ elif page == "Revenus & paiements":
             rows = financial_reporting.load_user_financial_transactions(
                 supabase_client, current_user, limit=500
             )
+            if st.button(
+                "Synchroniser les échéances PayPal des 90 derniers jours",
+                key="sync_paypal_recurring_ledger",
+            ):
+                admin_client = premium_access.create_admin_client()
+                if admin_client is None:
+                    st.error("Synchronisation indisponible : accès serveur Supabase manquant.")
+                else:
+                    try:
+                        subscription_rows = (
+                            admin_client.table("sowia_subscriptions")
+                            .select("paypal_subscription_id")
+                            .eq("user_id", str(current_user.id))
+                            .eq("provider", "paypal")
+                            .execute()
+                            .data or []
+                        )
+                        end_time = datetime.now(timezone.utc)
+                        start_time = end_time - __import__("datetime").timedelta(days=90)
+                        sync_results = []
+                        for subscription_row in subscription_rows:
+                            subscription_id = str(
+                                subscription_row.get("paypal_subscription_id") or ""
+                            ).strip()
+                            if subscription_id:
+                                sync_results.append(
+                                    paypal_subscriptions.sync_completed_subscription_transactions(
+                                        admin_client,
+                                        subscription_id,
+                                        start_time.isoformat(),
+                                        end_time.isoformat(),
+                                    )
+                                )
+                        st.success(
+                            f"Synchronisation terminée : "
+                            f"{sum(x['recorded_or_already_present'] for x in sync_results)} "
+                            f"échéance(s) confirmée(s) vérifiée(s), "
+                            f"{sum(x['ignored_non_completed'] for x in sync_results)} "
+                            f"transaction(s) non terminée(s) ignorée(s)."
+                        )
+                        if any(x["has_more"] for x in sync_results):
+                            st.warning(
+                                "PayPal indique des résultats supplémentaires. "
+                                "La pagination complète sera nécessaire pour couvrir toute la période."
+                            )
+                        st.rerun()
+                    except Exception:
+                        st.error(
+                            "La synchronisation PayPal n'a pas abouti. "
+                            "Aucune échéance non vérifiée n'a été ajoutée."
+                        )
             summaries = financial_reporting.summarize_financial_transactions(rows)
             if not rows:
                 st.info(
