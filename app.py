@@ -845,7 +845,7 @@ elif page == "Ma mémoire":
 elif page == "Développement mondial":
     st.subheader(translate_ui("🌍 Développement mondial de SOW IA", language))
     st.caption("Repérez des partenaires, préparez vos prises de contact et construisez votre promotion internationale. Rien n'est envoyé ou publié automatiquement.")
-    partner_tab, promo_tab = st.tabs(["🤝 Partenaires", "📣 Promotion multilingue"])
+    partner_tab, greeting_tab, promo_tab = st.tabs(["🤝 Partenaires", "🎉 Vœux internationaux", "📣 Promotion multilingue"])
 
     with partner_tab:
         st.markdown("#### Prospection internationale")
@@ -979,6 +979,96 @@ elif page == "Développement mondial":
                                     st.error("La suppression de cette piste a échoué.")
             except Exception:
                 st.warning("Le CRM permanent n'est pas encore initialisé. Exécutez le script supabase_growth_crm.sql dans Supabase > SQL Editor, puis rechargez cette page.")
+
+    with greeting_tab:
+        st.markdown("#### 🎉 Messages relationnels adaptés aux pays")
+        st.caption(
+            "Préparez des vœux pour les partenaires et des messages de prise de relation "
+            "pour les entreprises ciblées. Les textes sont générés dans la langue choisie ; "
+            "aucun message n'est envoyé depuis cette page."
+        )
+        from relationship_greetings import (
+            OCCASIONS, SUPPORTED_LANGUAGES, build_greeting, default_language,
+            national_day, upcoming_fixed_occasions,
+        )
+        greeting_contacts = []
+        if cloud_mode and current_user is not None:
+            try:
+                greeting_contacts = cloud_storage.list_growth_leads(
+                    supabase_client, current_user,
+                    st.session_state.get("workspace_id", "personal"),
+                )
+            except Exception:
+                st.warning("Le carnet CRM n'est pas accessible. Vous pouvez tout de même préparer un message manuel.")
+        greeting_names = ["Saisie manuelle"] + [
+            f"{item['organization']} — {item['country']}" for item in greeting_contacts
+        ]
+        selected_greeting_contact = st.selectbox("Destinataire", greeting_names)
+        selected_contact = None
+        if selected_greeting_contact != "Saisie manuelle":
+            selected_contact = greeting_contacts[greeting_names.index(selected_greeting_contact) - 1]
+        greeting_cols = st.columns(2)
+        with greeting_cols[0]:
+            greeting_country = st.text_input(
+                "Pays du destinataire",
+                value=selected_contact.get("country", "") if selected_contact else "",
+                max_chars=100,
+            )
+            greeting_name = st.text_input(
+                "Nom du contact",
+                value=selected_contact.get("organization", "") if selected_contact else "",
+                max_chars=100,
+            )
+        with greeting_cols[1]:
+            suggested_language = default_language(greeting_country)
+            greeting_language = st.selectbox(
+                "Langue du message", SUPPORTED_LANGUAGES,
+                index=SUPPORTED_LANGUAGES.index(suggested_language),
+            )
+            greeting_occasion = st.selectbox("Occasion", OCCASIONS)
+        if greeting_country.strip():
+            st.caption(
+                f"Repère culturel : fête nationale indiquée pour {greeting_country} : "
+                f"{national_day(greeting_country)}. Vérifiez la date et les usages locaux "
+                "avant de programmer un envoi."
+            )
+            calendar_items = upcoming_fixed_occasions(greeting_country)
+            if calendar_items:
+                st.markdown("**Repères du calendrier annuel**")
+                st.dataframe(
+                    [{"Occasion": item["occasion"], "Date": item["date"]} for item in calendar_items],
+                    hide_index=True, use_container_width=True,
+                )
+        if st.button("Préparer le message de vœux", type="primary"):
+            try:
+                st.session_state["relationship_greeting_draft"] = build_greeting(
+                    greeting_language, greeting_occasion, greeting_name,
+                    selected_contact.get("organization", "") if selected_contact else "",
+                    greeting_country,
+                )
+                st.session_state["relationship_greeting_meta"] = (
+                    greeting_occasion, greeting_language, greeting_country
+                )
+            except Exception as exc:
+                st.error(f"Impossible de préparer le message : {exc}")
+        if st.session_state.get("relationship_greeting_draft"):
+            st.text_area(
+                "Message prêt à relire et personnaliser",
+                value=st.session_state["relationship_greeting_draft"],
+                height=220,
+            )
+            st.caption("Copiez le texte pour l'utiliser dans votre canal de communication après vérification.")
+            st.warning(
+                "Avant tout envoi : vérifiez le destinataire, son fuseau horaire, la traduction, "
+                "les préférences de contact et les règles applicables dans son pays. "
+                "Les fêtes mobiles (Aïd, Nouvel An lunaire, Diwali) doivent être confirmées "
+                "avec un calendrier local fiable."
+            )
+        st.info(
+            "Évolution prévue : enregistrer les dates d'anniversaire avec accord du contact, "
+            "gérer les préférences de réception, puis connecter un fournisseur d'envoi autorisé "
+            "avec validation et journalisation avant tout envoi automatique."
+        )
 
     with promo_tab:
         st.markdown("#### Préparer une campagne internationale")
