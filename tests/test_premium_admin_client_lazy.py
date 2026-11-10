@@ -24,8 +24,9 @@ def test_premium_admin_client_is_created_only_inside_authenticated_paypal_flows(
         and node.func.value.id == "premium_access"
     ]
     # One call validates a returned checkout; two are explicit user-triggered
-    # synchronization actions; one is the admin-only read-only control center.
-    assert len(admin_calls) == 4
+    # synchronization actions; one serves the authenticated user's audit view;
+    # one is the admin-only read-only control center.
+    assert len(admin_calls) == 5
 
     for call in admin_calls:
         ancestor = parents.get(call)
@@ -41,3 +42,4 @@ def test_premium_admin_client_is_created_only_inside_authenticated_paypal_flows(
     assert source_guard < source.index("premium_access.create_admin_client()")
     assert 'key="sync_paypal_recurring_ledger"' in source
     assert 'key="sync_paypal_one_time_refunds"' in source
+    assert 'financial_audit.load_user_financial_audit_events' in source
