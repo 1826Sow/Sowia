@@ -195,7 +195,7 @@ Référence technique officielle : [PayPal Subscriptions API — liste des trans
 La synchronisation des abonnements complète maintenant le contrôle des captures remboursées :
 - après détection de `PARTIALLY_REFUNDED` ou `REFUNDED` dans l'historique d'abonnement, SOW IA récupère la capture par l'API PayPal Payments v2 ;
 - elle vérifie que l'identifiant retourné correspond à la capture attendue, que la devise est EUR et que le montant cumulé remboursé est strictement positif et ne dépasse pas le montant brut initial ;
-- le montant utilisé provient de `seller_receivable_breakdown.total_refunded_amount`, pas du montant initial de la capture ;
+- le montant utilisé provient de `seller_payable_breakdown.total_refunded_amount`, pas du montant initial de la capture ;
 - une écriture de remboursement agrégée par capture est mise à jour par upsert. Si un remboursement partiel supplémentaire arrive, le cumul remplace l'ancien montant au lieu de s'ajouter une seconde fois ;
 - la vente d'origine repasse en statut confirmé et le remboursement apparaît séparément comme écriture `refund`, ce qui permet au reporting de calculer le brut après remboursements.
 
