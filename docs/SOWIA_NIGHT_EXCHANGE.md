@@ -152,3 +152,11 @@ The GLOBAL DIRECTORY workflow now includes an initial in-app messenger linked to
 
 Apply `supabase_global_messenger.sql` AFTER `supabase_global_connect.sql`. The required migration order is GLOBAL ID, GLOBAL DIRECTORY, GLOBAL CONNECT, then GLOBAL MESSENGER. All migrations are committed to GitHub; none is confirmed applied to the live Supabase database in this work session. The interface and database workflow have not yet been verified in the deployed Streamlit app. Before production use, run two-account authorization tests, abuse/reporting and retention reviews, and security review. The current rate limit is a basic technical safeguard, not a complete anti-spam or moderation system.
 
+## SOWIA GLOBAL NOTIFICATIONS — multilingual in-app alerts
+
+The first notification center records four event types: received GLOBAL CONNECT request, accepted or declined request, and new GLOBAL MESSENGER message. Database triggers create alerts automatically. Each member can select French, English, Spanish, Portuguese, Chinese or Arabic, enable or disable in-app alerts, mark one alert read or mark all read. The UI translates event labels locally; stored records contain only the event type, reference UUID and timestamps, not message bodies or contact details.
+
+The notification inbox is private to its owner under RLS. Clients cannot insert or modify notification records directly; read-state changes and preference updates use authenticated server-side RPCs. Disabling in-app alerts prevents new alerts from being recorded while disabled. This first version is in-app only: it does not send email, SMS, browser push or mobile push. The supported languages apply to notification labels, not yet to all SOWIA interface content.
+
+Apply `supabase_global_notifications.sql` AFTER `supabase_global_messenger.sql`. The full database migration order is GLOBAL ID, GLOBAL DIRECTORY, GLOBAL CONNECT, GLOBAL MESSENGER, then GLOBAL NOTIFICATIONS. The migration and application code are committed to GitHub; the migration is not confirmed applied to the live Supabase project. Automated checks and live two-account authorization tests remain to be verified before production use.
+
