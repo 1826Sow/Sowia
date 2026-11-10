@@ -154,3 +154,120 @@ def select_budgeted_offers(offers: Iterable[dict], available_budget):
             selected.append(offer)
             remaining -= price
     return selected
+
+
+def _parse_clock(value, default):
+    if isinstance(value, time):
+        return value.replace(tzinfo=None)
+    raw = str(value or default).strip()
+    try:
+        parts = raw.split(":")
+        return time(int(parts[0]), int(parts[1]))
+    except (ValueError, IndexError, TypeError):
+        raise NightExchangeError("Heure locale invalide (format HH:MM attendu).") from None
+
+
+def global_session_status(record: dict, now: datetime) -> dict:
+    """Return a timezone-safe local session status and the next opening."""
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise NightExchangeError("La date doit inclure un fuseau horaire.")
+    zone_name = str(record.get("timezone") or record.get("timezone_name") or "UTC")
+    try:
+        zone = ZoneInfo(zone_name)
+    except ZoneInfoNotFoundError:
+        raise NightExchangeError("Fuseau horaire IANA inconnu.") from None
+    start = _parse_clock(record.get("night_start"), "20:00")
+    end = _parse_clock(record.get("night_end"), "06:00")
+    local_now = now.astimezone(zone)
+    active = is_local_night(now, zone_name, start, end)
+    next_open = None
+    # Search upcoming local calendar dates; round-trip validation skips
+    # nonexistent wall-clock times during spring DST transitions.
+    for offset in range(0, 5):
+        day = local_now.date()
+        from datetime import timedelta
+        candidate_day = day + timedelta(days=offset)
+        candidate = datetime.combine(candidate_day, start).replace(tzinfo=zone, fold=0)
+        round_trip = candidate.astimezone(timezone.utc).astimezone(zone)
+        if round_trip.replace(tzinfo=None) != candidate.replace(tzinfo=None):
+            continue
+        if candidate.astimezone(timezone.utc) > now.astimezone(timezone.utc):
+            next_open = candidate
+            break
+    if active:
+        next_open = None
+    return {
+        "is_open": active,
+        "timezone": zone_name,
+        "local_now": local_now,
+        "next_open_local": next_open,
+        "next_open_utc": next_open.astimezone(timezone.utc) if next_open else None,
+        "night_start": start.strftime("%H:%M"),
+        "night_end": end.strftime("%H:%M"),
+    }
+
+
+def build_smart_opportunities(source_record: dict, candidate_records: Iterable[dict],
+                              limit: int = 15) -> list[dict]:
+    """Explain compatibility signals; scores are suggestions, not forecasts."""
+    if not isinstance(limit, int) or limit < 1 or limit > 100:
+        raise NightExchangeError("La limite doit être comprise entre 1 et 100.")
+    rows = list(candidate_records)
+    matches = match_listing_records(source_record, rows)
+    by_id = {str(row.get("id") or row.get("app_id") or ""): row for row in rows}
+    opportunities = []
+    for match in matches:
+        partner = by_id.get(match.app_id, {})
+        source_offers = set(_split_terms(source_record.get("services_offered")))
+        source_wants = set(_split_terms(source_record.get("services_wanted")))
+        partner_offers = set(_split_terms(partner.get("services_offered")))
+        partner_wants = set(_split_terms(partner.get("services_wanted")))
+        offered_to_source = sorted(source_wants & partner_offers)
+        wanted_from_source = sorted(source_offers & partner_wants)
+        opportunities.append({
+            "app_id": match.app_id,
+            "app_name": partner.get("app_name") or partner.get("name") or "Application partenaire",
+            "country": partner.get("country") or "",
+            "score": match.score,
+            "shared_categories": list(match.shared_categories),
+            "reciprocal_exchange": match.reciprocal_exchange,
+            "signals": {
+                "shared_categories": list(match.shared_categories),
+                "partner_services_matching_my_needs": offered_to_source,
+                "my_services_matching_partner_needs": wanted_from_source,
+                "partner_verified": bool(partner.get("verified", False)),
+            },
+            "notice": "Compatibilité indicative, sans garantie de résultat commercial.",
+        })
+    return opportunities[:limit]
+
+
+def build_morning_report(events: Iterable[dict]) -> dict:
+    """Summarize explicit event records only; never infer activity or spending."""
+    rows = list(events or [])
+    allowed = {"match_viewed", "meeting_confirmed", "offer_accepted",
+               "integration_approved", "payment_confirmed"}
+    counts = {name: 0 for name in sorted(allowed)}
+    confirmed_spend = Decimal("0.00")
+    currencies = set()
+    for event in rows:
+        event_type = str(event.get("event_type") or "")
+        if event_type not in allowed:
+            continue
+        counts[event_type] += 1
+        if event_type == "payment_confirmed" and event.get("payment_status") == "confirmed":
+            amount = _money(event.get("amount", 0))
+            currency = str(event.get("currency") or "").upper()
+            if len(currency) != 3 or not currency.isalpha():
+                raise NightExchangeError("Devise invalide dans un événement de paiement.")
+            confirmed_spend += amount
+            currencies.add(currency)
+    return {
+        "events_received": len(rows),
+        "recognized_events": sum(counts.values()),
+        "counts": counts,
+        "confirmed_spend": confirmed_spend,
+        "spend_currencies": sorted(currencies),
+        "has_recorded_activity": bool(sum(counts.values())),
+        "scope": "Synthèse des événements fournis uniquement; aucun événement manquant n'est estimé.",
+    }
