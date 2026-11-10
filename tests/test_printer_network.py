@@ -50,3 +50,20 @@ def test_comparison_excludes_other_destination_quantity_and_currency():
     assert compare_printer_quotes([item], [q], "Belgique", 500, "EUR") == []
     assert compare_printer_quotes([item], [q], "France", 250, "EUR") == []
     assert compare_printer_quotes([item], [q], "France", 500, "USD") == []
+
+def test_persisted_decimal_strings_compare_without_float_errors():
+    item = supplier()
+    q = quote(item["id"])
+    q["printing_cost"] = "45.50"
+    q["shipping_cost"] = "8.90"
+    rows = compare_printer_quotes([item], [q], "France", 500, "EUR", today=date(2026, 1, 1))
+    assert str(rows[0]["total_cost"]) == "54.40"
+
+
+def test_only_verified_supplier_and_validated_quote_can_be_order_eligible():
+    item = supplier()
+    item["status"] = "verified"
+    q = quote(item["id"])
+    q["status"] = "validated"
+    rows = compare_printer_quotes([item], [q], "France", 500, "EUR", today=date(2026, 1, 1))
+    assert rows[0]["eligible_for_order"] is True
