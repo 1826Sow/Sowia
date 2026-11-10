@@ -90,3 +90,40 @@ revoke all on public.sowia_night_exchange_apps from anon;
 
 comment on table public.sowia_night_exchange_apps is
 'Partner app registry for SOWIA NIGHT EXCHANGE. Listings are pending by default; only approved listings are public.';
+
+-- Moderation is performed only through this RPC. The admin role must be
+-- assigned in signed auth.users.app_metadata by a trusted administrator.
+create or replace function public.sowia_admin_review_nex_app(
+    p_app_id uuid,
+    p_status text,
+    p_moderation_note text default ''
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+    if coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') <> 'admin' then
+        raise exception 'Accès administrateur requis' using errcode = '42501';
+    end if;
+    if p_status not in ('approved', 'rejected', 'suspended') then
+        raise exception 'Statut de modération invalide' using errcode = '22023';
+    end if;
+    if p_moderation_note is null or char_length(p_moderation_note) > 1000 then
+        raise exception 'Note de modération invalide' using errcode = '22023';
+    end if;
+    update public.sowia_night_exchange_apps
+       set status = p_status,
+           moderation_note = nullif(btrim(p_moderation_note), ''),
+           verified_at = case when p_status = 'approved' then pg_catalog.now() else null end,
+           updated_at = pg_catalog.now()
+     where id = p_app_id;
+    if not found then
+        raise exception 'Application introuvable' using errcode = 'P0002';
+    end if;
+end;
+$$;
+
+revoke all on function public.sowia_admin_review_nex_app(uuid, text, text) from public;
+grant execute on function public.sowia_admin_review_nex_app(uuid, text, text) to authenticated;
