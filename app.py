@@ -361,6 +361,11 @@ premium_active = bool(premium_entitlement)
 
 with st.sidebar:
     st.markdown("## 🧠 SOW IA")
+    privacy_screen = st.toggle(
+        "🔒 Protection d'écran",
+        key="sowia_privacy_screen",
+        help="Floute le contenu principal de SOW IA pour limiter les regards indiscrets. Désactivez cette option pour retrouver l'affichage normal.",
+    )
     preference_owner = str(getattr(current_user, "id", "")) if cloud_mode and current_user is not None else "local"
     if st.session_state.get("sowia_language_loaded_for") != preference_owner:
         saved_language = "Français"
@@ -391,7 +396,7 @@ with st.sidebar:
                 st.caption("La langue est active pour cette session. Exécutez supabase_language_preferences.sql pour la conserver dans votre compte.")
     # Load accessible display preferences once per authenticated account.
     if st.session_state.get("sowia_accessibility_loaded_for") != preference_owner:
-        defaults = {"voice_readout": False, "large_text": False, "high_contrast": False}
+        defaults = {"voice_readout": False, "large_text": False, "high_contrast": False, "privacy_screen": False}
         if cloud_mode and current_user is not None:
             try:
                 defaults.update(cloud_storage.get_accessibility_preferences(supabase_client, current_user))
@@ -448,6 +453,36 @@ with st.sidebar:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
     st.divider()
     st.caption("Votre compte et vos espaces de travail")
+
+if privacy_screen:
+    st.markdown(
+        """<style>
+        section[data-testid="stMain"] {
+            filter: blur(9px) !important;
+            pointer-events: none !important;
+            user-select: none !important;
+        }
+        section[data-testid="stMain"]::before {
+            content: "🔒 Protection d'écran activée — désactivez l'option dans le menu latéral pour afficher le contenu";
+            position: fixed;
+            z-index: 999999;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(92vw, 680px);
+            padding: 12px 16px;
+            border: 1px solid #b8c6d5;
+            border-radius: 12px;
+            background: rgba(15, 35, 56, .96);
+            color: #fff !important;
+            text-align: center;
+            font-weight: 700;
+            box-shadow: 0 8px 28px rgba(0,0,0,.25);
+            pointer-events: none;
+        }
+        </style>""",
+        unsafe_allow_html=True,
+    )
 
 page = st.radio(
     "Navigation rapide — retrouvez vos outils ici",
@@ -587,6 +622,7 @@ elif page == "Assistant IA":
         "voice_readout": bool(voice_readout),
         "large_text": bool(large_text),
         "high_contrast": bool(high_contrast),
+        "privacy_screen": bool(st.session_state.get("sowia_privacy_screen", False)),
     }
     previous_accessibility = st.session_state.get("sowia_accessibility_saved", {})
     if accessibility_values != previous_accessibility:
