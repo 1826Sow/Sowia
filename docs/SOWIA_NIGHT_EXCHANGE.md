@@ -35,7 +35,7 @@ Phase 3: regional sessions, localization and partner integrations.
 Phase 4: automated monitoring after legal, privacy, security and operational review.
 
 ## Current implementation boundary
-The rules module provides pure helpers for timezone checks, app matching, budget-cap checks and deterministic offer selection. Tests are supplied. It is not wired into Streamlit or Supabase. No payment provider, scheduler, app-verification workflow, background execution or production budget enforcement is connected. Run the project test suite before deployment.
+The rules module provides pure helpers for timezone checks, app matching, budget-cap checks and deterministic offer selection. The Supabase migration `supabase_night_exchange_registry.sql` defines a draft-first partner app registry with row-level security; `cloud_storage.py` contains user-scoped create/list helpers. The migration is committed but must still be applied in the Supabase SQL Editor. The Streamlit listing form is still session-only and is not yet connected to these persistence functions. No live directory, admin moderation screen, payment provider, scheduler, background execution or production budget enforcement is connected. Tests are supplied but have not been executed in this work session. Run the project test suite and apply the migration before enabling persistence.
 
 
 ## Streamlit prototype
