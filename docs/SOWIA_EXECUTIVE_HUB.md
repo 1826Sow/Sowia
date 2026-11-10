@@ -48,7 +48,7 @@ The international-development workspace includes an on-demand public-signal rada
 
 Results are normalized, deduplicated by URL where available, and sorted by a transparent heuristic relevance score. The score is a triage aid only: every result remains labelled "À vérifier". The radar does not prove that a call is open, that SOWIA is eligible, or that a source is authoritative. Users must check the original source, deadlines, eligibility, budget, legal requirements and contact details.
 
-The radar is on-demand and session-scoped. It does not run in the background, cover every country automatically, contact organizations, submit applications, or spend money. A scheduled monitoring service and persistent opportunity register remain future work.
+The radar search itself is on-demand and does not run in the background or cover every country automatically. Saved findings can now be retained in the separate opportunity register described below. The radar does not contact organizations, submit applications, or spend money. Scheduled monitoring remains future work.
 
 
 ## Persistent opportunity register and deadline follow-up
