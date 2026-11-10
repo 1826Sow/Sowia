@@ -741,6 +741,54 @@ def list_night_exchange_events(client, user, workspace_id="professional",
     )
 
 
+# SOWIA GLOBAL CONNECT — consent-based professional introductions.
+def create_global_connection_request(client, user, public_id, message):
+    """Send a request to a published profile; recipient identity is resolved server-side."""
+    _user_id(user)
+    import sowia_global_connect
+    clean_message = sowia_global_connect.validate_connection_message(message)
+    target = str(public_id or "").strip()
+    if not target.startswith("SOWIA-") or len(target) > 40:
+        raise ValueError("Identifiant public SOWIA invalide.")
+    return client.rpc("sowia_global_connect_request", {
+        "p_public_id": target, "p_message": clean_message,
+    }).execute().data
+
+
+def list_global_connection_requests(client, user, direction="inbox", limit=100):
+    """List requests visible to the authenticated participant under database RLS."""
+    uid = _user_id(user)
+    if direction not in {"inbox", "outbox"}:
+        raise ValueError("Direction de demandes invalide.")
+    column = "recipient_id" if direction == "inbox" else "requester_id"
+    return (
+        client.table("sowia_global_connection_requests")
+        .select("id,requester_profile_id,recipient_profile_id,message,status,created_at,updated_at")
+        .eq(column, uid)
+        .order("created_at", desc=True)
+        .limit(min(max(int(limit), 1), 200))
+        .execute().data
+    )
+
+
+def respond_global_connection_request(client, user, request_id, decision):
+    """Accept or decline a pending request addressed to the current user."""
+    _user_id(user)
+    if decision not in {"accepted", "declined"}:
+        raise ValueError("Décision invalide.")
+    return client.rpc("sowia_global_connect_respond", {
+        "p_request_id": str(request_id), "p_decision": decision,
+    }).execute().data
+
+
+def cancel_global_connection_request(client, user, request_id):
+    """Cancel a pending request sent by the current user."""
+    _user_id(user)
+    return client.rpc("sowia_global_connect_cancel", {
+        "p_request_id": str(request_id),
+    }).execute().data
+
+
 # SOWIA GLOBAL ID — private profile registry and safe public directory.
 def _validate_global_profile(display_name, app_name="", organization="", country="",
                              languages="", website="", short_description="",
