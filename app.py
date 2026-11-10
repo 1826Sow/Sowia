@@ -1665,7 +1665,7 @@ elif page == "Développement mondial":
                     "Le classement aide au tri ; il ne confirme ni l’existence juridique "
                     "d’une opportunité ni l’éligibilité de SOWIA."
                 )
-                for opportunity in saved_radar:
+                for opportunity_index, opportunity in enumerate(saved_radar):
                     st.markdown(
                         f"**{opportunity['title']}** · {opportunity['category']} · "
                         f"Pertinence indicative {opportunity['score']}/100"
@@ -1678,6 +1678,56 @@ elif page == "Développement mondial":
                         f"Pays : {opportunity['country']} · Statut : À vérifier · "
                         f"Source : {opportunity['source_domain'] or 'non identifiée'}"
                     )
+                    if st.button(
+                        "Ajouter au registre",
+                        key=f"sowia_save_radar_opportunity_{opportunity_index}",
+                    ):
+                        record = {
+                            "title": opportunity["title"],
+                            "country": opportunity["country"],
+                            "category": opportunity["category"],
+                            "source_url": opportunity["url"] or None,
+                            "summary": opportunity["summary"],
+                            "partner_name": "",
+                            "deadline": None,
+                            "priority": 3,
+                            "status": "À vérifier",
+                            "next_action": "Vérifier la source, les critères et la date limite",
+                            "workspace_id": "professional",
+                        }
+                        if cloud_mode and current_user is not None:
+                            record["user_id"] = str(current_user.id)
+                            try:
+                                if record["source_url"]:
+                                    existing = (
+                                        supabase_client.table("sowia_opportunities")
+                                        .select("id")
+                                        .eq("user_id", str(current_user.id))
+                                        .eq("workspace_id", "professional")
+                                        .eq("source_url", record["source_url"])
+                                        .limit(1).execute()
+                                    )
+                                else:
+                                    existing = None
+                                if existing is not None and existing.data:
+                                    st.info("Cette source figure déjà dans votre registre.")
+                                else:
+                                    supabase_client.table("sowia_opportunities").insert(record).execute()
+                                    st.success("Piste enregistrée dans le registre cloud.")
+                                    st.rerun()
+                            except Exception:
+                                st.session_state.setdefault("sowia_opportunity_register_local", []).append({
+                                    **record, "id": f"local-{uuid.uuid4()}",
+                                })
+                                st.warning(
+                                    "Enregistrement cloud indisponible : piste conservée temporairement "
+                                    "dans cette session. Vérifiez la migration Supabase du registre."
+                                )
+                        else:
+                            st.session_state.setdefault("sowia_opportunity_register_local", []).append({
+                                **record, "id": f"local-{uuid.uuid4()}",
+                            })
+                            st.success("Piste ajoutée à la session locale uniquement.")
             else:
                 st.info("Aucun résultat public exploitable n’a été retourné.")
         st.info(
@@ -1774,8 +1824,11 @@ elif page == "Développement mondial":
                 register_cloud_ready = True
             except Exception:
                 register_load_error = True
+        local_register_rows = st.session_state.get("sowia_opportunity_register_local", [])
         if not register_cloud_ready:
-            register_rows = st.session_state.get("sowia_opportunity_register_local", [])
+            register_rows = local_register_rows
+        elif local_register_rows:
+            register_rows.extend(local_register_rows)
         if register_load_error:
             st.warning(
                 "Le registre permanent Supabase n'est pas encore accessible. "
