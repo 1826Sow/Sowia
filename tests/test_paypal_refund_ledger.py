@@ -37,7 +37,7 @@ class Query:
         return self
 
     def execute(self):
-        rows = self.client.rows
+        rows = list(self.client.rows)
         for key, value in self.filters:
             rows = [row for row in rows if row.get(key) == value]
         if self.operation == "upsert":
