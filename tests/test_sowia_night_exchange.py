@@ -49,8 +49,8 @@ def test_night_exchange_listing_validation_accepts_global_timezone():
         ["Productivité"], "API de traduction", "Paiements", "21:00", "05:00"
     )
     assert listing["timezone"] == "Asia/Singapore"
-    assert listing["night_start"] == "21:00:00"
-    assert listing["night_end"] == "05:00:00"
+    assert listing["night_start"] == "21:00"
+    assert listing["night_end"] == "05:00"
 
 
 def test_night_exchange_listing_validation_rejects_unknown_timezone():
