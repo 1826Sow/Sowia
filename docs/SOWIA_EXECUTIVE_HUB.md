@@ -40,3 +40,12 @@ The worldwide-development workspace includes a global market strategy panel. Ini
 The inclusion principle is to research emerging and lower-/middle-income economies as potential partner and customer markets, not exclude them based only on national income. Each market receives a research checklist for local partners, demand, regulation, privacy/data transfers, tax, payments, language, sanctions and intellectual property. The indicative market score is based on user-entered ratings, not automatically sourced economic statistics.
 
 The feature prepares research and prospecting leads only. It does not automatically contact businesses, register companies, launch campaigns, or make legal determinations. Market coverage is a strategic objective; complete country-by-country localization and compliance verification remain ongoing work.
+
+
+## Worldwide opportunity radar
+
+The international-development workspace includes an on-demand public-signal radar. It searches separately for public tenders and procurement, innovation/funding programmes, partnerships/business expansions, and professional events/networks. Separate short queries respect the configured search provider's per-query limits.
+
+Results are normalized, deduplicated by URL where available, and sorted by a transparent heuristic relevance score. The score is a triage aid only: every result remains labelled "À vérifier". The radar does not prove that a call is open, that SOWIA is eligible, or that a source is authoritative. Users must check the original source, deadlines, eligibility, budget, legal requirements and contact details.
+
+The radar is on-demand and session-scoped. It does not run in the background, cover every country automatically, contact organizations, submit applications, or spend money. A scheduled monitoring service and persistent opportunity register remain future work.
