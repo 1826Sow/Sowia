@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL ACTION GOVERNANCE", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -3113,6 +3113,91 @@ elif page == "SOWIA GLOBAL DECISION ENGINE":
             except Exception as decision_history_error:
                 st.error("L'archive des décisions n'est pas disponible.")
                 st.caption("Appliquez supabase_global_decisions.sql. Diagnostic : " + type(decision_history_error).__name__)
+
+
+elif page == "SOWIA GLOBAL ACTION GOVERNANCE":
+    st.subheader("🛡️ SOWIA GLOBAL ACTION GOVERNANCE")
+    st.caption("Transformez une priorité en plan d'action encadré : responsable, budget maximal, échéance, indicateur de réussite et condition d'arrêt.")
+    st.warning("Aucun paiement, achat, contrat ou contact externe n'est exécuté. L'approbation exige un second compte authentifié distinct du créateur.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous pour créer et suivre vos plans d'action privés.")
+    else:
+        try:
+            governance_tabs = st.tabs(["＋ Nouveau plan", "📋 Mes plans", "🧾 Journal de contrôle"])
+            with governance_tabs[0]:
+                with st.form("sowia_action_governance_create"):
+                    ag_title = st.text_input("Titre du plan", max_chars=160)
+                    ag_objective = st.text_area("Objectif", max_chars=2000)
+                    ag_country = st.text_input("Pays ou marché", max_chars=100)
+                    ag_owner = st.text_input("Responsable ou équipe", max_chars=120)
+                    ag_cols = st.columns(2)
+                    ag_budget = ag_cols[0].number_input("Budget maximal autorisé (plafond indicatif)", min_value=0.0, max_value=1000000000.0, value=0.0, step=50.0)
+                    ag_currency = ag_cols[1].selectbox("Devise", ["EUR","USD","CNY","SGD","MYR","TWD","KRW","XOF","AED","CHF","BRL"])
+                    ag_due = st.date_input("Date d'échéance")
+                    ag_success = st.text_input("Indicateur mesurable de réussite", max_chars=500)
+                    ag_stop = st.text_input("Condition d'arrêt", max_chars=500)
+                    ag_create = st.form_submit_button("Créer le brouillon")
+                if ag_create:
+                    try:
+                        import sowia_global_action_governance as governance
+                        clean_plan = governance.validate_action_plan(
+                            ag_title, ag_objective, ag_country, ag_owner, ag_budget,
+                            ag_currency, ag_due.isoformat(), ag_success, ag_stop,
+                        )
+                        cloud_storage.create_global_action_plan(supabase_client, current_user, clean_plan)
+                        st.success("Brouillon créé. Il reste à le soumettre pour approbation.")
+                        st.rerun()
+                    except Exception as ag_error:
+                        st.error("Création impossible : " + type(ag_error).__name__)
+            with governance_tabs[1]:
+                action_plans = cloud_storage.list_global_action_plans(supabase_client, current_user, limit=150)
+                if not action_plans:
+                    st.info("Aucun plan d'action enregistré.")
+                else:
+                    current_uid = str(getattr(current_user, "id", "") or (current_user.get("id") if isinstance(current_user, dict) else ""))
+                    for plan in action_plans:
+                        with st.container(border=True):
+                            st.markdown(f"**{plan['title']} — {plan['country']}**")
+                            st.caption(f"Statut : {plan['status']} · Responsable : {plan['owner_label']} · Échéance : {plan['due_date']}")
+                            st.write(plan["objective"])
+                            st.write(f"Plafond budgétaire : {plan['budget_cap']} {plan['currency']}")
+                            st.caption(f"Réussite : {plan['success_metric']} · Arrêt : {plan['stop_condition']}")
+                            note = st.text_input("Note de transition (facultative)", key="ag_note_"+plan["id"], max_chars=1000)
+                            actions = st.columns(4)
+                            if plan["status"] == "draft" and plan["creator_id"] == current_uid:
+                                if actions[0].button("Soumettre", key="ag_submit_"+plan["id"]):
+                                    cloud_storage.transition_global_action_plan(supabase_client,current_user,plan["id"],"submitted",note)
+                                    st.rerun()
+                            if plan["status"] == "submitted" and plan["creator_id"] != current_uid:
+                                if actions[1].button("Approuver", key="ag_approve_"+plan["id"]):
+                                    cloud_storage.transition_global_action_plan(supabase_client,current_user,plan["id"],"approved",note)
+                                    st.rerun()
+                                if actions[2].button("Refuser", key="ag_reject_"+plan["id"]):
+                                    cloud_storage.transition_global_action_plan(supabase_client,current_user,plan["id"],"rejected",note)
+                                    st.rerun()
+                            if plan["status"] == "approved" and plan["creator_id"] == current_uid:
+                                if actions[3].button("Marquer terminé", key="ag_done_"+plan["id"]):
+                                    cloud_storage.transition_global_action_plan(supabase_client,current_user,plan["id"],"completed",note)
+                                    st.rerun()
+                            if plan["status"] in ("draft","submitted","approved") and plan["creator_id"] == current_uid:
+                                if st.button("Annuler le plan", key="ag_cancel_"+plan["id"]):
+                                    cloud_storage.transition_global_action_plan(supabase_client,current_user,plan["id"],"cancelled",note)
+                                    st.rerun()
+            with governance_tabs[2]:
+                audit_plans = cloud_storage.list_global_action_plans(supabase_client,current_user,limit=150)
+                if not audit_plans:
+                    st.info("Le journal apparaîtra après les premières transitions.")
+                else:
+                    audit_map = {row["id"]: row for row in audit_plans}
+                    chosen_audit_plan = st.selectbox("Plan à consulter",list(audit_map),format_func=lambda value:audit_map[value]["title"])
+                    audit_rows = cloud_storage.list_global_action_audit(supabase_client,current_user,chosen_audit_plan,limit=100)
+                    if audit_rows:
+                        st.dataframe(audit_rows,use_container_width=True,hide_index=True)
+                    else:
+                        st.info("Aucune transition enregistrée pour ce plan.")
+        except Exception as ag_load_error:
+            st.error("Le module de gouvernance n'est pas disponible.")
+            st.caption("Appliquez supabase_global_action_governance.sql après les migrations précédentes. Diagnostic : "+type(ag_load_error).__name__)
 
 
 elif page == "SOWIA GLOBAL AUTONOMOUS STRATEGY":
