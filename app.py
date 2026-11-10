@@ -554,7 +554,7 @@ if privacy_screen:
 page = st.radio(
     "Navigation rapide — retrouvez vos outils ici",
     [
-        "Hub SOWIA", "Assistant IA", "Ma mémoire", "Recherche Web",
+        "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
         "Abonnement", "Développement mondial", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
