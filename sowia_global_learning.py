@@ -20,9 +20,13 @@ def build_learning_record(decision, selected_option, outcome_score, outcome_note
     if chosen not in option_names:
         raise ValueError("L'option réellement retenue doit correspondre à une option enregistrée.")
     try:
+        if isinstance(outcome_score, bool):
+            raise ValueError
         score = int(outcome_score)
+        if isinstance(outcome_score, float) and not outcome_score.is_integer():
+            raise ValueError
     except (TypeError, ValueError):
-        raise ValueError("Le résultat observé doit être noté de 1 à 5.")
+        raise ValueError("Le résultat observé doit être un entier de 1 à 5.")
     if score < 1 or score > 5:
         raise ValueError("Le résultat observé doit être noté de 1 à 5.")
     note = str(outcome_note or "").strip()
