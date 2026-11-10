@@ -562,19 +562,58 @@ if page == "Accueil":
 
 elif page == "Assistant IA":
     st.subheader(translate_ui("💬 Mon Assistant IA", language))
+    st.markdown("#### ♿ Accessibilité de la conversation")
+    access_cols = st.columns([1, 1, 1])
+    with access_cols[0]:
+        voice_readout = st.toggle("Lecture vocale des réponses", value=st.session_state.get("sowia_voice_readout", False), key="sowia_voice_readout")
+    with access_cols[1]:
+        large_text = st.toggle("Texte agrandi", value=st.session_state.get("sowia_large_text", False), key="sowia_large_text")
+    with access_cols[2]:
+        high_contrast = st.toggle("Contraste renforcé", value=st.session_state.get("sowia_high_contrast", False), key="sowia_high_contrast")
+    if large_text:
+        st.markdown("<style>[data-testid='stChatMessage'] p,[data-testid='stChatMessage'] li{font-size:1.2rem!important;line-height:1.7!important}</style>", unsafe_allow_html=True)
+    if high_contrast:
+        st.markdown("<style>[data-testid='stChatMessage']{border:2px solid #111!important;background:#fff!important}[data-testid='stChatMessage'] p,[data-testid='stChatMessage'] li{color:#000!important;font-weight:600!important}</style>", unsafe_allow_html=True)
+    st.caption("Les réponses restent toujours affichées en texte. La lecture vocale est une option complémentaire ; elle dépend de la voix disponible sur votre appareil ou navigateur.")
+    def render_accessible_message(role, message):
+        with st.chat_message(role):
+            st.markdown(message)
+            if role == "assistant" and voice_readout:
+                safe_message = html.escape(str(message), quote=True)
+                st.components.v1.html(
+                    """<div style="font-family:Arial,sans-serif;padding:4px 0">
+                    <button id="sowiaSpeak" style="padding:10px 16px;border:2px solid #174b67;border-radius:10px;background:#fff;color:#123;font-weight:700;min-height:44px">🔊 Écouter cette réponse</button>
+                    <button id="sowiaStop" style="padding:10px 16px;border:2px solid #555;border-radius:10px;background:#fff;color:#123;font-weight:700;min-height:44px">■ Arrêter</button>
+                    <span id="sowiaVoiceStatus" role="status" aria-live="polite"></span>
+                    <div id="sowiaVoiceText" style="display:none">""" + safe_message + """</div>
+                    <script>
+                    const text = document.getElementById('sowiaVoiceText').textContent;
+                    const status = document.getElementById('sowiaVoiceStatus');
+                    document.getElementById('sowiaSpeak').onclick = () => {
+                      if (!('speechSynthesis' in window)) { status.textContent = 'Lecture vocale non prise en charge par ce navigateur.'; return; }
+                      window.speechSynthesis.cancel();
+                      const utterance = new SpeechSynthesisUtterance(text);
+                      utterance.lang = 'fr-FR';
+                      utterance.onstart = () => status.textContent = 'Lecture en cours';
+                      utterance.onend = () => status.textContent = 'Lecture terminée';
+                      utterance.onerror = () => status.textContent = 'Lecture indisponible';
+                      window.speechSynthesis.speak(utterance);
+                    };
+                    document.getElementById('sowiaStop').onclick = () => { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); status.textContent = 'Lecture arrêtée'; };
+                    </script></div>""",
+                    height=75,
+                )
     if not API_KEY:
         st.warning("Pour activer les réponses IA, ajoutez votre clé API dans les secrets de l'hébergement. Ne la partagez jamais sur GitHub.")
     memories = get_app_memories()
     if memories:
         st.caption(f"{len(memories)} note(s) mémoire seront disponibles à l'assistant.")
     for item in get_app_history():
-        with st.chat_message(item["role"]):
-            st.markdown(item["content"])
+        render_accessible_message(item["role"], item["content"])
     prompt = st.chat_input("Écrivez votre message...")
     if prompt:
         save_app_message("user", prompt)
-        with st.chat_message("user"):
-            st.markdown(prompt)
+        render_accessible_message("user", prompt)
         with st.chat_message("assistant"):
             try:
                 reply = answer(
