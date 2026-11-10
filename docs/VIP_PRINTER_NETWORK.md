@@ -17,7 +17,7 @@ La migration n'est pas exécutée par le code Python. Tant qu'elle n'a pas été
 - Les membres peuvent consulter les imprimeurs dont le statut est `verified`.
 - Les devis des autres membres ne sont visibles que si l'imprimeur est vérifié, le devis validé et sa date de validité non dépassée.
 - Aucun membre ne peut modifier les statuts d'approbation avec les permissions SQL ordinaires.
-- Les fonctions d'administration exigent le claim serveur `app_metadata.sowia_admin = true`. Cette métadonnée doit être attribuée uniquement par un administrateur de confiance via l'interface d'administration Supabase ou un processus serveur sécurisé. Ne jamais la placer dans `user_metadata`, dans le code client, ni dans un formulaire public.
+- L'onglet d'administration est affiché uniquement si le compte possède le claim serveur `app_metadata.sowia_admin = true`. Les fonctions SQL vérifient ce même claim dans le JWT à chaque action. Cette métadonnée doit être attribuée uniquement par un administrateur de confiance via l'interface d'administration Supabase ou un processus serveur sécurisé. Ne jamais la placer dans `user_metadata`, dans le code client, ni dans un formulaire public. Les administrateurs peuvent examiner, valider, maintenir en attente ou suspendre un fournisseur et un devis.
 
 ## Comparaison
 
