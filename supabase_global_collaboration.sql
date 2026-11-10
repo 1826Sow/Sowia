@@ -205,3 +205,45 @@ create index if not exists sowia_global_project_contributions_project_idx on pub
 create index if not exists sowia_global_project_milestones_project_idx on public.sowia_global_project_milestones(project_id,due_date);
 
 commit;
+
+
+-- Hardening: role-aware writes, immutable project state transitions and audit events.
+create or replace function public.sowia_project_can_contribute(p_project_id uuid)
+returns boolean language sql stable security definer set search_path = ''
+as $$
+ select exists(select 1 from public.sowia_global_projects p where p.id=p_project_id and p.owner_id=auth.uid())
+ or exists(select 1 from public.sowia_global_project_members m where m.project_id=p_project_id and m.user_id=auth.uid() and m.status='accepted' and m.role in ('coordinator','contributor'));
+$$;
+
+create or replace function public.sowia_project_audit_insert()
+returns trigger language plpgsql security definer set search_path = ''
+as $$
+begin
+ insert into public.sowia_global_project_audit(project_id,actor_id,event_type,details)
+ values(new.project_id,auth.uid(),tg_argv[0],to_jsonb(new)-'id'-'project_id'-'contributor_id'-'created_by');
+ return new;
+end; $$;
+
+drop policy if exists sowia_project_contributions_insert on public.sowia_global_project_contributions;
+create policy sowia_project_contributions_insert on public.sowia_global_project_contributions
+for insert to authenticated with check (contributor_id=auth.uid() and public.sowia_project_can_contribute(project_id));
+drop policy if exists sowia_project_milestones_insert on public.sowia_global_project_milestones;
+create policy sowia_project_milestones_insert on public.sowia_global_project_milestones
+for insert to authenticated with check (created_by=auth.uid() and public.sowia_project_can_contribute(project_id));
+
+-- All project status changes must use the audited transition RPC.
+revoke insert, update, delete on public.sowia_global_projects from authenticated;
+grant select on public.sowia_global_projects to authenticated;
+revoke update, delete, insert on public.sowia_global_project_members from authenticated;
+revoke update, delete on public.sowia_global_project_contributions from authenticated;
+revoke update, delete on public.sowia_global_project_milestones from authenticated;
+revoke insert, update, delete on public.sowia_global_project_audit from authenticated;
+revoke all on function public.sowia_project_can_contribute(uuid) from public,anon;
+grant execute on function public.sowia_project_can_contribute(uuid) to authenticated;
+
+drop trigger if exists sowia_project_contribution_audit on public.sowia_global_project_contributions;
+create trigger sowia_project_contribution_audit after insert on public.sowia_global_project_contributions
+for each row execute function public.sowia_project_audit_insert('contribution_declared');
+drop trigger if exists sowia_project_milestone_audit on public.sowia_global_project_milestones;
+create trigger sowia_project_milestone_audit after insert on public.sowia_global_project_milestones
+for each row execute function public.sowia_project_audit_insert('milestone_created');
