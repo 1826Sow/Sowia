@@ -554,7 +554,7 @@ if privacy_screen:
 page = st.radio(
     "Navigation rapide — retrouvez vos outils ici",
     [
-        "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
+        "Hub SOWIA", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
         "Abonnement", "Développement mondial", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
@@ -574,8 +574,82 @@ st.markdown(
 )
 st.write("")
 
-if page == "Accueil":
-    st.subheader(translate_ui("Bienvenue sur SOW IA", language))
+if page in ("Hub SOWIA", "Accueil"):
+    st.subheader(translate_ui("Bienvenue sur le Hub SOWIA", language))
+    metadata = getattr(current_user, "app_metadata", None) or {}
+    is_sowia_admin = isinstance(metadata, dict) and metadata.get("sowia_admin") is True
+    current_workspace = st.session_state.get("workspace_id", "personal")
+    workspace_title = "Professionnel" if current_workspace == "professional" else "Personnel"
+    st.markdown(
+        '<div class="partner-intro"><h3>🌐 SOWIA Executive Hub</h3>'
+        '<p>Un point d’entrée unique pour vos outils personnels, vos activités professionnelles et les services réservés à l’administration.</p></div>',
+        unsafe_allow_html=True,
+    )
+    top_metrics = st.columns(3)
+    with top_metrics[0]:
+        st.metric("Espace actif", workspace_title)
+    with top_metrics[1]:
+        st.metric("Compte", "Connecté" if cloud_mode and current_user is not None else "Mode local")
+    with top_metrics[2]:
+        st.metric("Accès administration", "Autorisé" if is_sowia_admin else "Non attribué")
+    st.markdown("### 👤 Espace Personnel")
+    st.caption("Vos outils quotidiens, votre mémoire et vos documents privés.")
+    personal_items = [
+        ("💬 Assistant IA", "Assistant IA", "Dialoguer avec SOWIA"),
+        ("🧠 Mémoire", "Ma mémoire", "Retrouver vos informations utiles"),
+        ("📄 Documents", "Mes documents", "Gérer vos fichiers personnels"),
+        ("🌐 Recherche", "Recherche Web", "Explorer des informations et des sources"),
+    ]
+    for start in range(0, len(personal_items), 4):
+        cols = st.columns(4)
+        for col, (label, destination, description) in zip(cols, personal_items[start:start + 4]):
+            with col:
+                with st.container(border=True):
+                    st.markdown(f"**{label}**")
+                    st.caption(description)
+                    st.button("Ouvrir", key=f"hub_personal_{destination}", use_container_width=True,
+                              on_click=go_to_page, args=(destination,))
+    st.divider()
+    st.markdown("### 🏢 Espace Professionnel")
+    if premium_active:
+        st.caption("Votre espace professionnel Premium est disponible. Les données restent séparées de l’espace personnel.")
+        business_items = [
+            ("🏛️ Business Club", "SOW IA Business Club", "Relations et partenaires"),
+            ("🌍 Développement mondial", "Développement mondial", "Prospection et collaborations"),
+            ("📈 Opportunités", "Opportunités et revenus", "Pistes et suivi commercial"),
+            ("📊 Finance", "Finance & investissements", "Analyses et aide à la décision"),
+            ("🧭 Stratégie", "Stratégie & scénarios", "Comparer les scénarios"),
+            ("🧪 Technologies", "Technologies & fournisseurs", "Évaluer les solutions"),
+        ]
+        for start in range(0, len(business_items), 3):
+            cols = st.columns(3)
+            for col, (label, destination, description) in zip(cols, business_items[start:start + 3]):
+                with col:
+                    with st.container(border=True):
+                        st.markdown(f"**{label}**")
+                        st.caption(description)
+                        st.button("Ouvrir", key=f"hub_business_{destination}", use_container_width=True,
+                                  on_click=go_to_page, args=(destination,))
+    else:
+        st.info("L’espace Professionnel complet est réservé à un accès Premium actif. Les outils personnels restent disponibles.")
+        st.button("Découvrir Premium", key="hub_premium", on_click=go_to_page, args=("Abonnement",))
+    if is_sowia_admin:
+        st.divider()
+        st.markdown("### 🛡️ Administration SOWIA")
+        st.caption("Zone réservée aux comptes portant le rôle administrateur attribué côté serveur.")
+        admin_items = [
+            ("💳 Revenus & paiements", "Revenus & paiements"),
+            ("🧪 Technologies & fournisseurs", "Technologies & fournisseurs"),
+            ("🏛️ Business Club", "SOW IA Business Club"),
+            ("🧭 Décisions", "Décisions humaines vs SOW IA"),
+        ]
+        admin_cols = st.columns(4)
+        for col, (label, destination) in zip(admin_cols, admin_items):
+            with col:
+                st.button(label, key=f"hub_admin_{destination}", use_container_width=True,
+                          on_click=go_to_page, args=(destination,))
+    st.divider()
+    st.markdown("### 🚀 Tous les outils SOWIA")
     if st.session_state.get("workspace_id") == "professional":
         st.markdown("### Tableau de bord professionnel")
         st.caption("Vue d'ensemble de votre espace professionnel. Les indicateurs affichent uniquement les données de cet espace.")
