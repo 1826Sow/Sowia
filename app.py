@@ -1959,86 +1959,94 @@ elif page == "SOW IA Business Club":
                     except ValueError as exc:
                         st.error(str(exc))
                 st.markdown("#### 🌐 Réseau international d'imprimeurs")
-                st.caption("Référencement initial et comparaison indicative des devis. Les nouveaux fournisseurs restent candidats : SOW IA doit vérifier leur identité, leur qualité, leurs prix et leurs conditions avant toute commande.")
+                st.caption("Les candidats et devis sont conservés dans Supabase. Les statuts de validation sont réservés à l'administration SOW IA.")
                 import printer_network
-                if "vip_printer_candidates" not in st.session_state:
-                    st.session_state["vip_printer_candidates"] = []
-                if "vip_printer_quotes" not in st.session_state:
-                    st.session_state["vip_printer_quotes"] = []
-                with st.expander("Proposer un imprimeur au réseau SOW IA"):
-                    with st.form("sowia_printer_candidate_form"):
-                        supplier_name = st.text_input("Nom de l'imprimeur")
-                        supplier_country = st.text_input("Pays de l'imprimeur")
-                        supplier_website = st.text_input("Site officiel HTTPS (facultatif)")
-                        supplier_services = st.multiselect("Services proposés", ["Cartes 90 × 50 mm", "Papier premium", "Finition mate", "Finition brillante", "Dorure à chaud", "Coins arrondis", "Livraison internationale"])
-                        supplier_submit = st.form_submit_button("Enregistrer comme candidat")
-                    if supplier_submit:
-                        try:
-                            candidate = printer_network.validate_printer_candidate({
-                                "name": supplier_name, "country": supplier_country,
-                                "website": supplier_website, "capabilities": supplier_services,
-                            })
-                            st.session_state["vip_printer_candidates"].append(candidate)
-                            st.success("Candidat enregistré dans cette session. Il n'est pas encore un partenaire vérifié.")
-                        except ValueError as exc:
-                            st.error(str(exc))
-                candidates = st.session_state["vip_printer_candidates"]
-                if candidates:
-                    st.markdown("**Fournisseurs candidats enregistrés dans cette session**")
-                    st.dataframe([{"Imprimeur": p["name"], "Pays": p["country"], "Statut": "À vérifier", "Services": ", ".join(p["capabilities"])} for p in candidates], use_container_width=True, hide_index=True)
-                    with st.expander("Saisir un devis reçu d'un imprimeur"):
-                        supplier_options = {f'{p["name"]} — {p["country"]}': p["id"] for p in candidates}
-                        with st.form("sowia_printer_quote_form"):
-                            selected_supplier = st.selectbox("Imprimeur", list(supplier_options))
-                            destination = st.text_input("Pays de livraison")
-                            quote_quantity = st.number_input("Quantité de cartes", min_value=1, max_value=100000, value=500, step=100)
-                            quote_currency = st.selectbox("Devise", ["EUR", "USD", "GBP", "CHF", "CAD", "CNY", "JPY"])
-                            quote_print = st.number_input("Prix total d'impression", min_value=0.0, value=45.0, step=1.0)
-                            quote_shipping = st.number_input("Prix total de livraison", min_value=0.0, value=8.0, step=1.0)
-                            quote_lead = st.number_input("Délai annoncé (jours)", min_value=1, max_value=365, value=5)
-                            quote_finish = st.text_input("Papier et finition", value="350 g/m², finition mate")
-                            quote_expiry = st.date_input("Devis valable jusqu'au")
-                            quote_submit = st.form_submit_button("Enregistrer le devis reçu")
-                        if quote_submit:
+                try:
+                    candidates = cloud_storage.list_vip_printer_suppliers(supabase_client, current_user)
+                    quotes = cloud_storage.list_vip_printer_quotes(supabase_client, current_user)
+                    with st.expander("Proposer un imprimeur au réseau SOW IA"):
+                        with st.form("sowia_printer_candidate_form"):
+                            supplier_name = st.text_input("Nom de l'imprimeur")
+                            supplier_country = st.text_input("Pays de l'imprimeur")
+                            supplier_website = st.text_input("Site officiel HTTPS (facultatif)")
+                            supplier_services = st.multiselect("Services proposés", ["Cartes 90 × 50 mm", "Papier premium", "Finition mate", "Finition brillante", "Dorure à chaud", "Coins arrondis", "Livraison internationale"])
+                            supplier_submit = st.form_submit_button("Enregistrer comme candidat")
+                        if supplier_submit:
                             try:
-                                saved_quote = printer_network.validate_printer_quote({
-                                    "supplier_id": supplier_options[selected_supplier],
-                                    "destination_country": destination, "quantity": int(quote_quantity),
-                                    "currency": quote_currency, "printing_cost": quote_print,
-                                    "shipping_cost": quote_shipping, "lead_days": int(quote_lead),
-                                    "paper_finish": quote_finish, "valid_until": quote_expiry.isoformat(),
+                                candidate = printer_network.validate_printer_candidate({
+                                    "name": supplier_name, "country": supplier_country,
+                                    "website": supplier_website, "capabilities": supplier_services,
                                 })
-                                st.session_state["vip_printer_quotes"].append(saved_quote)
-                                st.success("Devis enregistré comme reçu, en attente de vérification par SOW IA.")
+                                cloud_storage.create_vip_printer_supplier(supabase_client, current_user, candidate)
+                                st.success("Imprimeur enregistré durablement comme candidat. Il doit encore être vérifié par SOW IA.")
+                                st.rerun()
                             except ValueError as exc:
                                 st.error(str(exc))
-                    if st.session_state["vip_printer_quotes"]:
-                        st.markdown("**Comparer les devis à quantité et destination identiques**")
+                    if candidates:
+                        st.markdown("**Imprimeurs visibles dans votre espace**")
+                        st.dataframe([{
+                            "Imprimeur": p["name"], "Pays": p["country"],
+                            "Statut": {"candidate": "À vérifier", "verified": "Vérifié", "suspended": "Suspendu"}.get(p["status"], "À vérifier"),
+                            "Services": ", ".join(p.get("capabilities") or []),
+                        } for p in candidates], use_container_width=True, hide_index=True)
+                        supplier_options = {
+                            "{} — {} ({})".format(p["name"], p["country"], "Vérifié" if p["status"] == "verified" else "Candidat"): p["id"]
+                            for p in candidates if p["status"] in {"candidate", "verified"}
+                        }
+                        with st.expander("Enregistrer un devis reçu"):
+                            if supplier_options:
+                                with st.form("sowia_printer_quote_form"):
+                                    selected_supplier = st.selectbox("Imprimeur", list(supplier_options))
+                                    destination = st.text_input("Pays de livraison")
+                                    quote_quantity = st.number_input("Quantité de cartes", min_value=1, max_value=100000, value=500, step=100)
+                                    quote_currency = st.selectbox("Devise", ["EUR", "USD", "GBP", "CHF", "CAD", "CNY", "JPY"])
+                                    quote_print = st.number_input("Prix total d'impression", min_value=0.0, value=45.0, step=1.0)
+                                    quote_shipping = st.number_input("Prix total de livraison", min_value=0.0, value=8.0, step=1.0)
+                                    quote_lead = st.number_input("Délai annoncé (jours)", min_value=1, max_value=365, value=5)
+                                    quote_finish = st.text_input("Papier et finition", value="350 g/m², finition mate")
+                                    quote_expiry = st.date_input("Devis valable jusqu'au")
+                                    quote_submit = st.form_submit_button("Enregistrer le devis reçu")
+                                if quote_submit:
+                                    try:
+                                        saved_quote = printer_network.validate_printer_quote({
+                                            "supplier_id": supplier_options[selected_supplier],
+                                            "destination_country": destination, "quantity": int(quote_quantity),
+                                            "currency": quote_currency, "printing_cost": quote_print,
+                                            "shipping_cost": quote_shipping, "lead_days": int(quote_lead),
+                                            "paper_finish": quote_finish, "valid_until": quote_expiry.isoformat(),
+                                        })
+                                        cloud_storage.create_vip_printer_quote(supabase_client, current_user, saved_quote)
+                                        st.success("Devis enregistré durablement comme reçu, en attente de validation SOW IA.")
+                                        st.rerun()
+                                    except ValueError as exc:
+                                        st.error(str(exc))
+                            else:
+                                st.info("Aucun imprimeur candidat ou vérifié n'est disponible pour saisir un devis.")
+                    else:
+                        st.info("Aucun imprimeur visible pour le moment. Vous pouvez proposer le premier candidat.")
+                    if quotes:
+                        st.markdown("**Comparer les devis reçus ou validés**")
                         comp_a, comp_b, comp_c = st.columns(3)
                         compare_country = comp_a.text_input("Destination à comparer", value="France")
                         compare_qty = comp_b.number_input("Quantité à comparer", min_value=1, value=500, step=100)
                         compare_ccy = comp_c.selectbox("Devise de comparaison", ["EUR", "USD", "GBP", "CHF", "CAD", "CNY", "JPY"], key="vip_printer_compare_currency")
-                        try:
-                            comparison = printer_network.compare_printer_quotes(
-                                candidates, st.session_state["vip_printer_quotes"],
-                                compare_country, int(compare_qty), compare_ccy,
-                            )
-                            if comparison:
-                                st.dataframe([{
-                                    "Imprimeur": r["supplier_name"], "Pays": r["supplier_country"],
-                                    "Impression": f'{r["printing_cost"]} {r["currency"]}',
-                                    "Livraison": f'{r["shipping_cost"]} {r["currency"]}',
-                                    "Total": f'{r["total_cost"]} {r["currency"]}',
-                                    "Délai (jours)": r["lead_days"], "Finition": r["paper_finish"],
-                                    "Statut": r["reason"],
-                                } for r in comparison], use_container_width=True, hide_index=True)
-                            else:
-                                st.info("Aucun devis correspondant exactement à cette destination, quantité et devise.")
-                        except ValueError as exc:
-                            st.error(str(exc))
-                    st.caption("Les fournisseurs et devis saisis ici restent temporaires dans cette session. Aucune commande, aucun paiement et aucune transmission de coordonnées ne sont déclenchés. Les conversions de devises et la vérification des partenaires seront ajoutées avant toute ouverture commerciale.")
-                else:
-                    st.info("Le réseau démarre sans fournisseur pré-enregistré : SOW IA n'affiche donc aucun imprimeur comme partenaire disponible tant qu'il n'a pas été vérifié.")
+                        comparison = printer_network.compare_printer_quotes(
+                            candidates, quotes, compare_country, int(compare_qty), compare_ccy,
+                        )
+                        if comparison:
+                            st.dataframe([{
+                                "Imprimeur": row["supplier_name"], "Pays": row["supplier_country"],
+                                "Impression": "{} {}".format(row["printing_cost"], row["currency"]),
+                                "Livraison": "{} {}".format(row["shipping_cost"], row["currency"]),
+                                "Total": "{} {}".format(row["total_cost"], row["currency"]),
+                                "Délai (jours)": row["lead_days"], "Finition": row["paper_finish"],
+                                "Statut": row["reason"],
+                            } for row in comparison], use_container_width=True, hide_index=True)
+                        else:
+                            st.info("Aucun devis correspondant exactement à cette destination, quantité et devise.")
+                    st.caption("Les offres non vérifiées restent identifiées comme telles. Aucune commande, aucun paiement et aucune transmission de coordonnées ne sont déclenchés.")
+                except Exception as exc:
+                    st.warning("Le réseau persistant nécessite la migration Supabase supabase_vip_printer_network.sql. Détail technique : " + str(exc))
             with directory_tab:
                 st.markdown("#### Entreprises membres")
                 directory = cloud_storage.list_business_club_profiles(supabase_client, current_user, club_workspace)
