@@ -448,3 +448,23 @@ def list_vip_printer_quotes(client, user, limit=300):
         "id,supplier_id,destination_country,quantity,currency,printing_cost,shipping_cost,"
         "lead_days,paper_finish,valid_until,status,created_at"
     ).order("created_at", desc=True).limit(min(max(int(limit), 1), 500)).execute().data
+
+
+def admin_set_vip_printer_supplier_status(client, user, supplier_id, status):
+    """Call the database-enforced SOW IA admin RPC; JWT app_metadata is authoritative."""
+    _user_id(user)
+    if status not in {"candidate", "verified", "suspended"}:
+        raise ValueError("Statut de fournisseur invalide.")
+    return client.rpc("sowia_admin_set_printer_supplier_status", {
+        "p_supplier_id": str(supplier_id), "p_status": status,
+    }).execute()
+
+
+def admin_set_vip_printer_quote_status(client, user, quote_id, status):
+    """Call the database-enforced SOW IA admin RPC; JWT app_metadata is authoritative."""
+    _user_id(user)
+    if status not in {"received", "validated", "expired"}:
+        raise ValueError("Statut de devis invalide.")
+    return client.rpc("sowia_admin_set_printer_quote_status", {
+        "p_quote_id": str(quote_id), "p_status": status,
+    }).execute()
