@@ -512,3 +512,56 @@ def list_public_vip_printer_review_scores(client, user):
     """Fetch de-identified scores only; order references and reviewer identities stay private."""
     _user_id(user)
     return client.rpc("sowia_public_vip_printer_review_scores", {}).execute().data
+
+
+def create_vip_card_order(client, user, order):
+    """Create a private card print request; no payment or supplier dispatch occurs."""
+    from vip_card_orders import validate_vip_card_order
+    clean = validate_vip_card_order(order)
+    payload = {
+        "id": clean["id"], "user_id": _user_id(user),
+        "cardholder_name": clean["cardholder_name"], "company": clean["company"],
+        "destination_country": clean["destination_country"], "style": clean["style"],
+        "quantity": clean["quantity"], "notes": clean["notes"], "status": "requested",
+    }
+    return client.table("sowia_vip_card_orders").insert(payload).execute().data
+
+
+def list_vip_card_orders(client, user, limit=100):
+    """RLS limits members to their own requests and admins to all requests."""
+    _user_id(user)
+    return client.table("sowia_vip_card_orders").select(
+        "id,user_id,cardholder_name,company,destination_country,style,quantity,notes,"
+        "status,quote_amount,currency,quote_valid_until,tracking_reference,admin_note,created_at,updated_at"
+    ).order("created_at", desc=True).limit(min(max(int(limit), 1), 200)).execute().data
+
+
+def admin_update_vip_card_order(client, user, order_id, status, quote_amount=None,
+                                currency=None, quote_valid_until=None,
+                                tracking_reference="", admin_note=""):
+    """Update quote/production status only through the database admin-claim RPC."""
+    _user_id(user)
+    from vip_card_orders import ORDER_STATUSES, CURRENCIES
+    if status not in ORDER_STATUSES - {"requested"}:
+        raise ValueError("Statut de commande invalide.")
+    if quote_amount is not None:
+        from decimal import Decimal, InvalidOperation
+        try:
+            amount = Decimal(str(quote_amount))
+        except (InvalidOperation, ValueError, TypeError):
+            raise ValueError("Montant du devis invalide.")
+        if not amount.is_finite() or amount < 0 or amount > Decimal("100000000"):
+            raise ValueError("Montant du devis hors limites.")
+        quote_amount = str(amount.quantize(Decimal("0.01")))
+    if currency is not None and currency not in CURRENCIES:
+        raise ValueError("Devise non prise en charge.")
+    if not isinstance(tracking_reference, str) or len(tracking_reference) > 160:
+        raise ValueError("Référence de suivi invalide.")
+    if not isinstance(admin_note, str) or len(admin_note) > 1000:
+        raise ValueError("Note interne invalide.")
+    return client.rpc("sowia_admin_update_vip_card_order", {
+        "p_order_id": str(order_id), "p_status": status,
+        "p_quote_amount": quote_amount, "p_currency": currency,
+        "p_quote_valid_until": quote_valid_until,
+        "p_tracking_reference": tracking_reference, "p_admin_note": admin_note,
+    }).execute()
