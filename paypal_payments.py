@@ -264,14 +264,26 @@ def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
         checked += 1
         if str(capture.get("status") or "").upper() in {"PARTIALLY_REFUNDED", "REFUNDED"}:
             detected += 1
-            financial_ledger.record_paypal_refund_total(
-                admin_client, user_id=normalized_user_id, capture=capture
+            amount = capture.get("amount") or {}
+            gross = (
+                (capture.get("seller_receivable_breakdown") or {}).get("gross_amount")
+                or amount
+            )
+            financial_ledger.flag_paypal_refund_for_review(
+                admin_client,
+                user_id=normalized_user_id,
+                transaction={
+                    "id": capture_id,
+                    "status": str(capture.get("status") or "").upper(),
+                    "amount_with_breakdown": {"gross_amount": gross},
+                    "time": capture.get("update_time") or capture.get("create_time"),
+                },
             )
             reconciled += 1
     return {
         "captures_checked": checked,
         "refunds_detected": detected,
-        "refunds_reconciled": reconciled,
+        "refunds_flagged_for_manual_review": reconciled,
         "limit_reached": len(rows) >= limit,
     }
 
