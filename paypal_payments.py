@@ -247,7 +247,7 @@ def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
     }
     checked = 0
     detected = 0
-    reconciled = 0
+    flagged = 0
     for row in rows:
         capture_id = str((row or {}).get("provider_payment_id") or "").strip()
         if not re.fullmatch(r"[A-Z0-9_-]{5,100}", capture_id):
@@ -279,11 +279,11 @@ def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
                     "time": capture.get("update_time") or capture.get("create_time"),
                 },
             )
-            reconciled += 1
+            flagged += 1
     return {
         "captures_checked": checked,
         "refunds_detected": detected,
-        "refunds_flagged_for_manual_review": reconciled,
+        "refunds_flagged_for_manual_review": flagged,
         "limit_reached": len(rows) >= limit,
     }
 
