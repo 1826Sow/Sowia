@@ -475,6 +475,7 @@ def sync_completed_subscription_transactions(
     recorded = 0
     ignored = 0
     manual_review = 0
+    refunds_reconciled = 0
     fetched = 0
     page_count = 0
     has_more = False
@@ -522,6 +523,7 @@ def sync_completed_subscription_transactions(
                     admin_client, user_id=user_id, capture=capture_details
                 )
                 manual_review += 1
+                refunds_reconciled += 1
             else:
                 ignored += 1
         page_count += 1
@@ -547,6 +549,7 @@ def sync_completed_subscription_transactions(
         "recorded_or_already_present": recorded,
         "ignored_non_completed": ignored,
         "refunds_flagged_for_manual_review": manual_review,
+        "refunds_reconciled": refunds_reconciled,
         "pages_read": page_count,
         "has_more": has_more,
     }
