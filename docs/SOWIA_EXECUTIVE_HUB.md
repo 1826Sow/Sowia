@@ -32,3 +32,11 @@ The Hub offers a session-scoped action comparison using explicit user-entered ra
 - risk exposure (inverted to safety): 10%.
 
 The engine scores each action from 0 to 100 and explains mandatory gates. A prohibited action is blocked; unverified compliance or high risk requires human review regardless of score. Ratings are not automatically discovered facts, and the engine does not execute tasks, make investments, send messages or spend money. The comparison currently lives only in the active Streamlit session; durable account-level storage is not yet connected.
+
+## Worldwide market expansion
+
+The worldwide-development workspace includes a global market strategy panel. Initial focus markets explicitly include China, Singapore, Malaysia, Taiwan, South Korea, Senegal, the United Arab Emirates (with Dubai as a commercial hub), the Netherlands, Brazil, the Bahamas and Switzerland. English-speaking markets are also a dedicated segment. The country input remains open so the list does not restrict expansion to named markets.
+
+The inclusion principle is to research emerging and lower-/middle-income economies as potential partner and customer markets, not exclude them based only on national income. Each market receives a research checklist for local partners, demand, regulation, privacy/data transfers, tax, payments, language, sanctions and intellectual property. The indicative market score is based on user-entered ratings, not automatically sourced economic statistics.
+
+The feature prepares research and prospecting leads only. It does not automatically contact businesses, register companies, launch campaigns, or make legal determinations. Market coverage is a strategic objective; complete country-by-country localization and compliance verification remain ongoing work.
