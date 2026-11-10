@@ -50,13 +50,44 @@ create policy sowia_global_learning_delete_own
     using (user_id = auth.uid());
 
 create or replace function public.sowia_global_learning_protect_snapshot()
-returns trigger language plpgsql set search_path = public
+returns trigger language plpgsql security definer set search_path = public
 as $$
+declare
+    source_decision public.sowia_global_decisions%rowtype;
 begin
+    if tg_op = 'INSERT' then
+        select * into source_decision
+        from public.sowia_global_decisions d
+        where d.id = new.decision_id and d.user_id = new.user_id;
+        if not found then
+            raise exception 'Original decision not found for this user';
+        end if;
+        new.baseline_snapshot := jsonb_build_object(
+            'title', source_decision.title,
+            'evidence_level', source_decision.evidence_level,
+            'context_note', source_decision.context_note,
+            'criteria', source_decision.criteria,
+            'ranked_options', source_decision.ranked_options,
+            'recommended_option', source_decision.recommended_option,
+            'decision_status', source_decision.decision_status,
+            'score_gap', source_decision.score_gap,
+            'confidence', source_decision.confidence,
+            'created_at', source_decision.created_at
+        );
+        if source_decision.recommended_option is null then
+            new.recommendation_alignment := null;
+        else
+            new.recommendation_alignment :=
+                new.selected_option = source_decision.recommended_option;
+        end if;
+        return new;
+    end if;
+
     if new.user_id <> old.user_id
        or new.decision_id <> old.decision_id
        or new.baseline_snapshot <> old.baseline_snapshot
-       or new.created_at <> old.created_at then
+       or new.created_at <> old.created_at
+       or new.recommendation_alignment is distinct from old.recommendation_alignment then
         raise exception 'Original decision snapshot is immutable';
     end if;
     return new;
@@ -66,7 +97,7 @@ $$;
 drop trigger if exists sowia_global_learning_immutable_snapshot
     on public.sowia_global_learning_records;
 create trigger sowia_global_learning_immutable_snapshot
-    before update on public.sowia_global_learning_records
+    before insert or update on public.sowia_global_learning_records
     for each row execute function public.sowia_global_learning_protect_snapshot();
 
 revoke all on public.sowia_global_learning_records from anon;
