@@ -64,3 +64,6 @@ The migration `supabase_night_exchange_events.sql` creates a user-scoped event l
 - The UI lets a member explicitly record a meeting confirmation. This is a member declaration, not proof that a meeting took place.
 
 Apply `supabase_night_exchange_events.sql` after the app registry migration in the Supabase SQL Editor. The new ledger is not operational until both migrations have been applied to the connected Supabase project. No live payment webhook has been connected in this implementation.
+
+## Activity journal — explicit matching analysis
+The Smart Opportunities view now offers a deliberate “Enregistrer cette analyse dans mon journal” action. It appends a `match_viewed` event scoped to the signed-in member and active workspace, with the source app and result count. Merely opening or refreshing the page does not create repeated events. The event is visible in the seven-day Morning Report. The separate meeting button remains a member declaration, not independent verification.
