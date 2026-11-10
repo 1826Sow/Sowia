@@ -23,6 +23,27 @@ def _setting(name: str, default: str = "") -> str:
     return str(get_setting(name, default) or "").strip()
 
 
+def paypal_subscription_configuration_status():
+    """Return safe names of missing settings without exposing secret values."""
+    missing = []
+    enabled = _setting("SOWIA_SUBSCRIPTIONS_ENABLED", "false").lower() in {
+        "1", "true", "yes"
+    }
+    if not enabled:
+        missing.append("SOWIA_SUBSCRIPTIONS_ENABLED=true")
+    for name in (
+        "PAYPAL_CLIENT_ID",
+        "PAYPAL_CLIENT_SECRET",
+        "PAYPAL_SUBSCRIPTION_RETURN_URL",
+        "PAYPAL_SUBSCRIPTION_CANCEL_URL",
+    ):
+        if not _setting(name):
+            missing.append(name)
+    mode = _setting("PAYPAL_MODE", "sandbox").lower()
+    if mode not in {"sandbox", "live"}:
+        missing.append("PAYPAL_MODE (sandbox)")
+    return missing
+
 def paypal_subscription_configuration():
     """Return configuration only when recurring billing is explicitly enabled."""
     enabled = _setting("SOWIA_SUBSCRIPTIONS_ENABLED", "false").lower() in {
