@@ -140,7 +140,7 @@ def build_meeting_ics(meeting):
     except (KeyError, TypeError, ValueError):
         raise ValueError("Les informations du rendez-vous sont incomplètes ou invalides.")
     def escape(value):
-        return str(value).replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\\r", "").replace("\\n", "\\n")
+        return str(value).replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\r", "").replace("\n", "\\n")
     end = start + timedelta(minutes=duration)
     stamp = datetime.now(dt_timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     lines = [
@@ -155,4 +155,4 @@ def build_meeting_ics(meeting):
     if url:
         lines.append(f"URL:{url}")
     lines.extend(["END:VEVENT", "END:VCALENDAR", ""])
-    return "\\r\\n".join(lines)
+    return "\r\n".join(lines)
