@@ -49,3 +49,20 @@ def test_rank_places_eligible_candidates_before_rejected():
     good = evaluate_candidate("A", valid_scores(), evidence=["preuve"])
     bad = evaluate_candidate("B", valid_scores(security=1), evidence=["audit"])
     assert [item.name for item in rank_candidates([bad, good])] == ["A", "B"]
+
+
+def test_unverified_licence_is_documentation_not_automatic_rejection():
+    result = evaluate_candidate(
+        "Candidat à vérifier", valid_scores(), evidence=["documentation fournisseur"],
+        compliance_verified=False,
+    )
+    assert result.decision == "À documenter"
+    assert any("à documenter" in reason for reason in result.reasons)
+
+
+def test_established_non_compliance_is_rejected_even_if_verification_was_done():
+    result = evaluate_candidate(
+        "Candidat non conforme", valid_scores(), evidence=["analyse juridique"],
+        compliant=False, compliance_verified=True,
+    )
+    assert result.decision == "Écarter"
