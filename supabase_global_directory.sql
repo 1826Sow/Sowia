@@ -19,13 +19,30 @@ alter table public.sowia_global_profiles
         ]::text[]
     );
 
+create or replace function public.sowia_global_directory_specialties_valid(p_values text[])
+returns boolean
+language sql
+immutable
+parallel safe
+set search_path = ''
+as $
+    select pg_catalog.cardinality(coalesce(p_values, array[]::text[])) <= 12
+       and coalesce((
+           select pg_catalog.bool_and(
+               pg_catalog.char_length(pg_catalog.btrim(item)) between 1 and 60
+           )
+           from pg_catalog.unnest(coalesce(p_values, array[]::text[])) as items(item)
+       ), true);
+$;
+
+revoke all on function public.sowia_global_directory_specialties_valid(text[]) from public;
+grant execute on function public.sowia_global_directory_specialties_valid(text[]) to authenticated;
+
 alter table public.sowia_global_profiles
     drop constraint if exists sowia_global_profiles_specialties_valid;
 alter table public.sowia_global_profiles
     add constraint sowia_global_profiles_specialties_valid check (
-        pg_catalog.cardinality(specialties) <= 12
-        and pg_catalog.length(pg_catalog.array_to_string(specialties, ',')) <= 720
-        and pg_catalog.array_position(specialties, '') is null
+        public.sowia_global_directory_specialties_valid(specialties)
     );
 
 create index if not exists sowia_global_profiles_directory_country_idx
