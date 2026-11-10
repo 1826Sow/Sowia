@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -3115,6 +3115,75 @@ elif page == "SOWIA GLOBAL INTELLIGENCE":
                             st.rerun()
             except Exception as history_error:
                 st.error("Historique indisponible : " + type(history_error).__name__)
+
+
+elif page == "SOWIA GLOBAL PULSE":
+    st.subheader("📡 SOWIA GLOBAL PULSE")
+    st.caption("Radar international de veille : lancez une recherche ciblée, conservez les sources et transmettez les signaux utiles à votre analyse stratégique.")
+    st.info("La collecte est déclenchée manuellement. Cette version ne surveille pas les marchés en arrière-plan et n'envoie pas d'alertes automatiques. Les résultats web sont des pistes à vérifier, pas des faits certifiés.")
+    if not cloud_mode or current_user is None:
+        st.warning("Connectez-vous à votre compte SOWIA pour conserver votre veille dans votre espace privé.")
+    else:
+        import sowia_global_pulse as global_pulse
+        pulse_tabs = st.tabs(["🔎 Lancer une veille", "📚 Mes sources sauvegardées"])
+        with pulse_tabs[0]:
+            with st.form("sowia_global_pulse_search_form"):
+                pulse_country = st.text_input("Pays ou marché ciblé", max_chars=100, placeholder="Ex. Sénégal, Chine, Suisse")
+                pulse_sector = st.text_input("Secteur (facultatif)", max_chars=100, placeholder="Ex. Intelligence artificielle, agriculture")
+                pulse_topic = st.text_input("Sujet à surveiller", max_chars=180, placeholder="Ex. nouvelles règles sur l'IA")
+                pulse_category = st.selectbox("Famille de signal", list(global_pulse.CATEGORIES))
+                pulse_submit = st.form_submit_button("Lancer la veille")
+            if pulse_submit:
+                try:
+                    pulse_query = global_pulse.build_pulse_query(
+                        pulse_country, pulse_sector, pulse_topic, pulse_category
+                    )
+                    with st.spinner("Recherche de sources publiques…"):
+                        raw_pulse = search_web(pulse_query, max_results=10)
+                    pulse_rows = global_pulse.normalize_pulse_results(
+                        raw_pulse, pulse_country, pulse_sector, pulse_topic, pulse_category, limit=10
+                    )
+                    st.session_state["sowia_global_pulse_latest"] = pulse_rows
+                    st.success(f"{len(pulse_rows)} source(s) exploitable(s) trouvée(s).")
+                except Exception as pulse_error:
+                    st.error("Veille non réalisée : " + type(pulse_error).__name__)
+                    st.caption("Vérifiez que la recherche Web est configurée dans les secrets du serveur.")
+            for idx, pulse_row in enumerate(st.session_state.get("sowia_global_pulse_latest", [])):
+                with st.container(border=True):
+                    st.markdown(f"**{pulse_row['title']}**")
+                    st.caption(f"{pulse_row['source_domain']} · {pulse_row.get('published_at') or 'Date non fournie'} · {global_pulse.evidence_label(pulse_row)}")
+                    if pulse_row.get("snippet"):
+                        st.write(pulse_row["snippet"])
+                    st.link_button("Ouvrir la source", pulse_row["url"])
+                    if st.button("Sauvegarder cette source", key=f"pulse_save_{idx}"):
+                        try:
+                            cloud_storage.save_global_pulse_items(
+                                supabase_client, current_user, [pulse_row]
+                            )
+                            st.success("Source conservée dans votre registre privé.")
+                        except Exception as pulse_save_error:
+                            st.error("Enregistrement impossible : " + type(pulse_save_error).__name__)
+        with pulse_tabs[1]:
+            try:
+                saved_pulse = cloud_storage.list_global_pulse_items(
+                    supabase_client, current_user, limit=200
+                )
+                if not saved_pulse:
+                    st.info("Aucune source sauvegardée pour le moment.")
+                for pulse_item in saved_pulse:
+                    with st.expander(f"{pulse_item['country']} · {pulse_item['title']}"):
+                        st.caption(f"{pulse_item['source_domain']} · {pulse_item.get('published_at') or 'Date non fournie'} · {pulse_item['category']}")
+                        st.write(pulse_item.get("snippet") or "Aucun résumé fourni.")
+                        st.link_button("Consulter la source", pulse_item["url"])
+                        if st.button("Supprimer de ma veille", key=f"pulse_delete_{pulse_item['id']}"):
+                            cloud_storage.delete_global_pulse_item(
+                                supabase_client, current_user, pulse_item["id"]
+                            )
+                            st.success("Source supprimée de votre registre.")
+                            st.rerun()
+            except Exception as pulse_history_error:
+                st.error("Le registre GLOBAL PULSE n'est pas disponible.")
+                st.caption("Appliquez supabase_global_pulse.sql après les migrations GLOBAL ID et GLOBAL INTELLIGENCE. Diagnostic : " + type(pulse_history_error).__name__)
 
 
 elif page == "SOWIA GLOBAL ADMIN & MODERATION":
