@@ -3291,11 +3291,17 @@ elif page == "SOWIA GLOBAL PERFORMANCE & IMPACT":
                     if summary["average_progress_percent"] is not None else "—"
                 ))
                 p3.metric("Plans au-dessus du budget", summary["over_budget_plans"])
-                p4, p5, p6 = st.columns(3)
-                p4.metric("Budget autorisé suivi", f'{summary["total_authorized_budget"]:,.2f}')
-                p5.metric("Dépenses cumulées", f'{summary["latest_cumulative_spend"]:,.2f}')
-                p6.metric("Écart budgétaire", f'{summary["budget_remaining"]:,.2f}')
-                st.caption("Les montants agrègent les budgets des plans mesurés. Les devises peuvent être différentes : ne pas interpréter le total comme une somme monétaire consolidée.")
+                st.markdown("#### Suivi budgétaire par devise")
+                if summary["currency_breakdown"]:
+                    st.dataframe([{
+                        "Devise": currency,
+                        "Budget autorisé": values["authorized_budget"],
+                        "Dépenses cumulées": values["cumulative_spend"],
+                        "Solde": values["budget_remaining"],
+                    } for currency, values in summary["currency_breakdown"].items()],
+                    use_container_width=True, hide_index=True)
+                else:
+                    st.info("Aucun budget mesuré pour le moment.")
                 st.markdown("#### Impacts enregistrés")
                 i1, i2 = st.columns(2)
                 i1.metric("Mesures avec impact social", summary["social_impact_records"])
