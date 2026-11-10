@@ -542,7 +542,7 @@ def admin_update_vip_card_order(client, user, order_id, status, quote_amount=Non
     """Update quote/production status only through the database admin-claim RPC."""
     _user_id(user)
     from vip_card_orders import ORDER_STATUSES, CURRENCIES
-    if status not in ORDER_STATUSES - {"requested"}:
+    if status not in {"quoted", "paid", "in_production", "shipped", "delivered", "cancelled"}:
         raise ValueError("Statut de commande invalide.")
     if quote_amount is not None:
         from decimal import Decimal, InvalidOperation
@@ -564,4 +564,12 @@ def admin_update_vip_card_order(client, user, order_id, status, quote_amount=Non
         "p_quote_amount": quote_amount, "p_currency": currency,
         "p_quote_valid_until": quote_valid_until,
         "p_tracking_reference": tracking_reference, "p_admin_note": admin_note,
+    }).execute()
+
+
+def approve_own_vip_card_quote(client, user, order_id):
+    """Allow the customer to approve only their own current, unexpired quote."""
+    _user_id(user)
+    return client.rpc("sowia_member_approve_vip_card_quote", {
+        "p_order_id": str(order_id),
     }).execute()
