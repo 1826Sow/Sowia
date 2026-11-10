@@ -359,6 +359,11 @@ def go_to_page(page_name):
     st.session_state.page_nav = page_name
 
 
+def go_to_professional_page(page_name):
+    st.session_state.workspace_choice = "Professionnel"
+    st.session_state.page_nav = page_name
+
+
 def enable_privacy_screen():
     st.session_state["sowia_privacy_screen"] = True
 
@@ -629,7 +634,7 @@ if page in ("Hub SOWIA", "Accueil"):
                         st.markdown(f"**{label}**")
                         st.caption(description)
                         st.button("Ouvrir", key=f"hub_business_{destination}", use_container_width=True,
-                                  on_click=go_to_page, args=(destination,))
+                                  on_click=go_to_professional_page, args=(destination,))
     else:
         st.info("L’espace Professionnel complet est réservé à un accès Premium actif. Les outils personnels restent disponibles.")
         st.button("Découvrir Premium", key="hub_premium", on_click=go_to_page, args=("Abonnement",))
