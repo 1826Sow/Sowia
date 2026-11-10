@@ -1137,6 +1137,37 @@ def delete_global_decision(client, user, decision_id):
         .eq("user_id", _user_id(user)).eq("id", str(decision_id)).execute().data
     )
 
+
+# SOWIA GLOBAL LEARNING ENGINE — append observed outcomes without changing original decisions.
+def save_global_learning_record(client, user, record):
+    import sowia_global_learning
+    uid = _user_id(user)
+    clean = sowia_global_learning.validate_learning_record(record)
+    decision = (
+        client.table("sowia_global_decisions").select("id")
+        .eq("id", clean["decision_id"]).eq("user_id", uid).limit(1).execute().data
+    )
+    if not decision:
+        raise PermissionError("Décision d'origine introuvable dans cet espace privé.")
+    row = {"user_id": uid, **clean}
+    return client.table("sowia_global_learning_records").insert(row).execute().data
+
+
+def list_global_learning_records(client, user, limit=200):
+    return (
+        client.table("sowia_global_learning_records")
+        .select("id,decision_id,baseline_snapshot,selected_option,outcome_score,outcome_note,evidence_reference,recommendation_alignment,evaluated_at,created_at")
+        .eq("user_id", _user_id(user)).order("evaluated_at", desc=True)
+        .limit(min(max(int(limit), 1), 300)).execute().data
+    )
+
+
+def delete_global_learning_record(client, user, record_id):
+    return (
+        client.table("sowia_global_learning_records").delete()
+        .eq("user_id", _user_id(user)).eq("id", str(record_id)).execute().data
+    )
+
 # SOWIA GLOBAL ID — private profile registry and safe public directory.
 def _validate_global_profile(display_name, app_name="", organization="", country="",
                              languages="", website="", short_description="",
