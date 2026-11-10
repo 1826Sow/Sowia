@@ -1044,6 +1044,47 @@ def delete_global_pulse_item(client, user, item_id):
         .eq("user_id", _user_id(user)).eq("id", str(item_id)).execute().data
     )
 
+
+
+# SOWIA GLOBAL ALERTS — private, account-scoped signal alerts.
+def create_global_alert(client, user, alert, pulse_item_id=None):
+    from sowia_global_alerts import validate_alert
+    uid = _user_id(user)
+    clean = validate_alert(alert)
+    row = {"user_id": uid, **clean, "pulse_item_id": str(pulse_item_id) if pulse_item_id else None}
+    return client.table("sowia_global_alerts").upsert(
+        row, on_conflict="user_id,url"
+    ).execute().data
+
+
+def list_global_alerts(client, user, status=None, limit=100):
+    query = (
+        client.table("sowia_global_alerts")
+        .select("id,pulse_item_id,title,url,source_domain,country,category,level,reason,status,created_at,updated_at")
+        .eq("user_id", _user_id(user))
+    )
+    if status:
+        from sowia_global_alerts import validate_alert_status
+        query = query.eq("status", validate_alert_status(status))
+    return query.order("created_at", desc=True).limit(min(max(int(limit), 1), 200)).execute().data
+
+
+def update_global_alert_status(client, user, alert_id, status):
+    from sowia_global_alerts import validate_alert_status
+    clean_status = validate_alert_status(status)
+    return (
+        client.table("sowia_global_alerts")
+        .update({"status": clean_status, "updated_at": datetime.now(timezone.utc).isoformat()})
+        .eq("user_id", _user_id(user)).eq("id", str(alert_id)).execute().data
+    )
+
+
+def delete_global_alert(client, user, alert_id):
+    return (
+        client.table("sowia_global_alerts").delete()
+        .eq("user_id", _user_id(user)).eq("id", str(alert_id)).execute().data
+    )
+
 # SOWIA GLOBAL ID — private profile registry and safe public directory.
 def _validate_global_profile(display_name, app_name="", organization="", country="",
                              languages="", website="", short_description="",
