@@ -41,6 +41,24 @@ def _subscriptions_enabled() -> bool:
     }
 
 
+def paypal_subscription_toggle_diagnostic() -> str:
+    """Expose only the toggle's parsed state and source, never any secret values."""
+    try:
+        import streamlit as st
+        secret_value = st.secrets.get("SOWIA_SUBSCRIPTIONS_ENABLED")
+        if secret_value is not None:
+            parsed = str(secret_value).strip().lower() in {"1", "true", "yes"}
+            return f"toggle={str(parsed).lower()} (source=Streamlit Secrets)"
+    except Exception:
+        pass
+    import os
+    env_value = os.getenv("SOWIA_SUBSCRIPTIONS_ENABLED")
+    if env_value is not None:
+        parsed = str(env_value).strip().lower() in {"1", "true", "yes"}
+        return f"toggle={str(parsed).lower()} (source=environment)"
+    return "toggle=false (source=default; setting not found)"
+
+
 def paypal_subscription_configuration_status():
     """Return safe names of missing settings without exposing secret values."""
     missing = []
