@@ -40,6 +40,7 @@ import sowia_prioritization
 import sowia_night_exchange
 import sowia_global_id
 import sowia_global_directory
+import sowia_global_connect
 import sowia_business_card
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
