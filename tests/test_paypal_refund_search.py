@@ -90,6 +90,7 @@ def test_individual_refund_is_verified_against_reporting_and_refund_resource(mon
     assert calls[0][0].endswith("/v1/reporting/transactions")
     assert calls[0][1]["params"]["transaction_type"] == "T1107"
     assert calls[0][1]["params"]["fields"] == "transaction_info"
+    assert calls[0][1]["params"]["page"] == 1
 
 
 def test_rejects_wrong_parent_or_wrong_amount(monkeypatch):
