@@ -441,7 +441,7 @@ page = st.radio(
     [
         "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "Opportunités et revenus", "Technologies & fournisseurs", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "Opportunités et revenus", "Stratégie & scénarios", "Technologies & fournisseurs", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -1547,6 +1547,131 @@ elif page == "Opportunités et revenus":
                 "Le tableau des opportunités n'est pas encore initialisé. "
                 "Exécutez supabase_business_opportunities.sql dans Supabase > SQL Editor, puis rechargez l'application."
             )
+
+elif page == "Stratégie & scénarios":
+    st.subheader("🧭 Laboratoire de scénarios stratégiques")
+    st.caption(
+        "SOW IA compare des scénarios prudents, d'accélération, de rupture et de résilience. "
+        "Le classement aide à décider ; il ne déclenche jamais seul un déploiement."
+    )
+    st.info(
+        "Règle de fonctionnement : explorer largement, vérifier la légalité et les preuves, "
+        "tester de façon réversible, puis demander une validation humaine pour toute action "
+        "externe, dépense ou modification de production."
+    )
+    try:
+        from strategic_scenarios import SCENARIO_WEIGHTS, ScenarioEvaluation, evaluate_scenario, rank_scenarios
+        scenario_labels = {
+            "strategic_fit": "Alignement stratégique",
+            "customer_value": "Valeur pour le client",
+            "feasibility": "Faisabilité technique",
+            "economic_value": "Valeur économique",
+            "resilience": "Résilience et indépendance",
+            "evidence_quality": "Qualité des preuves",
+            "reversibility": "Réversibilité",
+        }
+        if "strategic_scenarios" not in st.session_state:
+            st.session_state["strategic_scenarios"] = []
+        with st.expander("＋ Étudier un nouveau scénario", expanded=not st.session_state["strategic_scenarios"]):
+            with st.form("strategic_scenario_form", clear_on_submit=True):
+                scenario_name = st.text_input("Nom du scénario", max_chars=120)
+                scenario_type = st.selectbox(
+                    "Famille de scénario",
+                    ["prudent", "acceleration", "rupture", "resilience"],
+                    format_func=lambda value: {
+                        "prudent": "Prudent — renforcer le socle",
+                        "acceleration": "Accélération — saisir une opportunité",
+                        "rupture": "Rupture — explorer une nouvelle approche",
+                        "resilience": "Résilience — prévoir une solution de secours",
+                    }[value],
+                )
+                scenario_scores = {}
+                cols = st.columns(2)
+                for index, (criterion, weight) in enumerate(SCENARIO_WEIGHTS.items()):
+                    with cols[index % 2]:
+                        scenario_scores[criterion] = st.slider(
+                            f"{scenario_labels[criterion]} · poids {weight:.0%}",
+                            0.0, 5.0, 3.0, 0.5, key=f"scenario_{criterion}",
+                        )
+                legal_state = st.selectbox(
+                    "État de la vérification juridique",
+                    ["review_required", "verified", "prohibited"],
+                    format_func=lambda value: {
+                        "review_required": "À vérifier",
+                        "verified": "Vérifié pour le périmètre étudié",
+                        "prohibited": "Interdit / non autorisé",
+                    }[value],
+                )
+                risk_level = st.selectbox(
+                    "Niveau de risque", ["low", "medium", "high", "critical"],
+                    format_func=lambda value: {
+                        "low": "Faible", "medium": "Modéré",
+                        "high": "Élevé", "critical": "Critique",
+                    }[value],
+                )
+                external_impact = st.checkbox("Le scénario agit sur des clients, partenaires ou systèmes externes.")
+                spending_required = st.checkbox("Le scénario nécessite une dépense ou un engagement financier.")
+                production_change = st.checkbox("Le scénario modifie un service ou système en production.")
+                submit_scenario = st.form_submit_button("Évaluer le scénario", type="primary")
+            if submit_scenario:
+                try:
+                    result = evaluate_scenario(
+                        scenario_name, scenario_type, scenario_scores,
+                        legal_state=legal_state, risk_level=risk_level,
+                        external_impact=external_impact,
+                        spending_required=spending_required,
+                        production_change=production_change,
+                    )
+                    record = {
+                        "name": result.name, "scenario_type": result.scenario_type,
+                        "score": result.score, "decision": result.decision,
+                        "reasons": list(result.reasons),
+                        "requires_human_approval": result.requires_human_approval,
+                    }
+                    scenarios = [
+                        item for item in st.session_state["strategic_scenarios"]
+                        if item["name"].casefold() != result.name.casefold()
+                    ]
+                    scenarios.append(record)
+                    st.session_state["strategic_scenarios"] = scenarios
+                    st.rerun()
+                except ValueError as exc:
+                    st.error(str(exc))
+        scenarios = st.session_state["strategic_scenarios"]
+        if scenarios:
+            st.markdown("#### Scénarios comparés")
+            evaluations = [
+                ScenarioEvaluation(
+                    name=item["name"], scenario_type=item["scenario_type"],
+                    score=float(item["score"]), decision=item["decision"],
+                    reasons=tuple(item["reasons"]),
+                    requires_human_approval=bool(item["requires_human_approval"]),
+                )
+                for item in scenarios
+            ]
+            ranked_scenarios = rank_scenarios(evaluations)
+            st.dataframe(
+                [{"Scénario": item.name, "Type": item.scenario_type,
+                  "Score / 100": item.score, "Décision": item.decision,
+                  "Approbation humaine": "Oui" if item.requires_human_approval else "Non"}
+                 for item in ranked_scenarios],
+                use_container_width=True, hide_index=True,
+            )
+            for item in ranked_scenarios:
+                with st.expander(f"{item.name} — {item.decision}"):
+                    for reason in item.reasons:
+                        st.write("• " + reason)
+            st.caption(
+                "Les scénarios sont conservés dans la session actuelle uniquement. "
+                "Aucun scénario n'est exécuté ou déployé automatiquement."
+            )
+            if st.button("Effacer les scénarios de cette session", key="clear_strategic_scenarios"):
+                st.session_state["strategic_scenarios"] = []
+                st.rerun()
+        else:
+            st.caption("Ajoutez au moins deux scénarios pour comparer des orientations différentes.")
+    except Exception:
+        st.error("Le laboratoire de scénarios est momentanément indisponible. Aucune action n'a été lancée.")
 
 elif page == "Technologies & fournisseurs":
     st.subheader("🧪 Sélection des meilleures technologies")
