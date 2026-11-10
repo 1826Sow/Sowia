@@ -407,3 +407,101 @@ def verify_paypal_subscription_webhook(event: dict, transmission_headers: dict):
     )
     response.raise_for_status()
     return response.json().get("verification_status") == "SUCCESS"
+
+
+def sync_completed_subscription_transactions(
+    admin_client, subscription_id: str, start_time: str, end_time: str
+):
+    """Fetch a bounded PayPal billing-history window and record COMPLETED rows.
+
+    Ownership is taken from the server-side subscription row and cross-checked
+    against PayPal's subscription details; no browser user_id is accepted.
+    """
+    from datetime import datetime
+    import financial_ledger
+
+    config = paypal_subscription_configuration()
+    if not config or config["mode"] != "sandbox":
+        raise RuntimeError("La synchronisation récurrente est limitée à PayPal Sandbox.")
+    if admin_client is None:
+        raise RuntimeError("Client d'administration Supabase indisponible.")
+    normalized_id = str(subscription_id or "").strip()
+    if not SUBSCRIPTION_ID_RE.fullmatch(normalized_id):
+        raise ValueError("Identifiant d'abonnement PayPal invalide.")
+
+    def parse_time(value, field):
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            raise ValueError(f"{field} doit être une date ISO 8601.") from None
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise ValueError(f"{field} doit inclure un fuseau horaire.")
+        return parsed
+
+    start = parse_time(start_time, "Début")
+    end = parse_time(end_time, "Fin")
+    if end <= start or (end - start).total_seconds() > 366 * 86400:
+        raise ValueError("La période doit être positive et limitée à 366 jours.")
+
+    stored = (
+        admin_client.table("sowia_subscriptions")
+        .select("user_id, paypal_plan_id, provider")
+        .eq("paypal_subscription_id", normalized_id)
+        .maybe_single()
+        .execute()
+    )
+    stored_row = getattr(stored, "data", None) or {}
+    user_id = str(stored_row.get("user_id") or "").strip()
+    if not user_id or str(stored_row.get("provider") or "").lower() != "paypal":
+        raise PermissionError("Abonnement PayPal non enregistré ou propriétaire inconnu.")
+
+    details = get_premium_subscription(normalized_id)
+    if str(details.get("custom_id") or "").strip() != user_id:
+        raise PermissionError("Le propriétaire PayPal ne correspond pas au compte SOW IA.")
+    expected_plan = str(stored_row.get("paypal_plan_id") or "").strip()
+    if not expected_plan or str(details.get("plan_id") or "").strip() != expected_plan:
+        raise PermissionError("Le forfait PayPal ne correspond pas à l'abonnement enregistré.")
+
+    token = _access_token(config)
+    response = requests.get(
+        f"{config['base_url']}/v1/billing/subscriptions/{normalized_id}/transactions",
+        params={
+            "start_time": start.astimezone().isoformat(),
+            "end_time": end.astimezone().isoformat(),
+            "page_size": 100,
+        },
+        headers=_api_headers(config, token),
+        timeout=TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    transactions = payload.get("transactions")
+    if not isinstance(transactions, list):
+        raise RuntimeError("Historique de facturation PayPal invalide.")
+
+    recorded = 0
+    ignored = 0
+    for transaction in transactions:
+        if not isinstance(transaction, dict):
+            ignored += 1
+            continue
+        if str(transaction.get("status") or "").upper() != "COMPLETED":
+            ignored += 1
+            continue
+        financial_ledger.record_paypal_billing_transaction(
+            admin_client,
+            user_id=user_id,
+            subscription_id=normalized_id,
+            transaction=transaction,
+        )
+        recorded += 1
+    return {
+        "subscription_id": normalized_id,
+        "fetched": len(transactions),
+        "recorded_or_already_present": recorded,
+        "ignored_non_completed": ignored,
+        "has_more": bool(payload.get("links") and any(
+            link.get("rel") == "next" for link in payload.get("links", [])
+            if isinstance(link, dict)
+        )),
+    }
