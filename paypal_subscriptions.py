@@ -228,7 +228,7 @@ def ensure_premium_plan(admin_client):
     return str(plan_id)
 
 
-def reconcile_returned_subscription(admin_client, subscription_id: str, user_id: str):
+def reconcile_returned_subscription(subscription_id: str, user_id: str):
     """Validate PayPal's browser return server-side and persist an ACTIVE subscription.
 
     The query parameter is only an identifier; ownership, plan and status are
@@ -237,6 +237,9 @@ def reconcile_returned_subscription(admin_client, subscription_id: str, user_id:
     config = paypal_subscription_configuration()
     if not config or config["mode"] != "sandbox":
         raise RuntimeError("La réconciliation du retour est limitée à PayPal Sandbox.")
+    # Import lazily so the app does not initialize an admin client on ordinary page loads.
+    import premium_access
+    admin_client = premium_access.create_admin_client()
     if admin_client is None:
         raise RuntimeError("Le stockage serveur Supabase n'est pas configuré.")
     normalized_user_id = str(user_id or "").strip()
