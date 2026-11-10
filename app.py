@@ -342,6 +342,19 @@ premium_active = bool(premium_entitlement)
 
 with st.sidebar:
     st.markdown("## 🧠 SOW IA")
+    preference_owner = str(getattr(current_user, "id", "")) if cloud_mode and current_user is not None else "local"
+    if st.session_state.get("sowia_language_loaded_for") != preference_owner:
+        saved_language = "Français"
+        if cloud_mode and current_user is not None:
+            try:
+                saved_language = cloud_storage.get_language_preference(supabase_client, current_user)
+            except Exception:
+                # A missing migration must not block access to the rest of SOW IA.
+                st.session_state["sowia_language_save_available"] = False
+            else:
+                st.session_state["sowia_language_save_available"] = True
+        st.session_state["sowia_language"] = saved_language
+        st.session_state["sowia_language_loaded_for"] = preference_owner
     current_language = st.session_state.get("sowia_language", "Français")
     if current_language not in SOWIA_LANGUAGES:
         current_language = "Français"
@@ -349,6 +362,14 @@ with st.sidebar:
         "🌐 Langue / Language", SOWIA_LANGUAGES,
         index=SOWIA_LANGUAGES.index(current_language), key="sowia_language",
     )
+    if cloud_mode and current_user is not None and st.session_state.get("sowia_language_save_available", False):
+        if st.session_state.get("sowia_language_saved") != language:
+            try:
+                cloud_storage.set_language_preference(supabase_client, current_user, language)
+                st.session_state["sowia_language_saved"] = language
+            except Exception:
+                st.session_state["sowia_language_save_available"] = False
+                st.caption("La langue est active pour cette session. Exécutez supabase_language_preferences.sql pour la conserver dans votre compte.")
     st.caption(translate_ui("Intelligence artificielle", language))
     workspace_options = ["Personnel", "Professionnel"] if premium_active else ["Personnel"]
     if st.session_state.get("workspace_choice") not in workspace_options:
