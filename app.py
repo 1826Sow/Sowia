@@ -590,7 +590,9 @@ st.write("")
 if page in ("Hub SOWIA", "Accueil"):
     st.subheader(translate_ui("Bienvenue sur le Hub SOWIA", language))
     metadata = getattr(current_user, "app_metadata", None) or {}
-    is_sowia_admin = isinstance(metadata, dict) and metadata.get("sowia_admin") is True
+    is_sowia_admin = isinstance(metadata, dict) and (
+        metadata.get("sowia_admin") is True or metadata.get("role") == "admin"
+    )
     current_workspace = st.session_state.get("workspace_id", "personal")
     workspace_title = "Professionnel" if current_workspace == "professional" else "Personnel"
     st.markdown(
