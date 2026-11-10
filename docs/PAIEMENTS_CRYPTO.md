@@ -190,29 +190,14 @@ Les statuts `PARTIALLY_REFUNDED` et `REFUNDED` sont désormais détectés pendan
 
 Référence technique officielle : [PayPal Subscriptions API — liste des transactions](https://developer.paypal.com/docs/api/subscriptions/v1/#subscriptions_transactions).
 
-### Rapprochement des remboursements PayPal
+### Détection et contrôle manuel des remboursements PayPal
 
-La synchronisation des abonnements complète maintenant le contrôle des captures remboursées :
-- après détection de `PARTIALLY_REFUNDED` ou `REFUNDED` dans l'historique d'abonnement, SOW IA récupère la capture par l'API PayPal Payments v2 ;
-- elle vérifie que l'identifiant retourné correspond à la capture attendue, que la devise est EUR et que le montant cumulé remboursé est strictement positif et ne dépasse pas le montant brut initial ;
-- le montant utilisé provient de `seller_payable_breakdown.total_refunded_amount`, pas du montant initial de la capture ;
-- une écriture de remboursement agrégée par capture est mise à jour par upsert. Si un remboursement partiel supplémentaire arrive, le cumul remplace l'ancien montant au lieu de s'ajouter une seconde fois ;
-- la vente d'origine repasse en statut confirmé et le remboursement apparaît séparément comme écriture `refund`, ce qui permet au reporting de calculer le brut après remboursements.
+Les synchronisations des abonnements et des achats ponctuels repèrent les statuts PayPal `PARTIALLY_REFUNDED` et `REFUNDED`. Elles vérifient l'identifiant de capture, puis placent le paiement d'origine en statut `manual_review`. Cette mise en attente l'exclut des revenus confirmés tant que le montant exact n'a pas été rapproché.
 
-Le détail de capture PayPal ne fournit pas toujours le montant cumulé remboursé ni les identifiants des remboursements individuels. SOW IA place donc la vente en contrôle manuel plutôt que d'estimer le remboursement. L'intégration de la recherche de transactions et des détails de chaque remboursement reste à développer.
+**Limite technique importante :** la réponse standard de consultation d'une capture ne garantit pas de contenir les identifiants et montants de chaque remboursement. Le statut seul ne permet pas de calculer correctement un remboursement partiel. SOW IA ne crée donc pas d'écriture `refund` estimée et ne réactive pas le paiement comme revenu confirmé.
 
-La fonction utilise l'endpoint officiel [PayPal Payments v2 — Show captured payment details](https://developer.paypal.com/api/payments/v2/#captures_get) et les champs de remboursement exposés dans la ressource de capture. Le parcours reste limité à Sandbox. Les tests sont écrits mais doivent être exécutés en CI ; la migration du registre doit être appliquée dans Supabase avant le fonctionnement en production.
+La suite nécessaire est l'intégration d'une source PayPal vérifiable qui fournit chaque transaction de remboursement, son identifiant propre, son montant, sa devise et sa référence à la capture initiale (par exemple le flux de recherche de transactions ou des webhooks PayPal vérifiés, selon les droits disponibles). Chaque remboursement individuel devra ensuite être rapproché de façon idempotente.
 
-### Détection des remboursements des achats ponctuels PayPal
+Les deux contrôles disponibles sont limités à Sandbox. Le contrôle des achats ponctuels examine au maximum 500 captures sur 90 jours par passage ; la pagination reste à développer. Les tests sont écrits mais ne sont pas encore exécutés/confirmés. La migration du registre financier doit être appliquée dans Supabase avant toute validation en production.
 
-Un second contrôle est disponible dans « Revenus & paiements » pour les achats ponctuels Premium :
-- il sélectionne uniquement les écritures de paiement PayPal confirmées du compte connecté, sur les 90 derniers jours ;
-- il utilise les identifiants de capture déjà enregistrés dans le registre, puis interroge PayPal Payments v2 pour chaque capture ;
-- seules les captures dont le statut PayPal est `PARTIALLY_REFUNDED` ou `REFUNDED` déclenchent un rapprochement ;
-- le montant cumulé réel est enregistré comme écriture `refund` distincte, avec une clé agrégée par capture pour éviter les doublons ;
-- le contrôle est limité à Sandbox et à 500 captures par passage. Si la limite est atteinte, le rapport le signale ; une pagination est à prévoir pour les historiques plus volumineux.
-
-La documentation officielle PayPal décrit l'endpoint de consultation des captures et le champ `seller_payable_breakdown.total_refunded_amount` dans la ressource de paiement. Voir [Show captured payment details](https://developer.paypal.com/api/payments/v2/) et [définition du remboursement](https://developer.paypal.com/api/payments/v2/definitions/refund/).
-
-Ce contrôle ne découvre pas les paiements anciens qui n'ont jamais été enregistrés dans le registre SOW IA. Il ne déclenche jamais un remboursement : il ne fait que lire l'état confirmé par PayPal et rapprocher le registre. La mise en production reste conditionnée à l'application de la migration Supabase et à des essais Sandbox.
-
+Documentation officielle : [consultation d'une capture Payments v2](https://developer.paypal.com/api/payments/v2/captures-get), [consultation d'un remboursement Payments v2](https://developer.paypal.com/api/payments/v2/refunds-get), [référence des codes de transactions PayPal](https://developer.paypal.com/docs/transaction-search/transaction-event-codes/).
