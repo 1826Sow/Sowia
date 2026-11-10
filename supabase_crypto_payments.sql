@@ -88,6 +88,7 @@ create table if not exists public.sowia_financial_transactions (
     order_id uuid references public.sowia_crypto_orders(id) on delete set null,
     provider text not null check (char_length(provider) between 1 and 40),
     provider_payment_id text not null,
+    parent_capture_id text,
     transaction_type text not null check (transaction_type in ('payment','refund','fee_adjustment')),
     status text not null check (status in ('confirmed','refunded','reversed','manual_review')),
     gross_amount numeric(30,12) not null check (gross_amount >= 0),
