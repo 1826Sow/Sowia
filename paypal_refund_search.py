@@ -55,7 +55,7 @@ def _safe_refund_parent(refund: dict, *, base_url: str, capture_id: str) -> bool
 def _money(obj):
     if not isinstance(obj, dict):
         return None
-    currency = str(obj.get("currency_code") or "").strip().upper()
+    currency = str(obj.get("currency_code") or obj.get("currency") or "").strip().upper()
     try:
         amount = Decimal(str(obj.get("value")))
     except (InvalidOperation, TypeError, ValueError):
