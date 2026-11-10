@@ -74,10 +74,10 @@ def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
     monkeypatch.setattr(paypal_payments.requests, "get", fake_get)
 
     import financial_ledger
-    reconciled = []
+    flagged = []
     monkeypatch.setattr(
         financial_ledger, "flag_paypal_refund_for_review",
-        lambda *args, **kwargs: reconciled.append(
+        lambda *args, **kwargs: flagged.append(
             (kwargs["user_id"], kwargs["transaction"]["id"])
         ),
     )
@@ -90,7 +90,7 @@ def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
         "limit_reached": False,
     }
     assert requested == ["CAPTURE001", "CAPTURE002"]
-    assert reconciled == [("user-A", "CAPTURE001")]
+    assert flagged == [("user-A", "CAPTURE001")]
     assert ("user_id", "user-A") in admin.query.filters
     assert ("provider", "paypal") in admin.query.filters
     assert ("transaction_type", "payment") in admin.query.filters
@@ -107,3 +107,13 @@ def test_rejects_live_mode_and_missing_user(monkeypatch):
         assert "Sandbox" in str(exc)
     else:
         raise AssertionError("Live mode must remain disabled for this sync")
+
+    monkeypatch.setattr(paypal_payments, "paypal_configuration", lambda: {
+        "mode": "sandbox", "base_url": "https://api-m.sandbox.paypal.com",
+    })
+    try:
+        paypal_payments.sync_one_time_paypal_refunds(Admin([]), "")
+    except PermissionError:
+        pass
+    else:
+        raise AssertionError("A user identity is required")
