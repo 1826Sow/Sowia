@@ -2780,6 +2780,91 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                 "elle ne garantit ni la qualité commerciale ni la solvabilité du partenaire. "
                 "Aucune adresse e-mail, aucun téléphone ni identifiant de compte privé n’est affiché."
             )
+
+            st.divider()
+            st.subheader("🤝 GLOBAL CONNECT — demandes de mise en relation")
+            st.caption("Envoyez une courte présentation à un partenaire. Ses coordonnées restent privées : aucune information de contact n'est transmise sans son accord.")
+            try:
+                my_global_profile = cloud_storage.get_my_global_profile(supabase_client, current_user)
+                can_contact = bool(my_global_profile and my_global_profile.get("is_published"))
+                if not can_contact:
+                    st.info("Pour contacter un partenaire, publiez d’abord votre propre carte dans SOWIA GLOBAL ID.")
+                for public_card in matches:
+                    if my_global_profile and public_card.get("public_id") == my_global_profile.get("public_id"):
+                        continue
+                    partner_label = public_card.get("display_name") or public_card.get("app_name") or public_card["public_id"]
+                    with st.expander(f"Contacter {partner_label} · {public_card['public_id']}"):
+                        if can_contact:
+                            with st.form(f"global_connect_form_{public_card['public_id']}"):
+                                intro_message = st.text_area(
+                                    "Votre message de présentation",
+                                    max_chars=1000,
+                                    key=f"global_connect_message_{public_card['public_id']}",
+                                    placeholder="Présentez votre activité et expliquez la collaboration que vous souhaitez explorer…",
+                                )
+                                send_request = st.form_submit_button("Envoyer une demande")
+                            if send_request:
+                                try:
+                                    cloud_storage.create_global_connection_request(
+                                        supabase_client, current_user,
+                                        public_card["public_id"], intro_message,
+                                    )
+                                    st.success("Demande envoyée. Le partenaire pourra l’accepter ou la refuser.")
+                                    st.rerun()
+                                except Exception as request_error:
+                                    st.error("La demande n’a pas pu être envoyée : " + type(request_error).__name__)
+                        else:
+                            st.caption("Publiez votre carte SOWIA GLOBAL ID pour activer les demandes de mise en relation.")
+
+                inbox_tab, outbox_tab = st.tabs(["📥 Demandes reçues", "📤 Mes demandes envoyées"])
+                with inbox_tab:
+                    incoming = cloud_storage.list_global_connection_requests(
+                        supabase_client, current_user, direction="inbox", limit=100
+                    )
+                    if not incoming:
+                        st.info("Vous n’avez pas encore reçu de demande.")
+                    for request in incoming:
+                        with st.container(border=True):
+                            st.caption(f"Demande reçue · {request['created_at'][:10]}")
+                            st.write(request["message"])
+                            st.caption("Statut : " + request["status"])
+                            if request["status"] == "pending":
+                                accept_col, decline_col = st.columns(2)
+                                with accept_col:
+                                    if st.button("Accepter", key=f"global_connect_accept_{request['id']}"):
+                                        cloud_storage.respond_global_connection_request(
+                                            supabase_client, current_user, request["id"], "accepted"
+                                        )
+                                        st.success("Demande acceptée.")
+                                        st.rerun()
+                                with decline_col:
+                                    if st.button("Refuser", key=f"global_connect_decline_{request['id']}"):
+                                        cloud_storage.respond_global_connection_request(
+                                            supabase_client, current_user, request["id"], "declined"
+                                        )
+                                        st.info("Demande refusée.")
+                                        st.rerun()
+                with outbox_tab:
+                    outgoing = cloud_storage.list_global_connection_requests(
+                        supabase_client, current_user, direction="outbox", limit=100
+                    )
+                    if not outgoing:
+                        st.info("Vous n’avez pas encore envoyé de demande.")
+                    for request in outgoing:
+                        with st.container(border=True):
+                            st.caption(f"Demande envoyée · {request['created_at'][:10]}")
+                            st.write(request["message"])
+                            st.caption("Statut : " + request["status"])
+                            if request["status"] == "pending":
+                                if st.button("Annuler la demande", key=f"global_connect_cancel_{request['id']}"):
+                                    cloud_storage.cancel_global_connection_request(
+                                        supabase_client, current_user, request["id"]
+                                    )
+                                    st.info("Demande annulée.")
+                                    st.rerun()
+            except Exception as connect_error:
+                st.error("GLOBAL CONNECT nécessite la migration Supabase dédiée.")
+                st.caption("Diagnostic : " + type(connect_error).__name__)
         except Exception as exc:
             st.error("L’annuaire mondial n’est pas encore initialisé. Appliquez supabase_global_id.sql puis supabase_global_directory.sql dans Supabase.")
             st.caption("Diagnostic : " + type(exc).__name__)
