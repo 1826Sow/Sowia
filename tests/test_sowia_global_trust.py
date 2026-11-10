@@ -28,3 +28,26 @@ def test_public_projection_only_contains_aggregate():
         "reviewer_id": "private", "comment": "private",
     })
     assert set(data) == {"public_id", "average_rating", "review_count"}
+
+
+def test_public_average_hidden_below_three_reviews():
+    from sowia_global_trust import MIN_PUBLIC_REVIEWS
+    data = safe_trust_aggregate({
+        "public_id": "SOWIA-2", "average_rating": 1.0, "review_count": MIN_PUBLIC_REVIEWS - 1,
+    })
+    assert data == {"public_id": "SOWIA-2", "review_count": 2}
+
+
+def test_public_average_shown_at_three_reviews():
+    data = safe_trust_aggregate({
+        "public_id": "SOWIA-3", "average_rating": "4.666", "review_count": 3,
+        "reviewer_id": "private", "comment": "private",
+    })
+    assert data == {"public_id": "SOWIA-3", "review_count": 3, "average_rating": 4.67}
+
+
+def test_public_average_rejects_out_of_range_value():
+    data = safe_trust_aggregate({
+        "public_id": "SOWIA-4", "average_rating": 8, "review_count": 5,
+    })
+    assert "average_rating" not in data
