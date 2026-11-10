@@ -2,6 +2,8 @@
 
 Application web d'intelligence artificielle construite avec Streamlit.
 
+Consulter la [vision produit et feuille de route maîtresse](docs/VISION_ET_FEUILLE_DE_ROUTE.md) pour le périmètre complet : intelligence financière, marchés mondiaux, météo-économie, vérification de l'information, développement international, Club Privé et projet ultérieur de carte Gold.
+
 ## Socle actuel
 
 Consulter le [guide de l’espace Professionnel](docs/GUIDE_ESPACE_PROFESSIONNEL.md) pour utiliser le tableau de bord, les modèles PDF, la mémoire et la bibliothèque documentaire.
