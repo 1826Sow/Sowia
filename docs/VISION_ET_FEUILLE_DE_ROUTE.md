@@ -250,4 +250,4 @@ La note globale ne suffit pas : la sécurité et la fiabilité sont des seuils �
 - Le moteur de sélection peut recommander une option ; les migrations coûteuses, contrats, achats et changements de fournisseur restent soumis à validation.
 - Les scores sont des évaluations datées, pas une vérité permanente : ils expirent et doivent être actualisés.
 
-Le premier module logiciel fournit une grille de notation et un classement à partir de données fournies. Il ne réalise pas encore de benchmark automatique ni de veille continue des tarifs et incidents. Ces capacités seront ajoutées après raccordement à des sources fiables.
+Le module logiciel fournit une grille de notation et un classement à partir de données saisies. Les références saisies sont des références déclarées par l'utilisateur, pas des preuves authentifiées automatiquement. La persistance Supabase conserve les évaluations par utilisateur et espace de travail après application de la migration dédiée. Le module ne réalise pas encore de benchmark automatique ni de veille continue des tarifs et incidents. Ces capacités seront ajoutées après raccordement à des sources fiables.
