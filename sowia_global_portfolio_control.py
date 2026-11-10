@@ -74,9 +74,13 @@ def build_portfolio(plans, performance_observations, alerts, assessments, today=
                 spend = float(observation.get("actual_spend_cumulative") or 0)
                 cap = float(observation.get("budget_cap_snapshot", plan.get("budget_cap")) or 0)
                 over_budget = spend > cap
-                progress = float(observation.get("progress_percent"))
             except (TypeError, ValueError):
                 spend = None
+            try:
+                raw_progress = observation.get("progress_percent")
+                progress = float(raw_progress) if raw_progress not in (None, "") else None
+            except (TypeError, ValueError):
+                progress = None
             if over_budget:
                 bucket["over_budget_plans"] += 1
             if spend is not None:
