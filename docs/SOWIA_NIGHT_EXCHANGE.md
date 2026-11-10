@@ -190,3 +190,9 @@ Apply `supabase_global_intelligence.sql` AFTER `supabase_global_moderation.sql`.
 The first version provides a user-triggered search across public web sources for a selected country/market, sector, topic and signal category (economy, technology, trade, regulation, competition or other). Results are normalized, deduplicated by URL, labeled according to the date/source metadata supplied by the search provider, and can be saved to a private account-scoped register. Users can open the original source or delete a saved item.
 
 This is an on-demand research tool, not continuous background monitoring: it does not run a scheduler, poll sources, send push/email notifications or guarantee complete coverage. Search-provider results and publication dates must be independently checked before decisions. Apply `supabase_global_pulse.sql` after the existing GLOBAL INTELLIGENCE migration. The SQL migration is committed but has not been applied to the live Supabase project; production behavior and RLS are not yet verified.
+
+
+## SOWIA GLOBAL ALERTS — priority queue for public signals
+GLOBAL ALERTS converts a user-selected GLOBAL PULSE result into a private alert. The first classifier is deterministic and keyword-based: it suggests critical, high, medium or low priority and records the exact matched terms as its explanation. The user can review the original source, acknowledge the alert, close it or delete it. The classifier is a triage aid only; it does not establish the truth, severity or business impact of an event and must not trigger automatic decisions.
+
+Apply `supabase_global_alerts.sql` after `supabase_global_pulse.sql`. Both migrations are committed but have not been applied to the live Supabase project. Background monitoring, push/email delivery, automatic escalation and independent fact verification are not implemented in this version.
