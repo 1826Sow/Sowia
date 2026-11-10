@@ -254,14 +254,16 @@ def build_morning_report(events: Iterable[dict]) -> dict:
         event_type = str(event.get("event_type") or "")
         if event_type not in allowed:
             continue
-        counts[event_type] += 1
-        if event_type == "payment_confirmed" and event.get("payment_status") == "confirmed":
+        if event_type == "payment_confirmed":
+            if event.get("payment_status") != "confirmed":
+                continue
             amount = _money(event.get("amount", 0))
             currency = str(event.get("currency") or "").upper()
             if len(currency) != 3 or not currency.isalpha():
                 raise NightExchangeError("Devise invalide dans un événement de paiement.")
             confirmed_spend += amount
             currencies.add(currency)
+        counts[event_type] += 1
     return {
         "events_received": len(rows),
         "recognized_events": sum(counts.values()),
