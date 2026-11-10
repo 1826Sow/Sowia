@@ -154,7 +154,7 @@ begin
 
     if v_order.status <> 'pending'
        or v_order.expires_at <= now()
-       or p_payment_status not in ('confirmed', 'settled')
+       or p_payment_status is distinct from 'confirmed' and p_payment_status is distinct from 'settled'
        or upper(coalesce(p_received_asset, '')) <> v_order.asset_code
        or coalesce(p_received_network, '') <> v_order.network_code
        or p_received_amount is null
@@ -166,6 +166,23 @@ begin
            set status = 'manual_review', updated_at = now()
          where id = v_order.id and status = 'pending';
         return 'manual_review';
+    end if;
+
+    -- Never overwrite an active PayPal entitlement with a crypto payment.
+    -- Resolve mixed-provider renewals through an explicit billing workflow.
+    if exists (
+        select 1 from public.sowia_entitlements
+         where user_id = v_order.user_id
+           and status = 'active'
+           and provider = 'paypal'
+    ) then
+        update public.sowia_crypto_payment_events
+           set processing_status = 'rejected', processed_at = now()
+         where id = v_inserted_id;
+        update public.sowia_crypto_orders
+           set status = 'manual_review', updated_at = now()
+         where id = v_order.id;
+        return 'manual_review_active_paypal';
     end if;
 
     update public.sowia_crypto_orders
