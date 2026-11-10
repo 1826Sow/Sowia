@@ -22,7 +22,7 @@ def _policy_block(sql, policy_name):
 def test_canonical_private_tables_keep_row_level_security_enabled():
     for table in ("sowia_memory_items", "sowia_messages", "sowia_entitlements"):
         assert re.search(
-            rf"alter table public\\.{table} enable row level security",
+            rf"alter table public\.{table} enable row level security",
             SCHEMA,
         )
 
@@ -50,7 +50,7 @@ def test_premium_entitlement_is_read_only_for_authenticated_users():
     assert "auth.uid()" in block
     assert "user_id" in block
     assert re.search(
-        r"grant select on public\\.sowia_entitlements to authenticated",
+        r"grant select on public\.sowia_entitlements to authenticated",
         SCHEMA,
     )
     assert not re.search(
