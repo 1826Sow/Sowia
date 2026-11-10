@@ -80,3 +80,16 @@ Comparer au moins deux prestataires supplémentaires sur les mêmes critères : 
 ## Règle produit
 
 Le client voit le prix en EUR, le montant crypto, le réseau exact, les frais éventuels et le délai d'expiration avant de confirmer. Le statut du paiement est explicite : en attente, détecté, confirmé, expiré, remboursé ou rejeté. Le droit Premium n'est accordé qu'après confirmation serveur définitive.
+
+
+## Migration Supabase préparée
+
+Le fichier `supabase_crypto_payments.sql` ajoute :
+- une table de commandes crypto, lisible uniquement par le propriétaire authentifié ;
+- une table d'événements webhook non accessible aux clients ;
+- des identifiants externes uniques pour empêcher les doublons ;
+- le champ `crypto_payment_id` et l'extension du fournisseur d'abonnement à `crypto`.
+
+**Cette migration est seulement enregistrée dans GitHub. Elle n'a pas été exécutée dans Supabase.** Les écritures doivent être faites par le serveur avec une clé de service conservée dans les secrets, jamais depuis le navigateur. Le parcours ne doit pas être activé avant revue SQL/RLS, tests et connexion réelle au prestataire.
+
+La table d'événements ne stocke volontairement pas le corps brut complet du webhook. Les journaux applicatifs doivent éviter les secrets, données personnelles superflues et données de portefeuille sensibles.
