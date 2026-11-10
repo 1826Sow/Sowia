@@ -181,7 +181,7 @@ if cloud_mode:
             '<div class="hero"><h1>SOW IA</h1><p>Votre espace personnel sécurisé.</p></div>',
             unsafe_allow_html=True,
         )
-        st.subheader("Connexion à SOW IA")
+        st.subheader(translate_ui("Connexion à SOW IA", language))
         st.write("Connectez-vous avec votre compte GitHub pour accéder à votre mémoire et à votre historique privés.")
         callback_code_present = bool(st.query_params.get("code"))
         callback_error = str(st.query_params.get("error", "")).strip()
@@ -509,7 +509,7 @@ if page == "Accueil":
                     )
 
 elif page == "Assistant IA":
-    st.subheader("💬 Mon Assistant IA")
+    st.subheader(translate_ui("💬 Mon Assistant IA", language))
     if not API_KEY:
         st.warning("Pour activer les réponses IA, ajoutez votre clé API dans les secrets de l'hébergement. Ne la partagez jamais sur GitHub.")
     memories = get_app_memories()
@@ -597,7 +597,7 @@ elif page == "Ma mémoire":
                 st.rerun()
 
 elif page == "Développement mondial":
-    st.subheader("🌍 Développement mondial de SOW IA")
+    st.subheader(translate_ui("🌍 Développement mondial de SOW IA", language))
     st.caption("Repérez des partenaires, préparez vos prises de contact et construisez votre promotion internationale. Rien n'est envoyé ou publié automatiquement.")
     partner_tab, promo_tab = st.tabs(["🤝 Partenaires", "📣 Promotion multilingue"])
 
@@ -764,7 +764,7 @@ elif page == "Développement mondial":
             st.caption("La publication automatique sera ajoutée après connexion et validation des comptes sociaux. Aucun message n'est publié depuis cet écran.")
 
 elif page == "Recherche Web":
-    st.subheader("🌐 Recherche Web")
+    st.subheader(translate_ui("🌐 Recherche Web", language))
     query = st.text_input("Que souhaitez-vous rechercher ?")
     if st.button("Rechercher", disabled=not query.strip()):
         try:
@@ -780,7 +780,7 @@ elif page == "Recherche Web":
             )
 
 elif page == "Analyse PDF":
-    st.subheader("📄 Analyse PDF")
+    st.subheader(translate_ui("📄 Analyse PDF", language))
     st.caption("Sélectionnez un PDF depuis votre téléphone. Transfert privé vers Supabase, 10 Mo maximum.")
 
     if not cloud_mode or current_user is None:
@@ -890,7 +890,7 @@ elif page == "Analyse PDF":
                         st.error("L'analyse du document a échoué. Vérifiez le service IA et réessayez.")
 
 elif page == "Créer un PDF":
-    st.subheader("🪄 Créer un PDF")
+    st.subheader(translate_ui("🪄 Créer un PDF", language))
     st.write("Rédigez un document et téléchargez-le au format PDF. Cette fonction ne consomme aucun crédit IA.")
     if st.session_state.get("workspace_id") == "professional":
         st.markdown("#### Modèles professionnels")
@@ -941,7 +941,7 @@ elif page == "Créer un PDF":
                 "et réessayez. Si le problème persiste, contactez l'assistance."
             )
 elif page == "Mes documents":
-    st.subheader("📁 Mes documents")
+    st.subheader(translate_ui("📁 Mes documents", language))
     upload_notice = st.session_state.pop("document_upload_notice", None)
     if upload_notice:
         st.success(upload_notice)
@@ -1207,7 +1207,7 @@ elif page == "Mes documents":
             st.error("Impossible de charger vos documents. Vérifiez que le bucket privé et ses règles de sécurité sont installés dans Supabase.")
 
 elif page == "Historique":
-    st.subheader("🕘 Historique")
+    st.subheader(translate_ui("🕘 Historique", language))
     items = get_app_history(100)
     if not items:
         st.caption("Aucun message dans cette session.")
@@ -1216,7 +1216,7 @@ elif page == "Historique":
             st.write(item["content"])
 
 elif page == "Abonnement":
-    st.subheader("👑 Abonnement Premium")
+    st.subheader(translate_ui("👑 Abonnement Premium", language))
     st.write("Consultez ici l’état de votre accès Premium et les informations de votre abonnement.")
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre espace personnel pour consulter vos droits Premium.")
@@ -1326,13 +1326,13 @@ elif page == "Abonnement":
 # Impossible de préparer le paiement PayPal.
 
 elif page == "Paramètres":
-    st.subheader("⚙️ Paramètres")
+    st.subheader(translate_ui("⚙️ Paramètres", language))
     st.write("Modèle configuré :", MODEL)
     st.write("Clé API :", "Configurée" if API_KEY else "Non configurée")
     st.write("Stockage :", "Supabase privé" if cloud_mode else "SQLite local")
 
 elif page == "Aide":
-    st.subheader("❓ Aide")
+    st.subheader(translate_ui("❓ Aide", language))
     st.markdown(
         "1. En local, configurez vos clés dans le fichier .env.\n"
         "2. Pour un site public, activez SOWIA_REQUIRE_AUTH et configurez Supabase.\n"
