@@ -202,3 +202,17 @@ La synchronisation des abonnements complète maintenant le contrôle des capture
 Cette méthode conserve le montant total remboursé exact par capture, mais ne prétend pas distinguer chaque remboursement individuel lorsque plusieurs remboursements partiels ont été faits. Les identifiants de remboursement individuels restent à ajouter si une réconciliation événementielle détaillée est nécessaire.
 
 La fonction utilise l'endpoint officiel [PayPal Payments v2 — Show captured payment details](https://developer.paypal.com/api/payments/v2/#captures_get) et les champs de remboursement exposés dans la ressource de capture. Le parcours reste limité à Sandbox. Les tests sont écrits mais doivent être exécutés en CI ; la migration du registre doit être appliquée dans Supabase avant le fonctionnement en production.
+
+### Remboursements des achats ponctuels PayPal
+
+Un second contrôle est disponible dans « Revenus & paiements » pour les achats ponctuels Premium :
+- il sélectionne uniquement les écritures de paiement PayPal confirmées du compte connecté, sur les 90 derniers jours ;
+- il utilise les identifiants de capture déjà enregistrés dans le registre, puis interroge PayPal Payments v2 pour chaque capture ;
+- seules les captures dont le statut PayPal est `PARTIALLY_REFUNDED` ou `REFUNDED` déclenchent un rapprochement ;
+- le montant cumulé réel est enregistré comme écriture `refund` distincte, avec une clé agrégée par capture pour éviter les doublons ;
+- le contrôle est limité à Sandbox et à 500 captures par passage. Si la limite est atteinte, le rapport le signale ; une pagination est à prévoir pour les historiques plus volumineux.
+
+La documentation officielle PayPal décrit l'endpoint de consultation des captures et le champ `seller_payable_breakdown.total_refunded_amount` dans la ressource de paiement. Voir [Show captured payment details](https://developer.paypal.com/api/payments/v2/) et [définition du remboursement](https://developer.paypal.com/api/payments/v2/definitions/refund/).
+
+Ce contrôle ne découvre pas les paiements anciens qui n'ont jamais été enregistrés dans le registre SOW IA. Il ne déclenche jamais un remboursement : il ne fait que lire l'état confirmé par PayPal et rapprocher le registre. La mise en production reste conditionnée à l'application de la migration Supabase et à des essais Sandbox.
+
