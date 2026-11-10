@@ -2047,12 +2047,13 @@ elif page == "SOW IA Business Club":
                     st.caption("Les offres non vérifiées restent identifiées comme telles. Aucune commande, aucun paiement et aucune transmission de coordonnées ne sont déclenchés.")
                     from printer_reviews import summarize_printer_reviews, validate_printer_review
                     reviews = cloud_storage.list_vip_printer_reviews(supabase_client, current_user)
+                    public_reviews = cloud_storage.list_public_vip_printer_review_scores(supabase_client, current_user)
                     verified_suppliers = [p for p in candidates if p.get("status") == "verified"]
                     if verified_suppliers:
                         st.markdown("**Notes publiques des imprimeurs vérifiés**")
                         for supplier in verified_suppliers:
                             summary = summarize_printer_reviews([
-                                review for review in reviews
+                                review for review in public_reviews
                                 if review.get("supplier_id") == supplier["id"]
                             ])
                             if summary["review_count"]:
