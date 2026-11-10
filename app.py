@@ -2610,6 +2610,35 @@ elif page == "SOWIA GLOBAL ID":
                 else:
                     st.info("Votre fiche est privée. Elle n’apparaîtra pas dans l’annuaire avant votre autorisation.")
                 st.caption("Le QR code et le lien public individuel seront activés après le déploiement de la page publique HTTPS. Aucun lien non fonctionnel n’est affiché.")
+            metadata = getattr(current_user, "app_metadata", None) or {}
+            is_global_id_admin = metadata.get("sowia_admin") is True or metadata.get("role") == "admin"
+            if is_global_id_admin:
+                st.divider()
+                st.markdown("#### Modération des identités GLOBAL ID")
+                st.caption("La validation exige une preuve documentée. Le statut vérifié n'est pas attribué automatiquement.")
+                admin_profiles = cloud_storage.list_global_profiles_for_admin(supabase_client, current_user, limit=200)
+                for candidate in admin_profiles:
+                    with st.container(border=True):
+                        st.markdown(f"**{candidate.get('display_name')}** · {candidate.get('public_id')}")
+                        st.caption(f"{candidate.get('organization') or candidate.get('app_name')} · {candidate.get('country')} · {candidate.get('verification_status')}")
+                        evidence_ref = st.text_input("Référence de preuve / dossier", key=f"gid_evidence_{candidate['id']}", max_chars=240)
+                        admin_cols = st.columns(3)
+                        for col, status_value, status_label in zip(
+                            admin_cols, ["pending", "verified", "suspended"],
+                            ["Mettre en attente", "Vérifier", "Suspendre"]
+                        ):
+                            with col:
+                                if st.button(status_label, key=f"gid_review_{status_value}_{candidate['id']}", use_container_width=True):
+                                    try:
+                                        cloud_storage.admin_set_global_id_verification(
+                                            supabase_client, current_user, candidate["id"],
+                                            status_value, evidence_ref
+                                        )
+                                        st.success("Statut GLOBAL ID mis à jour.")
+                                        st.rerun()
+                                    except Exception as exc:
+                                        st.error("Modification refusée par le contrôle administrateur.")
+                                        st.caption("Diagnostic : " + type(exc).__name__)
             st.divider()
             st.markdown("#### Annuaire public des cartes SOWIA")
             public_profiles = cloud_storage.list_public_global_profiles(supabase_client, current_user, limit=100)
