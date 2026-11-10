@@ -149,3 +149,50 @@ def test_sync_rejects_external_pagination_host(monkeypatch):
         assert "non fiable" in str(exc)
     else:
         raise AssertionError("External pagination host must be rejected")
+
+
+def test_sync_flags_partial_and_full_refunds_for_manual_review(monkeypatch):
+    monkeypatch.setattr(paypal, "paypal_subscription_configuration", lambda: {
+        "mode": "sandbox", "base_url": "https://api-m.sandbox.paypal.com",
+        "client_id": "id", "client_secret": "secret",
+    })
+    monkeypatch.setattr(paypal, "get_premium_subscription", lambda _id: {
+        "id": _id, "custom_id": "user-1", "plan_id": "P-PLAN1",
+    })
+    monkeypatch.setattr(paypal, "_access_token", lambda _config: "token")
+
+    class RefundResponse:
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {"transactions": [
+                {"id": "CAPTURE-PARTIAL", "status": "PARTIALLY_REFUNDED",
+                 "time": "2026-11-10T10:00:00Z",
+                 "amount_with_breakdown": {"gross_amount": {
+                     "currency_code": "EUR", "value": "9.90"}}},
+                {"id": "CAPTURE-FULL", "status": "REFUNDED",
+                 "time": "2026-11-10T11:00:00Z",
+                 "amount_with_breakdown": {"gross_amount": {
+                     "currency_code": "EUR", "value": "9.90"}}},
+            ], "links": []}
+
+    monkeypatch.setattr(paypal.requests, "get", lambda *a, **k: RefundResponse())
+    import financial_ledger
+    flagged = []
+    monkeypatch.setattr(
+        financial_ledger, "flag_paypal_refund_for_review",
+        lambda *a, **k: flagged.append(k["transaction"]["id"]),
+    )
+    monkeypatch.setattr(
+        financial_ledger, "record_paypal_billing_transaction",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("Refund must not be counted as payment")),
+    )
+
+    result = paypal.sync_completed_subscription_transactions(
+        Admin(), "I-ABC123",
+        "2026-11-01T00:00:00+00:00", "2026-11-11T00:00:00+00:00",
+    )
+    assert flagged == ["CAPTURE-PARTIAL", "CAPTURE-FULL"]
+    assert result["refunds_flagged_for_manual_review"] == 2
+    assert result["recorded_or_already_present"] == 0
+
