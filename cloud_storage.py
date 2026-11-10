@@ -573,3 +573,95 @@ def approve_own_vip_card_quote(client, user, order_id):
     return client.rpc("sowia_member_approve_vip_card_quote", {
         "p_order_id": str(order_id),
     }).execute()
+
+# SOWIA NIGHT EXCHANGE — persistent app registry.
+# Public directory reads expose approved records only through database RLS;
+# a member can read their own pending/rejected records and cannot self-approve.
+NIGHT_EXCHANGE_CATEGORIES = {
+    "Productivité", "Commerce", "Finance", "Éducation", "Santé et bien-être",
+    "Voyage", "Communication", "Création", "Services professionnels",
+    "Logistique", "Culture et loisirs", "Autre",
+}
+
+
+def _validate_night_exchange_listing(app_name, country, timezone, categories,
+                                     services_offered="", services_wanted="",
+                                     night_start="20:00", night_end="06:00"):
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    app_name = str(app_name or "").strip()[:160]
+    country = str(country or "").strip()[:100]
+    timezone = str(timezone or "").strip()[:80]
+    offered = str(services_offered or "").strip()[:2000]
+    wanted = str(services_wanted or "").strip()[:2000]
+    categories = list(dict.fromkeys(
+        str(item).strip() for item in (categories or [])
+        if str(item).strip() in NIGHT_EXCHANGE_CATEGORIES
+    ))
+    if len(app_name) < 2 or len(country) < 2:
+        raise ValueError("Le nom de l'application et le pays sont obligatoires.")
+    try:
+        ZoneInfo(timezone)
+    except (ZoneInfoNotFoundError, ValueError, TypeError):
+        raise ValueError("Fuseau horaire IANA invalide, par exemple Europe/Paris.")
+    def _clock(value):
+        from datetime import time
+        try:
+            return time.fromisoformat(str(value))
+        except (TypeError, ValueError):
+            raise ValueError("Horaire invalide. Utilisez le format HH:MM.")
+    start, end = _clock(night_start), _clock(night_end)
+    if start == end:
+        raise ValueError("Le début et la fin de la plage nocturne doivent être différents.")
+    if not categories:
+        raise ValueError("Choisissez au moins une catégorie valide.")
+    return {
+        "app_name": app_name, "country": country, "timezone": timezone,
+        "categories": categories, "services_offered": offered,
+        "services_wanted": wanted, "night_start": start.isoformat(timespec="minutes"),
+        "night_end": end.isoformat(timespec="minutes"),
+    }
+
+
+def create_night_exchange_app(client, user, app_name, country, timezone, categories,
+                              services_offered="", services_wanted="",
+                              night_start="20:00", night_end="06:00",
+                              workspace_id="professional"):
+    """Save a private pending listing. Database trigger forces pending status."""
+    payload = _validate_night_exchange_listing(
+        app_name, country, timezone, categories, services_offered,
+        services_wanted, night_start, night_end
+    )
+    payload.update({
+        "user_id": _user_id(user),
+        "workspace_id": _workspace_id(workspace_id),
+    })
+    return client.table("sowia_night_exchange_apps").insert(payload).execute().data
+
+
+def list_my_night_exchange_apps(client, user, workspace_id="professional", limit=100):
+    """List only the authenticated user's records, including moderation status."""
+    return (
+        client.table("sowia_night_exchange_apps")
+        .select("id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,status,moderation_note,created_at,updated_at")
+        .eq("user_id", _user_id(user))
+        .eq("workspace_id", _workspace_id(workspace_id))
+        .order("updated_at", desc=True)
+        .limit(min(max(int(limit), 1), 200))
+        .execute().data
+    )
+
+
+def list_approved_night_exchange_apps(client, user, country=None, limit=100):
+    """Browse only approved partner apps; RLS independently enforces visibility."""
+    _user_id(user)
+    query = (
+        client.table("sowia_night_exchange_apps")
+        .select("id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,updated_at")
+        .eq("status", "approved")
+    )
+    if country:
+        query = query.ilike("country", str(country).strip()[:100])
+    return query.order("updated_at", desc=True).limit(
+        min(max(int(limit), 1), 200)
+    ).execute().data
+
