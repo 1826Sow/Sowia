@@ -247,3 +247,23 @@ for each row execute function public.sowia_project_audit_insert('contribution_de
 drop trigger if exists sowia_project_milestone_audit on public.sowia_global_project_milestones;
 create trigger sowia_project_milestone_audit after insert on public.sowia_global_project_milestones
 for each row execute function public.sowia_project_audit_insert('milestone_created');
+
+
+-- Milestone progress is updated only through a role-checked, audited RPC.
+create or replace function public.sowia_global_milestone_transition(p_milestone_id uuid,p_status text)
+returns boolean language plpgsql security definer set search_path = ''
+as $$
+declare v_project uuid; v_rows integer;
+begin
+ if auth.uid() is null or p_status not in ('pending','in_progress','blocked','completed','cancelled') then raise exception 'Invalid milestone transition'; end if;
+ select project_id into v_project from public.sowia_global_project_milestones where id=p_milestone_id;
+ if v_project is null or not public.sowia_project_can_contribute(v_project) then raise exception 'Milestone update not permitted'; end if;
+ update public.sowia_global_project_milestones set status=p_status,updated_at=now() where id=p_milestone_id;
+ get diagnostics v_rows=row_count;
+ return v_rows=1;
+end; $$;
+revoke all on function public.sowia_global_milestone_transition(uuid,text) from public,anon;
+grant execute on function public.sowia_global_milestone_transition(uuid,text) to authenticated;
+drop trigger if exists sowia_project_milestone_update_audit on public.sowia_global_project_milestones;
+create trigger sowia_project_milestone_update_audit after update of status on public.sowia_global_project_milestones
+for each row execute function public.sowia_project_audit_insert('milestone_status_changed');
