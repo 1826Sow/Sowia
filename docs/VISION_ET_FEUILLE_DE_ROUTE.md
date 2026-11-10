@@ -381,3 +381,14 @@ Limites et confidentialité :
 - ce module transcrit la parole captée par le microphone ; il ne sous-titre pas encore un appel audio ou une vidéo externe.
 
 Avant généralisation : essais Android/Chrome, autres navigateurs, tests de permissions, clavier/lecteur d'écran et tests avec personnes concernées.
+
+
+### 14 quater. Protection visuelle de l'écran
+
+Un interrupteur `🔒 Protection d'écran` est ajouté dans le menu latéral :
+- lorsqu'il est activé, le contenu principal de l'application est fortement flouté et les interactions avec cette zone sont bloquées ;
+- un bandeau rappelle que la protection est active ;
+- le menu latéral reste accessible pour désactiver rapidement la protection ;
+- le réglage est inclus dans les préférences d'accessibilité du compte, après application de la migration Supabase.
+
+Limite importante : ce mode est une protection contre les regards indiscrets (shoulder surfing), pas un filtre de confidentialité matériel. Il ne protège pas contre les captures d'écran, les enregistrements, les notifications système, les autres appareils ni une personne qui regarde de très près. Il faut toujours verrouiller l'appareil pour une protection forte.
