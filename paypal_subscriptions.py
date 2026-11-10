@@ -23,12 +23,28 @@ def _setting(name: str, default: str = "") -> str:
     return str(get_setting(name, default) or "").strip()
 
 
+def _subscriptions_enabled() -> bool:
+    """Prefer the explicit Streamlit Cloud secret for this feature toggle.
+
+    This avoids an older process environment variable silently overriding the
+    value the app owner has set in Streamlit Cloud > Settings > Secrets.
+    """
+    try:
+        import streamlit as st
+        secret_value = st.secrets.get("SOWIA_SUBSCRIPTIONS_ENABLED")
+        if secret_value is not None:
+            return str(secret_value).strip().lower() in {"1", "true", "yes"}
+    except Exception:
+        pass
+    return _setting("SOWIA_SUBSCRIPTIONS_ENABLED", "false").lower() in {
+        "1", "true", "yes"
+    }
+
+
 def paypal_subscription_configuration_status():
     """Return safe names of missing settings without exposing secret values."""
     missing = []
-    enabled = _setting("SOWIA_SUBSCRIPTIONS_ENABLED", "false").lower() in {
-        "1", "true", "yes"
-    }
+    enabled = _subscriptions_enabled()
     if not enabled:
         missing.append("SOWIA_SUBSCRIPTIONS_ENABLED=true")
     for name in (
@@ -46,9 +62,7 @@ def paypal_subscription_configuration_status():
 
 def paypal_subscription_configuration():
     """Return configuration only when recurring billing is explicitly enabled."""
-    enabled = _setting("SOWIA_SUBSCRIPTIONS_ENABLED", "false").lower() in {
-        "1", "true", "yes"
-    }
+    enabled = _subscriptions_enabled()
     if not enabled:
         return None
 
