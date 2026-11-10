@@ -115,3 +115,44 @@ def validate_meeting_schedule(starts_at, timezone, duration_minutes, meeting_url
             raise ValueError("Le lien de visioconférence doit commencer par https://.")
     return {"starts_at": start.astimezone(dt_timezone.utc).isoformat(), "timezone": zone_name,
             "duration_minutes": int(duration_minutes), "meeting_url": url or None}
+
+
+def build_meeting_ics(meeting):
+    """Build a calendar invite file; it is downloaded locally, never emailed automatically."""
+    from datetime import datetime, timedelta, timezone as dt_timezone
+    from uuid import uuid4
+    if not isinstance(meeting, Mapping):
+        raise ValueError("Rendez-vous invalide.")
+    try:
+        start = datetime.fromisoformat(str(meeting["starts_at"]).replace("Z", "+00:00"))
+        if start.tzinfo is None:
+            raise ValueError
+        start = start.astimezone(dt_timezone.utc)
+        duration = int(meeting["duration_minutes"])
+        if duration not in {15, 30, 45, 60}:
+            raise ValueError
+        title = _clean_text(str(meeting.get("summary", "Rencontre SOW IA Business Club")), "Titre", 180, True)
+        url = _clean_text(str(meeting.get("meeting_url") or ""), "Lien", 1000)
+        if url:
+            parsed = urlparse(url)
+            if parsed.scheme != "https" or not parsed.netloc:
+                raise ValueError
+    except (KeyError, TypeError, ValueError):
+        raise ValueError("Les informations du rendez-vous sont incomplètes ou invalides.")
+    def escape(value):
+        return str(value).replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\\r", "").replace("\\n", "\\n")
+    end = start + timedelta(minutes=duration)
+    stamp = datetime.now(dt_timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    lines = [
+        "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SOW IA//Business Club//FR",
+        "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT",
+        f"UID:{uuid4()}@sowia.app", f"DTSTAMP:{stamp}",
+        f"DTSTART:{start.strftime('%Y%m%dT%H%M%SZ')}",
+        f"DTEND:{end.strftime('%Y%m%dT%H%M%SZ')}",
+        f"SUMMARY:{escape(title)}",
+        f"DESCRIPTION:{escape('Rencontre professionnelle SOW IA Business Club' + ('. Lien : ' + url if url else '. Le lien de visioconférence sera communiqué par l’organisateur.'))}",
+    ]
+    if url:
+        lines.append(f"URL:{url}")
+    lines.extend(["END:VEVENT", "END:VCALENDAR", ""])
+    return "\\r\\n".join(lines)
