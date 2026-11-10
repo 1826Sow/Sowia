@@ -138,3 +138,33 @@ def delete_growth_lead(client, user, lead_id, workspace_id="personal"):
         .execute()
     )
 
+
+
+LANGUAGE_PREFERENCES = {"Français", "English", "Español", "中文", "Deutsch", "العربية"}
+
+
+def get_language_preference(client, user):
+    """Return the authenticated user's saved interface language."""
+    rows = (
+        client.table("sowia_user_preferences")
+        .select("language")
+        .eq("user_id", _user_id(user))
+        .limit(1)
+        .execute().data
+    )
+    language = rows[0].get("language") if rows else "Français"
+    return language if language in LANGUAGE_PREFERENCES else "Français"
+
+
+def set_language_preference(client, user, language):
+    """Persist a supported interface language for the authenticated user."""
+    if language not in LANGUAGE_PREFERENCES:
+        raise ValueError("Langue SOW IA non prise en charge.")
+    return (
+        client.table("sowia_user_preferences")
+        .upsert(
+            {"user_id": _user_id(user), "language": language},
+            on_conflict="user_id",
+        )
+        .execute().data
+    )
