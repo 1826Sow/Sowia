@@ -389,6 +389,19 @@ with st.sidebar:
             except Exception:
                 st.session_state["sowia_language_save_available"] = False
                 st.caption("La langue est active pour cette session. Exécutez supabase_language_preferences.sql pour la conserver dans votre compte.")
+    # Load accessible display preferences once per authenticated account.
+    if st.session_state.get("sowia_accessibility_loaded_for") != preference_owner:
+        defaults = {"voice_readout": False, "large_text": False, "high_contrast": False}
+        if cloud_mode and current_user is not None:
+            try:
+                defaults.update(cloud_storage.get_accessibility_preferences(supabase_client, current_user))
+                st.session_state["sowia_accessibility_save_available"] = True
+            except Exception:
+                st.session_state["sowia_accessibility_save_available"] = False
+        for setting_name, setting_value in defaults.items():
+            st.session_state[f"sowia_{setting_name}"] = setting_value
+        st.session_state["sowia_accessibility_loaded_for"] = preference_owner
+        st.session_state["sowia_accessibility_saved"] = dict(defaults)
     st.caption(translate_ui("Intelligence artificielle", language))
     workspace_options = ["Personnel", "Professionnel"] if premium_active else ["Personnel"]
     if st.session_state.get("workspace_choice") not in workspace_options:
@@ -565,16 +578,43 @@ elif page == "Assistant IA":
     st.markdown("#### ♿ Accessibilité de la conversation")
     access_cols = st.columns([1, 1, 1])
     with access_cols[0]:
-        voice_readout = st.toggle("Lecture vocale des réponses", value=st.session_state.get("sowia_voice_readout", False), key="sowia_voice_readout")
+        voice_readout = st.toggle("Lecture vocale des réponses", key="sowia_voice_readout")
     with access_cols[1]:
-        large_text = st.toggle("Texte agrandi", value=st.session_state.get("sowia_large_text", False), key="sowia_large_text")
+        large_text = st.toggle("Texte agrandi", key="sowia_large_text")
     with access_cols[2]:
-        high_contrast = st.toggle("Contraste renforcé", value=st.session_state.get("sowia_high_contrast", False), key="sowia_high_contrast")
+        high_contrast = st.toggle("Contraste renforcé", key="sowia_high_contrast")
+    accessibility_values = {
+        "voice_readout": bool(voice_readout),
+        "large_text": bool(large_text),
+        "high_contrast": bool(high_contrast),
+    }
+    previous_accessibility = st.session_state.get("sowia_accessibility_saved", {})
+    if accessibility_values != previous_accessibility:
+        if cloud_mode and current_user is not None and st.session_state.get("sowia_accessibility_save_available", False):
+            try:
+                cloud_storage.set_accessibility_preferences(
+                    supabase_client, current_user, accessibility_values
+                )
+                st.session_state["sowia_accessibility_saved"] = dict(accessibility_values)
+                st.caption("Préférences d’accessibilité enregistrées sur votre compte.")
+            except Exception:
+                st.warning("Les réglages restent actifs pour cette session, mais leur enregistrement sur le compte a échoué.")
+        else:
+            st.session_state["sowia_accessibility_saved"] = dict(accessibility_values)
+            st.caption("Réglages actifs pour cette session. Connectez-vous pour les conserver sur votre compte.")
     if large_text:
         st.markdown("<style>[data-testid='stChatMessage'] p,[data-testid='stChatMessage'] li{font-size:1.2rem!important;line-height:1.7!important}</style>", unsafe_allow_html=True)
     if high_contrast:
         st.markdown("<style>[data-testid='stChatMessage']{border:2px solid #111!important;background:#fff!important}[data-testid='stChatMessage'] p,[data-testid='stChatMessage'] li{color:#000!important;font-weight:600!important}</style>", unsafe_allow_html=True)
-    st.caption("Les réponses restent toujours affichées en texte. La lecture vocale est une option complémentaire ; elle dépend de la voix disponible sur votre appareil ou navigateur.")
+    speech_language = {
+        "Français": "fr-FR",
+        "English": "en-US",
+        "Español": "es-ES",
+        "中文": "zh-CN",
+        "Deutsch": "de-DE",
+        "العربية": "ar-SA",
+    }.get(language, "fr-FR")
+    st.caption("Les réponses restent toujours affichées en texte. La lecture vocale suit la langue choisie et dépend des voix disponibles sur votre appareil ou navigateur.")
     def render_accessible_message(role, message):
         with st.chat_message(role):
             st.markdown(message)
@@ -593,7 +633,11 @@ elif page == "Assistant IA":
                       if (!('speechSynthesis' in window)) { status.textContent = 'Lecture vocale non prise en charge par ce navigateur.'; return; }
                       window.speechSynthesis.cancel();
                       const utterance = new SpeechSynthesisUtterance(text);
-                      utterance.lang = 'fr-FR';
+                      utterance.lang = '""" + speech_language + """';
+                      const availableVoices = window.speechSynthesis.getVoices();
+                      const matchingVoice = availableVoices.find(voice => voice.lang.toLowerCase() === utterance.lang.toLowerCase())
+                        || availableVoices.find(voice => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase()));
+                      if (matchingVoice) utterance.voice = matchingVoice;
                       utterance.onstart = () => status.textContent = 'Lecture en cours';
                       utterance.onend = () => status.textContent = 'Lecture terminée';
                       utterance.onerror = () => status.textContent = 'Lecture indisponible';
@@ -1886,6 +1930,9 @@ elif page == "Paramètres":
     st.write("Modèle configuré :", MODEL)
     st.write("Clé API :", "Configurée" if API_KEY else "Non configurée")
     st.write("Stockage :", "Supabase privé" if cloud_mode else "SQLite local")
+    st.markdown("#### ♿ Accessibilité")
+    st.write("Les réglages de lecture vocale, de taille du texte et de contraste sont disponibles dans Assistant IA.")
+    st.caption("La transcription automatique de la parole et les sous-titres synchronisés restent à développer. La lecture vocale actuelle est une fonction complémentaire, pas un système de sous-titrage en direct.")
 
 elif page == "Aide":
     st.subheader(translate_ui("❓ Aide", language))
