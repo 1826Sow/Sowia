@@ -6427,13 +6427,13 @@ elif page == "Revenus & paiements":
                         amount_cols[3].metric(
                             "Frais déclarés",
                             "À rapprocher" if item["fees_reported"] is None
-                            else f'{item["fees_reported"]} {currency}',
+                            else str(item['fees_reported']) + ' ' + str(item['fees_currency']),
                             help="Affichés uniquement lorsque les frais sont connus pour toutes les écritures du groupe."
                         )
                         st.metric(
                             "Net déclaré par le prestataire",
                             "À rapprocher" if item["net_reported"] is None
-                            else f'{item["net_reported"]} {currency}',
+                            else str(item['net_reported']) + ' ' + str(item['net_currency']),
                             help="Ce montant n'est pas calculé à partir du brut : il reprend uniquement les montants nets fournis."
                         )
                     st.markdown("#### Détail comptable par fournisseur et devise")
@@ -6444,8 +6444,8 @@ elif page == "Revenus & paiements":
                             "Paiements bruts": item["payments_gross"],
                             "Remboursements": item["refunds_gross"],
                             "Brut après remboursements": item["gross_after_refunds"],
-                            "Frais connus": item["fees_reported"] or "À rapprocher",
-                            "Net déclaré": item["net_reported"] or "À rapprocher",
+                            "Frais connus": (str(item["fees_reported"]) + " " + str(item["fees_currency"]) if item["fees_reported"] is not None else "À rapprocher"),
+                            "Net déclaré": (str(item["net_reported"]) + " " + str(item["net_currency"]) if item["net_reported"] is not None else "À rapprocher"),
                             "Référence EUR (non encaissée en EUR)": item["reference_eur_after_refunds"],
                         } for item in summaries],
                         use_container_width=True,
