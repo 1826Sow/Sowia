@@ -1048,12 +1048,16 @@ elif page == "Abonnement":
                 else:
                     st.write("L’abonnement récurrent sera préparé dans PayPal Sandbox uniquement.")
                     if st.button("Préparer mon abonnement Premium", key="create_paypal_subscription"):
+                        diagnostic_stage = "initialisation"
                         try:
+                            diagnostic_stage = "connexion admin Supabase"
                             admin_client_factory = premium_access.create_admin_client
                             admin_client = admin_client_factory()
                             if admin_client is None:
                                 raise RuntimeError("Le stockage serveur Supabase n'est pas configuré.")
+                            diagnostic_stage = "création ou lecture du forfait PayPal"
                             plan_id = paypal_subscriptions.ensure_premium_plan(admin_client)
+                            diagnostic_stage = "création de l'abonnement PayPal"
                             created = paypal_subscriptions.create_premium_subscription(
                                 str(current_user.id), plan_id=plan_id
                             )
@@ -1061,11 +1065,11 @@ elif page == "Abonnement":
                             st.success("Votre demande Sandbox a été préparée. Aucun accès n’est accordé avant la confirmation du webhook.")
                         except Exception as exc:
                             st.error("Impossible de préparer l’abonnement PayPal. Aucun accès Premium n’a été accordé.")
-                            # Safe diagnostic: expose only the exception class and HTTP status,
-                            # never request headers, credentials, tokens, or response bodies.
+                            # Safe diagnostic: expose only the stage, exception class and HTTP status.
+                            # Never expose request headers, credentials, tokens, or response bodies.
                             response = getattr(exc, "response", None)
                             status_code = getattr(response, "status_code", None)
-                            diagnostic = type(exc).__name__
+                            diagnostic = diagnostic_stage + " · " + type(exc).__name__
                             if status_code is not None:
                                 diagnostic += f" · HTTP {status_code}"
                             st.caption("Diagnostic technique (sans identifiants) : " + diagnostic)
