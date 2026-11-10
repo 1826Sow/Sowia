@@ -93,3 +93,19 @@ Le fichier `supabase_crypto_payments.sql` ajoute :
 **Cette migration est seulement enregistrée dans GitHub. Elle n'a pas été exécutée dans Supabase.** Les écritures doivent être faites par le serveur avec une clé de service conservée dans les secrets, jamais depuis le navigateur. Le parcours ne doit pas être activé avant revue SQL/RLS, tests et connexion réelle au prestataire.
 
 La table d'événements ne stocke volontairement pas le corps brut complet du webhook. Les journaux applicatifs doivent éviter les secrets, données personnelles superflues et données de portefeuille sensibles.
+
+
+### Traitement atomique — préparation technique
+
+La migration SQL inclut maintenant la fonction serveur `sowia_confirm_crypto_payment` :
+- accès d'exécution réservé au rôle Supabase `service_role` ;
+- insertion unique des événements fournisseur ;
+- verrouillage de la commande pendant le rapprochement ;
+- vérification du fournisseur, utilisateur, commande, expiration, statut final, actif, réseau et montant exact ;
+- mise en attente de contrôle manuel en cas d'écart ;
+- absence d'écrasement d'un droit PayPal Premium actif ;
+- activation du droit crypto dans la même transaction que la confirmation de commande.
+
+Cette fonction **ne vérifie pas elle-même la signature cryptographique du fournisseur**. L'adaptateur serveur devra impérativement vérifier la signature avant de l'appeler et lui transmettre `signature_verified=true` uniquement après validation. Le nom du fournisseur reste configurable dans le schéma ; Fipto n'est toujours pas choisi.
+
+La migration n'a pas été exécutée sur Supabase et la fonction SQL n'a pas encore été testée sur une base de test. Elle doit être relue et testée avant exécution.
