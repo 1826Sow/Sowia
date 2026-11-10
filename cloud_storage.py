@@ -744,7 +744,8 @@ def list_night_exchange_events(client, user, workspace_id="professional",
 # SOWIA GLOBAL ID — private profile registry and safe public directory.
 def _validate_global_profile(display_name, app_name="", organization="", country="",
                              languages="", website="", short_description="",
-                             is_published=False):
+                             is_published=False, professional_sectors=None,
+                             specialties="")
     from urllib.parse import urlparse
     clean = {
         "display_name": str(display_name or "").strip()[:120],
@@ -757,8 +758,26 @@ def _validate_global_profile(display_name, app_name="", organization="", country
         ))[:12],
         "website": str(website or "").strip()[:500],
         "short_description": str(short_description or "").strip()[:600],
+        "professional_sectors": list(dict.fromkeys(
+            str(item).strip() for item in (professional_sectors or [])
+            if str(item).strip()
+        )),
+        "specialties": list(dict.fromkeys(
+            item.strip()[:60] for item in str(specialties or "").replace(";", ",").split(",")
+            if item.strip()
+        ))[:12],
         "is_published": bool(is_published),
     }
+    allowed_sectors = {
+        "technology", "ai_data", "commerce", "finance", "health_wellness",
+        "education", "food_agriculture", "travel_tourism", "media_creative",
+        "industry_logistics", "environment_energy", "professional_services",
+        "nonprofit_development", "other",
+    }
+    if len(clean["professional_sectors"]) > 14 or not set(clean["professional_sectors"]).issubset(allowed_sectors):
+        raise ValueError("Un ou plusieurs secteurs professionnels sont invalides.")
+    if len(clean["specialties"]) > 12:
+        raise ValueError("12 spécialités au maximum.")
     if len(clean["display_name"]) < 2:
         raise ValueError("Le nom public doit contenir au moins 2 caractères.")
     if not clean["country"]:
@@ -775,17 +794,18 @@ def _validate_global_profile(display_name, app_name="", organization="", country
 def get_my_global_profile(client, user):
     """Read only the signed-in user's private GLOBAL ID profile."""
     return (client.table("sowia_global_profiles")
-        .select("id,public_id,user_id,display_name,app_name,organization,country,languages,website,short_description,is_published,verification_status,verified_at,created_at,updated_at")
+        .select("id,public_id,user_id,display_name,app_name,organization,country,languages,website,short_description,professional_sectors,specialties,is_published,verification_status,verified_at,created_at,updated_at")
         .eq("user_id", _user_id(user)).limit(1).execute().data or [None])[0]
 
 
 def save_global_profile(client, user, *, display_name, app_name="", organization="",
                         country="", languages="", website="", short_description="",
-                        is_published=False):
+                        is_published=False, professional_sectors=None, specialties=""):
     """Create/update only the current user's profile; SQL protects verification fields."""
     payload = _validate_global_profile(
         display_name, app_name, organization, country, languages,
-        website, short_description, is_published
+        website, short_description, is_published, professional_sectors,
+        specialties
     )
     payload["user_id"] = _user_id(user)
     return client.table("sowia_global_profiles").upsert(
@@ -797,7 +817,7 @@ def list_public_global_profiles(client, user, limit=100):
     """Read the allowlisted public view; database view exposes no private account fields."""
     _user_id(user)
     return (client.table("sowia_global_profiles_public")
-        .select("public_id,display_name,app_name,organization,country,languages,website,short_description,verification_status")
+        .select("public_id,display_name,app_name,organization,country,languages,website,short_description,verification_status,professional_sectors,specialties")
         .order("display_name").limit(min(max(int(limit), 1), 200)).execute().data)
 
 
