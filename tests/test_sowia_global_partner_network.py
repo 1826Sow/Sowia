@@ -6,7 +6,7 @@ from sowia_global_partner_network import rank_partner_matches
 class PartnerNetworkTests(unittest.TestCase):
     def setUp(self):
         self.own = {
-            "public_id": "SOWIA-OWN", "is_published": True,
+            "public_id": "SOWIA-SELF", "is_published": True,
             "country": "France", "professional_sectors": ["technology", "commerce"],
             "specialties": ["AI", "e-commerce"], "languages": ["fr", "en"],
         }
