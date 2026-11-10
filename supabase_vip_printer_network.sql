@@ -55,7 +55,7 @@ using (
  submitted_by = (select auth.uid()) or exists (
   select 1 from public.sowia_vip_printer_suppliers s
   where s.id = supplier_id and s.status = 'verified'
- )
+ ) and status = 'validated' and valid_until >= current_date
 );
 
 drop policy if exists "Members submit printer quotes" on public.sowia_vip_printer_quotes;
