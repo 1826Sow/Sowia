@@ -601,7 +601,10 @@ elif page == "Assistant IA":
                 st.warning("Les réglages restent actifs pour cette session, mais leur enregistrement sur le compte a échoué.")
         else:
             st.session_state["sowia_accessibility_saved"] = dict(accessibility_values)
-            st.caption("Réglages actifs pour cette session. Connectez-vous pour les conserver sur votre compte.")
+            if cloud_mode and current_user is not None:
+                st.caption("Réglages actifs pour cette session. Pour les conserver sur votre compte, appliquez supabase_accessibility_preferences.sql dans Supabase > SQL Editor.")
+            else:
+                st.caption("Réglages actifs pour cette session. Connectez-vous à votre compte sécurisé pour les conserver entre vos connexions.")
     if large_text:
         st.markdown("<style>[data-testid='stChatMessage'] p,[data-testid='stChatMessage'] li{font-size:1.2rem!important;line-height:1.7!important}</style>", unsafe_allow_html=True)
     if high_contrast:
@@ -1932,6 +1935,12 @@ elif page == "Paramètres":
     st.write("Stockage :", "Supabase privé" if cloud_mode else "SQLite local")
     st.markdown("#### ♿ Accessibilité")
     st.write("Les réglages de lecture vocale, de taille du texte et de contraste sont disponibles dans Assistant IA.")
+    if cloud_mode and current_user is not None and st.session_state.get("sowia_accessibility_save_available", False):
+        st.success("Préférences d’accessibilité : chargement et enregistrement du compte disponibles.")
+    elif cloud_mode and current_user is not None:
+        st.warning("Enregistrement des préférences indisponible : appliquez supabase_accessibility_preferences.sql dans Supabase > SQL Editor.")
+    else:
+        st.info("En mode local, les réglages d’accessibilité ne sont conservés que pendant la session.")
     st.caption("La transcription automatique de la parole et les sous-titres synchronisés restent à développer. La lecture vocale actuelle est une fonction complémentaire, pas un système de sous-titrage en direct.")
 
 elif page == "Aide":
