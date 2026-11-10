@@ -2731,6 +2731,25 @@ elif page == "SOWIA NIGHT EXCHANGE":
                     opportunities = sowia_night_exchange.build_smart_opportunities(
                         smart_source, candidate_apps_smart, limit=15
                     )
+                    if st.button(
+                        "Enregistrer cette analyse dans mon journal",
+                        key=f"nex_log_matching_{smart_source.get('id')}",
+                        use_container_width=True,
+                    ):
+                        try:
+                            cloud_storage.record_night_exchange_event(
+                                supabase_client, current_user, nex_workspace,
+                                "match_viewed", app_id=smart_source.get("id"),
+                                event_payload={
+                                    "source_app_name": smart_source.get("app_name", ""),
+                                    "opportunity_count": len(opportunities),
+                                    "recorded_by": "member_action",
+                                },
+                            )
+                            st.success("Consultation enregistrée dans votre journal SOWIA.")
+                        except Exception as exc:
+                            st.error("La consultation n'a pas pu être enregistrée.")
+                            st.caption(f"Diagnostic : {type(exc).__name__}")
                     if not opportunities:
                         st.info("Aucune opportunité suffisamment documentée. Complétez les services proposés et recherchés.")
                     for opportunity in opportunities:
