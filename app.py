@@ -2198,6 +2198,11 @@ elif page == "Revenus & paiements":
             rows = financial_reporting.load_user_financial_transactions(
                 supabase_client, current_user, limit=500
             )
+            if st.session_state.pop("paypal_sync_has_more", False):
+                st.warning(
+                    "La période contient encore des pages PayPal à récupérer. "
+                    "Relancez la synchronisation pour poursuivre le rapprochement."
+                )
             if st.button(
                 "Synchroniser les échéances PayPal des 90 derniers jours",
                 key="sync_paypal_recurring_ledger",
@@ -2239,10 +2244,7 @@ elif page == "Revenus & paiements":
                             f"transaction(s) non terminée(s) ignorée(s)."
                         )
                         if any(x["has_more"] for x in sync_results):
-                            st.warning(
-                                "PayPal indique des résultats supplémentaires. "
-                                "La pagination complète sera nécessaire pour couvrir toute la période."
-                            )
+                            st.session_state["paypal_sync_has_more"] = True
                         st.rerun()
                     except Exception:
                         st.error(
