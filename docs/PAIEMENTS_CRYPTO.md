@@ -139,3 +139,18 @@ Deux modules neutres vis-à-vis du prestataire sont maintenant ajoutés :
 Tests écrits dans `tests/test_crypto_checkout.py` pour les commandes valides, les valeurs hors limites, les dates sans fuseau, les actifs/réseaux non autorisés et les liens de paiement non fiables.
 
 Ces fonctions ne créent pas encore de commande dans Supabase et ne contactent aucun prestataire. Le taux de conversion EUR/crypto doit venir du prestataire au moment de créer le checkout, avec horodatage et durée de validité ; il ne doit jamais être inventé par SOW IA. Le module ne doit pas être branché à l'interface client tant qu'un prestataire n'est pas retenu et que son domaine officiel n'est pas vérifié.
+
+
+## Registre financier et reporting
+
+La migration `supabase_crypto_payments.sql` ajoute maintenant `sowia_financial_transactions` :
+- une ligne est créée dans la même transaction SQL qu'une confirmation crypto acceptée ;
+- les lignes sont uniques par fournisseur, identifiant de paiement et type d'écriture ;
+- les utilisateurs authentifiés peuvent uniquement lire leurs propres lignes ; aucune écriture client n'est autorisée ;
+- les montants bruts sont conservés dans la devise réellement reçue (EURC, USDC, etc.) ;
+- la valeur de référence en EUR est conservée séparément et n'est jamais présentée comme un règlement EUR ;
+- frais et net restent NULL tant que le prestataire ne les a pas fournis et rapprochés.
+
+Le module `financial_reporting.py` agrège uniquement les transactions confirmées/remboursées, séparées par fournisseur et devise. Il exclut les paiements en attente et ne transforme pas un montant crypto en revenu EUR encaissé.
+
+**Limite actuelle :** la fonction SQL écrit les paiements crypto confirmés. Le flux PayPal existant n'alimente pas encore ce registre ; il faudra l'intégrer séparément sans modifier son traitement d'accès Premium. Aucun tableau de bord financier n'est encore branché dans l'application. Les tests Python sont écrits mais leur exécution n'est pas confirmée.
