@@ -3130,6 +3130,7 @@ elif page == "SOWIA GLOBAL ACTION GOVERNANCE":
                     ag_objective = st.text_area("Objectif", max_chars=2000)
                     ag_country = st.text_input("Pays ou marché", max_chars=100)
                     ag_owner = st.text_input("Responsable ou équipe", max_chars=120)
+                    ag_approver = st.text_input("UUID du compte approbateur distinct", max_chars=36, help="L’approbateur doit être un autre compte SOWIA authentifié. Son UUID est disponible dans son profil Supabase.")
                     ag_cols = st.columns(2)
                     ag_budget = ag_cols[0].number_input("Budget maximal autorisé (plafond indicatif)", min_value=0.0, max_value=1000000000.0, value=0.0, step=50.0)
                     ag_currency = ag_cols[1].selectbox("Devise", ["EUR","USD","CNY","SGD","MYR","TWD","KRW","XOF","AED","CHF","BRL"])
@@ -3141,7 +3142,7 @@ elif page == "SOWIA GLOBAL ACTION GOVERNANCE":
                     try:
                         import sowia_global_action_governance as governance
                         clean_plan = governance.validate_action_plan(
-                            ag_title, ag_objective, ag_country, ag_owner, ag_budget,
+                            ag_title, ag_objective, ag_country, ag_owner, ag_approver, ag_budget,
                             ag_currency, ag_due.isoformat(), ag_success, ag_stop,
                         )
                         cloud_storage.create_global_action_plan(supabase_client, current_user, clean_plan)
