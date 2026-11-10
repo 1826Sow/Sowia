@@ -1574,8 +1574,19 @@ elif page == "Technologies & fournisseurs":
             "support": "Support et documentation",
             "portability": "Portabilité et réversibilité",
         }
+        technology_workspace = st.session_state.get("workspace_id", "personal")
+        technology_storage_key = f"{getattr(current_user, 'id', 'local')}:{technology_workspace}"
         if "technology_candidates" not in st.session_state:
             st.session_state["technology_candidates"] = []
+        if cloud_mode and current_user is not None and st.session_state.get("technology_candidates_loaded_for") != technology_storage_key:
+            try:
+                from technology_storage import list_technology_candidates
+                st.session_state["technology_candidates"] = list_technology_candidates(
+                    supabase_client, current_user, technology_workspace
+                )
+                st.session_state["technology_candidates_loaded_for"] = technology_storage_key
+            except Exception:
+                st.warning("Le stockage du comparatif n'est pas encore initialisé. Les évaluations restent disponibles dans cette session.")
 
         with st.expander("＋ Évaluer une solution ou un fournisseur", expanded=not st.session_state["technology_candidates"]):
             with st.form("technology_candidate_form", clear_on_submit=True):
@@ -1618,8 +1629,17 @@ elif page == "Technologies & fournisseurs":
                         "decision": evaluation.decision,
                         "reasons": list(evaluation.reasons),
                         "evidence_count": evaluation.evidence_count,
+                        "evidence": evidence,
                         "scores": dict(score_values),
+                        "compliant": True,
+                        "compliance_verified": licence_verified,
+                        "critical_incident": critical_incident,
                     }
+                    if cloud_mode and current_user is not None:
+                        from technology_storage import upsert_technology_candidate
+                        upsert_technology_candidate(
+                            supabase_client, current_user, technology_workspace, **record
+                        )
                     existing = st.session_state["technology_candidates"]
                     existing = [item for item in existing if item["name"].casefold() != evaluation.name.casefold()]
                     existing.append(record)
@@ -1635,10 +1655,10 @@ elif page == "Technologies & fournisseurs":
             evaluations = [
                 CandidateEvaluation(
                     name=item["name"],
-                    score=item["score"],
+                    score=float(item["score"]),
                     decision=item["decision"],
-                    reasons=tuple(item["reasons"]),
-                    evidence_count=item["evidence_count"],
+                    reasons=tuple(item.get("reasons") or []),
+                    evidence_count=len(item.get("evidence") or []) if "evidence" in item else int(item.get("evidence_count") or 0),
                 )
                 for item in candidates
             ]
@@ -1671,9 +1691,16 @@ elif page == "Technologies & fournisseurs":
                         row["scores"] for row in candidates if row["name"] == item.name
                     ).items():
                         st.caption(f"{criteria_labels[criterion]} : {value:.1f}/5")
+                    for reference in next(
+                        row.get("evidence", []) for row in candidates if row["name"] == item.name
+                    ):
+                        st.caption("Référence déclarée : " + str(reference))
                     for reason in item.reasons:
                         st.warning(reason)
             if st.button("Effacer le comparatif de cette session", key="clear_technology_candidates"):
+                if cloud_mode and current_user is not None:
+                    from technology_storage import delete_all_technology_candidates
+                    delete_all_technology_candidates(supabase_client, current_user, technology_workspace)
                 st.session_state["technology_candidates"] = []
                 st.rerun()
         else:
