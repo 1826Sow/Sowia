@@ -80,3 +80,14 @@ A separate module `sowia_partner_reputation.py` defines structured feedback rule
 - Public aggregate statistics are suppressed until at least three approved reviews exist.
 - Pending, rejected, malformed or unconfirmed feedback is excluded from aggregates.
 - The module does not store reviews, identify participants, prove that a collaboration occurred, or connect to the Streamlit interface yet. A secure collaboration record, bilateral completion flow, database RLS, moderation and appeal process are required before collecting or publishing real reviews.
+
+## SOWIA PARTNER CONTRACT — workflow prototype
+The separate `sowia_partner_contract.py` module defines a bilateral agreement workflow:
+- A proposal records the two distinct parties, title, scope, deliverables and target date; optional financial terms require both amount and three-letter currency code.
+- Only the invited counterparty can accept the proposal. Acceptance locks the agreed terms in the workflow model.
+- Either party may start an accepted agreement.
+- Completion is reached only after both parties confirm it.
+- Either party may raise a dispute while the agreement is active; the dispute reason is excluded from the public status summary.
+- The public status helper does not expose the amount or private dispute details.
+
+**Important implementation boundary:** this is a pure Python rules prototype. It is not an electronic signature, enforceable legal contract, identity verification, escrow, payment processor or persistent database workflow. Before production use, SOWIA needs authenticated party-to-app ownership mapping, server-side authorization, append-only contract version history, secure Supabase RLS/RPC, audit timestamps, notifications, moderation/mediation and jurisdiction-specific legal review. No live contract is currently created or signed through the app.
