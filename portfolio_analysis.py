@@ -40,7 +40,7 @@ class PortfolioSummary:
     invested_amount: float
     market_value: float
     unrealized_pnl: float
-    unrealized_return_pct: float
+    unrealized_return_pct: float | None
     positions: tuple[ValuedPosition, ...]
     missing_quotes: tuple[str, ...]
 
@@ -108,10 +108,11 @@ def analyze_portfolio(
         returned = (pnl / invested * 100) if invested else 0.0
         valued.append((line, quote, invested, market_value, pnl, returned))
 
-    total_invested = sum(item[2] for item in valued)
+    total_invested = sum(line.quantity * line.average_cost for line in lines)
+    valued_invested = sum(item[2] for item in valued)
     total_market = sum(item[3] for item in valued)
-    total_pnl = total_market - total_invested
-    total_return = (total_pnl / total_invested * 100) if total_invested else 0.0
+    total_pnl = total_market - valued_invested
+    total_return = (total_pnl / valued_invested * 100) if valued_invested and not missing else (0.0 if not missing else None)
 
     positions_out = tuple(
         ValuedPosition(
