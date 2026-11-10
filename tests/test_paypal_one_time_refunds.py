@@ -76,9 +76,9 @@ def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
     import financial_ledger
     reconciled = []
     monkeypatch.setattr(
-        financial_ledger, "record_paypal_refund_total",
+        financial_ledger, "flag_paypal_refund_for_review",
         lambda *args, **kwargs: reconciled.append(
-            (kwargs["user_id"], kwargs["capture"]["id"])
+            (kwargs["user_id"], kwargs["transaction"]["id"])
         ),
     )
 
@@ -86,7 +86,7 @@ def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
     assert result == {
         "captures_checked": 2,
         "refunds_detected": 1,
-        "refunds_reconciled": 1,
+        "refunds_flagged_for_manual_review": 1,
         "limit_reached": False,
     }
     assert requested == ["CAPTURE001", "CAPTURE002"]
