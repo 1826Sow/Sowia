@@ -3246,6 +3246,20 @@ elif page == "SOWIA GLOBAL COLLABORATION HUB":
                     else:
                         st.caption("Aucun jalon défini.")
                     if any(m["user_id"]==current_uid and m["status"]=="accepted" and m["role"] in {"owner","coordinator","contributor"} for m in members) or selected_project["owner_id"]==current_uid:
+                        if milestones:
+                            with st.expander("Faire progresser un jalon"):
+                                milestone_map = {m["id"]:m for m in milestones}
+                                with st.form("sowia_project_milestone_progress"):
+                                    chosen_milestone = st.selectbox("Jalon",list(milestone_map),format_func=lambda key:milestone_map[key]["title"])
+                                    chosen_milestone_status = st.selectbox("Nouveau statut",["pending","in_progress","blocked","completed","cancelled"],format_func=lambda v:{"pending":"À faire","in_progress":"En cours","blocked":"Bloqué","completed":"Terminé","cancelled":"Annulé"}[v])
+                                    update_milestone_submit = st.form_submit_button("Mettre à jour le jalon")
+                                if update_milestone_submit:
+                                    try:
+                                        cloud_storage.transition_global_project_milestone(supabase_client,current_user,chosen_milestone,chosen_milestone_status)
+                                        st.success("Progression du jalon enregistrée dans l'historique.")
+                                        st.rerun()
+                                    except Exception as exc:
+                                        st.error("Mise à jour impossible : " + type(exc).__name__)
                         with st.expander("Ajouter un jalon"):
                             with st.form("sowia_project_milestone_form"):
                                 ms_title = st.text_input("Nom du jalon",max_chars=160)
