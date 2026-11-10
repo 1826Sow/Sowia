@@ -597,7 +597,97 @@ st.markdown(
 )
 st.write("")
 
-if page in ("Hub SOWIA", "Accueil"):
+if page == "Accueil":
+    st.subheader("Bienvenue dans SOWIA")
+    st.caption("Un accueil simple : les informations essentielles en premier, puis tous les outils classés dans leurs dossiers.")
+    workspace_title = "Professionnel" if st.session_state.get("workspace_id") == "professional" else "Personnel"
+    account_status = "Connecté" if cloud_mode and current_user is not None else "Mode local"
+    security_status = "Protection active" if cloud_mode and current_user is not None else "Configuration locale"
+    key_cols = st.columns(3)
+    with key_cols[0]:
+        st.metric("Espace de travail", workspace_title)
+    with key_cols[1]:
+        st.metric("Compte", account_status)
+    with key_cols[2]:
+        st.metric("Sécurité", security_status)
+    st.markdown("### ⭐ Points clés")
+    key_actions = [
+        ("💬 Assistant IA", "Accéder directement à votre assistant", "Assistant IA"),
+        ("💳 Contrôle financier", "Consulter les paiements et les rapprochements", "Revenus & paiements"),
+        ("🛡️ Centre de contrôle", "Retrouver les fonctions de contrôle et de sécurité", "SOWIA CONTROL CENTER"),
+    ]
+    key_action_cols = st.columns(3)
+    for key_col, (label, description, destination) in zip(key_action_cols, key_actions):
+        with key_col:
+            with st.container(border=True):
+                st.markdown(f"**{label}**")
+                st.caption(description)
+                st.button("Ouvrir", key=f"home_key_{destination}", use_container_width=True,
+                          on_click=go_to_page, args=(destination,))
+    st.divider()
+    st.markdown("### 📁 Dossiers SOWIA")
+    st.caption("Chaque dossier rassemble les fonctions d'un même domaine. Dépliez uniquement celui dont vous avez besoin.")
+    home_folders = [
+        ("👤 01 · Personnel & documents", [
+            ("Assistant IA", "Conversation avec SOWIA"),
+            ("Ma mémoire", "Informations mémorisées"),
+            ("Recherche Web", "Recherche et sources"),
+            ("Analyse PDF", "Analyser des documents"),
+            ("Créer un PDF", "Créer des documents PDF"),
+            ("Mes documents", "Bibliothèque de fichiers"),
+            ("Historique", "Conversations précédentes"),
+        ]),
+        ("🌐 02 · Écosystème mondial", [
+            ("SOWIA NIGHT EXCHANGE", "Marché nocturne de l'écosystème"),
+            ("SOWIA GLOBAL ID", "Identité globale"),
+            ("SOWIA GLOBAL DIRECTORY", "Annuaire mondial"),
+            ("SOWIA GLOBAL TRUST", "Confiance et vérification"),
+            ("Développement mondial", "Développement international"),
+            ("SOWIA GLOBAL ADMIN & MODERATION", "Administration et modération globale"),
+        ]),
+        ("🤝 03 · Entreprises & opportunités", [
+            ("SOW IA Business Club", "Réseau professionnel"),
+            ("Opportunités et revenus", "Pistes commerciales et revenus"),
+            ("Technologies & fournisseurs", "Solutions et fournisseurs"),
+            ("SOWIA GLOBAL COLLABORATION HUB", "Collaboration entre acteurs"),
+        ]),
+        ("🧠 04 · Intelligence & stratégie", [
+            ("Décisions humaines vs SOW IA", "Comparer les décisions"),
+            ("Stratégie & scénarios", "Étudier les scénarios"),
+            ("SOWIA GLOBAL INTELLIGENCE", "Intelligence globale"),
+            ("SOWIA GLOBAL PULSE", "Signaux et tendances"),
+            ("SOWIA GLOBAL STRATEGIC FORECAST", "Prévisions stratégiques"),
+            ("SOWIA GLOBAL DECISION ENGINE", "Moteur de décision"),
+            ("SOWIA GLOBAL LEARNING ENGINE", "Apprentissage"),
+            ("SOWIA GLOBAL AUTONOMOUS STRATEGY", "Stratégie autonome"),
+            ("SOWIA GLOBAL ACTION GOVERNANCE", "Gouvernance des actions"),
+            ("SOWIA GLOBAL PERFORMANCE & IMPACT", "Performance et impact"),
+            ("SOWIA GLOBAL PORTFOLIO CONTROL", "Contrôle du portefeuille"),
+            ("SOWIA GLOBAL EXECUTIVE REPORTS", "Rapports de direction"),
+        ]),
+        ("💳 05 · Finances & investissements", [
+            ("Finance & investissements", "Analyses et investissements"),
+            ("Revenus & paiements", "Paiements, remboursements et rapprochements"),
+        ]),
+        ("🛡️ 06 · Administration & assistance", [
+            ("SOWIA CONTROL CENTER", "Centre de contrôle"),
+            ("Paramètres", "Préférences et configuration"),
+            ("Abonnement", "Accès et formule Premium"),
+            ("Aide", "Aide et utilisation"),
+        ]),
+    ]
+    for folder_title, folder_items in home_folders:
+        with st.expander(folder_title, expanded=False):
+            folder_cols = st.columns(2)
+            for index, (destination, description) in enumerate(folder_items):
+                with folder_cols[index % 2]:
+                    st.markdown(f"**{destination}**")
+                    st.caption(description)
+                    st.button("Ouvrir", key=f"home_folder_{destination}", use_container_width=True,
+                              on_click=go_to_page, args=(destination,))
+    st.caption("Les dossiers organisent l'accès aux fonctions existantes ; ils ne suppriment ni ne modifient les données des projets.")
+
+elif page == "Hub SOWIA":
     st.subheader(translate_ui("Bienvenue sur le Hub SOWIA", language))
     metadata = getattr(current_user, "app_metadata", None) or {}
     is_sowia_admin = isinstance(metadata, dict) and (
