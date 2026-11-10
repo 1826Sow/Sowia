@@ -64,6 +64,38 @@ def match_apps(source: AppListing, candidates: Iterable[AppListing]) -> list[Mat
             matches.append(Match(candidate.app_id, score, shared, reciprocal))
     return sorted(matches, key=lambda item: (-item.score, item.app_id))
 
+
+def _split_terms(value):
+    """Normalize comma/semicolon/newline-separated service descriptions."""
+    if isinstance(value, (list, tuple, set)):
+        raw = value
+    else:
+        raw = str(value or "").replace(";", ",").replace("\n", ",").split(",")
+    return tuple(sorted({" ".join(str(item).casefold().split()) for item in raw if str(item).strip()}))
+
+
+def match_listing_records(source_record: dict, candidate_records: Iterable[dict]) -> list[Match]:
+    """Rank a member listing against approved registry records only."""
+    def to_listing(record, candidate=False):
+        status = record.get("status")
+        approved = status == "approved" if candidate else status in {"pending", "approved"}
+        return AppListing(
+            app_id=str(record.get("id") or record.get("app_id") or ""),
+            name=str(record.get("app_name") or record.get("name") or ""),
+            country=str(record.get("country") or ""),
+            timezone_name=str(record.get("timezone") or record.get("timezone_name") or "UTC"),
+            categories=_split_terms(record.get("categories") or ()),
+            services_offered=_split_terms(record.get("services_offered") or ()),
+            services_wanted=_split_terms(record.get("services_wanted") or ()),
+            verified=bool(record.get("verified", False)),
+            approved_for_listing=approved,
+        )
+    source = to_listing(source_record)
+    candidates = [to_listing(row, candidate=True) for row in candidate_records]
+    return match_apps(source, candidates)
+
+
+
 @dataclass
 class BudgetCap:
     currency: str
