@@ -196,3 +196,62 @@ def flag_paypal_refund_for_review(admin_client, *, user_id, transaction):
     ).execute()
     return {"capture_id": capture_id, "updated": False, "status": "manual_review"}
 
+def record_paypal_refund_total(admin_client, *, user_id, capture):
+    """Record PayPal's cumulative, server-fetched refunded amount for a capture.
+
+    The aggregate row is keyed by capture ID and upserted (not added) so a
+    later partial refund updates the cumulative amount without double counting.
+    """
+    if admin_client is None:
+        raise RuntimeError("Client d'administration Supabase indisponible.")
+    user_id = str(user_id or "").strip()
+    if not user_id or not isinstance(capture, dict):
+        raise ValueError("Utilisateur ou capture PayPal invalide.")
+    capture_id = str(capture.get("id") or "").strip()
+    if not re.fullmatch(r"[A-Z0-9_-]{5,100}", capture_id):
+        raise ValueError("Identifiant de capture PayPal invalide.")
+    status = str(capture.get("status") or "").strip().upper()
+    if status not in {"PARTIALLY_REFUNDED", "REFUNDED"}:
+        raise ValueError("La capture PayPal n'est pas indiquée comme remboursée.")
+
+    breakdown = capture.get("seller_receivable_breakdown") or {}
+    original = breakdown.get("gross_amount") or capture.get("amount") or {}
+    refunded = breakdown.get("total_refunded_amount") or {}
+    currency = str(original.get("currency_code") or "").strip().upper()
+    if currency != "EUR" or str(refunded.get("currency_code") or "").strip().upper() != currency:
+        raise ValueError("La devise du remboursement PayPal doit être EUR.")
+    original_value = _validated_optional_amount(original.get("value"), "Montant initial")
+    refund_value = _validated_optional_amount(refunded.get("value"), "Montant remboursé")
+    if original_value <= 0 or refund_value <= 0 or refund_value > original_value:
+        raise ValueError("Montant cumulé remboursé PayPal incohérent.")
+    if status == "REFUNDED" and refund_value != original_value:
+        raise ValueError("PayPal indique un remboursement total mais le montant ne correspond pas.")
+    if status == "PARTIALLY_REFUNDED" and refund_value >= original_value:
+        raise ValueError("PayPal indique un remboursement partiel incohérent.")
+    occurred_at = str(capture.get("update_time") or capture.get("create_time") or "").strip()
+    if not occurred_at:
+        raise ValueError("Date de mise à jour de la capture PayPal manquante.")
+
+    table = admin_client.table("sowia_financial_transactions")
+    # Keep the original payment in the recognized ledger; represent the
+    # cumulative refund separately so gross-after-refunds remains auditable.
+    table.update({"status": "confirmed"}).eq("user_id", user_id).eq(
+        "provider", "paypal"
+    ).eq("provider_payment_id", capture_id).eq("transaction_type", "payment").execute()
+
+    refund_payload = {
+        "user_id": user_id,
+        "provider": "paypal",
+        "provider_payment_id": f"AGGREGATE-{capture_id}",
+        "transaction_type": "refund",
+        "status": "refunded",
+        "gross_amount": f"{refund_value:.2f}",
+        "gross_currency": currency,
+        "reference_amount_eur": f"{refund_value:.2f}",
+        "occurred_at": occurred_at,
+    }
+    return table.upsert(
+        refund_payload,
+        on_conflict="provider,provider_payment_id,transaction_type",
+    ).execute().data
+
