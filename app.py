@@ -15,6 +15,7 @@ from storage import (
     save_message as local_save_message,
 )
 from documents import extract_pdf_text
+from document_context import select_relevant_pdf_context
 from io import BytesIO
 from direct_pdf_upload import create_signed_pdf_upload, render_direct_pdf_upload
 from websearch import search_web
@@ -681,7 +682,9 @@ elif page == "Analyse PDF":
                     try:
                         response = answer(
                             [{"role": "user", "content": pdf_question.strip()}],
-                            document_context=st.session_state.pdf_text,
+                            document_context=select_relevant_pdf_context(
+                                st.session_state.pdf_text, pdf_question.strip()
+                            ),
                         )
                         st.markdown("**Réponse de SOW IA**")
                         st.write(response)
@@ -925,7 +928,10 @@ elif page == "Mes documents":
                                     try:
                                         response = answer(
                                             [{"role": "user", "content": saved_pdf_question.strip()}],
-                                            document_context=st.session_state.get("selected_saved_pdf_text", ""),
+                                            document_context=select_relevant_pdf_context(
+                                                st.session_state.get("selected_saved_pdf_text", ""),
+                                                saved_pdf_question.strip(),
+                                            ),
                                         )
                                         st.session_state["saved_pdf_answer"] = response
                                         st.session_state["saved_pdf_answer_path"] = stored_path
