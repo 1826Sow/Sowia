@@ -697,7 +697,7 @@ def list_night_exchange_apps_for_admin(client, user, limit=200):
 
 # SOWIA NIGHT EXCHANGE — append-only activity ledger.
 NIGHT_EXCHANGE_EVENT_TYPES = {
-    "match_viewed", "meeting_confirmed", "offer_accepted", "integration_approved"
+    "match_viewed", "meeting_confirmed"
 }
 NIGHT_EXCHANGE_REPORT_TYPES = NIGHT_EXCHANGE_EVENT_TYPES | {"payment_confirmed"}
 
