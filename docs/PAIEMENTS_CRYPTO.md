@@ -199,11 +199,11 @@ La synchronisation des abonnements complète maintenant le contrôle des capture
 - une écriture de remboursement agrégée par capture est mise à jour par upsert. Si un remboursement partiel supplémentaire arrive, le cumul remplace l'ancien montant au lieu de s'ajouter une seconde fois ;
 - la vente d'origine repasse en statut confirmé et le remboursement apparaît séparément comme écriture `refund`, ce qui permet au reporting de calculer le brut après remboursements.
 
-Cette méthode conserve le montant total remboursé exact par capture, mais ne prétend pas distinguer chaque remboursement individuel lorsque plusieurs remboursements partiels ont été faits. Les identifiants de remboursement individuels restent à ajouter si une réconciliation événementielle détaillée est nécessaire.
+Le détail de capture PayPal ne fournit pas toujours le montant cumulé remboursé ni les identifiants des remboursements individuels. SOW IA place donc la vente en contrôle manuel plutôt que d'estimer le remboursement. L'intégration de la recherche de transactions et des détails de chaque remboursement reste à développer.
 
 La fonction utilise l'endpoint officiel [PayPal Payments v2 — Show captured payment details](https://developer.paypal.com/api/payments/v2/#captures_get) et les champs de remboursement exposés dans la ressource de capture. Le parcours reste limité à Sandbox. Les tests sont écrits mais doivent être exécutés en CI ; la migration du registre doit être appliquée dans Supabase avant le fonctionnement en production.
 
-### Remboursements des achats ponctuels PayPal
+### Détection des remboursements des achats ponctuels PayPal
 
 Un second contrôle est disponible dans « Revenus & paiements » pour les achats ponctuels Premium :
 - il sélectionne uniquement les écritures de paiement PayPal confirmées du compte connecté, sur les 90 derniers jours ;
