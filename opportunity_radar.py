@@ -32,7 +32,7 @@ def build_radar_queries(country: str, offer: str) -> list[tuple[str, str]]:
 
 
 def _clean(value: object, limit: int) -> str:
-    return str(value or "").strip().replace("\\x00", "")[:limit]
+    return str(value or "").strip().replace("\x00", "")[:limit]
 
 
 def _relevance_score(title: str, summary: str, category: str, url: str) -> int:
