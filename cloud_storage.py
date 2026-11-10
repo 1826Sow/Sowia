@@ -353,6 +353,7 @@ def create_business_club_meeting(client, user, request_id, starts_at, timezone, 
     return client.table("sowia_business_club_meetings").insert({
         "request_id": int(request_id), "organizer_user_id": uid,
         "sender_user_id": request["sender_user_id"], "recipient_user_id": request["recipient_user_id"],
+        "invitee_user_id": request["recipient_user_id"] if uid == request["sender_user_id"] else request["sender_user_id"],
         **schedule, "status": "Proposée",
     }).execute()
 
@@ -360,7 +361,7 @@ def create_business_club_meeting(client, user, request_id, starts_at, timezone, 
 def list_business_club_meetings(client, user, limit=100):
     uid = _user_id(user)
     return client.table("sowia_business_club_meetings").select(
-        "id, request_id, organizer_user_id, sender_user_id, recipient_user_id, starts_at, timezone, duration_minutes, meeting_url, status, created_at"
+        "id, request_id, organizer_user_id, sender_user_id, recipient_user_id, invitee_user_id, starts_at, timezone, duration_minutes, meeting_url, status, created_at"
     ).or_(f"sender_user_id.eq.{uid},recipient_user_id.eq.{uid}").order(
         "starts_at", desc=False
     ).limit(min(max(int(limit), 1), 200)).execute().data
@@ -376,5 +377,5 @@ def update_business_club_meeting(client, user, meeting_id, status):
     if status == "Annulée":
         query = query.eq("organizer_user_id", uid).eq("status", "Proposée")
     else:
-        query = query.eq("recipient_user_id", uid).eq("status", "Proposée")
+        query = query.eq("invitee_user_id", uid).eq("status", "Proposée")
     return query.execute()
