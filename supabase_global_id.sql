@@ -1,7 +1,5 @@
 -- SOWIA GLOBAL ID: private-by-default identity profile and allowlisted public directory.
 -- Apply in Supabase SQL Editor. This migration does not create a public web route or QR image.
-create extension if not exists pgcrypto;
-
 create table if not exists public.sowia_global_profiles (
     id uuid primary key default gen_random_uuid(),
     user_id uuid not null unique references auth.users(id) on delete cascade,
@@ -32,9 +30,14 @@ language plpgsql
 security invoker
 set search_path = ''
 as $$
+declare
+    is_admin boolean := (
+        coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin'
+        or coalesce(auth.jwt() -> 'app_metadata' ->> 'sowia_admin', '') = 'true'
+    );
 begin
     if tg_op = 'INSERT' then
-        new.public_id := 'SOWIA-' || upper(substr(encode(extensions.digest(new.user_id::text, 'sha256'), 'hex'), 1, 20));
+        new.public_id := 'SOWIA-' || upper(substr(pg_catalog.md5(new.user_id::text), 1, 20));
         new.verification_status := 'unverified';
         new.verification_evidence_reference := null;
         new.verified_at := null;
@@ -42,9 +45,11 @@ begin
         if new.user_id <> old.user_id or new.public_id <> old.public_id then
             raise exception 'Identité SOWIA immuable' using errcode = '42501';
         end if;
-        new.verification_status := old.verification_status;
-        new.verification_evidence_reference := old.verification_evidence_reference;
-        new.verified_at := old.verified_at;
+        if not is_admin then
+            new.verification_status := old.verification_status;
+            new.verification_evidence_reference := old.verification_evidence_reference;
+            new.verified_at := old.verified_at;
+        end if;
     end if;
     new.updated_at := now();
     return new;
@@ -64,6 +69,13 @@ using (user_id = auth.uid())
 with check (user_id = auth.uid());
 
 grant select, insert, update on public.sowia_global_profiles to authenticated;
+drop policy if exists "sowia_global_id_admin_select" on public.sowia_global_profiles;
+create policy "sowia_global_id_admin_select"
+on public.sowia_global_profiles for select to authenticated
+using (
+    coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin'
+    or coalesce(auth.jwt() -> 'app_metadata' ->> 'sowia_admin', '') = 'true'
+);
 revoke all on public.sowia_global_profiles from anon;
 
 -- The public view exposes only approved display fields, never account IDs or evidence references.
