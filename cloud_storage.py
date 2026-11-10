@@ -823,6 +823,57 @@ def send_global_message(client, user, request_id, message):
     }).execute().data
 
 
+
+# SOWIA GLOBAL NOTIFICATIONS — private in-app notification center.
+def list_global_notifications(client, user, limit=100):
+    """Read only the authenticated user's notification inbox."""
+    uid = _user_id(user)
+    import sowia_global_notifications
+    rows = (
+        client.table("sowia_global_notifications")
+        .select("id,event_type,reference_id,created_at,read_at")
+        .eq("user_id", uid)
+        .order("created_at", desc=True)
+        .limit(min(max(int(limit), 1), 200))
+        .execute().data
+    )
+    return [sowia_global_notifications.safe_notification_projection(row) for row in rows]
+
+
+def get_global_notification_preferences(client, user):
+    uid = _user_id(user)
+    rows = (
+        client.table("sowia_global_notification_preferences")
+        .select("language,in_app_enabled")
+        .eq("user_id", uid)
+        .limit(1)
+        .execute().data
+    )
+    return rows[0] if rows else {"language": "fr", "in_app_enabled": True}
+
+
+def set_global_notification_preferences(client, user, language, in_app_enabled=True):
+    _user_id(user)
+    import sowia_global_notifications
+    if language not in sowia_global_notifications.SUPPORTED_LANGUAGES:
+        raise ValueError("Langue de notification non prise en charge.")
+    return client.rpc("sowia_global_notification_set_preferences", {
+        "p_language": language, "p_in_app_enabled": bool(in_app_enabled),
+    }).execute().data
+
+
+def mark_global_notification_read(client, user, notification_id):
+    _user_id(user)
+    return client.rpc("sowia_global_notifications_mark_read", {
+        "p_notification_id": str(notification_id),
+    }).execute().data
+
+
+def mark_all_global_notifications_read(client, user):
+    _user_id(user)
+    return client.rpc("sowia_global_notifications_mark_all_read", {}).execute().data
+
+
 # SOWIA GLOBAL ID — private profile registry and safe public directory.
 def _validate_global_profile(display_name, app_name="", organization="", country="",
                              languages="", website="", short_description="",
