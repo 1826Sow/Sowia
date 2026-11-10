@@ -618,6 +618,11 @@ elif page == "Assistant IA":
         "العربية": "ar-SA",
     }.get(language, "fr-FR")
     st.caption("Les réponses restent toujours affichées en texte. La lecture vocale suit la langue choisie et dépend des voix disponibles sur votre appareil ou navigateur.")
+    from accessibility import live_transcription_component
+    st.markdown("#### 🎙️ Transcription de la parole en texte")
+    st.caption("Démarrez le micro pour afficher les paroles détectées en direct. Copiez ensuite le texte et collez-le dans le chat. Cette fonction dépend de la prise en charge du navigateur.")
+    st.components.v1.html(live_transcription_component(language), height=265, scrolling=False)
+    st.caption("Confidentialité : la reconnaissance vocale est fournie par le navigateur et peut transmettre l’audio à son service de reconnaissance. N’utilisez pas cette option pour des échanges confidentiels. SOW IA ne stocke pas cette transcription.")
     def render_accessible_message(role, message):
         with st.chat_message(role):
             st.markdown(message)
