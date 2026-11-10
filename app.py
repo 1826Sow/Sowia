@@ -1892,7 +1892,7 @@ elif page == "SOW IA Business Club":
             elif own_profile:
                 st.info("Votre profil est privé. Activez la publication pour apparaître dans l'annuaire.")
             st.divider()
-            directory_tab, incoming_tab, outgoing_tab = st.tabs(["🌍 Annuaire international", "📥 Demandes reçues", "📤 Mes demandes"])
+            directory_tab, incoming_tab, outgoing_tab, meetings_tab = st.tabs(["🌍 Annuaire international", "📥 Demandes reçues", "📤 Mes demandes", "📅 Rendez-vous"])
             with directory_tab:
                 st.markdown("#### Entreprises membres")
                 directory = cloud_storage.list_business_club_profiles(supabase_client, current_user, club_workspace)
@@ -1960,6 +1960,68 @@ elif page == "SOW IA Business Club":
                         if request["status"] == "En attente" and st.button("Annuler la demande", key=f"club_cancel_{request['id']}"):
                             cloud_storage.update_business_club_request(supabase_client, current_user, request["id"], "Annulée")
                             st.rerun()
+
+            with meetings_tab:
+                st.markdown("#### Proposer un rendez-vous virtuel")
+                accepted = [
+                    item for item in (
+                        cloud_storage.list_business_club_requests(supabase_client, current_user, "incoming")
+                        + cloud_storage.list_business_club_requests(supabase_client, current_user, "outgoing")
+                    ) if item.get("status") == "Acceptée"
+                ]
+                if not accepted:
+                    st.info("Vous pourrez proposer un rendez-vous dès qu'une demande aura été acceptée.")
+                else:
+                    accepted_by_id = {item["id"]: item for item in accepted}
+                    selected_id = st.selectbox("Demande acceptée", list(accepted_by_id), format_func=lambda key: f"Demande #{key} · {accepted_by_id[key]['message'][:70]}")
+                    from datetime import date, datetime, time, timedelta
+                    from zoneinfo import ZoneInfo
+                    with st.form("sowia_club_meeting_form"):
+                        meeting_date = st.date_input("Date", value=date.today() + timedelta(days=2), min_value=date.today())
+                        meeting_time = st.time_input("Heure locale", value=time(10, 0))
+                        meeting_zone = st.selectbox("Fuseau horaire", ["Europe/Paris", "Europe/London", "UTC", "America/New_York", "America/Los_Angeles", "Asia/Dubai", "Asia/Singapore", "Asia/Tokyo"])
+                        meeting_duration = st.selectbox("Durée", [15, 30, 45, 60], index=1, format_func=lambda value: f"{value} minutes")
+                        meeting_url = st.text_input("Lien de visioconférence HTTPS (facultatif)", placeholder="https://…")
+                        propose = st.form_submit_button("Proposer ce rendez-vous")
+                    if propose:
+                        try:
+                            proposed_start = datetime.combine(meeting_date, meeting_time).replace(tzinfo=ZoneInfo(meeting_zone))
+                            cloud_storage.create_business_club_meeting(supabase_client, current_user, selected_id, proposed_start, meeting_zone, meeting_duration, meeting_url)
+                            st.success("Proposition enregistrée. Elle doit encore être confirmée par l'invité.")
+                            st.rerun()
+                        except (ValueError, PermissionError) as exc:
+                            st.error(str(exc))
+                        except Exception:
+                            st.error("Impossible d'enregistrer le rendez-vous. Vérifiez la migration SQL du Business Club.")
+                st.divider()
+                st.markdown("#### Mes rendez-vous")
+                meetings = cloud_storage.list_business_club_meetings(supabase_client, current_user)
+                if not meetings:
+                    st.info("Aucun rendez-vous proposé pour le moment.")
+                else:
+                    from datetime import datetime
+                    from zoneinfo import ZoneInfo
+                    for meeting in meetings:
+                        local_start = datetime.fromisoformat(meeting["starts_at"].replace("Z", "+00:00")).astimezone(ZoneInfo(meeting["timezone"]))
+                        with st.container(border=True):
+                            st.markdown(f"**{local_start.strftime('%d/%m/%Y à %H:%M')}** · {meeting['timezone']}")
+                            st.caption(f"Durée : {meeting['duration_minutes']} min · Statut : {meeting['status']}")
+                            if meeting.get("meeting_url"):
+                                st.link_button("Rejoindre la visioconférence", meeting["meeting_url"])
+                            if meeting["status"] == "Proposée":
+                                if meeting["recipient_user_id"] == str(getattr(current_user, "id", current_user)):
+                                    yes, no = st.columns(2)
+                                    if yes.button("Confirmer", key=f"club_meeting_yes_{meeting['id']}"):
+                                        cloud_storage.update_business_club_meeting(supabase_client, current_user, meeting["id"], "Confirmée")
+                                        st.rerun()
+                                    if no.button("Refuser", key=f"club_meeting_no_{meeting['id']}"):
+                                        cloud_storage.update_business_club_meeting(supabase_client, current_user, meeting["id"], "Refusée")
+                                        st.rerun()
+                                elif meeting["organizer_user_id"] == str(getattr(current_user, "id", current_user)):
+                                    if st.button("Annuler la proposition", key=f"club_meeting_cancel_{meeting['id']}"):
+                                        cloud_storage.update_business_club_meeting(supabase_client, current_user, meeting["id"], "Annulée")
+                                        st.rerun()
+
         except Exception:
             st.error("Le Club Entreprises n'est pas encore initialisé dans Supabase. La migration supabase_business_club.sql doit être exécutée une fois.")
 
