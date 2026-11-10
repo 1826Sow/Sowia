@@ -665,23 +665,52 @@ if page in ("Hub SOWIA", "Accueil"):
                 st.caption("Statistiques de décisions indisponibles : vérifiez que la migration du laboratoire de décisions est appliquée.")
         else:
             st.info("Connectez-vous à votre compte sécurisé pour afficher les indicateurs professionnels enregistrés.")
-        business_items = [
-            ("🏛️ Business Club", "SOW IA Business Club", "Relations et partenaires"),
-            ("🌍 Développement mondial", "Développement mondial", "Prospection et collaborations"),
-            ("📈 Opportunités", "Opportunités et revenus", "Pistes et suivi commercial"),
-            ("📊 Finance", "Finance & investissements", "Analyses et aide à la décision"),
-            ("🧭 Stratégie", "Stratégie & scénarios", "Comparer les scénarios"),
-            ("🧪 Technologies", "Technologies & fournisseurs", "Évaluer les solutions"),
+        business_pillars = [
+            ("🧠 1. Intelligence & décisions", [
+                ("Décisions humaines vs SOWIA", "Décisions humaines vs SOW IA", "Comparer les décisions et conserver les résultats pour les statistiques."),
+                ("Stratégie & scénarios", "Stratégie & scénarios", "Étudier plusieurs scénarios avant de choisir."),
+            ]),
+            ("🤝 2. Entreprises & collaborations", [
+                ("Développement mondial", "Développement mondial", "Identifier des partenaires et préparer des collaborations."),
+                ("Opportunités & revenus", "Opportunités et revenus", "Organiser les pistes commerciales et leur suivi."),
+            ]),
+            ("👑 3. Club Privé & partenaires VIP", [
+                ("Business Club", "SOW IA Business Club", "Relations professionnelles, membres et services partenaires."),
+            ]),
+            ("🌍 4. Développement international", [
+                ("Développement mondial", "Développement mondial", "Préparer une approche multilingue adaptée aux marchés."),
+                ("Technologies & fournisseurs", "Technologies & fournisseurs", "Comparer les solutions techniques et leurs fournisseurs."),
+            ]),
+            ("💹 5. Finance & marchés", [
+                ("Finance & investissements", "Finance & investissements", "Suivre les portefeuilles et analyser les données disponibles."),
+                ("Revenus & paiements", "Revenus & paiements", "Consulter les transactions enregistrées et leur rapprochement."),
+            ]),
+            ("🛡️ 6. Sécurité & administration", [
+                ("Paramètres & accessibilité", "Paramètres", "Préférences, accessibilité et configuration du compte."),
+            ]),
         ]
-        for start in range(0, len(business_items), 3):
-            cols = st.columns(3)
-            for col, (label, destination, description) in zip(cols, business_items[start:start + 3]):
+        for pillar_title, pillar_items in business_pillars:
+            st.markdown(f"#### {pillar_title}")
+            cols = st.columns(2)
+            for col, (label, destination, description) in zip(cols, pillar_items):
                 with col:
                     with st.container(border=True):
                         st.markdown(f"**{label}**")
                         st.caption(description)
-                        st.button("Ouvrir", key=f"hub_business_{destination}", use_container_width=True,
-                                  on_click=go_to_professional_page, args=(destination,))
+                        st.button("Ouvrir", key=f"hub_pillar_{pillar_title}_{destination}_{label}",
+                                  use_container_width=True, on_click=go_to_professional_page,
+                                  args=(destination,))
+        if is_sowia_admin:
+            st.markdown("#### 🧰 Console administrateur")
+            st.caption("Les fonctions d’administration restent réservées au rôle explicitement attribué côté serveur.")
+            admin_cols = st.columns(2)
+            with admin_cols[0]:
+                st.button("Ouvrir les revenus & paiements", key="hub_pillar_admin_finance",
+                          use_container_width=True, on_click=go_to_professional_page,
+                          args=("Revenus & paiements",))
+            with admin_cols[1]:
+                st.button("Ouvrir les paramètres", key="hub_pillar_admin_settings",
+                          use_container_width=True, on_click=go_to_page, args=("Paramètres",))
     else:
         st.info("L’espace Professionnel complet est réservé à un accès Premium actif. Les outils personnels restent disponibles.")
         st.button("Découvrir Premium", key="hub_premium", on_click=go_to_page, args=("Abonnement",))
