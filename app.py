@@ -618,6 +618,53 @@ if page in ("Hub SOWIA", "Accueil"):
     st.markdown("### 🏢 Espace Professionnel")
     if premium_active:
         st.caption("Votre espace professionnel Premium est disponible. Les données restent séparées de l’espace personnel.")
+        st.markdown("#### 📊 Indicateurs professionnels")
+        if cloud_mode and current_user is not None:
+            kpi_cols = st.columns(4)
+            leads_count = None
+            active_leads_count = None
+            decision_count = None
+            completed_decisions = None
+            try:
+                hub_leads = cloud_storage.list_growth_leads(
+                    supabase_client, current_user, "professional", limit=300
+                )
+                leads_count = len(hub_leads)
+                active_leads_count = sum(
+                    1 for lead in hub_leads
+                    if lead.get("status") in {"À contacter", "Contacté", "Réponse reçue", "En discussion"}
+                )
+            except Exception:
+                pass
+            try:
+                hub_decisions = (
+                    supabase_client.table("sowia_decision_trials")
+                    .select("id, outcomes")
+                    .eq("user_id", str(current_user.id))
+                    .eq("workspace_id", "professional")
+                    .limit(200)
+                    .execute()
+                    .data or []
+                )
+                decision_count = len(hub_decisions)
+                completed_decisions = sum(
+                    1 for item in hub_decisions
+                    if isinstance(item.get("outcomes"), dict) and bool(item.get("outcomes"))
+                )
+            except Exception:
+                pass
+            with kpi_cols[0]:
+                st.metric("Pistes partenaires", leads_count if leads_count is not None else "Indisponible")
+            with kpi_cols[1]:
+                st.metric("Pistes en suivi", active_leads_count if active_leads_count is not None else "Indisponible")
+            with kpi_cols[2]:
+                st.metric("Décisions enregistrées", decision_count if decision_count is not None else "Indisponible")
+            with kpi_cols[3]:
+                st.metric("Décisions évaluées", completed_decisions if completed_decisions is not None else "Indisponible")
+            if decision_count is None:
+                st.caption("Statistiques de décisions indisponibles : vérifiez que la migration du laboratoire de décisions est appliquée.")
+        else:
+            st.info("Connectez-vous à votre compte sécurisé pour afficher les indicateurs professionnels enregistrés.")
         business_items = [
             ("🏛️ Business Club", "SOW IA Business Club", "Relations et partenaires"),
             ("🌍 Développement mondial", "Développement mondial", "Prospection et collaborations"),
