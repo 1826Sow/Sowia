@@ -230,3 +230,5 @@ La migration complémentaire `supabase_paypal_refund_parent_migration.sql` ajout
 Le module accepte les champs de devise renvoyés par l'API PayPal Refund (`currency`) et par les rapports (`currency_code`). Cette différence de schéma est couverte par un test automatisé.
 
 **Statut :** les garde-fous et tests sont présents dans `main`. L'exécution complète des tests GitHub Actions, l'application de la migration Supabase et le rapprochement réel Sandbox doivent être vérifiés séparément. Aucun remboursement n'est encore présenté comme revenu net confirmé sur la seule base de ce code.
+
+La migration complémentaire installe aussi un déclencheur PostgreSQL qui verrouille la capture parente et contrôle à nouveau le cumul au moment de l'écriture. Cette vérification côté base protège également contre deux remboursements partiels concurrents, que le seul contrôle applicatif ne pourrait pas sérialiser de manière fiable.
