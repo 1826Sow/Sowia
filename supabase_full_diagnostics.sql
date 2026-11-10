@@ -64,6 +64,7 @@ table_checks as (
             else 'PRESENT'
         end as status,
         case
+            when c.oid is null and e.is_optional then 'Optional feature table public.' || e.table_name || ' is not installed'
             when c.oid is null then 'Required table public.' || e.table_name || ' not found'
             when c.relkind not in ('r', 'p') then 'Found object is not a regular or partitioned table'
             else 'RLS enabled=' || c.relrowsecurity::text
