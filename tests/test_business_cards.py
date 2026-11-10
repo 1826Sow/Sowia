@@ -59,3 +59,11 @@ def test_qr_code_is_svg():
     result = build_qr_svg(sample())
     assert "<svg" in result
     assert "</svg>" in result
+
+
+def test_printable_card_embeds_offline_qr_svg():
+    result = build_printable_card_html(sample())
+    assert 'class="qr"' in result
+    assert "<svg" in result
+    assert "data:image" not in result
+    assert "@page { size: 90mm 50mm; margin: 0; }" in result
