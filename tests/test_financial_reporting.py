@@ -1,0 +1,58 @@
+import pytest
+
+from financial_reporting import summarize_financial_transactions
+
+
+def test_reports_confirmed_crypto_and_keeps_unknown_fees_unknown():
+    rows = [
+        {
+            "provider": "fipto", "gross_currency": "EURC", "gross_amount": "20",
+            "transaction_type": "payment", "status": "confirmed",
+            "reference_amount_eur": "18.50", "fee_amount": None, "net_amount": None,
+        },
+        {
+            "provider": "fipto", "gross_currency": "EURC", "gross_amount": "2",
+            "transaction_type": "refund", "status": "refunded",
+            "reference_amount_eur": "2.00", "fee_amount": None, "net_amount": None,
+        },
+        {
+            "provider": "fipto", "gross_currency": "EURC", "gross_amount": "100",
+            "transaction_type": "payment", "status": "pending",
+            "reference_amount_eur": "100", "fee_amount": "1", "net_amount": "99",
+        },
+    ]
+    result = summarize_financial_transactions(rows)[0]
+    assert result["payments_gross"] == "20"
+    assert result["refunds_gross"] == "2"
+    assert result["gross_after_refunds"] == "18"
+    assert result["reference_eur_after_refunds"] == "16.50"
+    assert result["fees_reported"] is None
+    assert result["net_reported"] is None
+    assert result["reference_is_settled_eur"] is False
+
+
+def test_groups_separate_provider_and_currency():
+    rows = [
+        {"provider": "paypal", "gross_currency": "EUR", "gross_amount": "10",
+         "transaction_type": "payment", "status": "confirmed", "reference_amount_eur": "10",
+         "fee_amount": "0.50", "net_amount": "9.50"},
+        {"provider": "fipto", "gross_currency": "USDC", "gross_amount": "11",
+         "transaction_type": "payment", "status": "confirmed", "reference_amount_eur": "10",
+         "fee_amount": "0.10", "net_amount": "10.90"},
+    ]
+    result = summarize_financial_transactions(rows)
+    assert len(result) == 2
+    assert {x["provider"] for x in result} == {"paypal", "fipto"}
+
+
+@pytest.mark.parametrize("gross", ["-1", "NaN", "Infinity", "invalid"])
+def test_rejects_invalid_amounts(gross):
+    row = {"provider": "fipto", "gross_currency": "EURC", "gross_amount": gross,
+           "transaction_type": "payment", "status": "confirmed"}
+    with pytest.raises(ValueError):
+        summarize_financial_transactions([row])
+
+
+def test_rejects_non_list_input():
+    with pytest.raises(ValueError):
+        summarize_financial_transactions({})
