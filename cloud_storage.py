@@ -379,3 +379,22 @@ def update_business_club_meeting(client, user, meeting_id, status):
     else:
         query = query.eq("invitee_user_id", uid).eq("status", "Proposée")
     return query.execute()
+
+def list_business_club_notifications(client, user, limit=100):
+    """Return only the authenticated member's private Club notification inbox."""
+    uid = _user_id(user)
+    return client.table("sowia_business_club_notifications").select(
+        "id,event_type,entity_type,entity_id,message,created_at,read_at"
+    ).eq("user_id", uid).order("created_at", desc=True).limit(
+        min(max(int(limit), 1), 200)
+    ).execute().data
+
+
+def mark_business_club_notification_read(client, user, notification_id):
+    """Mark one own unread notification as read; RLS and column grants enforce ownership."""
+    uid = _user_id(user)
+    return client.table("sowia_business_club_notifications").update({
+        "read_at": datetime.now(timezone.utc).isoformat()
+    }).eq("id", int(notification_id)).eq("user_id", uid).is_(
+        "read_at", "null"
+    ).execute()
