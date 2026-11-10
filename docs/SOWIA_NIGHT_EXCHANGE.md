@@ -100,3 +100,14 @@ The separate `sowia_partner_protection.py` module adds:
 - A safe public status projection that never exposes the reporter identity or allegation details.
 
 No signal automatically blocks, suspends, labels or penalizes an application. Production deployment still requires verified user-to-app ownership, secure report storage and RLS, moderator authorization, evidence handling, retention/deletion policy, anti-retaliation controls, appeal workflow, and legal/privacy review. The current module does not verify real-world identity or investigate allegations.
+
+
+## SOWIA GLOBAL ID — privacy-first profile prototype
+The standalone `sowia_global_id.py` module adds:
+- A deterministic public alias derived from a trusted persistent UUID; email addresses, names and raw internal UUIDs are not used as public identifiers.
+- An explainable six-point profile-completeness indicator.
+- A strict public-profile allowlist that excludes account IDs, email addresses, phone numbers and other unapproved fields.
+- Verification states (`unverified`, `pending`, `verified`, `suspended)); only an explicitly authorized admin role can change them, and a documented evidence reference is mandatory for `verified`.
+- A stable HTTPS profile URL payload suitable for a future QR code. The module returns the URL only; it does not render a QR image.
+
+**Important implementation boundary:** this is a pure Python prototype. A public ID is an alias, not proof of legal identity, domain ownership or account control. The admin-role argument is not a substitute for server-side authentication and authorization. Before production, SOWIA needs a persistent profile table with a unique public ID, authenticated owner mapping, admin-only server-side RPC, auditable evidence records, RLS, consent and profile visibility settings, data-retention/deletion rules, and an actual HTTPS profile route. The profile URL domain is not yet deployed. The interface, database and QR rendering are not connected. Tests have been added but not executed.
