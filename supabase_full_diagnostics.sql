@@ -3,61 +3,62 @@
 -- Run only after the corresponding feature migrations have been applied in Supabase.
 -- This script reads PostgreSQL catalog and Storage metadata only; it changes no data or schema.
 
-with expected_tables(table_name) as (
+with expected_tables(table_name, is_optional) as (
     values
-        ('sowia_messages'),
-        ('sowia_memory_items'),
-        ('sowia_entitlements'),
-        ('sowia_subscriptions'),
-        ('sowia_paypal_catalog'),
-        ('sowia_financial_transactions'),
-        ('sowia_technical_incidents'),
-        ('sowia_growth_leads'),
-        ('sowia_user_preferences'),
-        ('sowia_relationship_events'),
-        ('sowia_business_opportunities'),
-        ('sowia_business_club_profiles'),
-        ('sowia_business_club_requests'),
-        ('sowia_business_club_meetings'),
-        ('sowia_business_club_notifications'),
-        ('sowia_vip_printer_suppliers'),
-        ('sowia_vip_printer_quotes'),
-        ('sowia_vip_printer_reviews'),
-        ('sowia_vip_card_orders'),
-        ('sowia_night_exchange_apps'),
-        ('sowia_night_exchange_events'),
-        ('sowia_global_profiles'),
-        ('sowia_global_connection_requests'),
-        ('sowia_global_messages'),
-        ('sowia_global_notifications'),
-        ('sowia_global_notification_preferences'),
-        ('sowia_global_trust_reviews'),
-        ('sowia_global_trust_reports'),
-        ('sowia_global_moderation_audit'),
-        ('sowia_global_intelligence_assessments'),
-        ('sowia_global_pulse_items'),
-        ('sowia_global_alerts'),
-        ('sowia_global_forecasts'),
-        ('sowia_global_decisions'),
-        ('sowia_global_learning_records'),
-        ('sowia_global_action_plans'),
-        ('sowia_global_action_audit'),
-        ('sowia_global_performance_observations'),
-        ('sowia_global_projects'),
-        ('sowia_global_project_members'),
-        ('sowia_global_project_contributions'),
-        ('sowia_global_project_milestones'),
-        ('sowia_global_project_audit'),
-        ('sowia_decision_trials'),
-        ('sowia_crypto_orders'),
-        ('sowia_crypto_payment_events'),
-        ('sowia_technology_candidates')
+        ('sowia_messages', false),
+        ('sowia_memory_items', false),
+        ('sowia_entitlements', false),
+        ('sowia_subscriptions', true),
+        ('sowia_paypal_catalog', true),
+        ('sowia_financial_transactions', true),
+        ('sowia_technical_incidents', true),
+        ('sowia_growth_leads', false),
+        ('sowia_user_preferences', false),
+        ('sowia_relationship_events', true),
+        ('sowia_business_opportunities', false),
+        ('sowia_business_club_profiles', true),
+        ('sowia_business_club_requests', true),
+        ('sowia_business_club_meetings', true),
+        ('sowia_business_club_notifications', true),
+        ('sowia_vip_printer_suppliers', true),
+        ('sowia_vip_printer_quotes', true),
+        ('sowia_vip_printer_reviews', true),
+        ('sowia_vip_card_orders', true),
+        ('sowia_night_exchange_apps', true),
+        ('sowia_night_exchange_events', true),
+        ('sowia_global_profiles', true),
+        ('sowia_global_connection_requests', true),
+        ('sowia_global_messages', true),
+        ('sowia_global_notifications', true),
+        ('sowia_global_notification_preferences', true),
+        ('sowia_global_trust_reviews', true),
+        ('sowia_global_trust_reports', true),
+        ('sowia_global_moderation_audit', true),
+        ('sowia_global_intelligence_assessments', true),
+        ('sowia_global_pulse_items', true),
+        ('sowia_global_alerts', true),
+        ('sowia_global_forecasts', true),
+        ('sowia_global_decisions', true),
+        ('sowia_global_learning_records', true),
+        ('sowia_global_action_plans', true),
+        ('sowia_global_action_audit', true),
+        ('sowia_global_performance_observations', true),
+        ('sowia_global_projects', true),
+        ('sowia_global_project_members', true),
+        ('sowia_global_project_contributions', true),
+        ('sowia_global_project_milestones', true),
+        ('sowia_global_project_audit', true),
+        ('sowia_decision_trials', true),
+        ('sowia_crypto_orders', true),
+        ('sowia_crypto_payment_events', true),
+        ('sowia_technology_candidates', true)
 ),
 table_checks as (
     select
         'table'::text as check_type,
         e.table_name::text as object_name,
         case
+            when c.oid is null and e.is_optional then 'OPTIONAL - NOT INSTALLED'
             when c.oid is null then 'MISSING'
             when c.relkind not in ('r', 'p') then 'WRONG OBJECT TYPE'
             else 'PRESENT'
@@ -77,13 +78,15 @@ rls_checks as (
         'RLS status'::text as check_type,
         e.table_name::text as object_name,
         case
+            when c.oid is null and e.is_optional then 'OPTIONAL - NOT INSTALLED'
             when c.oid is null then 'MISSING'
             when c.relkind not in ('r', 'p') then 'NOT A TABLE'
             when c.relrowsecurity then 'ENABLED'
             else 'DISABLED - REVIEW'
         end as status,
         case
-            when c.oid is null then 'Cannot inspect RLS because the table is absent'
+            when c.oid is null and e.is_optional then 'Optional feature table is not installed; no RLS check applies yet'
+            when c.oid is null then 'Cannot inspect RLS because the required table is absent'
             when c.relkind not in ('r', 'p') then 'RLS check applies to tables only'
             when c.relrowsecurity then 'Row Level Security is enabled'
             else 'Private application data may be exposed unless access is otherwise blocked'
@@ -101,8 +104,8 @@ view_checks as (
     select
         'view'::text as check_type,
         e.view_name::text as object_name,
-        case when c.oid is null then 'MISSING' when c.relkind in ('v','m') then 'PRESENT' else 'WRONG OBJECT TYPE' end as status,
-        case when c.oid is null then 'Expected public view not found'
+        case when c.oid is null then 'OPTIONAL - NOT INSTALLED' when c.relkind in ('v','m') then 'PRESENT' else 'WRONG OBJECT TYPE' end as status,
+        case when c.oid is null then 'Optional public view is not installed'
              else 'View relkind=' || c.relkind::text end as detail
     from expected_views e
     left join pg_namespace n on n.nspname = 'public'
@@ -157,9 +160,14 @@ column_checks as (
     select
         'column'::text as check_type,
         (e.table_name || '.' || e.column_name)::text as object_name,
-        case when c.column_name is null then 'MISSING' else 'PRESENT' end as status,
-        coalesce(c.data_type, 'Expected column is absent from public schema')::text as detail
+        case when t.oid is null and et.is_optional then 'OPTIONAL - NOT INSTALLED'
+             when c.column_name is null then 'MISSING' else 'PRESENT' end as status,
+        case when t.oid is null and et.is_optional then 'Optional feature table is not installed'
+             else coalesce(c.data_type, 'Expected column is absent from public schema')::text end as detail
     from expected_columns e
+    join expected_tables et on et.table_name = e.table_name
+    left join pg_namespace tn on tn.nspname = 'public'
+    left join pg_class t on t.relnamespace = tn.oid and t.relname = e.table_name
     left join information_schema.columns c
         on c.table_schema = 'public'
        and c.table_name = e.table_name
