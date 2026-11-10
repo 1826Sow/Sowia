@@ -108,7 +108,7 @@ def load_user_financial_transactions(user_client, user, *, limit=500):
     response = (
         user_client.table("sowia_financial_transactions")
         .select(
-            "provider, provider_payment_id, transaction_type, status, "
+            "provider, provider_payment_id, paypal_subscription_id, transaction_type, status, "
             "gross_amount, gross_currency, reference_amount_eur, "
             "fee_amount, fee_currency, net_amount, net_currency, "
             "tax_amount_eur, occurred_at"
