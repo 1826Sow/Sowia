@@ -104,7 +104,7 @@ security definer
 set search_path = ''
 as $$
 begin
-    if coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') <> 'admin' then
+    if not (coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin' or coalesce(auth.jwt() -> 'app_metadata' ->> 'sowia_admin', '') = 'true') then
         raise exception 'Accès administrateur requis' using errcode = '42501';
     end if;
     if p_status not in ('approved', 'rejected', 'suspended') then
