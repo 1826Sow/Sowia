@@ -574,6 +574,7 @@ elif page == "Développement mondial":
     with partner_tab:
         st.markdown("#### Prospection internationale")
         region = st.selectbox("Zone géographique", list(__import__("growth_tools").REGIONS))
+        target_country = st.text_input("Pays / marché à enregistrer dans le CRM", value="À déterminer", max_chars=100)
         partner_type = st.selectbox("Type de partenaire", list(__import__("growth_tools").PARTNER_TYPES))
         product_description = st.text_input(
             "Présentation courte de SOW IA",
@@ -624,7 +625,7 @@ elif page == "Développement mondial":
                                     supabase_client,
                                     current_user,
                                     organization=lead["title"],
-                                    country=st.session_state.get("growth_partner_region", region),
+                                    country=target_country.strip() or "À déterminer",
                                     region=st.session_state.get("growth_partner_region", region),
                                     partner_type=partner_type,
                                     website=lead["url"],
