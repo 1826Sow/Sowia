@@ -39,6 +39,7 @@ import decision_benchmark_ui
 import sowia_prioritization
 import sowia_night_exchange
 import sowia_global_id
+import sowia_global_directory
 import sowia_business_card
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
@@ -565,7 +566,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -2567,6 +2568,19 @@ elif page == "SOWIA GLOBAL ID":
                 languages = st.text_input("Langues (séparées par des virgules)", value=", ".join(profile.get("languages") or []), max_chars=300)
                 website = st.text_input("Site web public (facultatif)", value=profile.get("website") or "", max_chars=500)
                 short_description = st.text_area("Présentation publique", value=profile.get("short_description") or "", max_chars=600)
+                sector_options = list(sowia_global_directory.SECTORS)
+                selected_sectors = st.multiselect(
+                    "Secteurs professionnels",
+                    options=sector_options,
+                    default=[value for value in (profile.get("professional_sectors") or []) if value in sector_options],
+                    format_func=lambda value: sowia_global_directory.SECTORS[value],
+                )
+                specialties = st.text_input(
+                    "Spécialités (séparées par des virgules)",
+                    value=", ".join(profile.get("specialties") or []),
+                    max_chars=800,
+                    help="12 spécialités maximum, 60 caractères chacune.",
+                )
                 published = st.checkbox("Je souhaite publier ma carte dans l’annuaire SOWIA", value=bool(profile.get("is_published", False)))
                 saved = st.form_submit_button("Enregistrer ma carte", type="primary", use_container_width=True)
             if saved:
@@ -2577,6 +2591,7 @@ elif page == "SOWIA GLOBAL ID":
                         organization=organization, country=country,
                         languages=languages, website=website,
                         short_description=short_description, is_published=published,
+                        professional_sectors=selected_sectors, specialties=specialties,
                     )
                     st.success("Votre carte SOWIA a été enregistrée.")
                     st.rerun()
@@ -2685,6 +2700,90 @@ elif page == "SOWIA GLOBAL ID":
         except Exception as exc:
             st.error("Le registre GLOBAL ID n’est pas encore disponible. Appliquez la migration Supabase dédiée.")
             st.caption("Diagnostic : " + type(exc).__name__)
+
+elif page == "SOWIA GLOBAL DIRECTORY":
+    st.subheader("🌐 SOWIA GLOBAL DIRECTORY")
+    st.caption("Découvrez les entreprises et applications qui ont choisi de publier leur carte professionnelle SOWIA.")
+    st.markdown(
+        '<div class="partner-intro"><h3>Un réseau professionnel ouvert sur le monde</h3>'
+        '<p>Recherchez des partenaires par pays, langue, secteur et spécialité. '
+        'Seules les fiches publiées par leur propriétaire sont présentées.</p></div>',
+        unsafe_allow_html=True,
+    )
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous à votre compte SOWIA pour consulter l’annuaire international.")
+    else:
+        try:
+            directory_profiles = cloud_storage.list_public_global_profiles(
+                supabase_client, current_user, limit=200
+            )
+            filter_cols = st.columns(2)
+            with filter_cols[0]:
+                directory_country = st.text_input("Pays", key="global_directory_country", placeholder="France, Sénégal, Singapour…")
+                directory_language = st.text_input("Langue (code ou nom)", key="global_directory_language", placeholder="fr, en, 中文…")
+                directory_sector = st.selectbox(
+                    "Secteur professionnel",
+                    options=[""] + list(sowia_global_directory.SECTORS),
+                    format_func=lambda value: "Tous les secteurs" if not value else sowia_global_directory.SECTORS[value],
+                    key="global_directory_sector",
+                )
+            with filter_cols[1]:
+                directory_specialty = st.text_input("Spécialité", key="global_directory_specialty", placeholder="IA, agriculture, marketing…")
+                directory_query = st.text_input("Recherche libre", key="global_directory_query", placeholder="Nom, entreprise ou activité…")
+            matches = sowia_global_directory.filter_directory(
+                directory_profiles,
+                country=directory_country,
+                language=directory_language,
+                sector=directory_sector,
+                specialty=directory_specialty,
+                query=directory_query,
+                limit=200,
+            )
+            st.metric("Cartes correspondant à la recherche", len(matches))
+            if not matches:
+                st.info("Aucune carte publiée ne correspond à ces critères. Essayez d’élargir la recherche ou revenez plus tard.")
+            for public_card in matches:
+                with st.container(border=True):
+                    title = public_card.get("display_name") or public_card.get("app_name") or "Partenaire SOWIA"
+                    st.markdown(f"**{title}**")
+                    identity = " · ".join(
+                        value for value in [
+                            public_card.get("app_name"),
+                            public_card.get("organization"),
+                            public_card.get("country"),
+                        ] if value
+                    )
+                    if identity:
+                        st.caption(identity)
+                    if public_card.get("professional_sectors"):
+                        st.caption("Secteurs : " + ", ".join(
+                            sowia_global_directory.SECTORS.get(value, value)
+                            for value in public_card["professional_sectors"]
+                        ))
+                    if public_card.get("specialties"):
+                        st.caption("Spécialités : " + ", ".join(public_card["specialties"]))
+                    if public_card.get("languages"):
+                        st.caption("Langues : " + ", ".join(public_card["languages"]))
+                    if public_card.get("short_description"):
+                        st.write(public_card["short_description"])
+                    if public_card.get("website"):
+                        st.link_button("Visiter le site officiel", public_card["website"])
+                    verification = {
+                        "verified": "Vérifié par SOWIA",
+                        "pending": "Vérification en attente",
+                        "unverified": "Non vérifié",
+                        "suspended": "Suspendu",
+                    }.get(public_card.get("verification_status"), "Non vérifié")
+                    st.caption(f"{public_card['public_id']} · {verification}")
+            st.caption(
+                "La mention « Vérifié par SOWIA » indique un contrôle documenté du profil ; "
+                "elle ne garantit ni la qualité commerciale ni la solvabilité du partenaire. "
+                "Aucune adresse e-mail, aucun téléphone ni identifiant de compte privé n’est affiché."
+            )
+        except Exception as exc:
+            st.error("L’annuaire mondial n’est pas encore initialisé. Appliquez supabase_global_id.sql puis supabase_global_directory.sql dans Supabase.")
+            st.caption("Diagnostic : " + type(exc).__name__)
+
 
 elif page == "SOWIA NIGHT EXCHANGE":
     st.subheader("🌙 SOWIA NIGHT EXCHANGE")
