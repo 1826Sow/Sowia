@@ -40,3 +40,7 @@ The rules module provides pure helpers for timezone checks, app matching, budget
 
 ## Streamlit prototype
 The professional navigation now includes a SOWIA NIGHT EXCHANGE page, gated by the existing Premium entitlement. It contains an overview, a session-only draft listing form with IANA timezone validation, a simple explainable category/service compatibility preview, and a local budget-cap configuration preview. Draft listings and budget settings are not persisted. The page does not publish apps, verify ownership, match against a live directory, create auctions, execute payments, or enforce production spending limits. The authoritative budget guard must be implemented server-side with atomic reservations before any paid workflow is enabled.
+
+
+## Matching international — prototype
+The Streamlit page includes an explainable matching tab. It compares a member listing with approved directory records using normalized categories and service terms, ranks candidates deterministically, and labels reciprocal exchange potential. It is advisory only: no messaging, integration, data sharing, or payment is initiated. Matching quality depends on the accuracy and specificity of submitted descriptions.
