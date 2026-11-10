@@ -25,7 +25,7 @@ def _canonical(value):
     text = str(value or "").strip().casefold()
     text = unicodedata.normalize("NFKD", text)
     text = "".join(char for char in text if not unicodedata.combining(char))
-    return " ".join(re.sub(r"[^\\w]+", " ", text, flags=re.UNICODE).split())
+    return " ".join(re.sub(r"[^\w]+", " ", text, flags=re.UNICODE).split())
 
 
 def _norm(values, *, language=False):
