@@ -1,0 +1,82 @@
+# SOW IA — Paiements en crypto-actifs
+
+## Statut
+
+Spécification produit et sécurité — **pas encore intégrée au parcours de paiement en production**.
+
+Le paiement PayPal existant reste inchangé. Aucun paiement crypto ne doit accorder Premium avant validation serveur d'un événement de paiement confirmé auprès du prestataire.
+
+## Objectif
+
+Permettre aux clients éligibles de régler un abonnement ou un service SOW IA en crypto-actifs, tout en conservant un prix de référence en EUR, une comptabilité fiable et une expérience de paiement internationale.
+
+## Première version recommandée
+
+- Priorité aux jetons de monnaie électronique dont l'émetteur et le jeton sont autorisés pour le marché ciblé au titre de MiCA.
+- Évaluer en premier lieu EURC (référence euro) et USDC (référence dollar), sous réserve de la disponibilité effective auprès du prestataire retenu, des réseaux activés pour SOW IA et de la conformité au moment du lancement.
+- Ne pas accepter automatiquement un jeton ou un réseau parce qu'il est techniquement disponible.
+- BTC, ETH et autres actifs volatils pourront faire l'objet d'une phase ultérieure, avec devis à durée limitée et conversion/risque de change explicitement présentés.
+- Ne pas créer de jeton SOW IA ni de portefeuille custodial propriétaire dans cette première version.
+
+## Architecture technique
+
+Créer un adaptateur de paiement indépendant du fournisseur, sans modifier le flux PayPal :
+
+1. Le serveur SOW IA crée une commande interne avec identifiant unique, utilisateur, produit, montant EUR, devise, date d'expiration et état `pending`.
+2. Le prestataire retourne une session ou un lien de paiement hébergé. Les clés API restent exclusivement dans les secrets serveur.
+3. Le client paie directement dans l'interface du prestataire ou son portefeuille ; SOW IA ne demande jamais la phrase de récupération ni la clé privée.
+4. Un webhook signé est reçu côté serveur. Vérifier la signature cryptographique, l'identifiant d'événement, le marchand destinataire, la commande, l'actif, le réseau, le montant et le statut final.
+5. Les webhooks doivent être idempotents : un même événement ne peut être traité deux fois.
+6. Une confirmation du navigateur ou une capture d'écran de transaction ne suffit jamais à accorder Premium.
+7. Après vérification serveur et confirmation définitive du prestataire, enregistrer la transaction et accorder l'accès selon la durée et le produit achetés.
+8. Les remboursements, annulations, paiements partiels, paiements en trop, expirations et litiges doivent avoir des états dédiés et une procédure traçable.
+
+## Données et comptabilité
+
+Prévoir des enregistrements séparés pour les commandes, événements de paiement et écritures comptables. Chaque enregistrement doit contenir au minimum :
+
+- utilisateur et espace SOW IA concernés ;
+- référence interne de commande ;
+- fournisseur et identifiant de paiement externe ;
+- actif, réseau, montant attendu et montant reçu ;
+- devise de référence et taux de conversion/horodatage si applicable ;
+- statut, horodatages, frais et montant net reçu ;
+- identifiant d'événement webhook et état de traitement ;
+- référence de remboursement éventuelle.
+
+Ne jamais stocker de clé privée, phrase de récupération ou secret de portefeuille. Ne jamais considérer une commande créée ou un paiement simplement détecté comme un revenu encaissé. Les tableaux de bord distinguent montant brut, frais, remboursements, taxes, montant net et valeur EUR réellement rapprochée.
+
+## Sécurité et conformité — conditions bloquantes avant lancement
+
+- Vérifier le statut réglementaire exact du prestataire, de ses entités contractantes et de ses services dans les pays ciblés.
+- Vérifier si le parcours précis implique des services de paiement, des services sur crypto-actifs, ou les deux ; ne pas supposer qu'un prestataire possède toutes les autorisations nécessaires.
+- Faire valider le modèle par un conseil compétent en réglementation financière, fiscalité, comptabilité et protection des consommateurs.
+- Prévoir les obligations KYC/AML, sanctions, Travel Rule lorsqu'applicable, conservation des justificatifs, RGPD et traitement des réclamations.
+- Restreindre les actifs et réseaux à une liste blanche explicitement activée.
+- Ne pas activer de paiements Live avant validation du contrat, des frais, des pays desservis, des conditions de remboursement et des webhooks en environnement de test.
+- Aucun transfert sortant automatique, conversion, investissement ou conservation de fonds clients dans la première version.
+
+## Fournisseur à évaluer
+
+**Fipto** est un candidat de présélection technique, pas un fournisseur choisi ni un partenariat conclu. Sa documentation publique décrit une API B2B, des Payment Links hébergés, des webhooks, un environnement de démonstration, ainsi que USDC et EURC sur plusieurs réseaux. Elle indique également des statuts français d'établissement de paiement et de PSCA MiCA. La documentation précise que l'offre vise les PSP, courtiers crypto et grandes entreprises ; l'éligibilité de SOW IA, les conditions commerciales et les services effectivement accessibles doivent donc être confirmés directement avant toute intégration.
+
+Site et documentation à examiner :
+- https://www.fipto.com/fr
+- https://docs.fipto.com/reference/getting-started
+- https://docs.fipto.com/docs/what-is-fipto-api
+
+Comparer au moins deux prestataires supplémentaires sur les mêmes critères : autorisations pertinentes, pays acceptés, stablecoins/réseaux autorisés, checkout hébergé, webhooks signés, sandbox, conversion EUR, frais, remboursements, délais de règlement, support et exigences KYC/AML.
+
+## Plan de réalisation
+
+1. Vérification de l'entité juridique SOW IA et de son éligibilité marchand auprès des fournisseurs.
+2. Comparatif fournisseurs et revue réglementaire.
+3. Modèle de données Supabase avec RLS et accès d'administration serveur strictement limité.
+4. Adaptateur et tests unitaires de validation des commandes/webhooks, sans clés de production.
+5. Parcours sandbox de bout en bout et tests de rejeu, doublons, mauvais réseau, mauvais montant, webhook falsifié et paiement expiré.
+6. Revue sécurité et comptable.
+7. Activation Live uniquement après accord explicite du responsable et validation des conditions.
+
+## Règle produit
+
+Le client voit le prix en EUR, le montant crypto, le réseau exact, les frais éventuels et le délai d'expiration avant de confirmer. Le statut du paiement est explicite : en attente, détecté, confirmé, expiré, remboursé ou rejeté. Le droit Premium n'est accordé qu'après confirmation serveur définitive.
