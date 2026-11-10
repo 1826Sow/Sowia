@@ -53,3 +53,14 @@ The rules module now includes:
 - `build_morning_report(events)`: summarizes only explicitly supplied event records and includes payment spend only when the provider status is `confirmed`.
 
 The Streamlit page adds a global session table, an explainable opportunities view and a morning-report placeholder. The report event ledger is not yet connected to Supabase, so the UI intentionally does not display fabricated session counts or spending. The SQL registry migration still needs to be applied in Supabase. Automated tests have been added but have not yet been executed; production deployment has not been verified.
+
+
+## Append-only activity ledger
+The migration `supabase_night_exchange_events.sql` creates a user-scoped event ledger:
+- Members can append only non-financial events for their own workspace and app listing.
+- Members can read only their own events; the table has no client UPDATE or DELETE policy.
+- Authenticated clients cannot insert `payment_confirmed`. That event type is reserved for trusted server-side payment webhooks/service-role processes.
+- The Morning Report reads the current member's last seven days of events. Currency totals are kept separate; no conversion or estimate is performed.
+- The UI lets a member explicitly record a meeting confirmation. This is a member declaration, not proof that a meeting took place.
+
+Apply `supabase_night_exchange_events.sql` after the app registry migration in the Supabase SQL Editor. The new ledger is not operational until both migrations have been applied to the connected Supabase project. No live payment webhook has been connected in this implementation.
