@@ -1,0 +1,84 @@
+"""Lightweight interface localization for SOW IA."""
+
+LANGUAGES = ["Français", "English", "Español", "中文", "Deutsch", "العربية"]
+
+_TRANSLATIONS = {
+    "English": {
+        "Intelligence artificielle": "Artificial intelligence", "Personnel": "Personal", "Professionnel": "Professional",
+        "Accueil": "Home", "Assistant IA": "AI assistant", "Ma mémoire": "My memory", "Recherche Web": "Web search",
+        "Analyse PDF": "PDF analysis", "Créer un PDF": "Create a PDF", "Mes documents": "My documents", "Historique": "History",
+        "Abonnement": "Subscription", "Développement mondial": "Global growth", "Paramètres": "Settings", "Aide": "Help",
+        "VOTRE ASSISTANT INTELLIGENT": "YOUR INTELLIGENT ASSISTANT",
+        "Un espace clair pour réfléchir, rechercher, analyser et créer.": "One clear space to think, search, analyse and create.",
+        "Bienvenue sur SOW IA": "Welcome to SOW IA", "Ouvrir": "Open",
+        "Posez vos questions": "Ask your questions", "Enregistrez vos informations utiles": "Save useful information",
+        "Recherchez des informations en ligne": "Search for information online", "Importez et analysez un PDF": "Upload and analyse a PDF",
+        "Préparez vos futurs documents PDF": "Create your PDF documents", "Retrouvez votre espace documentaire": "Open your document library",
+        "Consultez vos conversations": "Review your conversations", "Découvrez l’espace Premium": "Explore Premium",
+        "Trouvez des partenaires et préparez vos campagnes": "Find partners and prepare campaigns",
+        "Vérifiez votre configuration": "Check your configuration", "Consultez les indications d’utilisation": "Read the usage guide",
+    },
+    "Español": {
+        "Intelligence artificielle": "Inteligencia artificial", "Personnel": "Personal", "Professionnel": "Profesional",
+        "Accueil": "Inicio", "Assistant IA": "Asistente IA", "Ma mémoire": "Mi memoria", "Recherche Web": "Búsqueda web",
+        "Analyse PDF": "Análisis PDF", "Créer un PDF": "Crear un PDF", "Mes documents": "Mis documentos",
+        "Historique": "Historial", "Abonnement": "Suscripción", "Développement mondial": "Crecimiento global",
+        "Paramètres": "Configuración", "Aide": "Ayuda", "VOTRE ASSISTANT INTELLIGENT": "TU ASISTENTE INTELIGENTE",
+        "Un espace clair pour réfléchir, rechercher, analyser et créer.": "Un espacio claro para pensar, buscar, analizar y crear.",
+        "Bienvenue sur SOW IA": "Te damos la bienvenida a SOW IA", "Ouvrir": "Abrir",
+        "Posez vos questions": "Haz tus preguntas", "Enregistrez vos informations utiles": "Guarda información útil",
+        "Recherchez des informations en ligne": "Busca información en línea", "Importez et analysez un PDF": "Sube y analiza un PDF",
+        "Préparez vos futurs documents PDF": "Prepara tus documentos PDF", "Retrouvez votre espace documentaire": "Abre tu biblioteca de documentos",
+        "Consultez vos conversations": "Consulta tus conversaciones", "Découvrez l’espace Premium": "Descubre Premium",
+        "Trouvez des partenaires et préparez vos campagnes": "Encuentra socios y prepara campañas",
+        "Vérifiez votre configuration": "Revisa tu configuración", "Consultez les indications d’utilisation": "Consulta la guía de uso",
+    },
+    "中文": {
+        "Intelligence artificielle": "人工智能", "Personnel": "个人空间", "Professionnel": "专业空间", "Accueil": "首页",
+        "Assistant IA": "人工智能助手", "Ma mémoire": "我的记忆", "Recherche Web": "网页搜索", "Analyse PDF": "PDF 分析",
+        "Créer un PDF": "创建 PDF", "Mes documents": "我的文档", "Historique": "历史记录", "Abonnement": "订阅",
+        "Développement mondial": "全球拓展", "Paramètres": "设置", "Aide": "帮助", "VOTRE ASSISTANT INTELLIGENT": "您的智能助手",
+        "Un espace clair pour réfléchir, rechercher, analyser et créer.": "一个用于思考、搜索、分析和创作的清晰空间。",
+        "Bienvenue sur SOW IA": "欢迎使用 SOW IA", "Ouvrir": "打开", "Posez vos questions": "提出您的问题",
+        "Enregistrez vos informations utiles": "保存有用的信息", "Recherchez des informations en ligne": "在线搜索信息",
+        "Importez et analysez un PDF": "上传并分析 PDF", "Préparez vos futurs documents PDF": "创建 PDF 文档",
+        "Retrouvez votre espace documentaire": "打开文档库", "Consultez vos conversations": "查看对话记录",
+        "Découvrez l’espace Premium": "了解 Premium", "Trouvez des partenaires et préparez vos campagnes": "寻找合作伙伴并准备推广活动",
+        "Vérifiez votre configuration": "检查设置", "Consultez les indications d’utilisation": "查看使用指南",
+    },
+    "Deutsch": {
+        "Intelligence artificielle": "Künstliche Intelligenz", "Personnel": "Persönlich", "Professionnel": "Geschäftlich",
+        "Accueil": "Startseite", "Assistant IA": "KI-Assistent", "Ma mémoire": "Mein Gedächtnis", "Recherche Web": "Websuche",
+        "Analyse PDF": "PDF-Analyse", "Créer un PDF": "PDF erstellen", "Mes documents": "Meine Dokumente", "Historique": "Verlauf",
+        "Abonnement": "Abonnement", "Développement mondial": "Internationale Entwicklung", "Paramètres": "Einstellungen", "Aide": "Hilfe",
+        "VOTRE ASSISTANT INTELLIGENT": "IHR INTELLIGENTER ASSISTENT",
+        "Un espace clair pour réfléchir, rechercher, analyser et créer.": "Ein klarer Ort zum Denken, Suchen, Analysieren und Erstellen.",
+        "Bienvenue sur SOW IA": "Willkommen bei SOW IA", "Ouvrir": "Öffnen", "Posez vos questions": "Stellen Sie Ihre Fragen",
+        "Enregistrez vos informations utiles": "Speichern Sie wichtige Informationen", "Recherchez des informations en ligne": "Online nach Informationen suchen",
+        "Importez et analysez un PDF": "Ein PDF hochladen und analysieren", "Préparez vos futurs documents PDF": "PDF-Dokumente erstellen",
+        "Retrouvez votre espace documentaire": "Dokumentenbibliothek öffnen", "Consultez vos conversations": "Unterhaltungen ansehen",
+        "Découvrez l’espace Premium": "Premium entdecken", "Trouvez des partenaires et préparez vos campagnes": "Partner finden und Kampagnen vorbereiten",
+        "Vérifiez votre configuration": "Einstellungen prüfen", "Consultez les indications d’utilisation": "Benutzerhandbuch öffnen",
+    },
+    "العربية": {
+        "Intelligence artificielle": "الذكاء الاصطناعي", "Personnel": "شخصي", "Professionnel": "مهني", "Accueil": "الرئيسية",
+        "Assistant IA": "مساعد الذكاء الاصطناعي", "Ma mémoire": "ذاكرتي", "Recherche Web": "بحث الويب", "Analyse PDF": "تحليل PDF",
+        "Créer un PDF": "إنشاء PDF", "Mes documents": "مستنداتي", "Historique": "السجل", "Abonnement": "الاشتراك",
+        "Développement mondial": "التوسع العالمي", "Paramètres": "الإعدادات", "Aide": "المساعدة",
+        "VOTRE ASSISTANT INTELLIGENT": "مساعدك الذكي",
+        "Un espace clair pour réfléchir, rechercher, analyser et créer.": "مساحة واضحة للتفكير والبحث والتحليل والإبداع.",
+        "Bienvenue sur SOW IA": "مرحباً بك في SOW IA", "Ouvrir": "فتح", "Posez vos questions": "اطرح أسئلتك",
+        "Enregistrez vos informations utiles": "احفظ المعلومات المفيدة", "Recherchez des informations en ligne": "ابحث عن المعلومات عبر الإنترنت",
+        "Importez et analysez un PDF": "ارفع ملف PDF وحلله", "Préparez vos futurs documents PDF": "أنشئ مستندات PDF",
+        "Retrouvez votre espace documentaire": "افتح مكتبة المستندات", "Consultez vos conversations": "راجع محادثاتك",
+        "Découvrez l’espace Premium": "اكتشف Premium", "Trouvez des partenaires et préparez vos campagnes": "اعثر على شركاء وجهّز حملاتك",
+        "Vérifiez votre configuration": "تحقق من الإعدادات", "Consultez les indications d’utilisation": "راجع دليل الاستخدام",
+    },
+}
+
+
+def translate(text: str, language: str = "Français") -> str:
+    """Translate a supported interface label; French is the canonical fallback."""
+    if language not in LANGUAGES:
+        language = "Français"
+    return _TRANSLATIONS.get(language, {}).get(text, text)
