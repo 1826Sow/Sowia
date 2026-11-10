@@ -468,3 +468,41 @@ def admin_set_vip_printer_quote_status(client, user, quote_id, status):
     return client.rpc("sowia_admin_set_printer_quote_status", {
         "p_quote_id": str(quote_id), "p_status": status,
     }).execute()
+
+
+def create_vip_printer_review(client, user, review):
+    """Submit a pending customer review; only the database admin RPC can verify it."""
+    from printer_reviews import validate_printer_review
+    clean = validate_printer_review(review)
+    payload = {
+        "id": clean["id"], "supplier_id": clean["supplier_id"],
+        "reviewer_user_id": _user_id(user),
+        "order_reference": clean["order_reference"],
+        "quality_score": clean["quality_score"],
+        "deadline_score": clean["deadline_score"],
+        "price_score": clean["price_score"],
+        "communication_score": clean["communication_score"],
+        "comment": clean["comment"], "status": "pending",
+    }
+    return client.table("sowia_vip_printer_reviews").insert(payload).execute().data
+
+
+def list_vip_printer_reviews(client, user, limit=500):
+    """RLS exposes the member's own pending reviews and all verified public reviews."""
+    _user_id(user)
+    return client.table("sowia_vip_printer_reviews").select(
+        "id,supplier_id,reviewer_user_id,order_reference,quality_score,deadline_score,"
+        "price_score,communication_score,comment,status,moderation_note,created_at"
+    ).order("created_at", desc=True).limit(min(max(int(limit), 1), 1000)).execute().data
+
+
+def admin_moderate_vip_printer_review(client, user, review_id, status, note=""):
+    """Moderate a review through a SQL function that checks the signed admin claim."""
+    _user_id(user)
+    if status not in {"verified", "rejected"}:
+        raise ValueError("Décision de modération invalide.")
+    if not isinstance(note, str) or len(note) > 500:
+        raise ValueError("La note de modération est trop longue.")
+    return client.rpc("sowia_admin_moderate_printer_review", {
+        "p_review_id": str(review_id), "p_status": status, "p_note": note,
+    }).execute()
