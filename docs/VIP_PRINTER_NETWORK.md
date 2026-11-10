@@ -31,3 +31,19 @@ La comparaison n'inclut que les devis correspondant exactement au pays de livrai
 - L'éligibilité affichée est un contrôle de données et d'approbation, pas une garantie contractuelle de disponibilité ou de livraison.
 
 Avant toute commande réelle, SOW IA doit contrôler l'identité du fournisseur, les échantillons, la qualité, les prix finaux, les taxes, les délais, la politique de confidentialité et les conditions de livraison.
+
+
+## Avis et notation des imprimeurs
+
+La migration complémentaire `supabase_vip_printer_reviews.sql` s'applique après `supabase_vip_printer_network.sql`.
+
+- Les membres peuvent soumettre un avis sur un imprimeur déjà vérifié, avec une référence de facture ou de commande.
+- Un avis reste en attente et ne contribue jamais à la note avant modération.
+- Un administrateur doit contrôler la référence de commande/facture et la cohérence de l'avis avant de le publier. Le contrôle est manuel : SOW IA ne dispose pas encore d'une intégration de commande ou de facture fournisseur.
+- Une seule évaluation par membre et par imprimeur est actuellement autorisée.
+- La note est calculée sur 5 avec les pondérations suivantes : qualité 40 %, respect des délais 25 %, rapport qualité-prix 20 %, communication 15 %.
+- Les avis rejetés et en attente sont exclus des statistiques.
+- Les données publiques sont limitées aux notes par critère. L'identité du membre, la référence de commande, les notes internes et le commentaire libre restent privés.
+- Un fournisseur sans avis affiche « Aucun avis vérifié » et non une note artificielle de zéro.
+
+Les notes sont des retours clients modérés, pas une certification indépendante de qualité. Les volumes d'avis doivent toujours être affichés à côté de la moyenne.
