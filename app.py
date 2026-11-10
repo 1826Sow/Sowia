@@ -2264,7 +2264,7 @@ elif page == "Revenus & paiements":
                     try:
                         import paypal_refund_search
                         refund_result = paypal_refund_search.sync_verified_paypal_refunds(
-                            admin_client, str(current_user.id), days=90, limit=500
+                            admin_client, str(current_user.id), days=90, limit=2000
                         )
                         st.success(
                             f"Recherche terminée : {refund_result['captures_scanned']} capture(s) examinée(s), "
@@ -2278,8 +2278,8 @@ elif page == "Revenus & paiements":
                         )
                         if refund_result["limit_reached"]:
                             st.warning(
-                                "La limite de 500 captures est atteinte. Réduisez la période pour poursuivre "
-                                "le rapprochement sans omettre de paiements."
+                                "La limite de 2 000 captures sur l’historique disponible est atteinte. "
+                                "Le contrôle peut être incomplet : ne validez pas les totaux comptables."
                             )
                         st.rerun()
                     except Exception as exc:
