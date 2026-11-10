@@ -154,3 +154,19 @@ La migration `supabase_crypto_payments.sql` ajoute maintenant `sowia_financial_t
 Le module `financial_reporting.py` agrège uniquement les transactions confirmées/remboursées, séparées par fournisseur et devise. Il exclut les paiements en attente et ne transforme pas un montant crypto en revenu EUR encaissé.
 
 **Limite actuelle :** la fonction SQL écrit les paiements crypto confirmés. Le flux PayPal existant n'alimente pas encore ce registre ; il faudra l'intégrer séparément sans modifier son traitement d'accès Premium. Aucun tableau de bord financier n'est encore branché dans l'application. Les tests Python sont écrits mais leur exécution n'est pas confirmée.
+
+
+## Intégration PayPal et première vue financière
+
+Le retour PayPal après capture serveur validée appelle maintenant `financial_ledger.record_paypal_capture` après l'attribution Premium. L'écriture utilise l'identifiant de capture PayPal, pas seulement l'identifiant de commande, et une clé d'unicité rend la répétition idempotente. Si l'écriture comptable échoue, l'accès Premium déjà validé reste actif et l'application signale que le rapprochement est à effectuer ; elle ne prétend pas que le paiement a échoué.
+
+La page privée **Revenus & paiements** lit les écritures via le client Supabase authentifié et RLS, puis affiche une synthèse séparée par fournisseur et devise. Elle distingue le brut, les remboursements, les frais/net connus et la référence EUR non encaissée.
+
+Limites de cette première version :
+- La migration `supabase_crypto_payments.sql` doit être exécutée pour créer la table de registre avant d'utiliser la page.
+- Les paiements PayPal ponctuels futurs alimentent le registre ; les paiements historiques ne sont pas rétro-importés.
+- Les abonnements PayPal récurrents, les remboursements PayPal et les frais de règlement ne sont pas encore rapprochés.
+- Les paiements crypto ne peuvent alimenter le registre qu'après activation réelle d'un prestataire, vérification de ses webhooks et application de la migration.
+- Le tableau de bord ne calcule pas un bénéfice net global ni un chiffre d'affaires consolidé multi-devises.
+
+Les tests unitaires sont ajoutés pour le writer PayPal et la lecture/agrégation ; ils doivent encore être exécutés en CI.
