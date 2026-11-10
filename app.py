@@ -36,6 +36,7 @@ import paypal_subscriptions
 import premium_access
 import financial_ledger
 import decision_benchmark_ui
+import sowia_prioritization
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -747,6 +748,92 @@ if page in ("Hub SOWIA", "Accueil"):
             "Cette vue ne constitue pas un audit de conformité ni une mesure de performance. "
             "Les lignes indiquées comme non connectées ne sont pas comptées comme zéro."
         )
+        st.divider()
+        st.markdown("### 🧭 Moteur de priorisation SOWIA")
+        st.caption(
+            "Ajoutez les actions à comparer. SOWIA applique une grille explicite : "
+            "impact (30 %), urgence (25 %), faisabilité (20 %), coût (15 %) et sécurité/risque (10 %). "
+            "Les notes sont vos évaluations, pas des données découvertes automatiquement."
+        )
+        if "sowia_priority_actions" not in st.session_state:
+            st.session_state["sowia_priority_actions"] = []
+        with st.form("sowia_priority_action_form", clear_on_submit=True):
+            action_title = st.text_input("Action à évaluer", max_chars=180)
+            action_pillar = st.selectbox(
+                "Pilier concerné",
+                [
+                    "Intelligence & décisions",
+                    "Entreprises & collaborations",
+                    "Club Privé & VIP",
+                    "Développement international",
+                    "Finance & marchés",
+                    "Sécurité & administration",
+                ],
+            )
+            score_cols = st.columns(2)
+            with score_cols[0]:
+                action_impact = st.slider("Impact attendu · 0 faible à 5 fort", 0.0, 5.0, 3.0, 0.5)
+                action_urgency = st.slider("Urgence · 0 faible à 5 immédiate", 0.0, 5.0, 3.0, 0.5)
+                action_feasibility = st.slider("Faisabilité · 0 difficile à 5 facile", 0.0, 5.0, 3.0, 0.5)
+            with score_cols[1]:
+                action_cost = st.slider("Charge/coût · 0 faible à 5 élevé", 0.0, 5.0, 2.0, 0.5)
+                action_risk = st.slider("Risque · 0 faible à 5 critique", 0.0, 5.0, 1.0, 0.5)
+                action_compliance = st.selectbox(
+                    "État de conformité",
+                    ["review_required", "verified", "prohibited"],
+                    format_func=lambda value: {
+                        "review_required": "À vérifier",
+                        "verified": "Vérifié pour le périmètre étudié",
+                        "prohibited": "Interdit / non autorisé",
+                    }[value],
+                )
+            add_priority_action = st.form_submit_button("Ajouter à la comparaison", type="primary")
+        if add_priority_action:
+            try:
+                new_action = {
+                    "title": action_title.strip(),
+                    "pillar": action_pillar,
+                    "impact": action_impact,
+                    "urgency": action_urgency,
+                    "feasibility": action_feasibility,
+                    "cost_burden": action_cost,
+                    "risk_level": action_risk,
+                    "compliance": action_compliance,
+                }
+                current_actions = st.session_state["sowia_priority_actions"]
+                if any(item["title"].casefold() == new_action["title"].casefold() for item in current_actions):
+                    raise ValueError("Une action portant ce titre existe déjà dans cette comparaison.")
+                sowia_prioritization.evaluate_action(new_action)
+                st.session_state["sowia_priority_actions"] = current_actions + [new_action]
+                st.success("Action ajoutée à la comparaison de cette session.")
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
+        priority_actions = st.session_state["sowia_priority_actions"]
+        if priority_actions:
+            ranked_actions = sowia_prioritization.rank_actions(priority_actions)
+            st.markdown("#### Classement proposé")
+            st.dataframe(
+                [{
+                    "Rang": index + 1,
+                    "Action": item["title"],
+                    "Pilier": item["pillar"],
+                    "Score /100": item["score"],
+                    "Statut": item["status"],
+                    "Points de vigilance": " · ".join(item["blockers"]) if item["blockers"] else "Aucun blocage détecté dans cette grille",
+                } for index, item in enumerate(ranked_actions)],
+                use_container_width=True,
+                hide_index=True,
+            )
+            st.caption(
+                "Un score élevé ne suffit jamais à autoriser une action : une conformité à vérifier, "
+                "une interdiction ou un risque élevé impose un contrôle humain préalable."
+            )
+            if st.button("Effacer cette comparaison", key="sowia_priority_clear"):
+                st.session_state["sowia_priority_actions"] = []
+                st.rerun()
+        else:
+            st.info("Aucune action évaluée dans cette session. Ajoutez une première action pour démarrer.")
     else:
         st.info("L’espace Professionnel complet est réservé à un accès Premium actif. Les outils personnels restent disponibles.")
         st.button("Découvrir Premium", key="hub_premium", on_click=go_to_page, args=("Abonnement",))
