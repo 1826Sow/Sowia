@@ -458,7 +458,8 @@ if page == "Accueil":
         ("🪄", "Créer un PDF", "Préparez vos futurs documents PDF"),
         ("📁", "Mes documents", "Retrouvez votre espace documentaire"),
         ("🕘", "Historique", "Consultez vos conversations"),
-        ("👑", "Abonnement", "Découvrez l’espace Premium"),\n        ("🌍", "Développement mondial", "Trouvez des partenaires et préparez vos campagnes"),
+        ("👑", "Abonnement", "Découvrez l’espace Premium"),
+        ("🌍", "Développement mondial", "Trouvez des partenaires et préparez vos campagnes"),
         ("⚙️", "Paramètres", "Vérifiez votre configuration"),
         ("❓", "Aide", "Consultez les indications d’utilisation"),
     ]
