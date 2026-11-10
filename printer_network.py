@@ -89,10 +89,12 @@ def compare_printer_quotes(suppliers, quotes, destination_country, quantity, cur
         expired = date.fromisoformat(quote["valid_until"]) < today
         verified = supplier.get("status") == "verified"
         validated = quote.get("status") == "validated"
+        printing_cost = _money(quote["printing_cost"], "impression")
+        shipping_cost = _money(quote["shipping_cost"], "livraison")
         eligible = verified and validated and not expired
         rows.append({"supplier_name": supplier["name"], "supplier_country": supplier["country"],
-            "printing_cost": quote["printing_cost"], "shipping_cost": quote["shipping_cost"],
-            "total_cost": quote["printing_cost"] + quote["shipping_cost"], "currency": quote["currency"],
+            "printing_cost": printing_cost, "shipping_cost": shipping_cost,
+            "total_cost": printing_cost + shipping_cost, "currency": quote["currency"],
             "lead_days": quote["lead_days"], "paper_finish": quote["paper_finish"],
             "valid_until": quote["valid_until"], "eligible_for_order": eligible,
             "reason": "Offre vérifiée et valide" if eligible else "Devis expiré" if expired else
