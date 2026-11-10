@@ -31,7 +31,7 @@ def test_only_verified_reviews_contribute_to_score():
     with pytest.raises(ValueError):
         score_printer_review(pending)
     pending["status"] = "verified"
-    assert score_printer_review(pending) == Decimal("4.55"
+    assert score_printer_review(pending) == Decimal("4.55")
 
 def test_summary_excludes_pending_and_rejected_reviews():
     verified = validate_printer_review(raw_review())
