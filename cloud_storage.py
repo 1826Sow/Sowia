@@ -966,6 +966,45 @@ def list_global_moderation_audit(client, user, limit=100):
     )
 
 
+
+# SOWIA GLOBAL INTELLIGENCE — private market assessment register.
+def save_global_intelligence_assessment(client, user, assessment):
+    uid = _user_id(user)
+    import sowia_global_intelligence as intelligence
+    clean = intelligence.validate_assessment(
+        assessment.get("name"), assessment.get("country"), assessment.get("sector"),
+        assessment.get("scores"), assessment.get("evidence_level"),
+        assessment.get("source_note", ""),
+    )
+    row = {
+        "user_id": uid, "name": clean["name"], "country": clean["country"],
+        "sector": clean["sector"], "scores": clean["scores"],
+        "weighted_score": intelligence.score_assessment(clean["scores"]),
+        "evidence_level": clean["evidence_level"], "source_note": clean["source_note"],
+    }
+    return client.table("sowia_global_intelligence_assessments").insert(row).execute().data
+
+
+def list_global_intelligence_assessments(client, user, limit=100):
+    uid = _user_id(user)
+    rows = (
+        client.table("sowia_global_intelligence_assessments")
+        .select("id,name,country,sector,scores,weighted_score,evidence_level,source_note,created_at,updated_at")
+        .eq("user_id", uid).order("updated_at", desc=True)
+        .limit(min(max(int(limit), 1), 200)).execute().data
+    )
+    import sowia_global_intelligence as intelligence
+    return [intelligence.safe_assessment_projection(row) for row in rows]
+
+
+def delete_global_intelligence_assessment(client, user, assessment_id):
+    return (
+        client.table("sowia_global_intelligence_assessments").delete()
+        .eq("user_id", _user_id(user)).eq("id", str(assessment_id))
+        .execute().data
+    )
+
+
 # SOWIA GLOBAL ID — private profile registry and safe public directory.
 def _validate_global_profile(display_name, app_name="", organization="", country="",
                              languages="", website="", short_description="",
