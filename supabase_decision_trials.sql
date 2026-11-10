@@ -10,6 +10,7 @@ create table if not exists public.sowia_decision_trials (
     title text not null check (char_length(title) between 1 and 160),
     question text not null check (char_length(question) between 1 and 500),
     context text not null default '',
+    category text not null default 'Non classé',
     human_choice text not null,
     ai_choice text,
     ai_rationale text not null,
@@ -26,6 +27,9 @@ create table if not exists public.sowia_decision_trials (
     check (human_outcome is null or human_outcome between 0 and 100),
     check (ai_outcome is null or ai_outcome between 0 and 100)
 );
+
+alter table public.sowia_decision_trials
+    add column if not exists category text not null default 'Non classé';
 
 create index if not exists sowia_decision_trials_user_date_idx
     on public.sowia_decision_trials (user_id, workspace_id, decided_at desc);
