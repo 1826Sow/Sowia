@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL COLLABORATION HUB", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL", "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "SOWIA GLOBAL AUTONOMOUS STRATEGY", "SOWIA GLOBAL COLLABORATION HUB", "SOWIA GLOBAL ACTION GOVERNANCE", "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL", "SOWIA GLOBAL EXECUTIVE REPORTS", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "SOWIA CONTROL CENTER", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -6165,6 +6165,113 @@ elif page == "Revenus & paiements":
                 "Le registre financier n'est pas accessible. Vérifiez que la migration "
                 "supabase_crypto_payments.sql a été appliquée et que les droits RLS sont actifs."
             )
+
+
+elif page == "SOWIA CONTROL CENTER":
+    st.subheader("🛰️ SOWIA CONTROL CENTER")
+    st.caption(
+        "Supervision technique en lecture seule. Aucun paiement, remboursement, "
+        "abonnement ou changement de configuration n'est déclenché depuis cette page."
+    )
+    admin_metadata = getattr(current_user, "app_metadata", None) or {} if current_user is not None else {}
+    is_sowia_admin = isinstance(admin_metadata, dict) and (
+        admin_metadata.get("sowia_admin") is True or admin_metadata.get("role") == "admin"
+    )
+    if not cloud_mode or current_user is None:
+        st.warning("Connectez-vous avec un compte administrateur SOWIA autorisé.")
+    elif not is_sowia_admin:
+        st.error("Accès refusé. Ce centre de contrôle est réservé aux administrateurs SOWIA.")
+    else:
+        from datetime import datetime, timezone
+        st.caption("Diagnostic effectué le " + datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))
+        admin_client = None
+        try:
+            admin_client = premium_access.create_admin_client()
+        except Exception:
+            admin_client = None
+
+        checks = [{
+            "Composant": "Authentification",
+            "État": "Opérationnelle" if cloud_mode and current_user is not None else "Indisponible",
+            "Détail": "Session utilisateur authentifiée",
+        }, {
+            "Composant": "Client administratif Supabase",
+            "État": "Disponible" if admin_client is not None else "Non configuré",
+            "Détail": "Client serveur disponible" if admin_client is not None else "Vérifier les secrets serveur Supabase",
+        }]
+
+        if admin_client is not None:
+            for table_name, label in (
+                ("sowia_financial_transactions", "Registre financier"),
+                ("sowia_subscriptions", "Abonnements"),
+                ("sowia_paypal_catalog", "Catalogue PayPal"),
+            ):
+                try:
+                    admin_client.table(table_name).select("id").limit(1).execute()
+                    checks.append({
+                        "Composant": label,
+                        "État": "Table accessible",
+                        "Détail": "Lecture de contrôle réussie ; aucune donnée modifiée",
+                    })
+                except Exception as table_error:
+                    checks.append({
+                        "Composant": label,
+                        "État": "À vérifier",
+                        "Détail": "Table absente, migration non appliquée ou accès refusé (" + type(table_error).__name__ + ")",
+                    })
+        else:
+            for label in ("Registre financier", "Abonnements", "Catalogue PayPal"):
+                checks.append({
+                    "Composant": label,
+                    "État": "Non vérifié",
+                    "Détail": "Client administratif Supabase indisponible",
+                })
+
+        try:
+            one_time_config = paypal_payments.paypal_configuration()
+            if one_time_config:
+                paypal_state = "Configuré · " + str(one_time_config.get("mode", "inconnu")).upper()
+                paypal_detail = "Configuration chargée côté serveur ; aucun appel de paiement effectué"
+            else:
+                paypal_state = "Désactivé ou incomplet"
+                paypal_detail = "Le parcours de paiement ponctuel n'est pas activé par ce diagnostic"
+        except Exception as paypal_error:
+            paypal_state = "À corriger"
+            paypal_detail = "Configuration invalide (" + type(paypal_error).__name__ + ")"
+        checks.append({
+            "Composant": "PayPal ponctuel",
+            "État": paypal_state,
+            "Détail": paypal_detail,
+        })
+
+        try:
+            subscription_missing = paypal_subscriptions.paypal_subscription_configuration_status()
+            subscription_diag = paypal_subscriptions.paypal_subscription_toggle_diagnostic()
+            if not subscription_missing:
+                subscription_state = "Configuration présente"
+                subscription_detail = subscription_diag + " · secrets requis détectés"
+            else:
+                subscription_state = "Désactivé ou incomplet"
+                subscription_detail = subscription_diag + " · éléments manquants : " + ", ".join(subscription_missing)
+        except Exception as subscription_error:
+            subscription_state = "À vérifier"
+            subscription_detail = "Diagnostic indisponible (" + type(subscription_error).__name__ + ")"
+        checks.append({
+            "Composant": "Abonnements PayPal",
+            "État": subscription_state,
+            "Détail": subscription_detail,
+        })
+
+        st.markdown("#### État des composants")
+        st.dataframe(checks, use_container_width=True, hide_index=True)
+        st.info(
+            "Important : « table accessible » confirme uniquement qu'une requête de lecture fonctionne. "
+            "Cela ne prouve pas que les migrations sont entièrement cohérentes, que les webhooks sont "
+            "validés en production ou que les paiements réels fonctionnent."
+        )
+        st.markdown("#### Vérifications automatisées")
+        st.link_button("Consulter les tests GitHub Actions", "https://github.com/1826Sow/Sowia/actions", use_container_width=True)
+        st.link_button("Ouvrir le dépôt SOWIA", "https://github.com/1826Sow/Sowia", use_container_width=True)
 
 
 elif page == "Paramètres":
