@@ -2012,6 +2012,16 @@ elif page == "SOW IA Business Club":
                                     st.write("Suivi : " + card_order["tracking_reference"])
                                 if card_order.get("admin_note"):
                                     st.caption(card_order["admin_note"])
+                                if card_order.get("status") == "quoted":
+                                    if st.button("Accepter ce devis", key="vip_card_quote_approve_" + card_order["id"]):
+                                        try:
+                                            cloud_storage.approve_own_vip_card_quote(
+                                                supabase_client, current_user, card_order["id"]
+                                            )
+                                            st.success("Devis accepté. La commande attend maintenant la confirmation du paiement.")
+                                            st.rerun()
+                                        except Exception as exc:
+                                            st.error("Ce devis ne peut pas être accepté : " + str(exc))
                     user_metadata = getattr(current_user, "app_metadata", None) or {}
                     if isinstance(user_metadata, dict) and user_metadata.get("sowia_admin") is True:
                         st.divider()
@@ -2025,9 +2035,9 @@ elif page == "SOW IA Business Club":
                             with st.form("sowia_admin_vip_card_order"):
                                 chosen_order_label = st.selectbox("Demande à traiter", list(order_labels))
                                 admin_order_status = st.selectbox(
-                                    "Étape", ["quoted", "approved", "paid", "in_production", "shipped", "delivered", "cancelled"],
+                                    "Étape", ["quoted", "paid", "in_production", "shipped", "delivered", "cancelled"],
                                     format_func=lambda value: {
-                                        "quoted": "Préparer le devis", "approved": "Devis accepté par le client",
+                                        "quoted": "Préparer le devis",
                                         "paid": "Paiement confirmé manuellement", "in_production": "En fabrication",
                                         "shipped": "Expédiée", "delivered": "Livrée", "cancelled": "Annulée",
                                     }[value],
