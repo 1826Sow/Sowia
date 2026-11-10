@@ -31,8 +31,8 @@ class PortfolioControlTests(unittest.TestCase):
         result = build_portfolio(
             self.plans,
             [
-                {"action_plan_id": "p1", "observed_at": "2026-01-01", "actual_spend_cumulative": 50},
-                {"action_plan_id": "p2", "observed_at": "2026-01-01", "actual_spend_cumulative": 75},
+                {"action_plan_id": "p1", "observed_at": "2026-01-01", "actual_spend_cumulative": 50, "currency_snapshot": "EUR", "budget_cap_snapshot": 100},
+                {"action_plan_id": "p2", "observed_at": "2026-01-01", "actual_spend_cumulative": 75, "currency_snapshot": "USD", "budget_cap_snapshot": 200},
             ], [], [], today=date(2026, 11, 10),
         )
         self.assertEqual(set(result["currency_breakdown"]), {"EUR", "USD"})
@@ -43,8 +43,8 @@ class PortfolioControlTests(unittest.TestCase):
         result = build_portfolio(
             self.plans,
             [
-                {"action_plan_id": "p1", "observed_at": "2026-01-01", "actual_spend_cumulative": 20},
-                {"action_plan_id": "p1", "observed_at": "2026-02-01", "actual_spend_cumulative": 40},
+                {"action_plan_id": "p1", "observed_at": "2026-01-01", "actual_spend_cumulative": 20, "currency_snapshot": "EUR", "budget_cap_snapshot": 100},
+                {"action_plan_id": "p1", "observed_at": "2026-02-01", "actual_spend_cumulative": 40, "currency_snapshot": "EUR", "budget_cap_snapshot": 100},
             ], [], [], today=date(2026, 11, 10),
         )
         self.assertEqual(result["currency_breakdown"]["EUR"]["latest_cumulative_spend"], 40)
