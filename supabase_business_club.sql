@@ -71,6 +71,22 @@ create table if not exists public.sowia_business_club_meetings (
  check (organizer_user_id = sender_user_id or organizer_user_id = recipient_user_id)
 );
 alter table public.sowia_business_club_meetings add column if not exists invitee_user_id uuid references auth.users(id) on delete cascade;
+update public.sowia_business_club_meetings
+set invitee_user_id = case when organizer_user_id = sender_user_id then recipient_user_id else sender_user_id end
+where invitee_user_id is null;
+alter table public.sowia_business_club_meetings alter column invitee_user_id set not null;
+do $
+begin
+ if not exists (
+  select 1 from pg_constraint
+  where conname = 'sowia_club_meeting_invitee_check'
+    and conrelid = 'public.sowia_business_club_meetings'::regclass
+ ) then
+  alter table public.sowia_business_club_meetings
+   add constraint sowia_club_meeting_invitee_check
+   check (invitee_user_id <> organizer_user_id and invitee_user_id in (sender_user_id, recipient_user_id));
+ end if;
+end $;
 create index if not exists sowia_club_meetings_participants_idx
  on public.sowia_business_club_meetings (sender_user_id, recipient_user_id, starts_at);
 alter table public.sowia_business_club_meetings enable row level security;
@@ -95,5 +111,7 @@ drop policy if exists "Organizers can cancel proposed club meetings" on public.s
 create policy "Organizers can cancel proposed club meetings" on public.sowia_business_club_meetings
  for update to authenticated using ((select auth.uid()) = organizer_user_id and status = 'Proposée')
  with check ((select auth.uid()) = organizer_user_id and status = 'Annulée');
-grant select, insert, update on public.sowia_business_club_meetings to authenticated;
+revoke update on public.sowia_business_club_meetings from authenticated;
+grant update (status, updated_at) on public.sowia_business_club_meetings to authenticated;
+grant select, insert on public.sowia_business_club_meetings to authenticated;
 grant usage, select on sequence public.sowia_business_club_meetings_id_seq to authenticated;
