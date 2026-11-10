@@ -2559,7 +2559,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
         nex_is_admin = isinstance(nex_metadata, dict) and (
             nex_metadata.get("sowia_admin") is True or nex_metadata.get("role") == "admin"
         )
-        nex_tabs = ["🌐 Annuaire approuvé", "🤝 Matching SOWIA", "🏷️ Inscrire une application", "📂 Mes applications"]
+        nex_tabs = ["🌐 Annuaire approuvé", "🤝 Matching SOWIA", "🏷️ Inscrire une application", "📂 Mes applications", "🌍 Horloge mondiale", "💡 Opportunités intelligentes", "☀️ Rapport matinal"]
         if nex_is_admin:
             nex_tabs.append("🛡️ Modération")
         nex_tab_views = st.tabs(nex_tabs)
@@ -2682,8 +2682,83 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 st.error("Impossible de lire vos candidatures. Vérifiez l’application de la migration Supabase.")
                 st.caption(f"Diagnostic : {type(exc).__name__}")
 
+        with nex_tab_views[4]:
+            st.markdown("#### Sessions nocturnes par fuseau horaire")
+            st.caption("Horaires calculés à partir de l'heure actuelle et du fuseau IANA de chaque application approuvée. Aucun lancement automatique de session n'est effectué.")
+            try:
+                global_apps = cloud_storage.list_approved_night_exchange_apps(
+                    supabase_client, current_user, limit=200
+                )
+                if not global_apps:
+                    st.info("Aucune application approuvée à afficher pour le moment.")
+                else:
+                    now_utc = datetime.now(timezone.utc)
+                    session_rows = []
+                    for partner_app in global_apps:
+                        status = sowia_night_exchange.global_session_status(partner_app, now_utc)
+                        session_rows.append({
+                            "Application": partner_app.get("app_name", "—"),
+                            "Pays": partner_app.get("country", "—"),
+                            "Fuseau": status["timezone"],
+                            "Heure locale": status["local_now"].strftime("%Y-%m-%d %H:%M"),
+                            "Session": "OUVERTE" if status["is_open"] else "Fermée",
+                            "Prochaine ouverture locale": status["next_open_local"].strftime("%Y-%m-%d %H:%M") if status["next_open_local"] else "Déjà ouverte",
+                            "Ouverture UTC": status["next_open_utc"].strftime("%Y-%m-%d %H:%M UTC") if status["next_open_utc"] else "—",
+                        })
+                    st.dataframe(session_rows, use_container_width=True, hide_index=True)
+            except Exception as exc:
+                st.error("Calcul des sessions indisponible pour une ou plusieurs fiches.")
+                st.caption(f"Diagnostic : {type(exc).__name__}")
+
+        with nex_tab_views[5]:
+            st.markdown("#### Opportunités commerciales explicables")
+            st.caption("Le classement s'appuie sur les domaines communs, les services complémentaires et la réciprocité potentielle. Il ne prédit ni chiffre d'affaires ni réussite.")
+            try:
+                source_apps_smart = cloud_storage.list_my_night_exchange_apps(
+                    supabase_client, current_user, workspace_id=nex_workspace, limit=200
+                )
+                candidate_apps_smart = cloud_storage.list_approved_night_exchange_apps(
+                    supabase_client, current_user, limit=200
+                )
+                if source_apps_smart and candidate_apps_smart:
+                    smart_labels = {
+                        f"{row['app_name']} · {row['country']} · {row['status']}": row
+                        for row in source_apps_smart
+                    }
+                    smart_source = smart_labels[st.selectbox(
+                        "Application à analyser", list(smart_labels.keys()), key="nex_smart_source"
+                    )]
+                    opportunities = sowia_night_exchange.build_smart_opportunities(
+                        smart_source, candidate_apps_smart, limit=15
+                    )
+                    if not opportunities:
+                        st.info("Aucune opportunité suffisamment documentée. Complétez les services proposés et recherchés.")
+                    for opportunity in opportunities:
+                        with st.container(border=True):
+                            st.markdown(f"**{opportunity['app_name']}** · {opportunity['country']}")
+                            st.metric("Score indicatif", f"{opportunity['score']}/100")
+                            signals = opportunity["signals"]
+                            st.write("Domaines communs : " + (", ".join(signals["shared_categories"]) or "Aucun"))
+                            st.write("Le partenaire propose ce que vous recherchez : " + (", ".join(signals["partner_services_matching_my_needs"]) or "Non identifié"))
+                            st.write("Vous proposez ce que le partenaire recherche : " + (", ".join(signals["my_services_matching_partner_needs"]) or "Non identifié"))
+                            st.caption(opportunity["notice"] + " Aucun contact ou partage de données n'est déclenché.")
+                else:
+                    st.info("Une fiche personnelle et au moins une application approuvée sont nécessaires.")
+            except Exception as exc:
+                st.error("Analyse des opportunités indisponible.")
+                st.caption(f"Diagnostic : {type(exc).__name__}")
+
+        with nex_tab_views[6]:
+            st.markdown("#### Bilan de session du matin")
+            st.info("Le moteur de synthèse est prêt, mais le registre d'événements de session n'est pas encore connecté à Supabase. SOWIA n'affiche donc aucun chiffre de rencontres, d'offres acceptées ou de dépenses tant que ces événements ne sont pas réellement enregistrés.")
+            st.markdown("**Éléments prévus dans le bilan :**")
+            st.write("- Rencontres confirmées et opportunités consultées")
+            st.write("- Offres acceptées et intégrations explicitement approuvées")
+            st.write("- Dépenses uniquement après confirmation du prestataire de paiement")
+            st.caption("Aucun paiement ni rapport automatique n'est déclenché dans cette version.")
+
         if nex_is_admin:
-            with nex_tab_views[4]:
+            with nex_tab_views[7]:
                 st.markdown("#### Console de validation SOWIA")
                 st.caption("Les décisions de modération sont contrôlées par une fonction SQL qui vérifie le rôle administrateur signé.")
                 try:
