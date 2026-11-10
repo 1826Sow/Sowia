@@ -568,7 +568,7 @@ page = st.radio(
     [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID", "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION", "SOW IA Business Club", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE", "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE", "SOWIA GLOBAL LEARNING ENGINE", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -3113,6 +3113,137 @@ elif page == "SOWIA GLOBAL DECISION ENGINE":
             except Exception as decision_history_error:
                 st.error("L'archive des décisions n'est pas disponible.")
                 st.caption("Appliquez supabase_global_decisions.sql. Diagnostic : " + type(decision_history_error).__name__)
+
+
+elif page == "SOWIA GLOBAL LEARNING ENGINE":
+    st.subheader("🧠 SOWIA GLOBAL LEARNING ENGINE")
+    st.caption("Confrontez les recommandations enregistrées aux choix réellement effectués et aux résultats observés.")
+    st.warning("Ce registre documente l'expérience : il ne prouve pas de causalité, ne connaît pas les résultats contrefactuels et ne réentraîne pas automatiquement le modèle d'IA. Les décisions d'origine restent figées.")
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous pour consulter et alimenter votre registre privé d'apprentissage.")
+    else:
+        import sowia_global_learning as learning_engine
+        learning_tabs = st.tabs(["＋ Enregistrer un résultat", "📊 Bilan d'expérience", "📚 Historique"])
+        try:
+            learning_decisions = cloud_storage.list_global_decisions(
+                supabase_client, current_user, limit=200
+            )
+            learning_records = cloud_storage.list_global_learning_records(
+                supabase_client, current_user, limit=300
+            )
+            recorded_decision_ids = {row["decision_id"] for row in learning_records}
+            pending_decisions = [
+                row for row in learning_decisions
+                if row.get("id") not in recorded_decision_ids
+            ]
+            with learning_tabs[0]:
+                if not pending_decisions:
+                    st.info("Aucune décision en attente d'évaluation. Enregistrez d'abord une comparaison dans GLOBAL DECISION ENGINE.")
+                else:
+                    decision_map = {row["id"]: row for row in pending_decisions}
+                    with st.form("sowia_global_learning_form"):
+                        learning_decision_id = st.selectbox(
+                            "Décision d'origine à évaluer",
+                            options=list(decision_map),
+                            format_func=lambda value: (
+                                f"{decision_map[value]['title']} · "
+                                f"{str(decision_map[value]['created_at'])[:10]}"
+                            ),
+                        )
+                        source_decision = decision_map[learning_decision_id]
+                        st.markdown("**Recommandation initiale conservée :** " +
+                                    str(source_decision.get("recommended_option") or "Aucune — écart trop faible"))
+                        learning_selected_option = st.selectbox(
+                            "Option réellement choisie",
+                            options=[item["name"] for item in source_decision["ranked_options"]],
+                        )
+                        learning_outcome_score = st.slider(
+                            "Résultat réellement observé (1 = très mauvais, 5 = très bon)",
+                            1, 5, 3,
+                        )
+                        learning_outcome_note = st.text_area(
+                            "Résultat, indicateurs observés et enseignements",
+                            max_chars=2000,
+                            placeholder="Ex. délais, coût réel, utilisateurs obtenus, qualité du partenariat…",
+                        )
+                        learning_evidence_reference = st.text_input(
+                            "Référence d'une preuve ou d'une source (facultatif)",
+                            max_chars=500,
+                        )
+                        learning_submit = st.form_submit_button("Enregistrer le résultat observé")
+                    if learning_submit:
+                        try:
+                            record = learning_engine.build_learning_record(
+                                source_decision, learning_selected_option,
+                                learning_outcome_score, learning_outcome_note,
+                                learning_evidence_reference,
+                            )
+                            cloud_storage.save_global_learning_record(
+                                supabase_client, current_user, record
+                            )
+                            st.success("Résultat ajouté. La recommandation initiale n'a pas été modifiée.")
+                            st.rerun()
+                        except Exception as learning_save_error:
+                            st.error("Résultat non enregistré : " + type(learning_save_error).__name__)
+            with learning_tabs[1]:
+                summary = learning_engine.summarize_learning(learning_records)
+                lm1, lm2, lm3 = st.columns(3)
+                lm1.metric("Décisions évaluées", summary["evaluated_decisions"])
+                lm2.metric("Résultat moyen", (
+                    f"{summary['average_outcome_score']}/5"
+                    if summary["average_outcome_score"] is not None else "—"
+                ))
+                lm3.metric("Choix conformes à la recommandation", (
+                    f"{summary['recommendation_alignment_rate']} %"
+                    if summary["recommendation_alignment_rate"] is not None else "—"
+                ))
+                st.caption(
+                    f"Comparaisons avec recommandation disponible : "
+                    f"{summary['recommendation_comparisons']}"
+                )
+                lm4, lm5 = st.columns(2)
+                lm4.metric("Résultat moyen quand la recommandation est suivie", (
+                    str(summary["average_outcome_when_aligned"]) + "/5"
+                    if summary["average_outcome_when_aligned"] is not None else "—"
+                ))
+                lm5.metric("Résultat moyen quand une autre option est choisie", (
+                    str(summary["average_outcome_when_not_aligned"]) + "/5"
+                    if summary["average_outcome_when_not_aligned"] is not None else "—"
+                ))
+                st.markdown("#### Limites méthodologiques")
+                for limitation in summary["limitations"]:
+                    st.write("• " + limitation)
+                if summary["evaluated_decisions"] < 10:
+                    st.info("Échantillon encore limité : attendez plusieurs résultats documentés avant de tirer une conclusion.")
+            with learning_tabs[2]:
+                if not learning_records:
+                    st.info("Aucun résultat réel n'a encore été enregistré.")
+                for learning_row in learning_records:
+                    snapshot = learning_row["baseline_snapshot"]
+                    with st.expander(
+                        f"{snapshot.get('title', 'Décision')} · "
+                        f"Résultat {learning_row['outcome_score']}/5"
+                    ):
+                        st.write("**Recommandation d'origine :** " +
+                                 str(snapshot.get("recommended_option") or "Aucune"))
+                        st.write("**Option réellement choisie :** " + learning_row["selected_option"])
+                        st.write("**Alignement :** " + (
+                            "Oui" if learning_row.get("recommendation_alignment") is True else
+                            "Non" if learning_row.get("recommendation_alignment") is False else
+                            "Non comparable — aucune recommandation initiale"
+                        ))
+                        st.write(learning_row.get("outcome_note") or "Aucune note complémentaire.")
+                        if learning_row.get("evidence_reference"):
+                            st.caption("Référence : " + learning_row["evidence_reference"])
+                        st.caption("Instantané de l'analyse d'origine conservé séparément.")
+                        if st.button("Supprimer cette observation", key=f"delete_learning_{learning_row['id']}"):
+                            cloud_storage.delete_global_learning_record(
+                                supabase_client, current_user, learning_row["id"]
+                            )
+                            st.rerun()
+        except Exception as learning_load_error:
+            st.error("Le registre d'apprentissage n'est pas encore accessible.")
+            st.caption("Vérifiez que supabase_global_learning.sql a été appliqué après supabase_global_decisions.sql. Diagnostic : " + type(learning_load_error).__name__)
 
 
 elif page == "SOWIA GLOBAL STRATEGIC FORECAST":
