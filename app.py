@@ -2239,7 +2239,9 @@ elif page == "Revenus & paiements":
                         st.success(
                             f"Synchronisation terminée : "
                             f"{sum(x['recorded_or_already_present'] for x in sync_results)} "
-                            f"échéance(s) confirmée(s) vérifiée(s), "
+                            f"échéance(s) confirmée(s), "
+                            f"{sum(x.get('refunds_reconciled', 0) for x in sync_results)} "
+                            f"remboursement(s) rapproché(s) au montant PayPal exact, "
                             f"{sum(x['ignored_non_completed'] for x in sync_results)} "
                             f"transaction(s) non terminée(s) ignorée(s)."
                         )
