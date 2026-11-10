@@ -272,6 +272,7 @@ def test_accessibility_preferences_default_to_safe_values():
         "voice_readout": False,
         "large_text": False,
         "high_contrast": False,
+        "privacy_screen": False,
     }
 
 
@@ -298,13 +299,13 @@ def test_accessibility_preferences_are_validated_and_saved_without_losing_langua
     client = Client()
     saved = cloud_storage.set_accessibility_preferences(
         client, User(),
-        {"voice_readout": True, "large_text": True, "high_contrast": False},
+        {"voice_readout": True, "large_text": True, "high_contrast": False, "privacy_screen": True},
     )
     payload = saved[0]
     assert payload["language"] == "English"
     assert payload["user_id"] == "user-123"
     assert payload["accessibility"] == {
-        "voice_readout": True, "large_text": True, "high_contrast": False
+        "voice_readout": True, "large_text": True, "high_contrast": False, "privacy_screen": True
     }
 
 
