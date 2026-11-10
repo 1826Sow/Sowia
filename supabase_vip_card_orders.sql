@@ -42,8 +42,11 @@ begin
  if coalesce(auth.jwt()->'app_metadata'->>'sowia_admin','false')<>'true' then
   raise exception 'SOW IA administrator permission required';
  end if;
- if p_status not in ('quoted','approved','paid','in_production','shipped','delivered','cancelled') then
+ if p_status not in ('quoted','paid','in_production','shipped','delivered','cancelled') then
   raise exception 'Invalid VIP card order status';
+ end if;
+ if p_status='quoted' and (p_quote_amount is null or p_quote_amount <= 0 or p_currency is null or p_quote_valid_until is null) then
+  raise exception 'A positive amount, currency and expiry date are required for a quote';
  end if;
  if p_quote_amount is not null and p_quote_amount < 0 then raise exception 'Invalid quote amount'; end if;
  if p_currency is not null and p_currency !~ '^[A-Z]{3}$' then raise exception 'Invalid currency'; end if;
@@ -55,8 +58,16 @@ begin
  quote_valid_until=coalesce(p_quote_valid_until,quote_valid_until),
  tracking_reference=coalesce(p_tracking_reference,tracking_reference),
  admin_note=coalesce(p_admin_note,admin_note), updated_at=now()
- where id=p_order_id;
- if not found then raise exception 'VIP card order not found'; end if;
+ where id=p_order_id
+ and (
+  (p_status='quoted' and status in ('requested','quoted')) or
+  (p_status='paid' and status='approved') or
+  (p_status='in_production' and status='paid') or
+  (p_status='shipped' and status='in_production' and char_length(coalesce(p_tracking_reference,''))>0) or
+  (p_status='delivered' and status='shipped') or
+  (p_status='cancelled' and status in ('requested','quoted','approved'))
+ );
+ if not found then raise exception 'Invalid order state transition or order not found'; end if;
 end; $$;
 revoke all on function public.sowia_admin_update_vip_card_order(uuid,text,numeric,text,date,text,text) from public,anon;
 grant execute on function public.sowia_admin_update_vip_card_order(uuid,text,numeric,text,date,text,text) to authenticated;
