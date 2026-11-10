@@ -36,3 +36,7 @@ Phase 4: automated monitoring after legal, privacy, security and operational rev
 
 ## Current implementation boundary
 The rules module provides pure helpers for timezone checks, app matching, budget-cap checks and deterministic offer selection. Tests are supplied. It is not wired into Streamlit or Supabase. No payment provider, scheduler, app-verification workflow, background execution or production budget enforcement is connected. Run the project test suite before deployment.
+
+
+## Streamlit prototype
+The professional navigation now includes a SOWIA NIGHT EXCHANGE page, gated by the existing Premium entitlement. It contains an overview, a session-only draft listing form with IANA timezone validation, a simple explainable category/service compatibility preview, and a local budget-cap configuration preview. Draft listings and budget settings are not persisted. The page does not publish apps, verify ownership, match against a live directory, create auctions, execute payments, or enforce production spending limits. The authoritative budget guard must be implemented server-side with atomic reservations before any paid workflow is enabled.
