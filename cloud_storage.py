@@ -1310,3 +1310,34 @@ def list_global_action_audit(client, user, plan_id, limit=100):
         .select("id,plan_id,actor_id,from_status,to_status,note,created_at")
         .eq("plan_id", str(plan_id)).order("created_at", desc=True)
         .limit(min(max(int(limit),1),200)).execute().data)
+
+
+# SOWIA GLOBAL PERFORMANCE & IMPACT — append-only outcome measurements.
+def save_global_performance_observation(client, user, observation):
+    import sowia_global_performance
+    uid = _user_id(user)
+    clean = sowia_global_performance.validate_observation(observation)
+    plans = (
+        client.table("sowia_global_action_plans")
+        .select("id,creator_id,status")
+        .eq("id", clean["action_plan_id"])
+        .eq("creator_id", uid)
+        .in_("status", ["approved", "completed"])
+        .limit(1).execute().data
+    )
+    if not plans:
+        raise PermissionError("Plan approuvé introuvable dans cet espace privé.")
+    row = {"user_id": uid, **clean}
+    # SQL trigger supplies immutable title, country, budget and currency snapshots.
+    return client.table("sowia_global_performance_observations").insert(row).execute().data
+
+
+def list_global_performance_observations(client, user, limit=300):
+    _user_id(user)
+    return (
+        client.table("sowia_global_performance_observations")
+        .select("id,action_plan_id,plan_title_snapshot,country_snapshot,budget_cap_snapshot,currency_snapshot,actual_spend_cumulative,progress_percent,metric_name,metric_value,metric_unit,social_impact_note,environmental_impact_note,evidence_level,evidence_reference,observation_note,observed_at,created_at")
+        .eq("user_id", _user_id(user))
+        .order("observed_at", desc=True)
+        .limit(min(max(int(limit), 1), 500)).execute().data
+    )
