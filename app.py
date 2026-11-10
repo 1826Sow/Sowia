@@ -2254,7 +2254,7 @@ elif page == "Revenus & paiements":
                             "Aucune échéance non vérifiée n'a été ajoutée."
                         )
             if st.button(
-                "Vérifier les remboursements PayPal des achats ponctuels (90 jours)",
+                "Rapprocher les remboursements PayPal individuels (Sandbox, 90 jours)",
                 key="sync_paypal_one_time_refunds",
             ):
                 admin_client = premium_access.create_admin_client()
@@ -2262,23 +2262,31 @@ elif page == "Revenus & paiements":
                     st.error("Synchronisation indisponible : accès serveur Supabase manquant.")
                 else:
                     try:
-                        refund_result = paypal_payments.sync_one_time_paypal_refunds(
+                        import paypal_refund_search
+                        refund_result = paypal_refund_search.sync_verified_paypal_refunds(
                             admin_client, str(current_user.id), days=90, limit=500
                         )
                         st.success(
-                            f"Contrôle terminé : {refund_result['captures_checked']} capture(s) vérifiée(s), "
-                            f"{refund_result['refunds_flagged_for_manual_review']} remboursement(s) détecté(s) et placé(s) en contrôle manuel."
+                            f"Recherche terminée : {refund_result['captures_scanned']} capture(s) examinée(s), "
+                            f"{refund_result['refunds_verified']} remboursement(s) vérifié(s), "
+                            f"{refund_result['refunds_saved_for_manual_review']} écriture(s) conservée(s) en contrôle manuel."
+                        )
+                        st.info(
+                            "Les remboursements sont identifiés par leur ID et leur montant PayPal exact. "
+                            "Ils restent exclus des totaux reconnus tant que la fenêtre de reporting n'a pas "
+                            "été rapprochée et validée intégralement."
                         )
                         if refund_result["limit_reached"]:
                             st.warning(
-                                "La limite de 500 captures est atteinte. Une période plus courte "
-                                "ou une pagination sera nécessaire pour contrôler tout l'historique."
+                                "La limite de 500 captures est atteinte. Réduisez la période pour poursuivre "
+                                "le rapprochement sans omettre de paiements."
                             )
                         st.rerun()
-                    except Exception:
+                    except Exception as exc:
                         st.error(
-                            "Le contrôle des remboursements ponctuels PayPal a échoué. "
-                            "Aucune somme non vérifiée n'a été ajoutée au registre."
+                            "Le rapprochement individuel PayPal n'a pas abouti. "
+                            "Aucun remboursement non vérifié n'a été comptabilisé. "
+                            f"Détail technique : {type(exc).__name__}."
                         )
             summaries = financial_reporting.summarize_financial_transactions(rows)
             if not rows:
