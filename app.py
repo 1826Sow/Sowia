@@ -35,6 +35,7 @@ import paypal_payments
 import paypal_subscriptions
 import premium_access
 import financial_ledger
+import decision_benchmark_ui
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -555,7 +556,7 @@ page = st.radio(
     [
         "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
-        "Abonnement", "Développement mondial", "Opportunités et revenus", "Finance & investissements", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
+        "Abonnement", "Développement mondial", "Opportunités et revenus", "Finance & investissements", "Décisions humaines vs SOW IA", "Stratégie & scénarios", "Technologies & fournisseurs", "Revenus & paiements", "Paramètres", "Aide",
     ],
     key="page_nav",
     horizontal=True,
@@ -1740,6 +1741,13 @@ elif page == "Opportunités et revenus":
                 "Le tableau des opportunités n'est pas encore initialisé. "
                 "Exécutez supabase_business_opportunities.sql dans Supabase > SQL Editor, puis rechargez l'application."
             )
+
+elif page == "Décisions humaines vs SOW IA":
+    decision_benchmark_ui.render_decision_benchmark(
+        supabase_client if cloud_mode else None,
+        current_user if cloud_mode else None,
+        st.session_state.get("workspace_id", "personal"),
+    )
 
 elif page == "Stratégie & scénarios":
     st.subheader("🧭 Laboratoire de scénarios stratégiques")
