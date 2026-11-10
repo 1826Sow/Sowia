@@ -170,3 +170,20 @@ Limites de cette première version :
 - Le tableau de bord ne calcule pas un bénéfice net global ni un chiffre d'affaires consolidé multi-devises.
 
 Les tests unitaires sont ajoutés pour le writer PayPal et la lecture/agrégation ; ils doivent encore être exécutés en CI.
+
+
+## Rapprochement des abonnements PayPal récurrents
+
+Le module `paypal_subscriptions.py` expose désormais `sync_completed_subscription_transactions` :
+- la synchronisation est volontaire et déclenchée par le titulaire depuis « Revenus & paiements » ;
+- elle couvre une fenêtre bornée de 90 jours, puis peut être relancée si PayPal signale d'autres pages ;
+- elle retrouve le propriétaire et le forfait depuis la ligne serveur `sowia_subscriptions`, puis recoupe le propriétaire et le plan avec la fiche PayPal ;
+- elle récupère l'historique PayPal authentifié et ne comptabilise que les transactions dont le statut est `COMPLETED` ;
+- chaque transaction est enregistrée sous son identifiant PayPal réel, avec clé d'idempotence ; frais et net restent inconnus si PayPal ne les retourne pas ;
+- les liens de pagination sont limités au domaine HTTPS de l'API PayPal configurée.
+
+Les tests `tests/test_paypal_recurring_sync.py` et `tests/test_paypal_recurring_ledger.py` couvrent l'identification du propriétaire, les statuts non terminés, la pagination et l'idempotence.
+
+**Périmètre non couvert :** les transactions `PARTIALLY_REFUNDED` et `REFUNDED` ne sont pas encore enregistrées comme écritures de remboursement. Cette synchronisation est limitée à Sandbox tant que le parcours d'abonnement n'a pas été validé en environnement de test. Les événements webhook et le rapprochement des remboursements constituent la prochaine étape.
+
+Référence technique officielle : [PayPal Subscriptions API — liste des transactions](https://developer.paypal.com/docs/api/subscriptions/v1/#subscriptions_transactions).
