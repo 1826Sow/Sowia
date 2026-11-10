@@ -51,3 +51,11 @@ def test_html_is_printable_and_escapes_user_content():
     assert "@page { size: 90mm 50mm; margin: 0; }" in result
     assert "&lt;Alex&gt;" in result
     assert "<Alex>" not in result
+
+
+def test_qr_code_is_svg():
+    from business_cards import build_qr_svg
+
+    result = build_qr_svg(sample())
+    assert "<svg" in result
+    assert "</svg>" in result
