@@ -34,7 +34,9 @@ def test_calculates_position_and_portfolio_metrics():
 
 def test_missing_quote_is_reported_not_guessed():
     result = analyze_portfolio([position()], {})
+    assert result.invested_amount == 20
     assert result.market_value == 0
+    assert result.unrealized_return_pct is None
     assert result.missing_quotes == ("AAA",)
     assert result.positions == ()
 
