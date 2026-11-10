@@ -63,7 +63,7 @@ Respecter cet ordre de dépendance :
 - `supabase_global_performance.sql` — après `supabase_global_action_governance.sql`.
 - `supabase_global_forecast.sql` — prévisions stratégiques indépendantes.
 - `supabase_global_collaboration.sql` — après **GLOBAL ID + GLOBAL DIRECTORY + GLOBAL CONNECT**.
-- `supabase_global_collaboration_verify.sql` — diagnostic en lecture seule, après les trois prérequis ci-dessus et `supabase_global_collaboration.sql`.
+- `supabase_global_collaboration_verify.sql` — diagnostic en lecture seule, après `supabase_global_collaboration.sql`. **Point à clarifier :** son en-tête parle de quatre migrations préalables, alors que le script d’installation GLOBAL Collaboration n’en nomme que trois (GLOBAL ID, DIRECTORY, CONNECT). Le quatrième prérequis n’étant pas nommé, ne pas considérer ce contrôle comme validé avant clarification.
 - `supabase_decision_trials.sql` — essais comparatifs de décisions, indépendant des autres modules listés ici.
 - `supabase_technology_candidates.sql` — évaluations technologiques, indépendant des autres modules listés ici.
 
