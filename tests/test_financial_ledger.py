@@ -62,6 +62,8 @@ def test_refunded_capture_is_flagged_not_counted_as_income():
         def eq(self, key, value):
             self.filters.append((key, value))
             return self
+        def select(self, *_):
+            return self
         def execute(self):
             return type("Result", (), {"data": [{"status": self.payload["status"]}]})()
 
