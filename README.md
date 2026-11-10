@@ -23,6 +23,7 @@ Consulter le [guide de l’espace Professionnel](docs/GUIDE_ESPACE_PROFESSIONNEL
    - `supabase/schema.sql`
    - `supabase_workspaces.sql`
    - `supabase_storage_policies.sql`
+   - `supabase_growth_crm.sql` (carnet de partenaires international)
 4. Vérifier que les tables `sowia_memory_items` et `sowia_messages` existent et que le bucket `sowia-files` est privé.
 5. Dans les paramètres **Secrets** de l'application Streamlit, renseigner les variables nécessaires ci-dessous.
 6. Dans Supabase > Authentication > URL Configuration, ajouter l'URL HTTPS de l'application comme **Site URL** et dans **Redirect URLs**.
