@@ -119,7 +119,7 @@ def update_growth_lead(client, user, lead_id, status, notes="", workspace_id="pe
     cleaned_notes = str(notes or "").strip()[:2000]
     return (
         client.table("sowia_growth_leads")
-        .update({"status": status, "notes": cleaned_notes or None})
+        .update({"status": status, "notes": cleaned_notes or None, "updated_at": datetime.now(timezone.utc).isoformat()})
         .eq("id", lead_id)
         .eq("user_id", _user_id(user))
         .eq("workspace_id", _workspace_id(workspace_id))
