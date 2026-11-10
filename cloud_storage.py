@@ -506,3 +506,9 @@ def admin_moderate_vip_printer_review(client, user, review_id, status, note=""):
     return client.rpc("sowia_admin_moderate_printer_review", {
         "p_review_id": str(review_id), "p_status": status, "p_note": note,
     }).execute()
+
+
+def list_public_vip_printer_review_scores(client, user):
+    """Fetch de-identified scores only; order references and reviewer identities stay private."""
+    _user_id(user)
+    return client.rpc("sowia_public_vip_printer_review_scores", {}).execute().data
