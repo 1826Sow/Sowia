@@ -70,3 +70,13 @@ The Smart Opportunities view now offers a deliberate “Enregistrer cette analys
 
 ## SOWIA TRUST & PARTNER SCORE — evidence-based first version
 The Smart Opportunities view now displays an explainable documentary-evidence index. It scores only facts present in the listing: SOWIA approval (30), dated verification (30), name (5), country (5), timezone (5), categories (5), services offered (10) and services wanted (10). The UI exposes passed and missing checks. This is a profile-completeness and verification index, not a commercial trust rating. It does not infer solvency, delivery quality, contract compliance, complaints or partner satisfaction. Those dimensions require separately designed, privacy-safe, auditable bilateral feedback and dispute workflows before they can be scored.
+
+## SOWIA PARTNER REPUTATION — rules prototype
+A separate module `sowia_partner_reputation.py` defines structured feedback rules for a future reputation workflow:
+- Feedback is eligible only after both parties confirm collaboration completion.
+- Three independent dimensions are rated from 1 to 5: delivery, communication and respect of agreed scope.
+- Optional comments are limited to 500 characters.
+- New feedback is private and pending moderation; it is not immediately public.
+- Public aggregate statistics are suppressed until at least three approved reviews exist.
+- Pending, rejected, malformed or unconfirmed feedback is excluded from aggregates.
+- The module does not store reviews, identify participants, prove that a collaboration occurred, or connect to the Streamlit interface yet. A secure collaboration record, bilateral completion flow, database RLS, moderation and appeal process are required before collecting or publishing real reviews.
