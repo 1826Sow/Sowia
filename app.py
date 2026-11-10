@@ -2045,6 +2045,95 @@ elif page == "SOW IA Business Club":
                         else:
                             st.info("Aucun devis correspondant exactement à cette destination, quantité et devise.")
                     st.caption("Les offres non vérifiées restent identifiées comme telles. Aucune commande, aucun paiement et aucune transmission de coordonnées ne sont déclenchés.")
+                    from printer_reviews import summarize_printer_reviews, validate_printer_review
+                    reviews = cloud_storage.list_vip_printer_reviews(supabase_client, current_user)
+                    verified_suppliers = [p for p in candidates if p.get("status") == "verified"]
+                    if verified_suppliers:
+                        st.markdown("**Notes publiques des imprimeurs vérifiés**")
+                        for supplier in verified_suppliers:
+                            summary = summarize_printer_reviews([
+                                review for review in reviews
+                                if review.get("supplier_id") == supplier["id"]
+                            ])
+                            if summary["review_count"]:
+                                st.write("{} — **{}/5** ({} avis vérifiés)".format(
+                                    supplier["name"], summary["average_score"], summary["review_count"]
+                                ))
+                                st.caption("Qualité {}/5 · Délais {}/5 · Prix {}/5 · Communication {}/5".format(
+                                    summary["dimensions"]["quality_score"],
+                                    summary["dimensions"]["deadline_score"],
+                                    summary["dimensions"]["price_score"],
+                                    summary["dimensions"]["communication_score"],
+                                ))
+                            else:
+                                st.write("{} — Aucun avis vérifié pour le moment.".format(supplier["name"]))
+                        with st.expander("Déposer un avis client"):
+                            with st.form("sowia_vip_printer_review_form"):
+                                review_supplier_label = st.selectbox(
+                                    "Imprimeur concerné",
+                                    ["{} — {}".format(p["name"], p["country"]) for p in verified_suppliers],
+                                )
+                                review_supplier_map = {
+                                    "{} — {}".format(p["name"], p["country"]): p["id"]
+                                    for p in verified_suppliers
+                                }
+                                review_order_ref = st.text_input("Référence de facture ou de commande")
+                                review_quality = st.slider("Qualité d'impression", 1, 5, 4)
+                                review_deadline = st.slider("Respect des délais", 1, 5, 4)
+                                review_price = st.slider("Rapport qualité-prix", 1, 5, 4)
+                                review_communication = st.slider("Communication", 1, 5, 4)
+                                review_comment = st.text_area("Commentaire (facultatif, 1 200 caractères maximum)", max_chars=1200)
+                                review_submit = st.form_submit_button("Envoyer mon avis pour vérification")
+                            if review_submit:
+                                try:
+                                    new_review = validate_printer_review({
+                                        "supplier_id": review_supplier_map[review_supplier_label],
+                                        "order_reference": review_order_ref,
+                                        "quality_score": int(review_quality),
+                                        "deadline_score": int(review_deadline),
+                                        "price_score": int(review_price),
+                                        "communication_score": int(review_communication),
+                                        "comment": review_comment,
+                                    })
+                                    cloud_storage.create_vip_printer_review(supabase_client, current_user, new_review)
+                                    st.success("Avis transmis. Il restera privé et ne comptera pas dans la note avant vérification de la commande par SOW IA.")
+                                    st.rerun()
+                                except ValueError as exc:
+                                    st.error(str(exc))
+                    else:
+                        st.info("Les avis clients seront activés dès qu'un imprimeur aura été vérifié par SOW IA.")
+                    user_metadata = getattr(current_user, "app_metadata", None) or {}
+                    if isinstance(user_metadata, dict) and user_metadata.get("sowia_admin") is True:
+                        pending_reviews = [review for review in reviews if review.get("status") == "pending"]
+                        st.divider()
+                        st.markdown("#### 🛡️ Modération des avis clients")
+                        if pending_reviews:
+                            review_labels = {
+                                "{} — {} — {}".format(
+                                    next((p["name"] for p in candidates if p["id"] == review["supplier_id"]), "Imprimeur"),
+                                    review["order_reference"], review["created_at"]
+                                ): review["id"] for review in pending_reviews
+                            }
+                            with st.form("sowia_admin_printer_review_moderation"):
+                                selected_review_label = st.selectbox("Avis à contrôler", list(review_labels))
+                                moderation_note = st.text_input("Note interne de contrôle (facultatif, 500 caractères maximum)", max_chars=500)
+                                moderation_decision = st.radio(
+                                    "Décision", ["verified", "rejected"], horizontal=True,
+                                    format_func=lambda value: "Vérifier la commande et publier" if value == "verified" else "Rejeter l'avis",
+                                )
+                                moderation_submit = st.form_submit_button("Enregistrer la décision")
+                            if moderation_submit:
+                                try:
+                                    cloud_storage.admin_moderate_vip_printer_review(
+                                        supabase_client, current_user, review_labels[selected_review_label],
+                                        moderation_decision, moderation_note,
+                                    )
+                                    st.success("Décision de modération enregistrée.")
+                                    st.rerun()
+                                except Exception as exc:
+                                    st.error("Décision refusée par Supabase : " + str(exc))
+                        else:
+                            st.info("Aucun avis en attente de modération.")
                     user_metadata = getattr(current_user, "app_metadata", None) or {}
                     if isinstance(user_metadata, dict) and user_metadata.get("sowia_admin") is True:
                         st.divider()
