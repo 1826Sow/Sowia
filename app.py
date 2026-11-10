@@ -1,7 +1,7 @@
 """SOW IA — application web Streamlit."""
 import uuid
 import html
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import streamlit as st
 from settings import get_setting
 from i18n import LANGUAGES as SOWIA_LANGUAGES, translate as translate_ui
@@ -1849,7 +1849,7 @@ elif page == "Développement mondial":
             if deadline_date and row.get("status") not in {"Gagnée", "Perdue", "Archivée"}:
                 dated_rows.append((deadline_date, row))
         overdue_rows = [row for due, row in dated_rows if due < today]
-        upcoming_rows = [row for due, row in dated_rows if today <= due <= today + __import__("datetime").timedelta(days=14)]
+        upcoming_rows = [row for due, row in dated_rows if today <= due <= today + timedelta(days=14)]
         alert_cols = st.columns(3)
         alert_cols[0].metric("Pistes enregistrées", len(register_rows))
         alert_cols[1].metric("Échéances dépassées", len(overdue_rows))
@@ -1892,7 +1892,7 @@ elif page == "Développement mondial":
                         )
                         save_update = st.form_submit_button("Enregistrer le suivi")
                     if save_update:
-                        if register_cloud_ready:
+                        if register_cloud_ready and not str(row.get("id", "")).startswith("local-"):
                             try:
                                 supabase_client.table("sowia_opportunities").update({
                                     "status": changed_status,
