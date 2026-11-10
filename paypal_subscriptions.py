@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from uuid import uuid4
+from datetime import timezone
 
 import requests
 
@@ -463,45 +464,68 @@ def sync_completed_subscription_transactions(
         raise PermissionError("Le forfait PayPal ne correspond pas à l'abonnement enregistré.")
 
     token = _access_token(config)
-    response = requests.get(
-        f"{config['base_url']}/v1/billing/subscriptions/{normalized_id}/transactions",
-        params={
-            "start_time": start.astimezone().isoformat(),
-            "end_time": end.astimezone().isoformat(),
-            "page_size": 100,
-        },
-        headers=_api_headers(config, token),
-        timeout=TIMEOUT_SECONDS,
-    )
-    response.raise_for_status()
-    payload = response.json()
-    transactions = payload.get("transactions")
-    if not isinstance(transactions, list):
-        raise RuntimeError("Historique de facturation PayPal invalide.")
+    from urllib.parse import urlparse
 
+    next_url = f"{config['base_url']}/v1/billing/subscriptions/{normalized_id}/transactions"
+    params = {
+        "start_time": start.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "end_time": end.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "page_size": 100,
+    }
     recorded = 0
     ignored = 0
-    for transaction in transactions:
-        if not isinstance(transaction, dict):
-            ignored += 1
-            continue
-        if str(transaction.get("status") or "").upper() != "COMPLETED":
-            ignored += 1
-            continue
-        financial_ledger.record_paypal_billing_transaction(
-            admin_client,
-            user_id=user_id,
-            subscription_id=normalized_id,
-            transaction=transaction,
+    fetched = 0
+    page_count = 0
+    has_more = False
+    while next_url and page_count < 20:
+        response = requests.get(
+            next_url,
+            params=params if page_count == 0 else None,
+            headers=_api_headers(config, token),
+            timeout=TIMEOUT_SECONDS,
         )
-        recorded += 1
+        response.raise_for_status()
+        payload = response.json()
+        transactions = payload.get("transactions")
+        if not isinstance(transactions, list):
+            raise RuntimeError("Historique de facturation PayPal invalide.")
+        fetched += len(transactions)
+        for transaction in transactions:
+            if not isinstance(transaction, dict):
+                ignored += 1
+                continue
+            if str(transaction.get("status") or "").upper() != "COMPLETED":
+                ignored += 1
+                continue
+            financial_ledger.record_paypal_billing_transaction(
+                admin_client,
+                user_id=user_id,
+                subscription_id=normalized_id,
+                transaction=transaction,
+            )
+            recorded += 1
+        page_count += 1
+        links = payload.get("links") or []
+        next_link = next((
+            item.get("href") for item in links
+            if isinstance(item, dict) and item.get("rel") == "next"
+        ), None)
+        if not next_link:
+            next_url = None
+            break
+        parsed = urlparse(str(next_link))
+        expected_host = urlparse(config["base_url"]).hostname
+        if parsed.scheme != "https" or parsed.hostname != expected_host:
+            raise PermissionError("Lien de pagination PayPal non fiable.")
+        next_url = str(next_link)
+    else:
+        has_more = bool(next_url)
+
     return {
         "subscription_id": normalized_id,
-        "fetched": len(transactions),
+        "fetched": fetched,
         "recorded_or_already_present": recorded,
         "ignored_non_completed": ignored,
-        "has_more": bool(payload.get("links") and any(
-            link.get("rel") == "next" for link in payload.get("links", [])
-            if isinstance(link, dict)
-        )),
+        "pages_read": page_count,
+        "has_more": has_more,
     }
