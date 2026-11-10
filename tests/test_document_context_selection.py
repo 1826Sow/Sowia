@@ -10,7 +10,7 @@ def test_selects_relevant_page_and_keeps_its_page_number():
         "--- Page 2 ---\nGeneral background and history.\n"
         "--- Page 3 ---\nThe contract termination deadline is 30 June.\n"
     )
-    selected = select_relevant_pdf_context(text, "Quelle est la date limite de résiliation ?")
+    selected = select_relevant_pdf_context(text, "What is the contract termination deadline?")
     assert "--- Page 3 ---" in selected
     assert "30 June" in selected
     assert "Introduction to the company" not in selected
