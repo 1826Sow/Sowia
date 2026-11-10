@@ -1274,3 +1274,39 @@ def list_global_profiles_for_admin(client, user, limit=200):
         .select("id,public_id,user_id,display_name,app_name,organization,country,languages,website,short_description,is_published,verification_status,created_at,updated_at")
         .order("created_at", desc=False)
         .limit(min(max(int(limit), 1), 500)).execute().data)
+
+
+# SOWIA GLOBAL ACTION GOVERNANCE — private action plans and audited transitions.
+def create_global_action_plan(client, user, plan):
+    from sowia_global_action_governance import validate_action_plan
+    clean = validate_action_plan(**plan)
+    return client.table("sowia_global_action_plans").insert(
+        {"creator_id": _user_id(user), **clean, "status": "draft"}
+    ).execute().data
+
+
+def list_global_action_plans(client, user, limit=100):
+    uid = _user_id(user)
+    return (client.table("sowia_global_action_plans")
+        .select("id,creator_id,title,objective,country,owner_label,budget_cap,currency,due_date,success_metric,stop_condition,status,approver_id,approval_note,created_at,updated_at,approved_at")
+        .or_(f"creator_id.eq.{uid},approver_id.eq.{uid}")
+        .order("created_at", desc=True).limit(min(max(int(limit),1),200)).execute().data)
+
+
+def transition_global_action_plan(client, user, plan_id, next_status, note=""):
+    _user_id(user)
+    if next_status not in {"submitted","approved","rejected","completed","cancelled"}:
+        raise ValueError("Transition invalide.")
+    return client.rpc("sowia_action_transition", {
+        "p_plan_id": str(plan_id), "p_next_status": next_status,
+        "p_note": str(note or "")[:1000],
+    }).execute()
+
+
+def list_global_action_audit(client, user, plan_id, limit=100):
+    _user_id(user)
+    # RLS ensures only creator and designated approver can read this audit.
+    return (client.table("sowia_global_action_audit")
+        .select("id,plan_id,actor_id,from_status,to_status,note,created_at")
+        .eq("plan_id", str(plan_id)).order("created_at", desc=True)
+        .limit(min(max(int(limit),1),200)).execute().data)
