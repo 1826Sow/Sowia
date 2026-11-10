@@ -78,3 +78,129 @@ alter table public.sowia_crypto_payment_events enable row level security;
 revoke all on public.sowia_crypto_payment_events from anon, authenticated;
 
 commit;
+
+
+-- Atomic confirmation function. It trusts only the server-side adapter's
+-- signature_verified flag; the adapter MUST verify the provider signature first.
+-- Execution is restricted to service_role. Never call this from a browser.
+create or replace function public.sowia_confirm_crypto_payment(
+    p_event_id text,
+    p_payment_id text,
+    p_order_id uuid,
+    p_user_id uuid,
+    p_event_type text,
+    p_signature_verified boolean,
+    p_payment_status text,
+    p_received_asset text,
+    p_received_network text,
+    p_received_amount numeric
+)
+returns text
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_order public.sowia_crypto_orders%rowtype;
+    v_inserted_id uuid;
+begin
+    if coalesce(trim(p_event_id), '') = '' or coalesce(trim(p_payment_id), '') = '' then
+        raise exception 'Missing provider event or payment identifier';
+    end if;
+
+    -- Record every distinct delivery once, including rejected deliveries.
+    insert into public.sowia_crypto_payment_events (
+        provider, provider_event_id, provider_payment_id, order_id,
+        event_type, signature_verified, processing_status
+    ) values (
+        'fipto', p_event_id, p_payment_id, p_order_id,
+        coalesce(nullif(trim(p_event_type), ''), 'unknown'),
+        coalesce(p_signature_verified, false),
+        'received'
+    )
+    on conflict (provider, provider_event_id) do nothing
+    returning id into v_inserted_id;
+
+    if v_inserted_id is null then
+        return 'duplicate';
+    end if;
+
+    if p_signature_verified is distinct from true then
+        update public.sowia_crypto_payment_events
+           set processing_status = 'rejected', processed_at = now()
+         where id = v_inserted_id;
+        return 'rejected_signature';
+    end if;
+
+    select * into v_order
+      from public.sowia_crypto_orders
+     where id = p_order_id
+       and user_id = p_user_id
+     for update;
+
+    if not found then
+        update public.sowia_crypto_payment_events
+           set processing_status = 'rejected', processed_at = now()
+         where id = v_inserted_id;
+        return 'rejected_order';
+    end if;
+
+    if v_order.status = 'confirmed' then
+        update public.sowia_crypto_payment_events
+           set processing_status = 'duplicate', processed_at = now()
+         where id = v_inserted_id;
+        return 'already_confirmed';
+    end if;
+
+    if v_order.status <> 'pending'
+       or v_order.expires_at <= now()
+       or p_payment_status not in ('confirmed', 'settled')
+       or upper(coalesce(p_received_asset, '')) <> v_order.asset_code
+       or coalesce(p_received_network, '') <> v_order.network_code
+       or p_received_amount is null
+       or p_received_amount <> v_order.expected_asset_amount then
+        update public.sowia_crypto_payment_events
+           set processing_status = 'rejected', processed_at = now()
+         where id = v_inserted_id;
+        update public.sowia_crypto_orders
+           set status = 'manual_review', updated_at = now()
+         where id = v_order.id and status = 'pending';
+        return 'manual_review';
+    end if;
+
+    update public.sowia_crypto_orders
+       set status = 'confirmed',
+           provider_payment_id = p_payment_id,
+           confirmed_at = now(),
+           updated_at = now()
+     where id = v_order.id;
+
+    insert into public.sowia_entitlements (
+        user_id, status, provider, crypto_payment_id,
+        amount, currency, updated_at
+    ) values (
+        v_order.user_id, 'active', 'crypto', p_payment_id,
+        v_order.reference_amount_eur, 'EUR', now()
+    )
+    on conflict (user_id) do update
+       set status = 'active',
+           provider = 'crypto',
+           crypto_payment_id = excluded.crypto_payment_id,
+           amount = excluded.amount,
+           currency = 'EUR',
+           updated_at = now();
+
+    update public.sowia_crypto_payment_events
+       set processing_status = 'processed', processed_at = now()
+     where id = v_inserted_id;
+
+    return 'confirmed';
+end;
+$$;
+
+revoke all on function public.sowia_confirm_crypto_payment(
+    text, text, uuid, uuid, text, boolean, text, text, text, numeric
+) from public, anon, authenticated;
+grant execute on function public.sowia_confirm_crypto_payment(
+    text, text, uuid, uuid, text, boolean, text, text, text, numeric
+) to service_role;
