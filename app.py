@@ -1562,7 +1562,7 @@ elif page == "Technologies & fournisseurs":
     )
     try:
         from technology_selection import (
-            CRITERIA_WEIGHTS, evaluate_candidate, rank_candidates,
+            CRITERIA_WEIGHTS, CandidateEvaluation, evaluate_candidate, rank_candidates,
         )
         criteria_labels = {
             "quality": "Qualité et précision",
@@ -1632,11 +1632,12 @@ elif page == "Technologies & fournisseurs":
         if candidates:
             st.markdown("#### Comparatif des solutions évaluées")
             evaluations = [
-                evaluate_candidate(
-                    item["name"], item["scores"],
-                    evidence=["preuve"] * item["evidence_count"],
-                    compliant=item["decision"] != "Écarter" or not any("Conformité" in reason for reason in item["reasons"]),
-                    critical_incident=any("Incident critique" in reason for reason in item["reasons"]),
+                CandidateEvaluation(
+                    name=item["name"],
+                    score=item["score"],
+                    decision=item["decision"],
+                    reasons=tuple(item["reasons"]),
+                    evidence_count=item["evidence_count"],
                 )
                 for item in candidates
             ]
