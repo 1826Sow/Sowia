@@ -6267,6 +6267,55 @@ elif page == "SOWIA CONTROL CENTER":
         st.dataframe(checks, use_container_width=True, hide_index=True)
 
         technical_alerts = sowia_global_alerts.build_technical_alerts(checks)
+        st.markdown("#### 🗂️ Journal des incidents")
+        incident_rows = []
+        if admin_client is not None:
+            try:
+                sowia_global_alerts.record_technical_incidents(
+                    admin_client, technical_alerts, str(current_user.id)
+                )
+                incident_rows = sowia_global_alerts.list_technical_incidents(admin_client, limit=100)
+            except Exception as incident_error:
+                st.warning(
+                    "Journal indisponible : appliquez la migration "
+                    "20261110000200_sowia_technical_incidents.sql dans Supabase. "
+                    "Détail technique : " + type(incident_error).__name__
+                )
+        else:
+            st.info("Journal en attente : client administratif Supabase indisponible.")
+
+        if incident_rows:
+            active_incidents = [row for row in incident_rows if row.get("status") == "active"]
+            resolved_incidents = [row for row in incident_rows if row.get("status") == "resolved"]
+            incident_cols = st.columns(2)
+            with incident_cols[0]:
+                st.metric("Incidents actifs", len(active_incidents))
+            with incident_cols[1]:
+                st.metric("Incidents résolus", len(resolved_incidents))
+            for incident in incident_rows:
+                severity = str(incident.get("severity") or "").upper()
+                title = f'{severity} · {incident.get("component") or "Composant"} · {incident.get("status") or "inconnu"}'
+                with st.expander(title, expanded=incident.get("status") == "active"):
+                    st.write(incident.get("message") or "")
+                    st.caption(
+                        "Première détection : " + str(incident.get("first_seen_at") or "inconnue")
+                        + " · Dernière détection : " + str(incident.get("last_seen_at") or "inconnue")
+                    )
+                    if incident.get("status") == "active":
+                        if st.button(
+                            "Marquer comme résolu",
+                            key="resolve_technical_incident_" + str(incident.get("id")),
+                        ):
+                            try:
+                                sowia_global_alerts.resolve_technical_incident(
+                                    admin_client, incident.get("id"), str(current_user.id)
+                                )
+                                st.success("Incident marqué comme résolu.")
+                                st.rerun()
+                            except Exception as resolve_error:
+                                st.error("Résolution impossible : " + type(resolve_error).__name__)
+        else:
+            st.caption("Aucun incident enregistré pour le moment.")
         st.markdown("#### 🚨 Alertes techniques")
         if not technical_alerts:
             st.success("Aucune anomalie détectée parmi les contrôles exécutés.")
