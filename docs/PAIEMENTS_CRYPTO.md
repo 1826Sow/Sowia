@@ -109,3 +109,21 @@ La migration SQL inclut maintenant la fonction serveur `sowia_confirm_crypto_pay
 Cette fonction **ne vérifie pas elle-même la signature cryptographique du fournisseur**. L'adaptateur serveur devra impérativement vérifier la signature avant de l'appeler et lui transmettre `signature_verified=true` uniquement après validation. Le nom du fournisseur reste configurable dans le schéma ; Fipto n'est toujours pas choisi.
 
 La migration n'a pas été exécutée sur Supabase et la fonction SQL n'a pas encore été testée sur une base de test. Elle doit être relue et testée avant exécution.
+
+
+### Protection contre le double droit Premium
+
+La fonction atomique refuse maintenant de remplacer **tout droit Premium déjà actif**, qu'il provienne de PayPal ou d'un paiement crypto antérieur. La commande est placée en contrôle manuel. Cela évite qu'un deuxième paiement écrase la référence du premier et simplifie le rapprochement comptable. Le parcours de création de commande devra aussi vérifier l'absence d'un abonnement actif avant d'envoyer le client vers le prestataire.
+
+### Cas de tests SQL obligatoires avant activation
+
+- événement valide et paiement exact : une seule commande confirmée et un seul droit Premium ;
+- rejeu du même identifiant d'événement : résultat `duplicate`, aucune seconde activation ;
+- deuxième événement pour une commande déjà confirmée : `already_confirmed` ;
+- signature invalide : rejet sans activation ;
+- utilisateur, commande ou fournisseur incorrect : rejet ;
+- actif, réseau, montant, statut ou expiration incorrect : contrôle manuel, aucun droit ;
+- droit PayPal ou crypto déjà actif : contrôle manuel, aucune écriture d'écrasement ;
+- deux webhooks simultanés pour une même commande : une seule transaction peut confirmer la commande grâce au verrouillage `FOR UPDATE`.
+
+Ces tests SQL restent à exécuter dans un projet Supabase de test. La migration n'est pas une preuve d'exécution ni de conformité réglementaire.
