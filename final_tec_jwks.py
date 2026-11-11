@@ -102,10 +102,15 @@ class HTTPSJWKSResolver:
         if not isinstance(kid, str) or not kid or len(kid) > 256:
             return None
         with self._lock:
+            refreshed = False
             if self.clock() >= self._expires_at:
                 self._refresh()
+                refreshed = True
             key = self._keys.get(kid)
-            if key is None:
+            # If this invocation already fetched a fresh document, that fetch
+            # is the single rotation refresh. In particular, max-age=0 and
+            # no-store must not cause a redundant second request for unknown kids.
+            if key is None and not refreshed:
                 self._refresh()
                 key = self._keys.get(kid)
             return key
