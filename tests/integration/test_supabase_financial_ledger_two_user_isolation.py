@@ -165,6 +165,20 @@ def test_two_users_cannot_read_each_others_financial_rows(accounts):
     assert rows_b == [], "Account B must not see Account A's financial fixture"
 
 
+def _assert_denied_or_no_rows(response, action):
+    """Accept explicit denial or successful PostgREST responses affecting zero rows."""
+    if response.status_code in (401, 403):
+        return
+    assert response.ok, (
+        f"{action} must be denied or affect zero rows; "
+        f"received HTTP {response.status_code}"
+    )
+    if response.text.strip():
+        body = response.json()
+        assert body == [], (
+            f"{action} unexpectedly returned affected ledger rows: {body!r}"
+        )
+
 def test_authenticated_clients_cannot_update_or_delete_ledger_rows(accounts):
     payment_id = _fixture_payment_id()
     if not payment_id:
@@ -185,15 +199,13 @@ def test_authenticated_clients_cannot_update_or_delete_ledger_rows(accounts):
         payload={"gross_amount": "0.02"},
         headers={"Prefer": "return=representation"},
     )
-    delete = account_a.request("DELETE", params=filter_params)
-    assert update.status_code in (401, 403), (
-        "Authenticated client must not update ledger rows; "
-        f"received HTTP {update.status_code}"
+    delete = account_a.request(
+        "DELETE",
+        params=filter_params,
+        headers={"Prefer": "return=representation"},
     )
-    assert delete.status_code in (401, 403), (
-        "Authenticated client must not delete ledger rows; "
-        f"received HTTP {delete.status_code}"
-    )
+    _assert_denied_or_no_rows(update, "Account A update")
+    _assert_denied_or_no_rows(delete, "Account A delete")
 
     # The second account also cannot mutate a row it cannot own or read.
     other_update = account_b.request(
@@ -202,9 +214,13 @@ def test_authenticated_clients_cannot_update_or_delete_ledger_rows(accounts):
         payload={"gross_amount": "0.03"},
         headers={"Prefer": "return=representation"},
     )
-    other_delete = account_b.request("DELETE", params=filter_params)
-    assert other_update.status_code in (401, 403)
-    assert other_delete.status_code in (401, 403)
+    other_delete = account_b.request(
+        "DELETE",
+        params=filter_params,
+        headers={"Prefer": "return=representation"},
+    )
+    _assert_denied_or_no_rows(other_update, "Account B update")
+    _assert_denied_or_no_rows(other_delete, "Account B delete")
 
     # Verify that the owner-A fixture remains present and unchanged.
     check = account_a.request(
