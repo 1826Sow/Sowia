@@ -63,6 +63,14 @@ declare
     v_capture_currency text;
     v_prior_refunds numeric(30,12);
 begin
+    if tg_op <> 'DELETE' and new.provider = 'paypal' then
+        if new.gross_amount <> round(new.gross_amount, 2)
+           or (new.fee_amount is not null and new.fee_amount <> round(new.fee_amount, 2))
+           or (new.net_amount is not null and new.net_amount <> round(new.net_amount, 2)) then
+            raise exception 'PayPal ledger amounts must use currency cent precision';
+        end if;
+    end if;
+
     -- Preserve the audit trail: PayPal ledger entries cannot be deleted or
     -- repurposed as another provider/transaction type after insertion.
     if tg_op = 'DELETE' then
