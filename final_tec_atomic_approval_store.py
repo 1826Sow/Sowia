@@ -104,6 +104,49 @@ class SQLiteAtomicApprovalStore:
                     created_at REAL NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS dual_approval_anchor_outbox (
+                    authorization_id TEXT PRIMARY KEY,
+                    sequence INTEGER NOT NULL UNIQUE
+                        REFERENCES dual_approval_audit(sequence),
+                    previous_hash TEXT NOT NULL,
+                    event_hash TEXT NOT NULL UNIQUE,
+                    created_at REAL NOT NULL,
+                    event_json TEXT NOT NULL,
+                    nonce_digests_json TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending'
+                        CHECK (status IN ('pending', 'anchored')),
+                    receipt_json TEXT,
+                    CHECK (
+                        (status = 'pending' AND receipt_json IS NULL)
+                        OR (status = 'anchored' AND receipt_json IS NOT NULL)
+                    )
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_anchor_outbox_status_sequence
+                ON dual_approval_anchor_outbox(status, sequence);
+
+                CREATE TRIGGER IF NOT EXISTS anchor_outbox_immutable_fields
+                BEFORE UPDATE ON dual_approval_anchor_outbox
+                WHEN
+                    OLD.authorization_id != NEW.authorization_id
+                    OR OLD.sequence != NEW.sequence
+                    OR OLD.previous_hash != NEW.previous_hash
+                    OR OLD.event_hash != NEW.event_hash
+                    OR OLD.created_at != NEW.created_at
+                    OR OLD.event_json != NEW.event_json
+                    OR OLD.nonce_digests_json != NEW.nonce_digests_json
+                    OR OLD.status = 'anchored'
+                    OR NOT (OLD.status = 'pending' AND NEW.status = 'anchored')
+                BEGIN
+                    SELECT RAISE(ABORT, 'anchor outbox transition is immutable');
+                END;
+
+                CREATE TRIGGER IF NOT EXISTS anchor_outbox_no_delete
+                BEFORE DELETE ON dual_approval_anchor_outbox
+                BEGIN
+                    SELECT RAISE(ABORT, 'anchor outbox rows are append-only');
+                END;
+
                 CREATE TRIGGER IF NOT EXISTS dual_approval_audit_no_update
                 BEFORE UPDATE ON dual_approval_audit
                 BEGIN
@@ -265,6 +308,202 @@ class SQLiteAtomicApprovalStore:
             return False
         finally:
             connection.close()
+
+    def commit_pair_audit_and_outbox(
+        self,
+        authorization_id: str,
+        records: Sequence[tuple[str, str]],
+        audit_event: Mapping[str, Any],
+        *,
+        now: datetime | None = None,
+    ):
+        """Atomically consume both nonces, append audit, and persist anchor outbox.
+
+        An exact retry returns the original checkpoint without consuming the
+        nonces again. Reuse of an authorization ID with different event or
+        nonce digests fails closed.
+        """
+        from final_tec_audit_anchor import AuditCheckpoint
+
+        if not isinstance(authorization_id, str) or not authorization_id.strip():
+            return None
+        if len(records) != 2:
+            return None
+        try:
+            current = _epoch(now or datetime.now(timezone.utc), "now")
+            prepared = [(_nonce_digest(nonce), _parse_expiry(expiry)) for nonce, expiry in records]
+            if prepared[0][0] == prepared[1][0]:
+                return None
+            event_bytes = _canonical_json(audit_event)
+            event_text = event_bytes.decode("utf-8")
+            nonce_digests_json = json.dumps(sorted(item[0] for item in prepared), separators=(",", ":"))
+        except (AtomicApprovalStoreError, UnicodeDecodeError):
+            return None
+
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+
+            existing = connection.execute(
+                """SELECT sequence, previous_hash, event_hash, created_at,
+                          event_json, nonce_digests_json
+                   FROM dual_approval_anchor_outbox WHERE authorization_id = ?""",
+                (authorization_id,),
+            ).fetchone()
+            if existing is not None:
+                sequence, previous_hash, event_hash, created_at, stored_event, stored_nonces = existing
+                if stored_event != event_text or stored_nonces != nonce_digests_json:
+                    connection.rollback()
+                    return None
+                connection.commit()
+                return AuditCheckpoint(
+                    authorization_id, sequence, previous_hash, event_hash,
+                    datetime.fromtimestamp(created_at, timezone.utc).isoformat(),
+                )
+
+            for digest, requested_expiry in prepared:
+                row = connection.execute(
+                    """SELECT expires_at, revoked_at, consumed_at
+                       FROM dual_approval_nonces
+                       WHERE nonce_digest = ? AND authorization_id = ?""",
+                    (digest, authorization_id),
+                ).fetchone()
+                if row is None:
+                    connection.rollback()
+                    return None
+                stored_expiry, revoked_at, consumed_at = row
+                if (
+                    not math.isclose(stored_expiry, requested_expiry, rel_tol=0, abs_tol=0.000001)
+                    or stored_expiry <= current
+                    or revoked_at is not None
+                    or consumed_at is not None
+                ):
+                    connection.rollback()
+                    return None
+
+            previous = connection.execute(
+                "SELECT event_hash FROM dual_approval_audit ORDER BY sequence DESC LIMIT 1"
+            ).fetchone()
+            previous_hash = previous[0] if previous else "0" * 64
+            event_hash = hashlib.sha256(
+                previous_hash.encode("ascii") + event_bytes
+            ).hexdigest()
+
+            for digest, _ in prepared:
+                cursor = connection.execute(
+                    """UPDATE dual_approval_nonces SET consumed_at = ?
+                       WHERE nonce_digest = ? AND authorization_id = ?
+                         AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > ?""",
+                    (current, digest, authorization_id, current),
+                )
+                if cursor.rowcount != 1:
+                    connection.rollback()
+                    return None
+
+            audit_cursor = connection.execute(
+                """INSERT INTO dual_approval_audit
+                   (event_json, previous_hash, event_hash, created_at)
+                   VALUES (?, ?, ?, ?)""",
+                (event_text, previous_hash, event_hash, current),
+            )
+            sequence = audit_cursor.lastrowid
+            connection.execute(
+                """INSERT INTO dual_approval_anchor_outbox
+                   (authorization_id, sequence, previous_hash, event_hash,
+                    created_at, event_json, nonce_digests_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (authorization_id, sequence, previous_hash, event_hash,
+                 current, event_text, nonce_digests_json),
+            )
+            connection.commit()
+            return AuditCheckpoint(
+                authorization_id, sequence, previous_hash, event_hash,
+                datetime.fromtimestamp(current, timezone.utc).isoformat(),
+            )
+        except (sqlite3.Error, AtomicApprovalStoreError):
+            connection.rollback()
+            return None
+        finally:
+            connection.close()
+
+    def mark_checkpoint_anchored(
+        self,
+        authorization_id: str,
+        event_hash: str,
+        receipt: Mapping[str, str],
+    ) -> bool:
+        """Persist a verified external receipt; only pending -> anchored is allowed."""
+        if not isinstance(authorization_id, str) or not authorization_id.strip():
+            return False
+        if not isinstance(event_hash, str) or len(event_hash) != 64:
+            return False
+        try:
+            receipt_text = _canonical_json(receipt).decode("utf-8")
+        except (AtomicApprovalStoreError, UnicodeDecodeError):
+            return False
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """SELECT status, receipt_json FROM dual_approval_anchor_outbox
+                   WHERE authorization_id = ? AND event_hash = ?""",
+                (authorization_id, event_hash),
+            ).fetchone()
+            if row is None:
+                connection.rollback()
+                return False
+            status, existing_receipt = row
+            if status == "anchored":
+                connection.rollback()
+                return existing_receipt == receipt_text
+            cursor = connection.execute(
+                """UPDATE dual_approval_anchor_outbox
+                   SET status = 'anchored', receipt_json = ?
+                   WHERE authorization_id = ? AND event_hash = ? AND status = 'pending'""",
+                (receipt_text, authorization_id, event_hash),
+            )
+            if cursor.rowcount != 1:
+                connection.rollback()
+                return False
+            connection.commit()
+            return True
+        except sqlite3.Error:
+            connection.rollback()
+            return False
+        finally:
+            connection.close()
+
+    def pending_anchor_checkpoints(self):
+        """Return pending outbox entries in sequence order for safe recovery."""
+        from final_tec_audit_anchor import AuditCheckpoint
+
+        connection = self._connect()
+        try:
+            rows = connection.execute(
+                """SELECT authorization_id, sequence, previous_hash, event_hash, created_at
+                   FROM dual_approval_anchor_outbox
+                   WHERE status = 'pending' ORDER BY sequence"""
+            ).fetchall()
+        finally:
+            connection.close()
+        return [
+            AuditCheckpoint(
+                authorization_id, sequence, previous_hash, event_hash,
+                datetime.fromtimestamp(created_at, timezone.utc).isoformat(),
+            )
+            for authorization_id, sequence, previous_hash, event_hash, created_at in rows
+        ]
+
+    def anchor_outbox_status(self, authorization_id: str) -> str | None:
+        connection = self._connect()
+        try:
+            row = connection.execute(
+                "SELECT status FROM dual_approval_anchor_outbox WHERE authorization_id = ?",
+                (authorization_id,),
+            ).fetchone()
+        finally:
+            connection.close()
+        return row[0] if row else None
 
     def atomic_commit_callback(self, authorization_id: str, records: Sequence[tuple[str, str]],
                                audit_event: Mapping[str, Any]) -> bool:
