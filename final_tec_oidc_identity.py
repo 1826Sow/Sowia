@@ -106,6 +106,10 @@ class OIDCApprovalIdentityVerifier:
             )
             if claims.get("sub") != subject_id:
                 return False
+            # Require one exact relying-party audience. PyJWT otherwise accepts
+            # the configured audience as one member of a multi-audience list.
+            if claims.get("aud") != self.audience:
+                return False
             token_nonce = claims.get("nonce")
             if not isinstance(token_nonce, str) or not hmac.compare_digest(token_nonce, expected_nonce):
                 return False
