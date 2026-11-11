@@ -1,6 +1,11 @@
 import pytest
 
-from financial_reporting import load_user_financial_transactions, summarize_financial_transactions
+from financial_reporting import (
+    load_user_financial_transactions,
+    partition_financial_transactions,
+    summarize_financial_transactions,
+    summarize_subscription_statuses,
+)
 
 
 def test_reports_confirmed_crypto_and_keeps_unknown_fees_unknown():
@@ -167,4 +172,54 @@ def test_subscription_status_summary_rejects_non_list_input():
     import pytest
     with pytest.raises(ValueError):
         summarize_subscription_statuses(None)
-\n
+
+
+def test_confirmed_malformed_rows_are_reported_not_silently_ignored():
+    rows = [
+        {"provider": "paypal", "gross_currency": "", "gross_amount": "12",
+         "transaction_type": "payment", "status": "confirmed",
+         "provider_payment_id": "PRIVATE-PAYMENT-ID"},
+        {"provider": "paypal", "gross_currency": "EUR", "gross_amount": "5",
+         "transaction_type": "refund", "status": "refunded"},
+        {"provider": "paypal", "gross_currency": "EUR", "gross_amount": "8",
+         "transaction_type": "payment", "status": "pending"},
+    ]
+    valid, anomalies = partition_financial_transactions(rows)
+    assert len(valid) == 1
+    assert len(anomalies) == 1
+    assert "Devise brute manquante." in anomalies[0]["reasons"]
+    assert "PRIVATE-PAYMENT-ID" not in str(anomalies)
+    with pytest.raises(ValueError, match="registre des anomalies"):
+        summarize_financial_transactions(rows)
+
+
+def test_confirmed_invalid_amount_is_classified_as_anomaly():
+    rows = [{
+        "provider": "paypal", "gross_currency": "EUR", "gross_amount": "NaN",
+        "transaction_type": "payment", "status": "confirmed",
+    }]
+    valid, anomalies = partition_financial_transactions(rows)
+    assert valid == []
+    assert len(anomalies) == 1
+    assert "Montant brut invalide." in anomalies[0]["reasons"]
+
+
+def test_non_final_statuses_are_not_misclassified_as_data_anomalies():
+    rows = [{
+        "provider": "", "gross_currency": "", "gross_amount": None,
+        "transaction_type": "unknown", "status": "manual_review",
+    }]
+    valid, anomalies = partition_financial_transactions(rows)
+    assert valid == []
+    assert anomalies == []
+
+
+def test_status_and_transaction_type_must_match():
+    rows = [{
+        "provider": "paypal", "gross_currency": "EUR", "gross_amount": "12",
+        "transaction_type": "payment", "status": "refunded",
+    }]
+    valid, anomalies = partition_financial_transactions(rows)
+    assert valid == []
+    assert len(anomalies) == 1
+    assert "Le statut ne correspond pas au type de transaction." in anomalies[0]["reasons"]
