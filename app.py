@@ -6499,6 +6499,43 @@ elif page == "Revenus & paiements":
                         st.dataframe(preview_rows, use_container_width=True, hide_index=True)
                     else:
                         st.info("Aucun événement Sandbox retourné pour cette période.")
+                    import paypal_statement_analysis
+                    statement_analysis = paypal_statement_analysis.summarize_paypal_statement_events(
+                        statement_preview["events"]
+                    )
+                    st.markdown("##### Synthèse brute par code PayPal et devise")
+                    st.caption(
+                        "Les codes d'événement ne sont pas traduits en ventes ou remboursements. "
+                        "Les montants signés sont reproduits par devise, sans conversion ni estimation."
+                    )
+                    if statement_analysis["amounts_by_event_code_currency"]:
+                        st.dataframe(
+                            [{
+                                "Code PayPal": row["event_code"],
+                                "Devise": row["currency"],
+                                "Nombre d'événements": row["event_count"],
+                                "Somme signée déclarée": row["signed_amount_total"],
+                            } for row in statement_analysis["amounts_by_event_code_currency"]],
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    if statement_analysis["fees_by_event_code_currency"]:
+                        st.markdown("**Frais déclarés séparément**")
+                        st.dataframe(
+                            [{
+                                "Code PayPal": row["event_code"],
+                                "Devise des frais": row["currency"],
+                                "Événements avec frais": row["fee_count"],
+                                "Somme signée des frais": row["signed_fee_total"],
+                            } for row in statement_analysis["fees_by_event_code_currency"]],
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    analysis_cols = st.columns(3)
+                    analysis_cols[0].metric("Montants absents/invalides", statement_analysis["missing_amounts"])
+                    analysis_cols[1].metric("Frais absents/invalides", statement_analysis["missing_fees"])
+                    analysis_cols[2].metric("Événements invalides", statement_analysis["invalid_events"])
+
                     st.info(
                         "Aperçu temporaire en session uniquement · "
                         f"Écritures en base : {statement_preview['database_writes']} · "
