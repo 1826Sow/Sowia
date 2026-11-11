@@ -54,6 +54,10 @@ def present_audit_events(rows):
             "Acteur": row.get("actor_role") or ("Utilisateur connecté" if row.get("actor_id") else "Serveur / système"),
             "Statut avant": snapshot_value(before, "status"),
             "Statut après": snapshot_value(after, "status"),
+            "Référence EUR avant": snapshot_value(before, "reference_amount_eur"),
+            "Référence EUR après": snapshot_value(after, "reference_amount_eur"),
+            "Taxe EUR avant": snapshot_value(before, "tax_amount_eur"),
+            "Taxe EUR après": snapshot_value(after, "tax_amount_eur"),
             "Montant avant": (
                 snapshot_value(before, "gross_amount") + " " + snapshot_value(before, "gross_currency")
                 if isinstance(before, dict) else "—"
