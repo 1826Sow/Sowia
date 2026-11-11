@@ -193,3 +193,16 @@ def test_paypal_event_receipt_registry_is_private_and_claimed_atomically():
     assert "event_type = p_event_type" in migration
     assert "event_time = p_event_time" in migration
     assert "on conflict (event_id) do nothing" in migration
+
+
+def test_paypal_recovery_requires_complete_latest_payment_proof():
+    source = WEBHOOK
+    recovery = source.index("const verifiedPaymentRecovery =")
+    proof = source.index("if (verifiedPaymentRecovery) {", recovery)
+    amount = source.index("Number(paymentAmount.value) !== 9.90", proof)
+    currency = source.index('String(paymentAmount.currency_code || "").toUpperCase() !== "EUR"', amount)
+    payment_time = source.index("!lastPaymentTime || !Number.isFinite(Date.parse(lastPaymentTime))", currency)
+    reject = source.index('PayPal recovery payment proof is incomplete', payment_time)
+    rpc = source.index('"/rest/v1/rpc/sowia_reconcile_paypal_subscription"', reject)
+    assert recovery < proof < amount < currency < payment_time < reject < rpc
+    assert "const lastPaymentTime = String(lastPayment.time || "").trim();" in source
