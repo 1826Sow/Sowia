@@ -6,6 +6,7 @@ class Query:
         self.rows = rows
         self.filters = []
         self.calls = []
+        self.updated = None
     def select(self, value):
         self.calls.append(("select", value))
         return self
@@ -21,16 +22,22 @@ class Query:
     def limit(self, value):
         self.calls.append(("limit", value))
         return self
+    def update(self, payload):
+        self.updated = payload
+        return self
     def execute(self):
-        return type("Result", (), {"data": self.rows})()
+        data = self.rows if self.updated is None else [{"user_id": "user-A"}]
+        return type("Result", (), {"data": data})()
 
 
 class Admin:
     def __init__(self, rows):
-        self.query = Query(rows)
+        self.queries = {
+            "sowia_financial_transactions": Query(rows),
+            "sowia_entitlements": Query([]),
+        }
     def table(self, name):
-        assert name == "sowia_financial_transactions"
-        return self.query
+        return self.queries[name]
 
 
 class Response:
@@ -44,7 +51,7 @@ class Response:
 
 def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
     rows = [
-        {"provider_payment_id": "CAPTURE001", "occurred_at": "2026-11-01T00:00:00Z"},
+        {"provider_payment_id": "CAPTURE001", "paypal_order_id": "ORDER001", "occurred_at": "2026-11-01T00:00:00Z"},
         {"provider_payment_id": "CAPTURE002", "occurred_at": "2026-11-02T00:00:00Z"},
     ]
     admin = Admin(rows)
@@ -87,6 +94,8 @@ def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
         "captures_checked": 2,
         "refunds_detected": 1,
         "refunds_flagged_for_manual_review": 1,
+        "entitlements_revoked": 1,
+        "captures_missing_order_link": 0,
         "limit_reached": False,
     }
     assert requested == ["CAPTURE001", "CAPTURE002"]
@@ -94,7 +103,12 @@ def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
     assert ("user_id", "user-A") in admin.query.filters
     assert ("provider", "paypal") in admin.query.filters
     assert ("transaction_type", "payment") in admin.query.filters
-    assert ("status", "confirmed") in admin.query.filters
+    assert ("status", "confirmed") in admin.queries["sowia_financial_transactions"].filters
+    entitlement_query = admin.queries["sowia_entitlements"]
+    assert entitlement_query.updated == {"status": "inactive"}
+    assert ("user_id", "user-A") in entitlement_query.filters
+    assert ("paypal_order_id", "ORDER001") in entitlement_query.filters
+    assert ("status", "active") in entitlement_query.filters
 
 
 def test_rejects_live_mode_and_missing_user(monkeypatch):
