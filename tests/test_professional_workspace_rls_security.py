@@ -39,8 +39,8 @@ def test_professional_access_accepts_one_time_and_recurring_active_paypal_entitl
     assert "entitlement.provider = 'paypal'" in normalized
     assert "to_regclass('public.sowia_subscriptions') is not null" in normalized
     assert "from public.sowia_subscriptions as subscription" in normalized
-    assert "subscription.status = 'active'" in normalized
-    assert "subscription.provider = 'paypal'" in normalized
+    assert "subscription.status = ''active''" in normalized
+    assert "subscription.provider = ''paypal''" in normalized
 
 
 def test_workspace_guards_are_restrictive_and_preserve_personal_access():
