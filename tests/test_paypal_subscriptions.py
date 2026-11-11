@@ -1,3 +1,5 @@
+import pytest
+
 """Unit tests for the isolated PayPal recurring-subscription helpers."""
 import paypal_subscriptions as paypal
 
