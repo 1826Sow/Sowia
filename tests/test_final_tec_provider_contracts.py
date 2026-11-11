@@ -79,4 +79,4 @@ def test_structural_preflight_never_calls_adapters_or_returns_authorization():
     assert result is None
     assert not hasattr(result, "execution_authorized")
     assert not hasattr(result, "g2b_status")
-\n
+
