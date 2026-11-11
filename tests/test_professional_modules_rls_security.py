@@ -51,6 +51,20 @@ def test_trusted_admins_can_read_night_exchange_moderation_queue_without_custome
     assert "with check (public.sowia_has_professional_access())" in policy
     assert "user_metadata" not in policy
 
+
+def test_night_exchange_admin_exception_is_read_only():
+    normalized = " ".join(MIGRATION.split())
+    start = normalized.index('create policy "require premium for night exchange apps"')
+    end = normalized.index('drop policy if exists "require premium for night exchange events"', start)
+    policy = normalized[start:end]
+    using_clause, check_clause = policy.split("with check", 1)
+    assert "sowia_has_professional_access()" in using_clause
+    assert "role', '') = 'admin'" in using_clause
+    assert "sowia_admin', '') = 'true'" in using_clause
+    assert "sowia_has_professional_access()" in check_clause
+    assert "role', '') = 'admin'" not in check_clause
+    assert "sowia_admin', '') = 'true'" not in check_clause
+
 def test_migration_preserves_existing_rows_and_base_policies():
     assert "delete from " not in MIGRATION
     assert "truncate " not in MIGRATION
