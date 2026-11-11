@@ -94,29 +94,6 @@ Deno.serve(async (request: Request) => {
       ? "https://api-m.paypal.com"
       : "https://api-m.sandbox.paypal.com";
 
-    const catalogResponse = await fetch(
-      supabaseUrl +
-        "/rest/v1/sowia_paypal_catalog?mode=eq." + mode +
-        "&select=paypal_plan_id&limit=1",
-      {
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: "Bearer " + serviceRoleKey,
-          Accept: "application/json",
-        },
-      },
-    );
-    if (!catalogResponse.ok) {
-      throw new Error("Unable to read the configured PayPal plan");
-    }
-    const catalogRows = await catalogResponse.json();
-    const planId = Array.isArray(catalogRows) && catalogRows.length
-      ? String(catalogRows[0].paypal_plan_id || "")
-      : "";
-    if (!/^P-[A-Z0-9]+$/.test(planId)) {
-      return json({ error: "PayPal plan is not provisioned for this mode" }, 503);
-    }
-
     const event = await request.json();
     if (!event || typeof event !== "object" || Array.isArray(event)) {
       return json({ error: "Invalid event body" }, 400);
@@ -262,6 +239,29 @@ Deno.serve(async (request: Request) => {
         entitlement_revoked: Array.isArray(revokedRows) && revokedRows.length > 0,
       });
     }
+    const catalogResponse = await fetch(
+      supabaseUrl +
+        "/rest/v1/sowia_paypal_catalog?mode=eq." + mode +
+        "&select=paypal_plan_id&limit=1",
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: "Bearer " + serviceRoleKey,
+          Accept: "application/json",
+        },
+      },
+    );
+    if (!catalogResponse.ok) {
+      throw new Error("Unable to read the configured PayPal plan");
+    }
+    const catalogRows = await catalogResponse.json();
+    const planId = Array.isArray(catalogRows) && catalogRows.length
+      ? String(catalogRows[0].paypal_plan_id || "")
+      : "";
+    if (!/^P-[A-Z0-9]+$/.test(planId)) {
+      return json({ error: "PayPal plan is not provisioned for this mode" }, 503);
+    }
+
     const related = (resource.supplementary_data &&
         typeof resource.supplementary_data === "object")
       ? resource.supplementary_data as Record<string, unknown>
