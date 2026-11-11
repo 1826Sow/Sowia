@@ -13,7 +13,7 @@ class Adapter:
 
     def resolve_signing_key(self, key_id): return object()
     def load_approval_session(self, context): return {}
-    def consume_approval_session(self, session_id, expected_nonce): return True
+    def consume_approval_session_pair(self, session_records): return len(session_records) == 2
     def has_current_role(self, subject_id, role): return True
     def sign(self, key_id, canonical_payload): return b"signature"
     def verify(self, key_id, canonical_payload, signature): return True
@@ -105,7 +105,7 @@ def test_structural_preflight_never_calls_adapters_or_returns_authorization():
 
         def resolve_signing_key(self, *args): return self._called("resolve_signing_key")
         def load_approval_session(self, *args): return self._called("load_approval_session")
-        def consume_approval_session(self, *args): return self._called("consume_approval_session")
+        def consume_approval_session_pair(self, *args): return self._called("consume_approval_session_pair")
         def has_current_role(self, *args): return self._called("has_current_role")
         def sign(self, *args): return self._called("sign")
         def verify(self, *args): return self._called("verify")
@@ -202,6 +202,9 @@ def test_session_adapter_requires_atomic_one_time_consumption():
         def load_approval_session(self, context):
             return {}
 
+        def consume_approval_session(self, session_id, expected_nonce):
+            return True
+
     object.__setattr__(bundle, "sessions", IncompleteSessionStore())
-    with pytest.raises(ProductionAdapterContractError, match="consume_approval_session"):
+    with pytest.raises(ProductionAdapterContractError, match="consume_approval_session_pair"):
         validate_production_adapter_bundle(bundle)
