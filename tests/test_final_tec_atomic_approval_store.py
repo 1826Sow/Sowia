@@ -251,3 +251,99 @@ def test_missing_atomic_or_legacy_commit_callbacks_fail_closed():
             audit_append=lambda event: True,
             now=now,
         )
+
+
+def test_outbox_checkpoint_is_committed_with_nonce_pair_and_audit(tmp_path):
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path, "outbox.sqlite3")
+    records = _records(now)
+    assert store.register_pair("auth-outbox-01", records, now=now)
+
+    checkpoint = store.commit_pair_audit_and_outbox(
+        "auth-outbox-01", records,
+        {"event_type": "dual_approval_verified", "authorization_id": "auth-outbox-01"},
+        now=now,
+    )
+    assert checkpoint is not None
+    assert checkpoint.authorization_id == "auth-outbox-01"
+    assert checkpoint.sequence == 1
+    assert store.anchor_outbox_status("auth-outbox-01") == "pending"
+    assert store.pending_anchor_checkpoints() == [checkpoint]
+    assert len(store.audit_events()) == 1
+    assert store.verify_audit_chain() is True
+
+
+def test_outbox_exact_retry_reuses_checkpoint_without_reconsuming_nonces(tmp_path):
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path, "outbox-retry.sqlite3")
+    records = _records(now)
+    assert store.register_pair("auth-outbox-02", records, now=now)
+    event = {"event_type": "approved", "authorization_id": "auth-outbox-02"}
+
+    first = store.commit_pair_audit_and_outbox("auth-outbox-02", records, event, now=now)
+    second = store.commit_pair_audit_and_outbox("auth-outbox-02", records, event, now=now)
+    assert first is not None
+    assert second == first
+    assert len(store.audit_events()) == 1
+    assert store.pending_anchor_checkpoints() == [first]
+
+    # Same authorization cannot be rebound to another event or nonce pair.
+    assert store.commit_pair_audit_and_outbox(
+        "auth-outbox-02", records, {"event_type": "different"}, now=now
+    ) is None
+    changed_records = (("c" * 48, records[0][1]), records[1])
+    assert store.commit_pair_audit_and_outbox(
+        "auth-outbox-02", changed_records, event, now=now
+    ) is None
+    assert len(store.audit_events()) == 1
+
+
+def test_outbox_insert_failure_rolls_back_nonces_and_audit(tmp_path):
+    now = datetime.now(timezone.utc)
+    path = tmp_path / "outbox-rollback.sqlite3"
+    store = SQLiteAtomicApprovalStore(path)
+    records = _records(now)
+    assert store.register_pair("auth-outbox-03", records, now=now)
+    with sqlite3.connect(path) as connection:
+        connection.execute("""
+            CREATE TRIGGER reject_outbox_insert
+            BEFORE INSERT ON dual_approval_anchor_outbox
+            BEGIN
+                SELECT RAISE(ABORT, 'injected outbox failure');
+            END
+        """)
+    assert store.commit_pair_audit_and_outbox(
+        "auth-outbox-03", records, {"event_type": "must_rollback"}, now=now
+    ) is None
+    assert store.audit_events() == []
+    assert store.pending_anchor_checkpoints() == []
+    with sqlite3.connect(path) as connection:
+        connection.execute("DROP TRIGGER reject_outbox_insert")
+    checkpoint = store.commit_pair_audit_and_outbox(
+        "auth-outbox-03", records, {"event_type": "retry_after_outbox_recovery"}, now=now
+    )
+    assert checkpoint is not None
+    assert len(store.audit_events()) == 1
+
+
+def test_outbox_receipt_transition_is_one_way_and_idempotent(tmp_path):
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path, "outbox-receipt.sqlite3")
+    records = _records(now)
+    assert store.register_pair("auth-outbox-04", records, now=now)
+    checkpoint = store.commit_pair_audit_and_outbox(
+        "auth-outbox-04", records, {"event_type": "approved"}, now=now
+    )
+    receipt = {"receipt_id": "external-123"}
+    assert checkpoint is not None
+    assert store.mark_checkpoint_anchored(
+        checkpoint.authorization_id, checkpoint.event_hash, receipt
+    ) is True
+    assert store.anchor_outbox_status("auth-outbox-04") == "anchored"
+    assert store.pending_anchor_checkpoints() == []
+    assert store.mark_checkpoint_anchored(
+        checkpoint.authorization_id, checkpoint.event_hash, receipt
+    ) is True
+    assert store.mark_checkpoint_anchored(
+        checkpoint.authorization_id, checkpoint.event_hash, {"receipt_id": "different"}
+    ) is False
