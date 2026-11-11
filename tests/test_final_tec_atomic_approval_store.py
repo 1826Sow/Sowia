@@ -20,6 +20,13 @@ def _store(tmp_path, name="atomic-approval.sqlite3"):
     return SQLiteAtomicApprovalStore(tmp_path / name, timeout_seconds=20)
 
 
+def test_boolean_sqlite_timeout_configuration_is_rejected(tmp_path):
+    from final_tec_atomic_approval_store import AtomicApprovalStoreError
+
+    with pytest.raises(AtomicApprovalStoreError):
+        SQLiteAtomicApprovalStore(tmp_path / "invalid-timeout.sqlite3", timeout_seconds=True)
+
+
 def test_pair_registration_and_atomic_commit_append_one_audit(tmp_path):
     now = datetime.now(timezone.utc)
     store = _store(tmp_path)
