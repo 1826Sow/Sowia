@@ -91,3 +91,20 @@ fournisseur et ne valide ni TLS, ni IAM, ni KMS/HSM, ni transaction distribuée.
 d'adaptateur absent/incomplet/non déclaré. Ils ne constituent pas des tests
 d'intégration fournisseur. L'adaptateur SQLite mono-hôte existant reste réservé
 au développement et aux tests et ne satisfait pas ce contrat de registre partagé.
+
+## 8. Banc de conformité des adaptateurs
+
+Le module `final_tec_adapter_conformance.py` fournit un exécuteur de sondes
+explicites. Chaque sonde doit vérifier un comportement de sécurité précis
+(exemples : issuer invalide refusé, clé révoquée refusée, nonce déjà consommé
+refusé, panne du registre traitée en échec fermé). Une sonde qui retourne autre
+chose que le booléen strict `True`, ou qui lève une exception, fait échouer
+l'ensemble de la suite. Les messages d'exception ne sont pas recopiés dans le
+rapport afin d'éviter la fuite de données sensibles.
+
+Les tests actuellement intégrés utilisent des sondes locales de démonstration.
+Ils vérifient le comportement du harnais, **pas** un fournisseur réel. Pour
+l'acceptation d'un adaptateur réel, les sondes devront être fournies et exécutées
+contre les environnements officiels de test du fournisseur, avec preuves
+expurgées, configuration contrôlée et revue indépendante. Une suite vide,
+ambiguë ou incomplète ne peut pas être déclarée conforme.
