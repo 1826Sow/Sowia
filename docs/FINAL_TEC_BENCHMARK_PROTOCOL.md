@@ -52,7 +52,7 @@ Si une dimension diffère ou manque, présenter les essais séparément et signa
 4. Un réviseur indépendant vérifie les journaux, la configuration, l'intégrité de l'artefact et la reproductibilité.
 5. Une validation serveur distincte pourra ensuite autoriser une publication explicite.
 
-Une saisie valide n'est pas une preuve vérifiée. Les tests unitaires du module ne prouvent pas que les mesures ont réellement été exécutées.
+Une saisie valide n'est pas une preuve vérifiée. Chaque relevé normalisé reçoit une empreinte de contenu SHA-256 déterministe, calculée sur les champs normalisés. Cette empreinte permet de détecter une modification du contenu si elle est recalculée et comparée ; elle ne constitue ni une signature numérique, ni une preuve d'identité de l'opérateur, ni une preuve d'exécution. Les tests unitaires du module ne prouvent pas que les mesures ont réellement été exécutées.
 
 ## Limites du prototype
 
