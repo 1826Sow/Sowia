@@ -415,3 +415,68 @@ def test_concurrent_outbox_commit_has_one_checkpoint_and_one_audit(tmp_path):
     assert store.pending_anchor_checkpoints() == [checkpoints[0]]
     assert store.verify_audit_chain() is True
     assert store.verify_anchor_outbox() is True
+
+
+def test_dual_approval_engine_can_use_only_verified_external_anchor_callback(tmp_path):
+    from final_tec_audit_anchor import ExternalAuditAnchorCoordinator
+
+    class TestAnchor:
+        def append_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc):
+            return {"receipt_id": f"checkpoint-{sequence}", "event_hash": event_hash}
+
+        def verify_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc, receipt):
+            return receipt == {
+                "receipt_id": f"checkpoint-{sequence}",
+                "event_hash": event_hash,
+            }
+
+    now = datetime.now(timezone.utc)
+    expiry = now + timedelta(minutes=10)
+    request = {
+        "authorization_id": "auth-engine-external-01",
+        "request_version": "v1",
+        "requester_id": "requester",
+        "operator_id": "operator",
+        "reviewer_id": "reviewer",
+        "policy_version": "policy-v1",
+        "expires_at": expiry.isoformat(),
+        "environment_digest": "a" * 64,
+        "constraints_digest": "b" * 64,
+        "action_digest": "c" * 64,
+    }
+    approvals = []
+    records = []
+    for index, subject in enumerate(("approver-a", "approver-b")):
+        nonce = (str(index + 3) * 48)
+        approval_expiry = now + timedelta(minutes=5)
+        approvals.append({
+            "subject_id": subject,
+            "role": "security-approver",
+            "key_id": f"external-key-{index}",
+            "algorithm": "Ed25519",
+            "approval_policy_id": "dual-v1",
+            "policy_version": "policy-v1",
+            "nonce": nonce,
+            "issued_at": (now - timedelta(seconds=1)).isoformat(),
+            "expires_at": approval_expiry.isoformat(),
+            "signature": "test-signature",
+        })
+        records.append((nonce, approval_expiry.isoformat()))
+
+    store = _store(tmp_path, "engine-external-anchor.sqlite3")
+    assert store.register_pair(request["authorization_id"], tuple(records), now=now)
+    coordinator = ExternalAuditAnchorCoordinator(store, TestAnchor())
+    result = validate_dual_approval(
+        request,
+        approvals,
+        signature_verifier=lambda envelope, approval: True,
+        identity_verifier=lambda subject, role, context: True,
+        atomic_pair_audit_commit=coordinator.callback(),
+        now=now,
+    )
+    assert result["nonce_pair_and_audit_committed_atomically"] is True
+    assert result["execution_authorized"] is False
+    assert store.anchor_outbox_status(request["authorization_id"]) == "anchored"
+    assert store.pending_anchor_checkpoints() == []
+    assert store.verify_audit_chain() is True
+    assert store.verify_anchor_outbox() is True
