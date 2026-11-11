@@ -48,7 +48,7 @@ drop policy if exists sowia_action_plan_insert on public.sowia_global_action_pla
 create policy sowia_action_plan_insert on public.sowia_global_action_plans
 for insert to authenticated with check (creator_id = auth.uid() and status = 'draft' and approver_id <> creator_id);
 create or replace function public.sowia_action_transition(p_plan_id uuid, p_next_status text, p_note text default '')
-returns void language plpgsql security definer set search_path = public, auth as $$
+returns void language plpgsql security definer set search_path = '' as $
 declare p public.sowia_global_action_plans%rowtype;
 declare actor uuid := auth.uid();
 begin
