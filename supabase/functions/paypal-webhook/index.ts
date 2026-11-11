@@ -144,6 +144,8 @@ Deno.serve(async (request: Request) => {
       "PAYMENT.SALE.COMPLETED",
       "PAYMENT.SALE.REFUNDED",
       "PAYMENT.SALE.REVERSED",
+      "PAYMENT.CAPTURE.REFUNDED",
+      "PAYMENT.CAPTURE.REVERSED",
     ]);
     if (!supportedEvents.has(eventType)) {
       return json({ received: true, ignored: true });
@@ -152,6 +154,85 @@ Deno.serve(async (request: Request) => {
     const resource = (event.resource && typeof event.resource === "object")
       ? event.resource as Record<string, unknown>
       : {};
+
+    // One-time Premium purchases use Orders API captures, not subscription
+    // sales. Reconcile capture refunds through the provider and the immutable
+    // capture-to-order ledger link before revoking the matching entitlement.
+    if (eventType === "PAYMENT.CAPTURE.REFUNDED" ||
+        eventType === "PAYMENT.CAPTURE.REVERSED") {
+      const captureId = String(resource.id || "").trim();
+      if (!/^[A-Z0-9]{8,64}$/i.test(captureId)) {
+        return json({ error: "Invalid PayPal capture identifier" }, 422);
+      }
+      const captureResponse = await fetch(
+        baseUrl + "/v2/payments/captures/" + encodeURIComponent(captureId),
+        { headers: { Authorization: "Bearer " + token, Accept: "application/json" } },
+      );
+      if (!captureResponse.ok) {
+        throw new Error("Unable to verify refunded PayPal capture");
+      }
+      const capture = await captureResponse.json();
+      const expectedCaptureStatus = eventType === "PAYMENT.CAPTURE.REFUNDED"
+        ? "REFUNDED"
+        : "REVERSED";
+      if (capture.id !== captureId ||
+          String(capture.status || "").toUpperCase() !== expectedCaptureStatus) {
+        return json({ error: "PayPal capture refund status validation failed" }, 403);
+      }
+      const captureAmount = capture.amount || {};
+      if (String(captureAmount.currency_code || "").toUpperCase() !== "EUR" ||
+          !Number.isFinite(Number(captureAmount.value)) ||
+          Number(captureAmount.value) <= 0) {
+        return json({ error: "PayPal capture amount validation failed" }, 422);
+      }
+      const ledgerResponse = await fetch(
+        supabaseUrl + "/rest/v1/sowia_financial_transactions" +
+          "?provider=eq.paypal&transaction_type=eq.payment&provider_payment_id=eq." +
+          encodeURIComponent(captureId) +
+          "&select=user_id,paypal_order_id,gross_amount,gross_currency&limit=1",
+        { headers: {
+          apikey: serviceRoleKey,
+          Authorization: "Bearer " + serviceRoleKey,
+          Accept: "application/json",
+        } },
+      );
+      if (!ledgerResponse.ok) {
+        throw new Error("Unable to locate PayPal capture ownership");
+      }
+      const ledgerRows = await ledgerResponse.json();
+      const ledger = Array.isArray(ledgerRows) && ledgerRows.length === 1
+        ? ledgerRows[0]
+        : null;
+      const uuidPattern =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const orderId = String(capture.supplementary_data?.related_ids?.order_id || "").trim();
+      if (!ledger || !uuidPattern.test(String(ledger.user_id || "")) ||
+          !ledger.paypal_order_id || ledger.paypal_order_id !== orderId ||
+          Number(ledger.gross_amount) !== Number(captureAmount.value) ||
+          String(ledger.gross_currency || "").toUpperCase() !== "EUR") {
+        return json({ error: "PayPal capture ownership or order validation failed" }, 403);
+      }
+      const revokeResponse = await fetch(
+        supabaseUrl + "/rest/v1/sowia_entitlements?user_id=eq." +
+          encodeURIComponent(String(ledger.user_id)) + "&paypal_order_id=eq." +
+          encodeURIComponent(orderId) + "&status=eq.active",
+        { method: "PATCH", headers: {
+          apikey: serviceRoleKey,
+          Authorization: "Bearer " + serviceRoleKey,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        }, body: JSON.stringify({ status: "inactive" }) },
+      );
+      if (!revokeResponse.ok) {
+        throw new Error("Unable to revoke refunded Premium entitlement");
+      }
+      const revokedRows = await revokeResponse.json();
+      return json({
+        received: true,
+        reconciled: true,
+        entitlement_revoked: Array.isArray(revokedRows) && revokedRows.length > 0,
+      });
+    }
     const related = (resource.supplementary_data &&
         typeof resource.supplementary_data === "object")
       ? resource.supplementary_data as Record<string, unknown>
