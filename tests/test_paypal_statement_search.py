@@ -69,6 +69,7 @@ def test_fetch_window_paginates_and_keeps_only_transaction_info(monkeypatch):
 
     assert len(events) == 2
     assert all(set(item) == {"transaction_info"} for item in events)
+    assert all("transaction_subject" not in item["transaction_info"] for item in events)
     assert [call["page"] for call in calls] == [1, 2]
     assert all(call["fields"] == "transaction_info" for call in calls)
     assert all(call["balance_affecting_records_only"] == "Y" for call in calls)
