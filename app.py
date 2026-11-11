@@ -6418,6 +6418,130 @@ elif page == "Revenus & paiements":
                             "Aucun remboursement non vérifié n'a été comptabilisé. "
                             f"Détail technique : {type(exc).__name__}."
                         )
+            # PayPal Sandbox statement preview: admin-only, explicit user action,
+            # session-only display. Imported events are never written to the ledger.
+            st.divider()
+            st.markdown("#### 🧪 Relevé PayPal Sandbox — aperçu en lecture seule")
+            st.caption(
+                "Cette recherche interroge uniquement l'environnement Sandbox. "
+                "Les événements restent séparés du registre comptable : aucun paiement, "
+                "remboursement ou revenu n'est créé ou confirmé."
+            )
+            admin_metadata = getattr(current_user, "app_metadata", None) or {}
+            is_sowia_admin = isinstance(admin_metadata, dict) and (
+                admin_metadata.get("sowia_admin") is True
+                or admin_metadata.get("role") == "admin"
+            )
+            if not is_sowia_admin:
+                st.info("L'import de relevé Sandbox est réservé aux administrateurs SOWIA.")
+            else:
+                if st.button(
+                    "Charger le relevé Sandbox des 90 derniers jours",
+                    key="load_paypal_sandbox_statement_preview",
+                ):
+                    try:
+                        import paypal_statement_search
+                        with st.spinner("Lecture du relevé PayPal Sandbox…"):
+                            st.session_state["paypal_sandbox_statement_preview"] = (
+                                paypal_statement_search.fetch_paypal_sandbox_statement(
+                                    days=90, limit=2000
+                                )
+                            )
+                        st.session_state.pop("paypal_sandbox_statement_error", None)
+                    except Exception as statement_error:
+                        st.session_state.pop("paypal_sandbox_statement_preview", None)
+                        st.session_state["paypal_sandbox_statement_error"] = type(statement_error).__name__
+                statement_error_name = st.session_state.get("paypal_sandbox_statement_error")
+                if statement_error_name:
+                    st.error(
+                        "Le relevé Sandbox n'a pas pu être chargé. "
+                        "Vérifiez les identifiants Sandbox et l'autorisation Transaction Search. "
+                        f"Diagnostic : {statement_error_name}."
+                    )
+                statement_preview = st.session_state.get("paypal_sandbox_statement_preview")
+                if statement_preview:
+                    preview_cols = st.columns(3)
+                    preview_cols[0].metric("Événements reçus", statement_preview["event_count"])
+                    preview_cols[1].metric("Fenêtres interrogées", statement_preview["windows_checked"])
+                    preview_cols[2].metric(
+                        "Relevé complet",
+                        "Oui" if statement_preview["complete"] else "Non",
+                    )
+                    st.caption(
+                        f"Période UTC : {statement_preview['period_start']} → "
+                        f"{statement_preview['period_end']} · Environnement : Sandbox"
+                    )
+                    if not statement_preview["complete"]:
+                        st.warning(
+                            "La limite d'affichage est atteinte : ce relevé est incomplet. "
+                            "Ne l'utilisez pas pour conclure un rapprochement."
+                        )
+                    preview_rows = []
+                    for event in statement_preview["events"]:
+                        info = event.get("transaction_info") or {}
+                        amount = info.get("transaction_amount") or {}
+                        fee = info.get("fee_amount") or {}
+                        preview_rows.append({
+                            "Date": info.get("transaction_initiation_date") or "—",
+                            "ID PayPal": info.get("transaction_id") or "—",
+                            "Code événement": info.get("transaction_event_code") or "—",
+                            "Statut PayPal": info.get("transaction_status") or "—",
+                            "Montant": (
+                                str(amount.get("value")) + " " + str(amount.get("currency_code"))
+                                if amount.get("value") is not None else "—"
+                            ),
+                            "Frais déclarés": (
+                                str(fee.get("value")) + " " + str(fee.get("currency_code"))
+                                if fee.get("value") is not None else "—"
+                            ),
+                        })
+                    if preview_rows:
+                        st.dataframe(preview_rows, use_container_width=True, hide_index=True)
+                    else:
+                        st.info("Aucun événement Sandbox retourné pour cette période.")
+                    import paypal_statement_analysis
+                    statement_analysis = paypal_statement_analysis.summarize_paypal_statement_events(
+                        statement_preview["events"]
+                    )
+                    st.markdown("##### Synthèse brute par code PayPal et devise")
+                    st.caption(
+                        "Les codes d'événement ne sont pas traduits en ventes ou remboursements. "
+                        "Les montants signés sont reproduits par devise, sans conversion ni estimation."
+                    )
+                    if statement_analysis["amounts_by_event_code_currency"]:
+                        st.dataframe(
+                            [{
+                                "Code PayPal": row["event_code"],
+                                "Devise": row["currency"],
+                                "Nombre d'événements": row["event_count"],
+                                "Somme signée déclarée": row["signed_amount_total"],
+                            } for row in statement_analysis["amounts_by_event_code_currency"]],
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    if statement_analysis["fees_by_event_code_currency"]:
+                        st.markdown("**Frais déclarés séparément**")
+                        st.dataframe(
+                            [{
+                                "Code PayPal": row["event_code"],
+                                "Devise des frais": row["currency"],
+                                "Événements avec frais": row["fee_count"],
+                                "Somme signée des frais": row["signed_fee_total"],
+                            } for row in statement_analysis["fees_by_event_code_currency"]],
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    analysis_cols = st.columns(3)
+                    analysis_cols[0].metric("Montants absents/invalides", statement_analysis["missing_amounts"])
+                    analysis_cols[1].metric("Frais absents/invalides", statement_analysis["missing_fees"])
+                    analysis_cols[2].metric("Événements invalides", statement_analysis["invalid_events"])
+
+                    st.info(
+                        "Aperçu temporaire en session uniquement · "
+                        f"Écritures en base : {statement_preview['database_writes']} · "
+                        "Aucun événement n'est ajouté aux paiements confirmés."
+                    )
+
             summaries = financial_reporting.summarize_financial_transactions(rows)
             # Read-only operational indicators: manual-review rows are never
             # included in recognized payment/refund totals.
