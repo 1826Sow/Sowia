@@ -508,6 +508,98 @@ class SQLiteAtomicApprovalStore:
             connection.close()
         return row[0] if row else None
 
+    def verify_anchor_outbox(self) -> bool:
+        """Verify every outbox row against its audit row and stored receipt shape.
+
+        This detects accidental or direct database inconsistencies; it is not
+        a defense against a privileged actor able to rewrite the whole DB.
+        """
+        connection = self._connect()
+        try:
+            rows = connection.execute(
+                """SELECT o.authorization_id, o.sequence, o.previous_hash,
+                          o.event_hash, o.created_at, o.event_json,
+                          o.nonce_digests_json, o.status, o.receipt_json,
+                          a.previous_hash, a.event_hash, a.created_at, a.event_json
+                   FROM dual_approval_anchor_outbox AS o
+                   LEFT JOIN dual_approval_audit AS a ON a.sequence = o.sequence
+                   ORDER BY o.sequence"""
+            ).fetchall()
+        except sqlite3.Error:
+            return False
+        finally:
+            connection.close()
+
+        for (
+            authorization_id, sequence, previous_hash, event_hash, created_at,
+            event_json, nonce_json, status, receipt_json,
+            audit_previous, audit_hash, audit_created, audit_event,
+        ) in rows:
+            if (
+                not isinstance(authorization_id, str) or not authorization_id.strip()
+                or not isinstance(sequence, int) or sequence < 1
+                or previous_hash != audit_previous
+                or event_hash != audit_hash
+                or created_at != audit_created
+                or event_json != audit_event
+                or not isinstance(event_json, str)
+                or not isinstance(event_hash, str) or len(event_hash) != 64
+            ):
+                return False
+            try:
+                int(event_hash, 16)
+                event_value = json.loads(event_json)
+                if _canonical_json(event_value).decode("utf-8") != event_json:
+                    return False
+                nonce_records = json.loads(nonce_json)
+            except (ValueError, TypeError, AtomicApprovalStoreError, UnicodeDecodeError):
+                return False
+            if (
+                not isinstance(event_value, dict)
+                or not isinstance(nonce_records, list)
+                or len(nonce_records) != 2
+            ):
+                return False
+            seen = set()
+            for item in nonce_records:
+                if (
+                    not isinstance(item, list) or len(item) != 2
+                    or not isinstance(item[0], str) or len(item[0]) != 64
+                    or isinstance(item[1], bool)
+                    or not isinstance(item[1], (int, float))
+                    or not math.isfinite(item[1])
+                ):
+                    return False
+                try:
+                    int(item[0], 16)
+                except ValueError:
+                    return False
+                if item[0] in seen:
+                    return False
+                seen.add(item[0])
+            if status == "pending":
+                if receipt_json is not None:
+                    return False
+            elif status == "anchored":
+                try:
+                    receipt = json.loads(receipt_json)
+                    if (
+                        not isinstance(receipt, dict)
+                        or not receipt
+                        or _canonical_json(receipt).decode("utf-8") != receipt_json
+                        or any(
+                            not isinstance(key, str) or not key.strip()
+                            or not isinstance(value, str) or not value.strip()
+                            for key, value in receipt.items()
+                        )
+                    ):
+                        return False
+                except (ValueError, TypeError, AtomicApprovalStoreError, UnicodeDecodeError):
+                    return False
+            else:
+                return False
+        return True
+
     def atomic_commit_callback(self, authorization_id: str, records: Sequence[tuple[str, str]],
                                audit_event: Mapping[str, Any]) -> bool:
         """Callback adapter for validate_dual_approval."""
