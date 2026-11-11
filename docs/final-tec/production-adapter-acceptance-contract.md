@@ -195,3 +195,18 @@ exacte, les réutilisations conflictuelles, la transition du reçu, et la
 récupération après redémarrage avec le registre SQLite réel. Ils ne remplacent
 pas les tests d'intégration du fournisseur externe, ni une revue de la
 résistance aux administrateurs privilégiés.
+
+
+## 13. Vérification indépendante de l'outbox
+
+`SQLiteAtomicApprovalStore.verify_anchor_outbox()` relie chaque ligne outbox
+à sa ligne d'audit par séquence et contrôle l'égalité des champs
+`previous_hash`, `event_hash`, `created_at` et `event_json`. Il vérifie
+également la canonicalisation RFC 8785 de l'événement et du reçu, la forme des
+deux empreintes de nonce et la cohérence entre statut et reçu.
+
+Les tests couvrent l'état pending, l'état anchored, la détection d'une
+altération directe de la base et douze tentatives concurrentes idempotentes
+pour une même autorisation. Ces contrôles détectent des incohérences ; ils ne
+constituent pas une preuve cryptographique externe ni une défense contre un
+administrateur privilégié réécrivant l'ensemble de la base.
