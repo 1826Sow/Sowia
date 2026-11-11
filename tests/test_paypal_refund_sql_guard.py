@@ -43,3 +43,16 @@ def test_refund_guard_keeps_cumulative_refund_limit():
     sql = MIGRATION.read_text(encoding="utf-8").lower()
     assert "v_prior_refunds + new.gross_amount > v_capture_gross" in sql
     assert "cumulative paypal refunds exceed the parent capture amount" in sql
+
+
+def test_capture_update_cannot_reduce_amount_below_existing_refunds():
+    sql = MIGRATION.read_text(encoding="utf-8").lower()
+    assert "updated paypal capture amount is below refunds already recorded" in sql
+    assert "v_prior_refunds > new.gross_amount" in sql
+
+
+def test_capture_update_cannot_change_currency_or_identity_with_refunds():
+    sql = MIGRATION.read_text(encoding="utf-8").lower()
+    assert "updated paypal capture currency conflicts with refunds already recorded" in sql
+    assert "paypal capture identity cannot change while refunds reference it" in sql
+    assert "new.provider_payment_id is distinct from old.provider_payment_id" in sql
