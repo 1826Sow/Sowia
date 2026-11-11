@@ -9,6 +9,19 @@ MIGRATION = (
 ).read_text(encoding="utf-8").lower()
 
 
+def test_migration_adds_workspace_columns_and_constraints_without_data_loss():
+    normalized = " ".join(MIGRATION.split())
+    for table in ("sowia_memory_items", "sowia_messages"):
+        assert (
+            f"alter table public.{table} add column if not exists "
+            "workspace_id text not null default 'personal'"
+        ) in normalized
+        assert f"add constraint {table}_workspace_id_check" in normalized
+    assert "drop table" not in MIGRATION
+    assert "delete from public.sowia_memory_items" not in MIGRATION
+    assert "delete from public.sowia_messages" not in MIGRATION
+
+
 def test_professional_access_function_is_fail_closed_and_search_path_is_empty():
     normalized = " ".join(MIGRATION.split())
     assert "security definer" in normalized
