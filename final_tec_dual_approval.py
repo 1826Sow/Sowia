@@ -178,22 +178,16 @@ def validate_dual_approval(
         "execution_authorized": False,
     }
 
-    atomic_commit_used = atomic_pair_audit_commit is not None
-    if atomic_commit_used:
-        if atomic_pair_audit_commit(
-            request["authorization_id"], tuple(nonce_records), audit_event
-        ) is not True:
-            raise DualApprovalError("Atomic nonce-pair and audit commit unavailable")
-    else:
-        # Compatibility path for earlier tests and adapters. It is NOT atomic
-        # across nonce consumption and audit append; production callers should
-        # use atomic_pair_audit_commit backed by one transactional store.
-        if nonce_pair_consumer is None or audit_append is None:
-            raise DualApprovalError("Atomic pair/audit commit callback is required")
-        if nonce_pair_consumer(request["authorization_id"], tuple(nonce_records)) is not True:
-            raise DualApprovalError("Nonce pair unknown, expired, revoked, or already consumed")
-        if audit_append(audit_event) is not True:
-            raise DualApprovalError("Append-only audit confirmation unavailable")
+    # Never accept the historical split callbacks: consuming nonces and
+    # appending the audit separately can leave a partial, unrecoverable state.
+    # Production and test callers must supply one transactional callback.
+    if atomic_pair_audit_commit is None:
+        raise DualApprovalError("Atomic pair/audit commit callback is required")
+    if atomic_pair_audit_commit(
+        request["authorization_id"], tuple(nonce_records), audit_event
+    ) is not True:
+        raise DualApprovalError("Atomic nonce-pair and audit commit unavailable")
+    atomic_commit_used = True
 
     return {
         "authorization_id": request["authorization_id"],
