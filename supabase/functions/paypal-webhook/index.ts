@@ -145,7 +145,6 @@ Deno.serve(async (request: Request) => {
       "PAYMENT.SALE.REFUNDED",
       "PAYMENT.SALE.REVERSED",
       "PAYMENT.CAPTURE.REFUNDED",
-      "PAYMENT.CAPTURE.REVERSED",
     ]);
     if (!supportedEvents.has(eventType)) {
       return json({ received: true, ignored: true });
@@ -156,13 +155,45 @@ Deno.serve(async (request: Request) => {
       : {};
 
     // One-time Premium purchases use Orders API captures, not subscription
-    // sales. Reconcile capture refunds through the provider and the immutable
-    // capture-to-order ledger link before revoking the matching entitlement.
-    if (eventType === "PAYMENT.CAPTURE.REFUNDED" ||
-        eventType === "PAYMENT.CAPTURE.REVERSED") {
-      const captureId = String(resource.id || "").trim();
-      if (!/^[A-Z0-9]{8,64}$/i.test(captureId)) {
-        return json({ error: "Invalid PayPal capture identifier" }, 422);
+    // sales. PAYMENT.CAPTURE.REFUNDED identifies the refund resource; resolve
+    // its parent capture through PayPal's verified refund record before lookup.
+    if (eventType === "PAYMENT.CAPTURE.REFUNDED") {
+      const refundId = String(resource.id || "").trim();
+      if (!/^[A-Z0-9]{8,64}$/i.test(refundId)) {
+        return json({ error: "Invalid PayPal refund identifier" }, 422);
+      }
+      const refundResponse = await fetch(
+        baseUrl + "/v2/payments/refunds/" + encodeURIComponent(refundId),
+        { headers: { Authorization: "Bearer " + token, Accept: "application/json" } },
+      );
+      if (!refundResponse.ok) {
+        throw new Error("Unable to verify PayPal refund");
+      }
+      const refund = await refundResponse.json();
+      const refundAmount = refund.amount || {};
+      if (refund.id !== refundId ||
+          String(refund.status || "").toUpperCase() !== "COMPLETED" ||
+          String(refundAmount.currency_code || "").toUpperCase() !== "EUR" ||
+          !Number.isFinite(Number(refundAmount.value)) ||
+          Number(refundAmount.value) <= 0) {
+        return json({ error: "PayPal refund validation failed" }, 403);
+      }
+      const refundLinks = Array.isArray(refund.links) ? refund.links : [];
+      const parentLink = refundLinks.find((link: Record<string, unknown>) =>
+        String(link.rel || "").toLowerCase() === "up"
+      );
+      let captureId = "";
+      try {
+        const parentUrl = new URL(String(parentLink?.href || ""));
+        const captureMatch = parentUrl.pathname.match(/^\/v2\/payments\/captures\/([A-Z0-9]{8,64})$/i);
+        if (parentUrl.origin === new URL(baseUrl).origin && captureMatch) {
+          captureId = captureMatch[1];
+        }
+      } catch (_error) {
+        captureId = "";
+      }
+      if (!captureId) {
+        return json({ error: "PayPal refund parent capture is invalid" }, 422);
       }
       const captureResponse = await fetch(
         baseUrl + "/v2/payments/captures/" + encodeURIComponent(captureId),
@@ -172,11 +203,9 @@ Deno.serve(async (request: Request) => {
         throw new Error("Unable to verify refunded PayPal capture");
       }
       const capture = await captureResponse.json();
-      const expectedCaptureStatus = eventType === "PAYMENT.CAPTURE.REFUNDED"
-        ? "REFUNDED"
-        : "REVERSED";
+      const captureStatus = String(capture.status || "").toUpperCase();
       if (capture.id !== captureId ||
-          String(capture.status || "").toUpperCase() !== expectedCaptureStatus) {
+          !new Set(["PARTIALLY_REFUNDED", "REFUNDED"]).has(captureStatus)) {
         return json({ error: "PayPal capture refund status validation failed" }, 403);
       }
       const captureAmount = capture.amount || {};
