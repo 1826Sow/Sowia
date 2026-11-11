@@ -64,3 +64,20 @@ def test_subscription_refund_or_reversal_blocks_premium_until_verified_successfu
     assert 'eventType === "BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED"' in source
     assert "paymentReviewAlreadyActive && !verifiedPaymentRecovery" in source
     assert 'effectiveStatus = "payment_review"' in source
+
+
+def test_one_time_capture_refund_is_verified_and_revokes_only_linked_entitlement():
+    source = WEBHOOK
+    capture_events = source.index('"PAYMENT.CAPTURE.REFUNDED"')
+    handler = source.index("if (eventType === \"PAYMENT.CAPTURE.REFUNDED\"")
+    capture_fetch = source.index("/v2/payments/captures/", handler)
+    capture_status = source.index("expectedCaptureStatus", capture_fetch)
+    ledger_lookup = source.index("/rest/v1/sowia_financial_transactions", capture_status)
+    order_check = source.index("ledger.paypal_order_id !== orderId", ledger_lookup)
+    revoke = source.index("/rest/v1/sowia_entitlements?user_id=eq.", order_check)
+    write = source.index("method: \"PATCH\"", revoke)
+    assert capture_events < handler < capture_fetch < capture_status < ledger_lookup < order_check < revoke < write
+    assert '"PAYMENT.CAPTURE.REVERSED"' in source
+    assert '"REFUNDED"' in source and '"REVERSED"' in source
+    assert '"status": "inactive"' in source
+    assert '"return=representation"' in source
