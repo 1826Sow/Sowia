@@ -483,6 +483,17 @@ Deno.serve(async (request: Request) => {
          String(paymentAmount.currency_code || "").toUpperCase() !== "EUR")) {
       return json({ error: "PayPal last payment amount mismatch" }, 403);
     }
+    // A successful retry must carry an independently verifiable latest
+    // payment amount, currency and timestamp. An ACTIVE subscription and a
+    // zero failure counter alone are not sufficient to release a refund hold.
+    if (verifiedPaymentRecovery) {
+      const lastPaymentTime = String(lastPayment.time || "").trim();
+      if (Number(paymentAmount.value) !== 9.90 ||
+          String(paymentAmount.currency_code || "").toUpperCase() !== "EUR" ||
+          !lastPaymentTime || !Number.isFinite(Date.parse(lastPaymentTime))) {
+        return json({ error: "PayPal recovery payment proof is incomplete" }, 403);
+      }
+    }
 
     const eventTime = String(event.create_time || "").trim();
     if (!eventTime || !Number.isFinite(Date.parse(eventTime))) {
