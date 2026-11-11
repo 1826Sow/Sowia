@@ -261,9 +261,38 @@ Deno.serve(async (request: Request) => {
     // PayPal keeps a subscription ACTIVE while retrying failed charges.
     // Do not grant Premium during that retry window; PayPal resets this
     // consecutive-failure counter to zero after a successful payment.
-    const effectiveStatus = normalizedStatus === "ACTIVE" && failedPaymentsCount > 0
+    let effectiveStatus = normalizedStatus === "ACTIVE" && failedPaymentsCount > 0
       ? "past_due"
       : normalizedStatus.toLowerCase();
+
+    // A refund or reversal of a subscription sale must suspend Premium even
+    // when PayPal still reports the subscription itself as ACTIVE. Keep that
+    // hold through ordinary UPDATED/ACTIVATED notifications; only a verified
+    // successful subscription payment with a zero failure counter clears it.
+    const isRefundOrReversal = eventType === "PAYMENT.SALE.REFUNDED" ||
+      eventType === "PAYMENT.SALE.REVERSED";
+    const existingResponse = await fetch(
+      supabaseUrl + "/rest/v1/sowia_subscriptions?paypal_subscription_id=eq." +
+        encodeURIComponent(subscriptionId) + "&select=status&limit=1",
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: "Bearer " + serviceRoleKey,
+          Accept: "application/json",
+        },
+      },
+    );
+    if (!existingResponse.ok) {
+      throw new Error("Unable to read existing subscription state");
+    }
+    const existingRows = await existingResponse.json();
+    const paymentReviewAlreadyActive = Array.isArray(existingRows) &&
+      existingRows.some((row: Record<string, unknown>) => row.status === "payment_review");
+    const verifiedPaymentRecovery = eventType === "BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED" &&
+      normalizedStatus === "ACTIVE" && failedPaymentsCount === 0;
+    if (isRefundOrReversal || (paymentReviewAlreadyActive && !verifiedPaymentRecovery)) {
+      effectiveStatus = "payment_review";
+    }
     const lastPayment = billing.last_payment || {};
     const paymentAmount = lastPayment.amount || {};
     if (paymentAmount.value !== undefined &&
