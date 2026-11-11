@@ -165,9 +165,15 @@ La reprise après panne doit être idempotente : pour un même identifiant
 d'autorisation et un même événement, le registre retourne le checkpoint
 d'outbox déjà créé, sans reconsommer les nonces. L'ancre externe doit accepter
 une répétition strictement identique comme la même opération et refuser toute
-réutilisation conflictuelle de la séquence. Une panne après écriture externe
-mais avant le marquage local est récupérée par append idempotent, vérification
-du reçu, puis marquage local.
+réutilisation conflictuelle de la séquence. Les checkpoints doivent être ancrés
+strictement dans l'ordre croissant : un checkpoint de séquence N ne peut être
+accepté tant qu'un checkpoint antérieur reste pending. Le coordinateur local
+bloque les tentatives hors ordre ; le fournisseur réel doit en plus appliquer
+atomiquement une règle de séquence/previous_hash (compare-and-append) afin de
+résister aux appels concurrents provenant de plusieurs hôtes. Un simple contrôle
+local de l'outbox ne remplace pas cette garantie côté fournisseur. Une panne
+après écriture externe mais avant le marquage local est récupérée par append
+idempotent, vérification du reçu, puis marquage local.
 
 **Important :** il ne s'agit pas d'une transaction distribuée atomique entre
 SQLite et le fournisseur. Le statut d'approbation reste en attente/échec fermé
