@@ -94,9 +94,22 @@ def record_paypal_billing_transaction(
             raise ValueError("Devise du net PayPal incohérente.")
         net_value = _validated_optional_amount(net_obj.get("value"), "Net")
 
+    # Reject internally inconsistent breakdowns before they enter accounting.
+    if fee_value is not None and fee_value > gross_value:
+        raise ValueError("Les frais PayPal dépassent le montant brut.")
+    if net_value is not None and net_value > gross_value:
+        raise ValueError("Le montant net PayPal dépasse le montant brut.")
+    if fee_value is not None and net_value is not None:
+        if abs((fee_value + net_value) - gross_value) > Decimal("0.01"):
+            raise ValueError("La ventilation brut/frais/net PayPal est incohérente.")
+
     occurred_at = str(transaction.get("time") or "").strip()
-    if not occurred_at:
-        raise ValueError("Date de transaction PayPal manquante.")
+    try:
+        parsed_time = datetime.fromisoformat(occurred_at.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        raise ValueError("Date de transaction PayPal invalide.") from None
+    if parsed_time.tzinfo is None or parsed_time.utcoffset() is None:
+        raise ValueError("La date de transaction PayPal doit inclure un fuseau horaire.")
 
     payload = {
         "user_id": user_id,
