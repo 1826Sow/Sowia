@@ -158,3 +158,21 @@ def test_one_time_refund_is_recorded_once_in_financial_ledger_before_entitlement
     assert 'provider_payment_id: refundId' in source
     assert 'Number(row.gross_amount) === Number(refundAmount.value)' in source
     assert 'String(row.parent_capture_id || "") === captureId' in source
+
+
+def test_subscription_webhook_deduplicates_exact_paypal_event_ids():
+    source = WEBHOOK
+    event_time = source.index('const eventTime = String(event.create_time || "").trim();')
+    event_id = source.index('const eventId = String(event.id || "").trim();', event_time)
+    rpc = source.index('"p_event_id: eventId', event_id)
+    assert event_time < event_id < rpc
+    assert 'eventId.length > 128' in source
+
+    migration = (ROOT / "supabase/migrations/20261111000600_paypal_webhook_event_deduplication.sql").read_text(encoding="utf-8")
+    assert "add column if not exists last_webhook_event_id text" in migration
+    assert "v_existing_event_id = p_event_id" in migration
+    assert "return v_existing_status;" in migration
+    assert "last_webhook_event_id = excluded.last_webhook_event_id" in migration
+    assert "drop function if exists public.sowia_reconcile_paypal_subscription(" in migration
+    assert "p_event_id text" in migration
+    assert "to service_role" in migration
