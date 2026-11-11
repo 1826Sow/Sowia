@@ -68,7 +68,10 @@ class DualApprovalEd25519Verifier:
                 return False
             if record.revoked_at is not None and now >= record.revoked_at.astimezone(timezone.utc):
                 return False
-            if record.signing_disabled_at is not None and issued_at >= record.signing_disabled_at.astimezone(timezone.utc):
+            # A caller-supplied signed timestamp is not an independent
+            # trusted timestamp. Once signing is disabled, fail closed for
+            # every verification; do not accept backdated signatures.
+            if record.signing_disabled_at is not None and now >= record.signing_disabled_at.astimezone(timezone.utc):
                 return False
 
             encoded = approval.get("signature")
