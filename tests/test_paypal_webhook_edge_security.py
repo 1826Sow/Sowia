@@ -38,3 +38,14 @@ def test_paypal_webhook_rejects_unknown_subscription_status_before_persistence()
     for status in ("APPROVAL_PENDING", "APPROVED", "ACTIVE", "SUSPENDED", "CANCELLED", "EXPIRED"):
         assert f'"{status}"' in WEBHOOK
     assert 'status: normalizedStatus.toLowerCase()' in WEBHOOK
+
+def test_paypal_payment_failure_blocks_premium_until_paypal_counter_resets():
+    assert '"BILLING.SUBSCRIPTION.PAYMENT.FAILED"' in WEBHOOK
+    assert '"BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED"' in WEBHOOK
+    counter = WEBHOOK.index("const failedPaymentsCount = Number(billing.failed_payments_count);")
+    validation = WEBHOOK.index("if (!Number.isInteger(failedPaymentsCount)", counter)
+    gate = WEBHOOK.index('const effectiveStatus = normalizedStatus === "ACTIVE" && failedPaymentsCount > 0', validation)
+    write = WEBHOOK.index('"/rest/v1/sowia_subscriptions?on_conflict=paypal_subscription_id"', gate)
+    assert counter < validation < gate < write
+    assert '? "past_due"' in WEBHOOK
+    assert "failedPaymentsCount > 0" in WEBHOOK
