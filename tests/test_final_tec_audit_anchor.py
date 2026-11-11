@@ -261,3 +261,57 @@ def test_sqlite_outbox_rejects_audit_event_for_another_authorization(tmp_path):
     assert ledger.audit_events() == []
     assert ledger.pending_anchor_checkpoints() == []
     assert ledger.verify_anchor_outbox() is True
+
+def test_combined_integrity_check_accepts_valid_audit_and_outbox(tmp_path):
+    from datetime import timedelta
+    from final_tec_atomic_approval_store import SQLiteAtomicApprovalStore
+
+    now = datetime.now(timezone.utc)
+    expiry = (now + timedelta(minutes=10)).isoformat()
+    records = (("u" * 48, expiry), ("v" * 48, expiry))
+    ledger = SQLiteAtomicApprovalStore(tmp_path / "integrity-valid.sqlite3")
+    assert ledger.register_pair("auth-integrity-valid", records, now=now)
+    event = {
+        "event_type": "dual_approval_verified",
+        "authorization_id": "auth-integrity-valid",
+    }
+    checkpoint = ledger.commit_pair_audit_and_outbox(
+        "auth-integrity-valid", records, event, now=now
+    )
+    assert checkpoint is not None
+    assert ledger.verify_integrity() is True
+
+
+def test_combined_integrity_check_detects_audit_row_tampering(tmp_path):
+    import sqlite3
+    from datetime import timedelta
+    from final_tec_atomic_approval_store import SQLiteAtomicApprovalStore
+
+    now = datetime.now(timezone.utc)
+    expiry = (now + timedelta(minutes=10)).isoformat()
+    records = (("w" * 48, expiry), ("z" * 48, expiry))
+    path = tmp_path / "integrity-tampered.sqlite3"
+    ledger = SQLiteAtomicApprovalStore(path)
+    assert ledger.register_pair("auth-integrity-tampered", records, now=now)
+    event = {
+        "event_type": "dual_approval_verified",
+        "authorization_id": "auth-integrity-tampered",
+    }
+    assert ledger.commit_pair_audit_and_outbox(
+        "auth-integrity-tampered", records, event, now=now
+    ) is not None
+    assert ledger.verify_integrity() is True
+
+    # Simulate direct file-level tampering by removing the application guard.
+    connection = sqlite3.connect(path)
+    try:
+        connection.execute("DROP TRIGGER dual_approval_audit_no_update")
+        connection.execute(
+            "UPDATE dual_approval_audit SET event_json = ? WHERE sequence = 1",
+            ('{"authorization_id":"forged","event_type":"tampered"}',),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    assert ledger.verify_integrity() is False
