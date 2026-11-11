@@ -210,3 +210,23 @@ altération directe de la base et douze tentatives concurrentes idempotentes
 pour une même autorisation. Ces contrôles détectent des incohérences ; ils ne
 constituent pas une preuve cryptographique externe ni une défense contre un
 administrateur privilégié réécrivant l'ensemble de la base.
+
+
+## 14. Raccordement obligatoire du moteur d'approbation
+
+Le moteur `validate_dual_approval` accepte un callback atomique injecté.
+Pour le parcours avec ancrage externe, le callback à injecter est
+`ExternalAuditAnchorCoordinator(ledger, anchor).callback()`. Il ne retourne
+`True` qu'après l'écriture transactionnelle du checkpoint, l'append externe,
+la vérification du reçu et le marquage durable `anchored`.
+
+La méthode historique `SQLiteAtomicApprovalStore.atomic_commit_callback`
+reste disponible uniquement pour les scénarios offline/local : elle réalise
+l'audit SQLite, mais **ne garantit pas l'ancrage externe**. Son docstring
+l'indique explicitement. Elle ne doit pas être utilisée pour déclarer une
+approbation G2-B de production.
+
+Un test d'intégration relie maintenant le moteur réel de double approbation,
+le registre SQLite, le coordinateur et une ancre de test. Il vérifie que le
+moteur n'accepte le callback qu'après ancrage confirmé. Le fournisseur de test
+ne constitue pas une preuve d'intégration à un service externe réel.
