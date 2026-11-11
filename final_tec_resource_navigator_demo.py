@@ -128,10 +128,22 @@ if st.button("Lancer la simulation locale", type="primary", use_container_width=
             profile, DEMO_CANDIDATES, now=DEMO_NOW, max_age_seconds=86400, weights=weights
         )
         st.session_state["final_tec_demo_result"] = result
+        st.session_state["final_tec_demo_profile_signature"] = json.dumps(
+            {"profile": profile, "weights": weights}, sort_keys=True
+        )
     except Exception as exc:
         st.error(f"Simulation impossible : {exc}")
 
-result = st.session_state.get("final_tec_demo_result")
+current_signature = json.dumps({"profile": profile, "weights": weights}, sort_keys=True)
+saved_signature = st.session_state.get("final_tec_demo_profile_signature")
+result = (
+    st.session_state.get("final_tec_demo_result")
+    if saved_signature == current_signature
+    else None
+)
+if saved_signature is not None and saved_signature != current_signature:
+    st.info("Les paramètres ont changé. Relancez la simulation pour obtenir un résultat correspondant aux nouveaux critères.")
+
 if result:
     st.divider()
     if result["selected_resource_id"]:
