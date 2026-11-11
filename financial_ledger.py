@@ -246,8 +246,12 @@ def record_paypal_refund_for_review(
     ):
         raise ValueError("Montant de remboursement hors limites.")
     occurred_at = str(refund.get("update_time") or refund.get("create_time") or "").strip()
-    if not occurred_at:
-        raise ValueError("Date du remboursement PayPal manquante.")
+    try:
+        parsed_refund_time = datetime.fromisoformat(occurred_at.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        raise ValueError("Date du remboursement PayPal invalide.") from None
+    if parsed_refund_time.tzinfo is None or parsed_refund_time.utcoffset() is None:
+        raise ValueError("La date du remboursement PayPal doit inclure un fuseau horaire.")
 
     table = admin_client.table("sowia_financial_transactions")
     parent = (
