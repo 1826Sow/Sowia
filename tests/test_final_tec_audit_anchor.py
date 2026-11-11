@@ -160,3 +160,53 @@ def test_recovery_stays_fail_closed_when_provider_is_still_unavailable(tmp_path)
     assert coordinator.recover_pending() == 0
     assert ledger.anchor_outbox_status("auth-pending-recovery") == "pending"
     assert len(ledger.audit_events()) == 1
+
+
+def test_pending_outbox_survives_sqlite_reopen_and_recovers_without_nonce_replay(tmp_path):
+    from datetime import timedelta
+    from final_tec_atomic_approval_store import SQLiteAtomicApprovalStore
+
+    path = tmp_path / "durable-process-restart.sqlite3"
+    now = datetime.now(timezone.utc)
+    records = (
+        ("p" * 48, (now + timedelta(minutes=10)).isoformat()),
+        ("q" * 48, (now + timedelta(minutes=10)).isoformat()),
+    )
+    first_store = SQLiteAtomicApprovalStore(path)
+    assert first_store.register_pair("auth-reopen-01", records, now=now)
+
+    unavailable_anchor = FakeExternalAnchor(fail_append=True)
+    first_coordinator = ExternalAuditAnchorCoordinator(first_store, unavailable_anchor)
+    event = {"event_type": "dual_approval_verified", "authorization_id": "auth-reopen-01"}
+
+    # The first process commits nonce consumption + audit + pending outbox,
+    # then fails to reach the external anchor.
+    assert first_coordinator.commit_and_anchor("auth-reopen-01", records, event) is False
+    assert first_store.anchor_outbox_status("auth-reopen-01") == "pending"
+    assert len(first_store.audit_events()) == 1
+
+    # Drop every Python object associated with the first process and reopen
+    # the same durable SQLite file as a new process would.
+    del first_coordinator
+    del first_store
+    reopened_store = SQLiteAtomicApprovalStore(path)
+    assert reopened_store.anchor_outbox_status("auth-reopen-01") == "pending"
+    pending = reopened_store.pending_anchor_checkpoints()
+    assert len(pending) == 1
+
+    recovered_anchor = FakeExternalAnchor()
+    restarted_coordinator = ExternalAuditAnchorCoordinator(reopened_store, recovered_anchor)
+    assert restarted_coordinator.recover_pending() == 1
+    assert reopened_store.anchor_outbox_status("auth-reopen-01") == "anchored"
+    assert reopened_store.pending_anchor_checkpoints() == []
+    assert len(reopened_store.audit_events()) == 1
+    assert reopened_store.verify_audit_chain() is True
+    assert reopened_store.verify_anchor_outbox() is True
+
+    # Replaying the original approval callback cannot create another audit
+    # entry or consume a different pair under the same authorization.
+    assert reopened_store.commit_pair_audit_and_outbox(
+        "auth-reopen-01", records, event, now=now
+    ) == pending[0]
+    assert len(reopened_store.audit_events()) == 1
+    assert recovered_anchor.append_calls == 1
