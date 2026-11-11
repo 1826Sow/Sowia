@@ -24,6 +24,10 @@ declare
     v_effective_status text;
 begin
     if p_user_id is null
+       or p_paypal_subscription_id is null
+       or p_paypal_plan_id is null
+       or p_event_type is null
+       or p_status is null
        or p_paypal_subscription_id !~ '^I-[A-Z0-9-]{5,64}$'
        or p_paypal_plan_id !~ '^P-[A-Z0-9]+$'
        or p_event_type not in (
