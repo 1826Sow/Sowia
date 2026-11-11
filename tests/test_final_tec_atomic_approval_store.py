@@ -39,6 +39,38 @@ def _process_commit_then_exit_without_ack(args):
     os._exit(23 if checkpoint is not None else 24)
 
 
+class _ExitBeforeCommitConnection:
+    """Connection proxy that kills its process immediately before SQLite commit."""
+
+    def __init__(self, connection):
+        self._connection = connection
+
+    def __getattr__(self, name):
+        return getattr(self._connection, name)
+
+    def commit(self):
+        import os
+
+        os._exit(25)
+
+
+class _CrashBeforeCommitStore(SQLiteAtomicApprovalStore):
+    def _connect(self):
+        return _ExitBeforeCommitConnection(super()._connect())
+
+
+def _process_exit_before_sqlite_commit(args):
+    store_path, authorization_id, records, event, now = args
+    store = _CrashBeforeCommitStore(store_path, timeout_seconds=30)
+    store.commit_pair_audit_and_outbox(
+        authorization_id, records, event, now=now
+    )
+    # Reaching this line means the expected commit interception did not occur.
+    import os
+
+    os._exit(26)
+
+
 def test_boolean_sqlite_timeout_configuration_is_rejected(tmp_path):
     from final_tec_atomic_approval_store import AtomicApprovalStoreError
 
@@ -513,6 +545,50 @@ def test_crash_after_durable_commit_retries_original_checkpoint(tmp_path):
     ) == recovered
     assert len(reopened.audit_events()) == 1
     assert reopened.pending_anchor_checkpoints() == [recovered]
+    assert reopened.verify_audit_chain() is True
+    assert reopened.verify_anchor_outbox() is True
+
+
+def test_crash_before_sqlite_commit_rolls_back_and_allows_clean_retry(tmp_path):
+    """A process death before COMMIT must leave no partial nonce/audit/outbox state."""
+    now = datetime.now(timezone.utc)
+    path = tmp_path / "outbox-crash-before-commit.sqlite3"
+    store = SQLiteAtomicApprovalStore(path, timeout_seconds=30)
+    records = _records(now)
+    authorization_id = "auth-crash-before-commit"
+    event = {
+        "event_type": "crash-before-commit",
+        "authorization_id": authorization_id,
+    }
+    assert store.register_pair(authorization_id, records, now=now)
+
+    args = (str(path), authorization_id, records, event, now)
+    process = multiprocessing.get_context("spawn").Process(
+        target=_process_exit_before_sqlite_commit,
+        args=(args,),
+    )
+    process.start()
+    process.join(timeout=30)
+    if process.is_alive():
+        process.terminate()
+        process.join()
+        pytest.fail("pre-commit crash simulation process did not terminate")
+    assert process.exitcode == 25
+
+    # SQLite must roll back the uncommitted transaction when the process dies.
+    reopened = SQLiteAtomicApprovalStore(path, timeout_seconds=30)
+    assert reopened.audit_events() == []
+    assert reopened.pending_anchor_checkpoints() == []
+    assert reopened.verify_audit_chain() is True
+    assert reopened.verify_anchor_outbox() is True
+
+    # The original nonce pair must still be usable after the rollback.
+    checkpoint = reopened.commit_pair_audit_and_outbox(
+        authorization_id, records, event, now=now
+    )
+    assert checkpoint is not None
+    assert len(reopened.audit_events()) == 1
+    assert reopened.pending_anchor_checkpoints() == [checkpoint]
     assert reopened.verify_audit_chain() is True
     assert reopened.verify_anchor_outbox() is True
 
