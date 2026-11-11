@@ -100,9 +100,9 @@ def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
     }
     assert requested == ["CAPTURE001", "CAPTURE002"]
     assert flagged == [("user-A", "CAPTURE001")]
-    assert ("user_id", "user-A") in admin.query.filters
-    assert ("provider", "paypal") in admin.query.filters
-    assert ("transaction_type", "payment") in admin.query.filters
+    assert ("user_id", "user-A") in admin.queries["sowia_financial_transactions"].filters
+    assert ("provider", "paypal") in admin.queries["sowia_financial_transactions"].filters
+    assert ("transaction_type", "payment") in admin.queries["sowia_financial_transactions"].filters
     assert ("status", "confirmed") in admin.queries["sowia_financial_transactions"].filters
     entitlement_query = admin.queries["sowia_entitlements"]
     assert entitlement_query.updated == {"status": "inactive"}
