@@ -318,14 +318,14 @@ if cloud_mode and current_user is not None:
         st.info("Le paiement a été annulé. Aucun montant n'a été confirmé par SOW IA.")
         st.query_params.clear()
     if st.query_params.get("subscription_id"):
-        # Treat the browser parameter only as an identifier. Re-fetch and validate
-        # ownership, plan and ACTIVE status directly with PayPal before granting Premium.
+        # A browser return is informational only. Premium is activated exclusively
+        # by the signed PayPal webhook after atomic server-side reconciliation.
         returned_subscription_id = str(st.query_params.get("subscription_id") or "").strip()
         try:
             paypal_subscriptions.reconcile_returned_subscription(
                 returned_subscription_id, str(current_user.id)
             )
-            st.session_state["paypal_subscription_returned"] = "confirmed"
+            st.session_state["paypal_subscription_returned"] = "pending_webhook"
         except Exception as exc:
             st.session_state["paypal_subscription_returned"] = "pending"
             st.session_state["paypal_subscription_return_error"] = type(exc).__name__
@@ -2778,12 +2778,16 @@ elif page == "Abonnement":
                     if approval_url:
                         st.link_button("Continuer sur PayPal Sandbox", approval_url, use_container_width=True)
                     returned_state = st.session_state.pop("paypal_subscription_returned", False)
-                    if returned_state == "confirmed":
-                        st.success("Abonnement PayPal vérifié côté serveur et enregistré. Rechargez l'application si l'espace Professionnel n'apparaît pas encore.")
+                    if returned_state == "pending_webhook":
+                        st.info(
+                            "Retour PayPal reçu et contrôlé. L'accès Premium sera activé uniquement "
+                            "après réception et vérification du webhook PayPal signé. "
+                            "Le retour navigateur ne donne aucun accès Premium."
+                        )
                     elif returned_state == "pending":
                         error_code = st.session_state.pop("paypal_subscription_return_error", "ValidationPending")
                         st.warning(
-                            "PayPal a renvoyé SOW IA, mais l'abonnement n'a pas pu être confirmé comme actif. "
+                            "PayPal a renvoyé SOW IA, mais le contrôle du retour n'a pas abouti. "
                             "Aucun accès Premium n'a été accordé. Code : " + str(error_code)
                         )
 
