@@ -110,6 +110,23 @@ def _fetch_window(config, headers, start, end):
     return events
 
 
+def _sandbox_reporting_configuration():
+    """Build read-only reporting credentials without enabling checkout payments."""
+    mode = paypal_payments._setting("PAYPAL_MODE", "sandbox").lower()
+    client_id = paypal_payments._setting("PAYPAL_CLIENT_ID")
+    client_secret = paypal_payments._setting("PAYPAL_CLIENT_SECRET")
+    if mode != "sandbox":
+        raise RuntimeError("L'import du relevé est strictement limité à PayPal Sandbox.")
+    if not client_id or not client_secret:
+        raise RuntimeError("Identifiants PayPal Sandbox manquants pour Transaction Search.")
+    return {
+        "mode": "sandbox",
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "base_url": "https://api-m.sandbox.paypal.com",
+    }
+
+
 def fetch_paypal_sandbox_statement(days: int = 90, limit: int = 20000):
     """Fetch a recent Sandbox statement for manual review; perform no database writes.
 
@@ -123,11 +140,9 @@ def fetch_paypal_sandbox_statement(days: int = 90, limit: int = 20000):
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 50000:
         raise ValueError("La limite doit être comprise entre 1 et 50 000 événements.")
 
-    config = paypal_payments.paypal_configuration()
-    if not config or config.get("mode") != "sandbox":
-        raise RuntimeError(
-            "L'import du relevé est strictement limité à PayPal Sandbox."
-        )
+    # Reporting is deliberately independent from SOWIA_PAYMENTS_ENABLED:
+    # reading a Sandbox statement must not activate checkout or real payments.
+    config = _sandbox_reporting_configuration()
 
     now = datetime.now(timezone.utc)
     end = now - timedelta(hours=REPORTING_LAG_HOURS)
