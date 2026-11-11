@@ -234,7 +234,7 @@ def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     result = (
         admin_client.table("sowia_financial_transactions")
-        .select("provider_payment_id, occurred_at")
+        .select("provider_payment_id, paypal_order_id, occurred_at")
         .eq("user_id", normalized_user_id)
         .eq("provider", "paypal")
         .eq("transaction_type", "payment")
@@ -254,6 +254,8 @@ def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
     checked = 0
     detected = 0
     flagged = 0
+    entitlements_revoked = 0
+    missing_order_links = 0
     for row in rows:
         capture_id = str((row or {}).get("provider_payment_id") or "").strip()
         if not re.fullmatch(r"[A-Z0-9_-]{5,100}", capture_id):
@@ -286,10 +288,28 @@ def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
                 },
             )
             flagged += 1
+            order_id = str((row or {}).get("paypal_order_id") or "").strip()
+            if order_id:
+                revoked = (
+                    admin_client.table("sowia_entitlements")
+                    .update({"status": "inactive"})
+                    .eq("user_id", normalized_user_id)
+                    .eq("paypal_order_id", order_id)
+                    .eq("status", "active")
+                    .execute()
+                )
+                if getattr(revoked, "data", None):
+                    entitlements_revoked += len(revoked.data)
+            else:
+                # Older ledger rows may predate the order-link migration.
+                # Never guess which entitlement belongs to a capture.
+                missing_order_links += 1
     return {
         "captures_checked": checked,
         "refunds_detected": detected,
         "refunds_flagged_for_manual_review": flagged,
+        "entitlements_revoked": entitlements_revoked,
+        "captures_missing_order_link": missing_order_links,
         "limit_reached": len(rows) >= limit,
     }
 
