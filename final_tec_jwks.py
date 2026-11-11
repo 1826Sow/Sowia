@@ -124,7 +124,7 @@ class HTTPSJWKSResolver:
                 content_type = response.headers.get("Content-Type", "")
                 media_type = content_type.split(";", 1)[0].strip().lower()
                 if not re.fullmatch(
-                    r"application/(?:json|[!#$%&'*+.^_\x60|~0-9a-z-]+\\+json)",
+                    r"application/(?:json|[!#$%&'*+.^_\x60|~0-9a-z-]+\+json)",
                     media_type,
                 ):
                     raise JWKSConfigurationError("JWKS response is not an accepted JSON media type")
