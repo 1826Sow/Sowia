@@ -108,7 +108,7 @@ def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
     assert ("user_id", "user-A") in admin.queries["sowia_financial_transactions"].filters
     assert ("provider", "paypal") in admin.queries["sowia_financial_transactions"].filters
     assert ("transaction_type", "payment") in admin.queries["sowia_financial_transactions"].filters
-    assert ("status", "confirmed") in admin.queries["sowia_financial_transactions"].filters
+    assert not any(key == "status" for key, *rest in admin.queries["sowia_financial_transactions"].filters)
     entitlement_query = admin.queries["sowia_entitlements"]
     assert entitlement_query.updated == {"status": "inactive"}
     assert ("user_id", "user-A") in entitlement_query.filters
@@ -136,3 +136,41 @@ def test_rejects_live_mode_and_missing_user(monkeypatch):
         pass
     else:
         raise AssertionError("A user identity is required")
+
+
+
+def test_rechecks_manual_review_capture_that_later_becomes_fully_refunded(monkeypatch):
+    # A partial refund first moves the local payment row to manual_review.
+    # A later full refund must still be discovered and revoke its entitlement.
+    admin = Admin([{
+        "provider_payment_id": "CAPTURE009",
+        "paypal_order_id": "ORDER009",
+        "occurred_at": "2026-11-03T00:00:00Z",
+        "status": "manual_review",
+    }])
+    monkeypatch.setattr(paypal_payments, "paypal_configuration", lambda: {
+        "mode": "sandbox", "base_url": "https://api-m.sandbox.paypal.com",
+        "client_id": "id", "client_secret": "secret",
+    })
+    monkeypatch.setattr(paypal_payments, "_access_token", lambda _config: "token")
+    monkeypatch.setattr(
+        paypal_payments.requests, "get",
+        lambda *_args, **_kwargs: Response({
+            "id": "CAPTURE009",
+            "status": "REFUNDED",
+            "amount": {"currency_code": "EUR", "value": "9.90"},
+        }),
+    )
+    import financial_ledger
+    monkeypatch.setattr(
+        financial_ledger, "flag_paypal_refund_for_review",
+        lambda *_args, **_kwargs: {"updated": True, "status": "manual_review"},
+    )
+
+    result = paypal_payments.sync_one_time_paypal_refunds(admin, "user-A")
+    assert result["captures_checked"] == 1
+    assert result["refunds_detected"] == 1
+    assert result["entitlements_revoked"] == 1
+    payment_query = admin.queries["sowia_financial_transactions"]
+    assert ("transaction_type", "payment") in payment_query.filters
+    assert not any(key == "status" for key, *rest in payment_query.filters)
