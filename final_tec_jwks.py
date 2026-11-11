@@ -29,6 +29,31 @@ class _RejectRedirects(HTTPRedirectHandler):
         return None
 
 
+def _enforce_json_nesting_limit(raw: bytes, *, max_depth: int = 64) -> None:
+    """Reject excessively nested JSON before invoking the recursive decoder."""
+    depth = 0
+    in_string = False
+    escaped = False
+    for byte in raw:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif byte == 0x5C:
+                escaped = True
+            elif byte == 0x22:
+                in_string = False
+            continue
+        if byte == 0x22:
+            in_string = True
+        elif byte in (0x5B, 0x7B):
+            depth += 1
+            if depth > max_depth:
+                raise ValueError("JSON nesting limit exceeded")
+        elif byte in (0x5D, 0x7D):
+            depth -= 1
+            if depth < 0:
+                raise ValueError("unbalanced JSON container")
+
 def _reject_duplicate_json_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     """Reject ambiguous JSON objects instead of silently keeping the last value."""
     result: dict[str, Any] = {}
@@ -154,6 +179,7 @@ class HTTPSJWKSResolver:
             # keys and never expose provider/network details to callers.
             raise JWKSConfigurationError("JWKS endpoint could not be reached safely") from exc
         try:
+            _enforce_json_nesting_limit(raw)
             document = json.loads(raw, object_pairs_hook=_reject_duplicate_json_members)
         except (UnicodeDecodeError, ValueError, RecursionError) as exc:
             # JSON parsing must fail closed for malformed, excessively nested,
