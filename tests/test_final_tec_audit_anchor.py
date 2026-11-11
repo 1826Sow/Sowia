@@ -155,7 +155,7 @@ def test_recovery_stays_fail_closed_when_provider_is_still_unavailable(tmp_path)
     anchor = FakeExternalAnchor(fail_append=True)
     coordinator = ExternalAuditAnchorCoordinator(ledger, anchor)
     assert coordinator.commit_and_anchor(
-        "auth-pending-recovery", records, {"event_type": "pending"}
+        "auth-pending-recovery", records, {"event_type": "pending", "authorization_id": "auth-pending-recovery"}
     ) is False
     assert coordinator.recover_pending() == 0
     assert ledger.anchor_outbox_status("auth-pending-recovery") == "pending"
