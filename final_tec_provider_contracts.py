@@ -132,7 +132,7 @@ def validate_production_adapter_bundle(bundle: ProductionAdapterBundle) -> None:
     Attribute inspection is static so hostile properties/descriptors cannot
     run code during this check.
     """
-    if not isinstance(bundle, ProductionAdapterBundle):
+    if type(bundle) is not ProductionAdapterBundle:
         raise ProductionAdapterContractError("A complete adapter bundle is required")
 
     failures: list[str] = []
