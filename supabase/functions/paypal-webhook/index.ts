@@ -375,6 +375,17 @@ Deno.serve(async (request: Request) => {
       ? "past_due"
       : normalizedStatus.toLowerCase();
 
+    // Signed terminal/suspension events are authoritative. A GET immediately
+    // after webhook delivery can briefly lag the event; never let that stale
+    // snapshot turn a cancelled/expired subscription back into active access.
+    if (eventType === "BILLING.SUBSCRIPTION.CANCELLED") {
+      effectiveStatus = "cancelled";
+    } else if (eventType === "BILLING.SUBSCRIPTION.EXPIRED") {
+      effectiveStatus = "expired";
+    } else if (eventType === "BILLING.SUBSCRIPTION.SUSPENDED") {
+      effectiveStatus = "suspended";
+    }
+
     // The database RPC serializes state transitions under a transaction lock.
     // This prevents simultaneous refund and recovery notifications from
     // overwriting payment_review based on stale reads.
