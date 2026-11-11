@@ -132,6 +132,25 @@ def _access_token(config):
     return token
 
 
+def _is_trusted_paypal_pagination_url(url: str, base_url: str) -> bool:
+    """Accept only HTTPS pagination links on PayPal's exact API authority."""
+    from urllib.parse import urlparse
+
+    try:
+        parsed = urlparse(str(url))
+        expected = urlparse(str(base_url))
+    except Exception:
+        return False
+    return bool(
+        parsed.scheme == "https"
+        and expected.scheme == "https"
+        and parsed.netloc == expected.netloc
+        and parsed.username is None
+        and parsed.password is None
+        and not parsed.fragment
+    )
+
+
 def _api_headers(config, token, request_id=None):
     headers = {
         "Authorization": f"Bearer {token}",
@@ -520,9 +539,7 @@ def sync_completed_subscription_transactions(
         if not next_link:
             next_url = None
             break
-        parsed = urlparse(str(next_link))
-        expected_host = urlparse(config["base_url"]).hostname
-        if parsed.scheme != "https" or parsed.hostname != expected_host:
+        if not _is_trusted_paypal_pagination_url(next_link, config["base_url"]):
             raise PermissionError("Lien de pagination PayPal non fiable.")
         next_url = str(next_link)
     else:
