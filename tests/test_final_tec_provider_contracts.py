@@ -58,6 +58,7 @@ def test_bundle_requires_all_six_adapter_roles():
     with pytest.raises(TypeError):
         ProductionAdapterBundle(None, None, None, None, None)
 
+
 def test_structural_preflight_never_calls_adapters_or_returns_authorization():
     class NoCallAdapter:
         production_grade = True
@@ -82,10 +83,30 @@ def test_structural_preflight_never_calls_adapters_or_returns_authorization():
 
     result = validate_production_adapter_bundle(bundle)
 
-    # getattr/callable inspection is permitted; executing provider methods is not.
     assert all(adapter.calls == [] for adapter in adapters)
-    # Structural completeness is not an approval or execution capability.
     assert result is None
     assert not hasattr(result, "execution_authorized")
     assert not hasattr(result, "g2b_status")
 
+
+def test_preflight_does_not_execute_adapter_properties_or_descriptors():
+    calls = []
+
+    class HostileAdapter(Adapter):
+        @property
+        def production_grade(self):
+            calls.append("production_grade")
+            raise RuntimeError("must not execute")
+
+        @property
+        def healthcheck(self):
+            calls.append("healthcheck")
+            raise RuntimeError("must not execute")
+
+    adapters = [HostileAdapter(), *[Adapter() for _ in range(5)]]
+    bundle = ProductionAdapterBundle(*adapters)
+
+    with pytest.raises(ProductionAdapterContractError, match="oidc_keys|ledger"):
+        validate_production_adapter_bundle(bundle)
+
+    assert calls == []
