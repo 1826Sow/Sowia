@@ -24,7 +24,9 @@ class ApprovalSessionStore(Protocol):
 
     def load_approval_session(self, context: Mapping[str, Any]) -> Mapping[str, str]: ...
 
-    def consume_approval_session(self, session_id: str, expected_nonce: str) -> bool: ...
+    def consume_approval_session_pair(
+        self, session_records: Sequence[Mapping[str, str]]
+    ) -> bool: ...
 
 
 @runtime_checkable
@@ -102,7 +104,7 @@ class ProductionAdapterBundle:
 
 _REQUIRED_METHODS = {
     "oidc_keys": ("resolve_signing_key",),
-    "sessions": ("load_approval_session", "consume_approval_session"),
+    "sessions": ("load_approval_session", "consume_approval_session_pair"),
     "roles": ("has_current_role",),
     "signer": ("sign",),
     "signature_verifier": ("verify",),
