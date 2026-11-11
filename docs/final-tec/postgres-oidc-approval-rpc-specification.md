@@ -316,3 +316,19 @@ Consequences for FINAL TEC:
 
 **Status:** no such authoritative versioned role store or concurrent-revocation enforcement was found in the inspected repository. Model A remains unproven; model B remains unconfigured. No executable SQL should be written against an assumed authority.
 
+
+### 7.3 Privileged SQL and service-role trust boundary (repository inspection)
+
+The inspected SQL contains at least two `SECURITY DEFINER` functions outside FINAL TEC:
+
+- `public.sowia_admin_set_global_id_verification(uuid,text,text)` checks the caller's JWT admin claims, uses an empty search path, qualifies the target table, revokes default PUBLIC execution, and grants execution to `authenticated`. This is a comparatively explicit privilege boundary, but the admin predicate still inherits the JWT freshness/revocation gap described above.
+- `public.sowia_action_transition(uuid,text,text)` performs a row-locked, state-checked transition for the plan's creator or its specifically assigned approver, then writes the corresponding audit row in the same transaction. It revokes execution from PUBLIC/anon and grants it to authenticated. It uses `SECURITY DEFINER` with `search_path = public, auth`; before any reuse or expansion, harden this to an explicitly trusted path (or fully qualify every referenced object and exclude writable schemas), and confirm the function owner and schema CREATE privileges in the live project. Its per-plan `approver_id` is not FINAL TEC security-role authority.
+- The PayPal webhook Edge Function uses `SUPABASE_SERVICE_ROLE_KEY` to read the configured PayPal plan and write subscription state only after PayPal's webhook verification and server-side subscription reconciliation. This is a high-privilege credential and must remain server-side, secret-managed, narrowly deployed, and never enter Streamlit/client configuration or logs. Repository code cannot prove the live secret's access, rotation, or deployment boundary.
+
+The canonical entitlement schema grants authenticated users SELECT only; its comments specify trusted server writes. The SQL diagnostic script `supabase_security_diagnostics.sql` is read-only and is designed to inspect effective policies, RLS/FORCE RLS flags, table/sequence grants, and private bucket configuration. It is **not evidence that those queries have been run against the live project**.
+
+**Critical distinction:** Supabase `service_role` is a privileged server identity and can bypass ordinary RLS protections. A FINAL TEC approval RPC must not be callable by end users with a service-role credential. It must expose only narrowly scoped operations, validate caller identity where applicable, protect execution grants, and keep service credentials outside the application client. The RPC owner and any SECURITY DEFINER path must be reviewed as part of the trust boundary.
+
+**Live verification still required:** inspect actual `pg_proc.prosecdef`, function owners, `proconfig` search paths, EXECUTE grants, schema CREATE grants, default privileges, role membership, table/sequence ACLs, RLS and FORCE RLS, Auth admin API access, Edge Function secret deployment, and key rotation. The repository inspection cannot establish any of those live project facts.
+
+**Decision:** do not extend either existing SECURITY DEFINER function for FINAL TEC. Implement a dedicated, narrowly granted RPC set only after the role authority is selected and the live privilege inventory is captured. Keep all existing financial-ledger and PayPal functions/migrations unchanged.
