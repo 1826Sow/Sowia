@@ -140,6 +140,32 @@ def test_rejects_duplicate_kids():
     with pytest.raises(JWKSConfigurationError):
         make_resolver(opener)("duplicate")
 
+def test_rejects_private_rsa_material_in_jwks():
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_jwk = json.loads(__import__("jwt").algorithms.RSAAlgorithm.to_jwk(private_key))
+    private_jwk.update({"kid": "private-key", "alg": "RS256", "use": "sig", "key_ops": ["verify"]})
+    opener = FakeOpener([Response({"keys": [private_jwk]})])
+    with pytest.raises(JWKSConfigurationError, match="private RSA parameters"):
+        make_resolver(opener)("private-key")
+
+
+def test_rejects_rsa_keys_below_2048_bits():
+    weak_key = rsa.generate_private_key(public_exponent=65537, key_size=1024).public_key()
+    weak_jwk = json.loads(__import__("jwt").algorithms.RSAAlgorithm.to_jwk(weak_key))
+    weak_jwk.update({"kid": "weak-key", "alg": "RS256", "use": "sig", "key_ops": ["verify"]})
+    opener = FakeOpener([Response({"keys": [weak_jwk]})])
+    with pytest.raises(JWKSConfigurationError, match="at least 2048 bits"):
+        make_resolver(opener)("weak-key")
+
+
+def test_rejects_weak_rsa_public_exponent():
+    weak_exponent_key = rsa.generate_private_key(public_exponent=3, key_size=2048).public_key()
+    weak_jwk = json.loads(__import__("jwt").algorithms.RSAAlgorithm.to_jwk(weak_exponent_key))
+    weak_jwk.update({"kid": "weak-exponent", "alg": "RS256", "use": "sig", "key_ops": ["verify"]})
+    opener = FakeOpener([Response({"keys": [weak_jwk]})])
+    with pytest.raises(JWKSConfigurationError, match="public exponent is too weak"):
+        make_resolver(opener)("weak-exponent")
+
 
 def test_http_redirect_is_fail_closed():
     redirect = HTTPError(JWKS, 302, "Found", Message(), None)
