@@ -11,8 +11,7 @@ Pour une installation neuve du socle SOW IA, exécuter dans cet ordre :
 1. `supabase/schema.sql` — tables privées de mémoire, messages et droits Premium.
 2. `supabase_workspaces.sql` — ajoute la séparation Personnel / Professionnel aux messages et à la mémoire.
 3. `supabase/migrations/20261111000200_sowia_professional_workspace_rls.sql` — applique le contrôle Premium au niveau RLS pour la mémoire et les messages. La vérification de l'abonnement récurrent est facultative et détectée seulement si `sowia_subscriptions` existe ; appliquer `supabase/migrations/20261109000100_sowia_subscriptions.sql` pour activer ce chemin.
-4. `supabase/migrations/20261111000300_sowia_professional_modules_rls.sql` — ajoute le contrôle Premium aux tables CRM, calendrier relationnel, Business Club et NIGHT EXCHANGE. À exécuter après les scripts créant ces tables (CRM, calendrier, Business Club et NIGHT EXCHANGE), car ces tables doivent exister.
-5. `supabase_storage_policies.sql` — bucket PDF privé et règles d’accès par utilisateur/espace ; ce script utilise la fonction créée à l'étape 3 pour protéger les dossiers `professional`.
+4. `supabase_storage_policies.sql` — bucket PDF privé et règles d’accès par utilisateur/espace ; ce script utilise la fonction créée à l'étape 3 pour protéger les dossiers `professional`.
 4. `supabase_growth_crm.sql` — carnet de partenaires.
 5. `supabase_language_preferences.sql` — préférences de langue par compte.
 6. `supabase_business_opportunities.sql` — pipeline d’opportunités et prévisions commerciales.
@@ -25,9 +24,12 @@ Ne pas confondre ce socle avec l’installation de tous les modules du dépôt :
 
 ### CRM et Club Business
 
+- `supabase_growth_crm.sql` — carnet de partenaires (si non déjà installé au socle).
 - `supabase_relationship_calendar.sql` — après `supabase_growth_crm.sql` (clé étrangère vers `sowia_growth_leads`).
 - `supabase_business_club.sql` — base du Club Business.
 - `supabase_business_club_notifications.sql` — après `supabase_business_club.sql`.
+
+**Contrôle Premium RLS des modules :** après avoir créé toutes les tables concernées (`supabase_growth_crm.sql`, `supabase_relationship_calendar.sql`, `supabase_business_club.sql`, `supabase_night_exchange_registry.sql` et `supabase_night_exchange_events.sql`), exécuter `supabase/migrations/20261111000300_sowia_professional_modules_rls.sql`. Cette migration référence directement les sept tables : elle échoue si l’une d’elles n’existe pas encore. Si un module est installé plus tard, réexécuter la migration après création de ses tables.
 
 ### Réseau d’impression et cartes VIP
 
@@ -41,6 +43,7 @@ Ne pas confondre ce socle avec l’installation de tous les modules du dépôt :
 
 1. `supabase_night_exchange_registry.sql` — registre des applications.
 2. `supabase_night_exchange_events.sql` — événements ; dépend du registre.
+3. Après l’installation de ces deux scripts et des autres tables CRM/Club, exécuter le contrôle Premium RLS décrit dans la section CRM et Club Business.
 
 ### GLOBAL ID, annuaire et messagerie
 
