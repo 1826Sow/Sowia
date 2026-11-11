@@ -96,6 +96,15 @@ def test_rejects_issuer_origin_missing_from_allowlist():
         )
 
 
+def test_rejects_issuer_origin_even_when_jwks_origin_is_allowlisted():
+    with pytest.raises(JWKSConfigurationError):
+        HTTPSJWKSResolver(
+            issuer="https://untrusted-issuer.example/",
+            jwks_url=JWKS,
+            allowed_origins=["https://login.example.test"],
+        )
+
+
 def test_resolves_rsa_rs256_key_and_uses_bounded_cache():
     opener = FakeOpener([Response({"keys": [jwk("key-1")]}, cache_control="max-age=99999")])
     resolver = make_resolver(opener, cache_ttl_seconds=60, max_cache_ttl_seconds=120)
