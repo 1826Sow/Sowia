@@ -171,3 +171,37 @@ def test_subscription_status_summary_rejects_non_list_input():
     import pytest
     with pytest.raises(ValueError):
         summarize_subscription_statuses(None)
+
+
+def test_reconciliation_flags_refunds_exceeding_payments_without_hiding_totals():
+    rows = [
+        {"provider": "paypal", "gross_currency": "EUR", "gross_amount": "10",
+         "transaction_type": "payment", "status": "confirmed",
+         "fee_amount": "0.50", "fee_currency": "EUR",
+         "net_amount": "9.50", "net_currency": "EUR"},
+        {"provider": "paypal", "gross_currency": "EUR", "gross_amount": "12",
+         "transaction_type": "refund", "status": "refunded",
+         "fee_amount": None, "net_amount": None},
+    ]
+    result = summarize_financial_transactions(rows)[0]
+    assert result["refunds_exceed_payments"] is True
+    assert result["gross_after_refunds"] == "-2"
+    assert result["fee_records_missing"] == 1
+    assert result["net_records_missing"] == 1
+
+
+def test_reconciliation_missing_fee_and_net_counts_are_per_record():
+    rows = [
+        {"provider": "paypal", "gross_currency": "EUR", "gross_amount": "10",
+         "transaction_type": "payment", "status": "confirmed",
+         "fee_amount": "0.50", "fee_currency": "EUR",
+         "net_amount": "9.50", "net_currency": "EUR"},
+        {"provider": "paypal", "gross_currency": "EUR", "gross_amount": "5",
+         "transaction_type": "payment", "status": "confirmed",
+         "fee_amount": None, "fee_currency": None,
+         "net_amount": None, "net_currency": None},
+    ]
+    result = summarize_financial_transactions(rows)[0]
+    assert result["refunds_exceed_payments"] is False
+    assert result["fee_records_missing"] == 1
+    assert result["net_records_missing"] == 1
