@@ -20,7 +20,13 @@ Le tarif Sandbox prévu est **9,90 EUR par mois**. Il est défini côté serveur
 2. Déployer la fonction Edge `paypal-webhook` après application de la migration.
 3. Configurer les secrets Edge : `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_SUBSCRIPTION_WEBHOOK_ID`, `PAYPAL_MODE=sandbox`.
 4. Le secret `PAYPAL_PREMIUM_PLAN_ID` n'est plus nécessaire : le webhook lit le plan attendu depuis la table privée `sowia_paypal_catalog`.
-5. Créer dans PayPal Sandbox le webhook pointant vers l'URL de la fonction Edge et sélectionner les événements d'abonnement et de paiement gérés par le code.
+5. Créer dans PayPal Sandbox le webhook pointant vers l'URL de la fonction Edge et sélectionner les événements gérés par le code :
+   - Abonnements : `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.EXPIRED`, `BILLING.SUBSCRIPTION.PAYMENT.FAILED`, `BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED`.
+   - Paiements récurrents : `PAYMENT.SALE.COMPLETED`, `PAYMENT.SALE.REFUNDED`, `PAYMENT.SALE.REVERSED`.
+   - Achats ponctuels (capture Orders API) : `PAYMENT.CAPTURE.REFUNDED` et `PAYMENT.CAPTURE.REVERSED`.
+6. Conserver l'identifiant du webhook dans `PAYPAL_SUBSCRIPTION_WEBHOOK_ID`. Il doit correspondre exactement au webhook configuré pour cette URL et ce mode Sandbox.
+
+Les événements de remboursement de capture ne sont pas interchangeables avec les événements `PAYMENT.SALE.*` des abonnements : les deux familles doivent être cochées.
 
 ## Sécurité et activation
 - La création automatique du produit et du forfait est limitée à Sandbox.
