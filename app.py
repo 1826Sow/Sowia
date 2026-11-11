@@ -387,7 +387,7 @@ NAV_GROUPS = {
         "SOWIA GLOBAL EXECUTIVE REPORTS",
     ],
     "💶 SOWIA FINANCIAL HUB": [
-        "Finance & investissements", "Revenus & paiements",
+        "Finance & investissements", "Revenus & paiements", "SOWIA Hedge Funds",
     ],
     "💳 Abonnements & compte": [
         "Abonnement",
@@ -779,6 +779,7 @@ if page == "Accueil":
         ("💶 05 · SOWIA FINANCIAL HUB", [
             ("Finance & investissements", "Analyses et investissements"),
             ("Revenus & paiements", "Paiements, remboursements et rapprochements"),
+            ("SOWIA Hedge Funds", "Analyse descriptive des fonds spéculatifs et de leurs risques"),
         ]),
         ("🛡️ 06 · Administration & assistance", [
             ("Centre de notifications", "Alertes, échéances et points de vigilance"),
@@ -6101,6 +6102,10 @@ elif page == "Technologies & fournisseurs":
             st.caption("Aucune solution évaluée. Commencez par ajouter deux candidats pour obtenir un comparatif utile.")
     except Exception:
         st.error("Le comparateur de technologies est momentanément indisponible. Aucune solution n'a été sélectionnée.")
+
+elif page == "SOWIA Hedge Funds":
+    import hedge_fund_dashboard
+    hedge_fund_dashboard.render_hedge_fund_dashboard(st)
 
 elif page == "Finance & investissements":
     st.subheader("💹 SOWIA Finance — Bourse, Crypto & Investissements")
