@@ -203,7 +203,9 @@ class HTTPSJWKSResolver:
                 if not (value.startswith('"') and value.endswith('"') and len(value) >= 2):
                     return 0
                 value = value[1:-1]
-            if not value.isdigit():
+            # HTTP delta-seconds uses ASCII digits. Bound the length before
+            # int() so an attacker cannot trigger huge-integer parsing costs.
+            if not value.isascii() or not value.isdecimal() or len(value) > 10:
                 return 0
             return min(int(value), self.max_cache_ttl_seconds)
         return self.cache_ttl_seconds
