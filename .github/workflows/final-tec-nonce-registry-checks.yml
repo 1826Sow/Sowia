@@ -1,26 +1,31 @@
-name: FINAL TEC nonce-validator integration checks
+name: FINAL TEC nonce and Ed25519 authorization checks
 
 on:
   pull_request:
     branches:
       - feature/final-tec-local-nonce-registry
+      - feature/final-tec-nonce-validator-integration
     paths:
       - "final_tec_authorization_contract.py"
       - "final_tec_nonce_registry.py"
+      - "final_tec_ed25519_verifier.py"
       - "tests/test_final_tec_authorization_nonce_integration.py"
       - "tests/test_final_tec_nonce_registry.py"
+      - "tests/test_final_tec_ed25519_verifier.py"
       - ".github/workflows/final-tec-nonce-registry-checks.yml"
+      - ".github/workflows/final-tec-ed25519-verifier-checks.yml"
 
 permissions:
   contents: read
 
 jobs:
-  nonce-validator-integration:
+  nonce-and-approval-verification:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install --upgrade pip pytest
-      - run: python -m pytest -q tests/test_final_tec_nonce_registry.py tests/test_final_tec_authorization_nonce_integration.py
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install "cryptography>=44,<47" "rfc8785>=0.1.4,<1" pytest
+      - run: python -m pytest -q tests/test_final_tec_authorization_contract.py tests/test_final_tec_nonce_registry.py tests/test_final_tec_authorization_nonce_integration.py tests/test_final_tec_ed25519_verifier.py
