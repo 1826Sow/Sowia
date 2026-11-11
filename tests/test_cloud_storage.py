@@ -327,6 +327,43 @@ def test_invalid_accessibility_preferences_are_rejected_before_database_write(in
         cloud_storage.set_accessibility_preferences(Client(), User(), invalid)
 
 
+
+def test_global_action_transition_uses_privileged_rpc_and_bounds_note():
+    class RpcClient:
+        def __init__(self):
+            self.calls = []
+
+        def rpc(self, name, payload):
+            self.calls.append((name, payload))
+            return SimpleNamespace(execute=lambda: "rpc-result")
+
+    client = RpcClient()
+    result = cloud_storage.transition_global_action_plan(
+        client, User(), "plan-123", "submitted", "N" * 1200
+    )
+
+    assert result == "rpc-result"
+    assert len(client.calls) == 1
+    name, payload = client.calls[0]
+    assert name == "sowia_action_transition"
+    assert payload == {
+        "p_plan_id": "plan-123",
+        "p_next_status": "submitted",
+        "p_note": "N" * 1000,
+    }
+
+
+def test_global_action_transition_rejects_unknown_status_before_rpc():
+    class RpcClient:
+        def rpc(self, *_args, **_kwargs):
+            raise AssertionError("RPC must not be called for an unknown status")
+
+    with pytest.raises(ValueError, match="Transition invalide"):
+        cloud_storage.transition_global_action_plan(
+            RpcClient(), User(), "plan-123", "approved_by_creator"
+        )
+
+
 def test_create_global_action_plan_uses_database_owned_draft_status():
     client = FakeClient()
     plan = {
