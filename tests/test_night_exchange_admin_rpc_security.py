@@ -62,6 +62,8 @@ def test_clients_can_write_only_partner_editable_columns():
     normalized = " ".join(SQL.split())
     assert "revoke insert, update on public.sowia_night_exchange_apps from authenticated" in normalized
     assert "grant insert ( user_id, workspace_id, app_name, country, timezone, categories," in normalized
-    assert "grant update ( workspace_id, app_name, country, timezone, categories," in normalized
+    update_grant = normalized.split("grant update (", 1)[1].split(") on public.sowia_night_exchange_apps", 1)[0]
+    assert "app_name, country, timezone, categories," in update_grant
+    assert "workspace_id" not in update_grant
     assert "grant select, delete on public.sowia_night_exchange_apps to authenticated" in normalized
     assert "grant select, insert, update, delete on public.sowia_night_exchange_apps to authenticated" not in normalized
