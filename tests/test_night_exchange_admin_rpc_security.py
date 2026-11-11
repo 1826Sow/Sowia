@@ -10,7 +10,7 @@ SQL = (ROOT / "supabase_night_exchange_registry.sql").read_text(encoding="utf-8"
 
 def test_admin_review_rpc_is_security_definer_with_empty_search_path():
     match = re.search(
-        r"create or replace function public\\.sowia_admin_review_nex_app\\([\\s\\S]*?as (\\$[a-z_]*\\$)([\\s\\S]*?)\\1;",
+        r"create or replace function public\.sowia_admin_review_nex_app\([\s\S]*?as (\$[a-z_]*\$)([\s\S]*?)\1;",
         SQL,
     )
     assert match, "Moderation RPC must exist"
@@ -23,7 +23,7 @@ def test_admin_review_rpc_is_security_definer_with_empty_search_path():
 
 def test_moderation_rpc_uses_only_trusted_admin_claims_and_valid_statuses():
     match = re.search(
-        r"create or replace function public\\.sowia_admin_review_nex_app\\([\\s\\S]*?as (\\$[a-z_]*\\$)([\\s\\S]*?)\\1;",
+        r"create or replace function public\.sowia_admin_review_nex_app\([\s\S]*?as (\$[a-z_]*\$)([\s\S]*?)\1;",
         SQL,
     )
     assert match
@@ -47,7 +47,7 @@ def test_moderation_rpc_execution_is_allowlisted_for_authenticated_users():
 
 def test_partner_edits_cannot_self_approve_or_retain_moderation_metadata():
     match = re.search(
-        r"create or replace function public\\.sowia_nex_guard_app_listing\\([\\s\\S]*?as (\\$[a-z_]*\\$)([\\s\\S]*?)\\1;",
+        r"create or replace function public\.sowia_nex_guard_app_listing\([\s\S]*?as (\$[a-z_]*\$)([\s\S]*?)\1;",
         SQL,
     )
     assert match
