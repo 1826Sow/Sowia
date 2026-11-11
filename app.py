@@ -28,6 +28,7 @@ from sowia_supabase_auth import (
     configuration_ready,
     create_user_client,
     github_authorization_url,
+    pkce_verifier_available,
     sign_out,
 )
 import cloud_storage
@@ -150,6 +151,12 @@ if cloud_mode:
         auth_stage = "échange du code de retour GitHub avec Supabase"
         authorization_code = st.query_params.get("code")
         if authorization_code:
+            if not pkce_verifier_available(supabase_client):
+                raise RuntimeError(
+                    "Diagnostic PKCE : le vérificateur temporaire n'est plus présent "
+                    "dans le stockage de cette session. La connexion est interrompue "
+                    "avant l'échange avec Supabase ; aucun accès n'est accordé."
+                )
             complete_github_login(supabase_client, authorization_code)
             st.session_state.pop("sowia_github_login_url", None)
             st.query_params.clear()
