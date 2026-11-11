@@ -8,8 +8,13 @@ grant usage on schema final_tec_private to service_role;
 
 create extension if not exists pgcrypto with schema extensions;
 
+-- Allocate sequence numbers only after taking the chain lock. An IDENTITY value
+-- is allocated before a BEFORE INSERT trigger runs, which can invert sequence
+-- order when concurrent transactions acquire the advisory lock in another order.
+create sequence if not exists final_tec_private.audit_events_sequence_id_seq;
+
 create table if not exists final_tec_private.audit_events (
-    sequence_id bigint generated always as identity primary key,
+    sequence_id bigint primary key,
     event_id uuid not null unique default gen_random_uuid(),
     project_key text not null default 'final-tec'
         check (project_key = 'final-tec'),
@@ -74,6 +79,9 @@ declare
 begin
     -- Serialize append operations so concurrent inserts cannot fork the chain.
     perform pg_advisory_xact_lock(184631, 202611);
+
+    -- Assign the durable ordering key while holding the same transaction lock.
+    new.sequence_id := nextval('final_tec_private.audit_events_sequence_id_seq'::regclass);
 
     select event_hash
       into prior_hash
@@ -156,7 +164,7 @@ create or replace function public.final_tec_append_audit_event(
 )
 returns table (sequence_id bigint, event_id uuid, occurred_at timestamptz, event_hash text)
 language plpgsql security definer
-set search_path = pg_catalog, public, final_tec_private, auth
+set search_path = pg_catalog, auth, final_tec_private
 as $function$
 declare
     allowed_assignment boolean;
