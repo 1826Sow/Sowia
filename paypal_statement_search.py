@@ -140,6 +140,30 @@ def _sandbox_reporting_configuration():
     }
 
 
+def _reporting_access_token(config):
+    """Obtain a Sandbox token and verify its Transaction Search permission."""
+    response = requests.post(
+        f"{config['base_url']}/v1/oauth2/token",
+        auth=(config["client_id"], config["client_secret"]),
+        data={"grant_type": "client_credentials"},
+        headers={"Accept": "application/json"},
+        timeout=paypal_payments.TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    token = payload.get("access_token") if isinstance(payload, dict) else None
+    scopes = set(str(payload.get("scope") or "").split()) if isinstance(payload, dict) else set()
+    required_scope = "https://uri.paypal.com/services/reporting/search/read"
+    if not token:
+        raise RuntimeError("PayPal n'a pas fourni de jeton d'accès Sandbox.")
+    if required_scope not in scopes:
+        raise PermissionError(
+            "Le jeton PayPal Sandbox ne possède pas l'autorisation Transaction Search. "
+            "Activez cette permission dans l'application PayPal Developer, puis réessayez."
+        )
+    return token
+
+
 def fetch_paypal_sandbox_statement(days: int = 90, limit: int = 20000):
     """Fetch a recent Sandbox statement for manual review; perform no database writes.
 
@@ -160,7 +184,7 @@ def fetch_paypal_sandbox_statement(days: int = 90, limit: int = 20000):
     now = datetime.now(timezone.utc)
     end = now - timedelta(hours=REPORTING_LAG_HOURS)
     start = end - timedelta(days=days)
-    token = paypal_payments._access_token(config)
+    token = _reporting_access_token(config)
     headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/json",
