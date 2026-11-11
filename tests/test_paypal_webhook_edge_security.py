@@ -71,6 +71,9 @@ def test_subscription_reconciliation_rpc_serializes_concurrent_events():
     assert "security definer" in migration.lower()
     assert "set search_path = ''" in migration
     assert "pg_advisory_xact_lock" in migration
+    assert "v_existing_user_id <> p_user_id" in migration
+    assert "v_existing_plan_id <> p_paypal_plan_id" in migration
+    assert "owner or plan is immutable" in migration
     assert "last_webhook_event_time" in migration
     assert "payment_review_at" in migration
     assert "p_event_time < v_existing_event_time" in migration
