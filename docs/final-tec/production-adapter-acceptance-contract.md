@@ -902,3 +902,89 @@ permission. La gouvernance de fusion de production est donc
 fusionnée ; aucune fusion, aucun déploiement et aucun workload n'ont été
 effectués. G2-B reste **NO-GO / NOT_RUN**.
 
+### 21.9 Audit des workflows CI : permissions, secrets, déclencheurs et dépendances
+
+#### Contrôles confirmés sur le HEAD audité
+
+Les cinq workflows présents dans la PR ont été examinés :
+`.github/workflows/final-tec-integrated-dual-approval.yml`,
+`.github/workflows/financial-ledger-checks.yml`,
+`.github/workflows/paypal-subscriptions-checks.yml`,
+`.github/workflows/python312-dependency-lock.yml` et
+`.github/workflows/tests.yml`.
+
+- Chaque workflow déclare explicitement `permissions: contents: read`.
+- Les actions tierces observées (checkout, setup-python, setup-deno et
+  upload-artifact) sont référencées par SHA complet.
+- Aucun déclencheur `pull_request_target` n'est présent.
+- Les workflows de pull request ne reçoivent pas les secrets Supabase.
+  Le job d'intégration RLS est conditionné à un événement `push` sur
+  `refs/heads/main`, après contrôle de la présence des sept variables et
+  de la confirmation explicite du projet de test.
+- Les scripts de shell utilisent les variables d'environnement dans le
+  processus shell plutôt que d'interpoler directement les valeurs de secrets
+  dans le texte du script.
+- Le workflow FINAL TEC n'utilise aucun secret externe et exécute les tests
+  avec des dépendances déclarées dans des contraintes de versions.
+
+Ces éléments réduisent les privilèges et l'exposition des secrets ; ils ne
+remplacent pas la vérification des protections de fusion ni l'exécution
+d'intégrations réelles.
+
+#### Écart de reproductibilité des dépendances
+
+Le workflow qualité installe les dépendances applicatives depuis
+`requirements.txt`, dont plusieurs versions sont exprimées sous forme de
+bornes minimales ou de plages, puis exécute des audits et compare un verrou
+généré à `requirements.lock`. Il ne réalise toutefois pas l'installation
+principale des tests depuis le fichier verrouillé avec
+`--require-hashes`. Le verrou hashé est vérifié dans un environnement
+isolé et produit comme artefact, mais cette étape ne rend pas rétroactivement
+déterministe l'environnement des tests précédents.
+
+Plusieurs étapes mettent également à niveau `pip` ou installent
+`pip-audit` sans version exacte dans le workflow qualité et les workflows
+de tests ciblés. Le workflow de candidat Python 3.12 fixe au contraire
+explicitement `pip==26.3` et `pip-tools==7.6.2`.
+
+Il existe donc une différence entre « verrou hashé généré et vérifié » et
+« suite de tests exécutée exclusivement depuis ce verrou ». Le premier est
+démontré par le workflow ; le second ne l'est pas.
+
+#### Déclencheurs et portée
+
+Les tests généraux se déclenchent sur les pull requests vers `main` et
+exécutent `pytest -q`. Les workflows spécialisés FINAL TEC, registre
+financier et PayPal ont également des filtres de chemins sur les événements
+pull request. Le workflow qualité général couvre les PR, mais les contrôles
+spécialisés ne constituent pas nécessairement des statuts obligatoires de
+fusion : les règles de fusion consultées à la section 21.8 ne les imposent
+pas.
+
+Le job Supabase réel est volontairement ignoré sur les événements PR pour
+ne pas exposer les secrets au code proposé. Un succès CI de PR ne doit donc
+jamais être interprété comme une validation réelle de la RLS à deux comptes.
+
+#### Décision et actions restantes
+
+Aucune vulnérabilité d'exposition directe des secrets n'a été établie dans
+les cinq fichiers examinés. Les permissions en lecture seule, l'absence de
+`pull_request_target` et la séparation du job Supabase sont confirmées.
+
+Avant de considérer la chaîne CI comme reproductible et obligatoire pour
+une fusion de production, il reste à :
+- faire installer et exécuter les suites pertinentes dans un environnement
+  propre depuis le verrou exact avec vérification `--require-hashes` ;
+- fixer les versions des outils de bootstrap et d'audit lorsque leur
+  reproductibilité est requise ;
+- rendre obligatoires les statuts CI pertinents via les règles de fusion ;
+- vérifier le comportement sur une PR issue d'un fork et sur un push fiable
+  vers un projet Supabase exclusivement dédié aux tests.
+
+Aucun workflow n'a été modifié par cet audit. Le durcissement de la
+reproductibilité est une correction ciblée à planifier, mais ne doit pas être
+simulé par un simple artefact ou un nouveau nom de job. Les tests RLS réels
+demeurent **SKIPPED / NOT_RUN** dans le contexte PR. Les résultats CI du
+commit d'audit doivent être confirmés après son enregistrement. G2-B reste
+**NO-GO / NOT_RUN**.
+
