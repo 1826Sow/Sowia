@@ -60,6 +60,7 @@ set search_path = ''
 as $$
 declare
     v_capture_gross numeric(30,12);
+    v_capture_currency text;
     v_prior_refunds numeric(30,12);
 begin
     if new.provider <> 'paypal' or new.transaction_type <> 'refund' then
@@ -70,8 +71,12 @@ begin
         raise exception 'PayPal refund must reference its parent capture';
     end if;
 
-    select gross_amount
-      into v_capture_gross
+    if new.status <> 'manual_review' or new.gross_amount <= 0 then
+        raise exception 'PayPal refunds must remain positive and in manual review';
+    end if;
+
+    select gross_amount, gross_currency
+      into v_capture_gross, v_capture_currency
       from public.sowia_financial_transactions
      where user_id = new.user_id
        and provider = 'paypal'
@@ -81,6 +86,9 @@ begin
 
     if not found then
         raise exception 'PayPal parent capture not found for this account';
+    end if;
+    if new.gross_currency <> v_capture_currency then
+        raise exception 'PayPal refund currency does not match its parent capture';
     end if;
 
     select coalesce(sum(gross_amount), 0)
