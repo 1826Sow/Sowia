@@ -113,13 +113,19 @@ class ExternalAuditAnchorCoordinator:
             pending = self.ledger.pending_anchor_checkpoints()
             if not isinstance(pending, Sequence) or isinstance(pending, (str, bytes)):
                 return False
-            if any(
-                isinstance(item, AuditCheckpoint)
-                and isinstance(item.sequence, int)
-                and not isinstance(item.sequence, bool)
-                and item.sequence < checkpoint.sequence
-                for item in pending
-            ):
+            pending_sequences = []
+            for item in pending:
+                if (
+                    not isinstance(item, AuditCheckpoint)
+                    or not _valid_checkpoint(item, item.authorization_id)
+                ):
+                    return False
+                pending_sequences.append(item.sequence)
+                if item.sequence < checkpoint.sequence:
+                    return False
+                if item.sequence == checkpoint.sequence and item != checkpoint:
+                    return False
+            if len(pending_sequences) != len(set(pending_sequences)):
                 return False
             receipt = self.anchor.append_checkpoint(
                 checkpoint.sequence,
