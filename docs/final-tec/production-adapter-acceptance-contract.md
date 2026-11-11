@@ -246,3 +246,31 @@ GitHub Actions sur le commit `bb0ea5212b577d91c0ff18cbb27a8b4fa6978641`
 (run SOW IA quality checks #2675, le 11 novembre 2026). Elle confirme le
 scénario de reprise SQLite simulé par le test ; elle ne constitue pas une
 preuve d'intégration fournisseur externe ni une revue indépendante.
+
+
+## 16. Adaptateur JWKS HTTPS local — limites et tests
+
+Le module `final_tec_jwks.py` ajoute un résolveur HTTP(S) générique destiné
+à être injecté dans `OIDCApprovalIdentityVerifier`. Il exige une URL JWKS
+HTTPS dont l'origine figure explicitement dans une liste d'autorisation
+configurée hors du jeton. Le transport standard valide les certificats TLS ;
+toutes les redirections sont refusées. Les réponses sont limitées en taille,
+le délai réseau et la durée de cache sont bornés, les clés RSA de signature
+RS256 sont filtrées, les identifiants `kid` dupliqués font échouer le
+chargement et un `kid` inconnu déclenche au plus un rafraîchissement avant
+échec fermé.
+
+Les tests locaux couvrent les URL ambiguës/non HTTPS, l'origine non autorisée,
+les réponses non JSON, les redirections, les réponses surdimensionnées, les
+identifiants dupliqués, le cache borné, le rafraîchissement après rotation et
+le refus d'un `kid` toujours inconnu. Ils utilisent un faux transport et des
+clés RSA générées pour les tests : ils ne constituent pas une preuve TLS
+contre un fournisseur réel, ne sélectionnent aucun issuer, ne découvrent pas
+automatiquement les métadonnées OIDC et ne prouvent pas la politique JWKS
+d'un fournisseur. L'origine autorisée, l'URL JWKS, les audiences, l'ACR/AMR
+et les rôles doivent être approuvés et provisionnés séparément.
+
+La CI FINAL TEC exécute désormais `tests/test_final_tec_jwks.py`. Tant que
+l'adaptateur n'a pas été raccordé à un issuer réel approuvé et testé dans son
+environnement officiel, le contrôle OIDC/JWKS de production reste
+**NOT_RUN** et G2-B reste **NO-GO / NOT_RUN**.
