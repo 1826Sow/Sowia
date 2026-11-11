@@ -192,3 +192,25 @@ def test_rejects_oversized_response():
 def test_rejects_boolean_numeric_configuration(kwargs):
     with pytest.raises(JWKSConfigurationError):
         make_resolver(FakeOpener([]), **kwargs)
+
+
+@pytest.mark.parametrize("cache_control", ["max-age=0", "no-store", "no-cache", "public, max-age=0"])
+def test_non_reusable_cache_control_forces_fetch_on_each_call(cache_control):
+    opener = FakeOpener([
+        Response({"keys": [jwk("key-1")]}, cache_control=cache_control),
+        Response({"keys": [jwk("key-1")]}, cache_control=cache_control),
+    ])
+    resolver = make_resolver(opener)
+    assert resolver("key-1") is not None
+    assert resolver("key-1") is not None
+    assert len(opener.calls) == 2
+
+
+def test_quoted_max_age_is_respected():
+    opener = FakeOpener([
+        Response({"keys": [jwk("key-1")]}, cache_control='public, max-age="60"')
+    ])
+    resolver = make_resolver(opener)
+    assert resolver("key-1") is not None
+    assert resolver("key-1") is not None
+    assert len(opener.calls) == 1
