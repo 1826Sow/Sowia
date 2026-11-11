@@ -58,3 +58,16 @@ def test_non_boolean_truthy_probe_result_does_not_pass():
         ConformanceProbe("strict-bool", lambda: 1),
     ])
     assert report.passed is False
+
+
+
+@pytest.mark.parametrize("probes", [[None], ["not-a-probe"], "not-a-suite"])
+def test_malformed_suite_entries_are_rejected(probes):
+    with pytest.raises(ConformanceConfigurationError, match="ConformanceProbe"):
+        run_adapter_conformance(probes)
+
+
+@pytest.mark.parametrize("name", [None, 1, "", "   "])
+def test_invalid_probe_names_are_rejected(name):
+    with pytest.raises(ConformanceConfigurationError, match="non-empty strings"):
+        run_adapter_conformance([ConformanceProbe(name, lambda: True)])
