@@ -42,6 +42,20 @@ begin
         pg_catalog.hashtextextended(p_user_id::text, 0)
     );
 
+    -- A PayPal order is single-capture for this checkout. Do not allow a
+    -- second capture ID to reuse an order already linked to this account.
+    if exists (
+        select 1
+          from public.sowia_financial_transactions
+         where user_id = p_user_id
+           and provider = 'paypal'
+           and paypal_order_id = p_order_id
+           and transaction_type = 'payment'
+           and provider_payment_id <> p_capture_id
+    ) then
+        raise exception 'PayPal order is already linked to another capture';
+    end if;
+
     insert into public.sowia_financial_transactions (
         user_id, provider, provider_payment_id, paypal_order_id,
         transaction_type, status, gross_amount, gross_currency,
