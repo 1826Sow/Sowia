@@ -239,6 +239,19 @@ Deno.serve(async (request: Request) => {
       return json({ error: "PayPal Premium plan price validation failed" }, 403);
     }
 
+    const normalizedStatus = String(subscription.status || "").toUpperCase();
+    const allowedStatuses = new Set([
+      "APPROVAL_PENDING",
+      "APPROVED",
+      "ACTIVE",
+      "SUSPENDED",
+      "CANCELLED",
+      "EXPIRED",
+    ]);
+    if (!allowedStatuses.has(normalizedStatus)) {
+      return json({ error: "Unsupported PayPal subscription status" }, 422);
+    }
+
     const billing = subscription.billing_info || {};
     const lastPayment = billing.last_payment || {};
     const paymentAmount = lastPayment.amount || {};
@@ -252,7 +265,7 @@ Deno.serve(async (request: Request) => {
       provider: "paypal",
       paypal_subscription_id: subscriptionId,
       paypal_plan_id: planId,
-      status: String(subscription.status || "UNKNOWN").toLowerCase(),
+      status: normalizedStatus.toLowerCase(),
       currency: paymentAmount.currency_code || null,
       amount: paymentAmount.value || null,
       next_billing_time: billing.next_billing_time || null,
