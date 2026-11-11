@@ -170,7 +170,7 @@ Deno.serve(async (request: Request) => {
       let captureId = "";
       try {
         const parentUrl = new URL(String(parentLink?.href || ""));
-        const captureMatch = parentUrl.pathname.match(/^\\/v2\\/payments\\/captures\\/([A-Z0-9]{8,64})$/i);
+        const captureMatch = parentUrl.pathname.match(/^\/v2\/payments\/captures\/([A-Z0-9]{8,64})$/i);
         if (parentUrl.origin === new URL(baseUrl).origin && captureMatch) {
           captureId = captureMatch[1];
         }
