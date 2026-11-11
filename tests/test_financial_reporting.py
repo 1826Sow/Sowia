@@ -213,3 +213,14 @@ def test_non_final_statuses_are_not_misclassified_as_data_anomalies():
     valid, anomalies = partition_financial_transactions(rows)
     assert valid == []
     assert anomalies == []
+
+
+def test_status_and_transaction_type_must_match():
+    rows = [{
+        "provider": "paypal", "gross_currency": "EUR", "gross_amount": "12",
+        "transaction_type": "payment", "status": "refunded",
+    }]
+    valid, anomalies = partition_financial_transactions(rows)
+    assert valid == []
+    assert len(anomalies) == 1
+    assert "Le statut ne correspond pas au type de transaction." in anomalies[0]["reasons"]
