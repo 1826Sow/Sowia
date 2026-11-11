@@ -831,7 +831,7 @@ def test_anchor_recovery_continues_after_one_checkpoint_temporarily_fails(tmp_pa
     assert store.anchor_outbox_status(first_id) == "pending"
     assert store.anchor_outbox_status(second_id) == "anchored"
     assert store.pending_anchor_checkpoints() == [first_checkpoint]
-    assert second_checkpoint.event_hash in anchor.receipts[next(iter(anchor.receipts))] .values() if False else True
+    assert any(key[2] == second_checkpoint.event_hash for key in anchor.receipts)
 
     # A later pass recovers the remaining checkpoint without duplicating the
     # already anchored second checkpoint.
