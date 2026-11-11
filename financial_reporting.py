@@ -26,7 +26,8 @@ def summarize_financial_transactions(rows):
         'payments': Decimal('0'), 'refunds': Decimal('0'),
         'fees_reported': Decimal('0'), 'fees_known': True, 'fee_currencies': set(),
         'net_reported': Decimal('0'), 'net_known': True, 'net_currencies': set(),
-        'count_payments': 0, 'count_refunds': 0,\n        'fee_records_missing': 0, 'net_records_missing': 0,
+        'count_payments': 0, 'count_refunds': 0,
+        'fee_records_missing': 0, 'net_records_missing': 0,
         'reference_eur_payments': Decimal('0'), 'reference_eur_refunds': Decimal('0'),
     })
     for row in rows:
@@ -55,12 +56,16 @@ def summarize_financial_transactions(rows):
             bucket['count_refunds'] += 1
             if reference is not None: bucket['reference_eur_refunds'] += reference
         fee_currency = str(row.get('fee_currency') or '').strip().upper()
-        if fee is None or not fee_currency:\n            bucket['fees_known'] = False\n            bucket['fee_records_missing'] += 1
+        if fee is None or not fee_currency:
+            bucket['fees_known'] = False
+            bucket['fee_records_missing'] += 1
         else:
             bucket['fees_reported'] += fee
             bucket['fee_currencies'].add(fee_currency)
         net_currency = str(row.get('net_currency') or '').strip().upper()
-        if net is None or not net_currency:\n            bucket['net_known'] = False\n            bucket['net_records_missing'] += 1
+        if net is None or not net_currency:
+            bucket['net_known'] = False
+            bucket['net_records_missing'] += 1
         else:
             bucket['net_reported'] += net
             bucket['net_currencies'].add(net_currency)
@@ -78,7 +83,10 @@ def summarize_financial_transactions(rows):
             'fees_currency': next(iter(fee_currencies)) if fees_valid else None,
             'net_reported': format(bucket['net_reported'], 'f') if net_valid else None,
             'net_currency': next(iter(net_currencies)) if net_valid else None,
-            'payment_count': bucket['count_payments'], 'refund_count': bucket['count_refunds'],\n            'refunds_exceed_payments': bucket['refunds'] > bucket['payments'],\n            'fee_records_missing': bucket['fee_records_missing'],\n            'net_records_missing': bucket['net_records_missing'],
+            'payment_count': bucket['count_payments'], 'refund_count': bucket['count_refunds'],
+            'refunds_exceed_payments': bucket['refunds'] > bucket['payments'],
+            'fee_records_missing': bucket['fee_records_missing'],
+            'net_records_missing': bucket['net_records_missing'],
             'reference_eur_after_refunds': format(bucket['reference_eur_payments'] - bucket['reference_eur_refunds'], 'f'),
             'reference_is_settled_eur': False,
         })
