@@ -66,7 +66,7 @@ def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
             "id": "CAPTURE001", "status": "REFUNDED",
             "amount": {"currency_code": "EUR", "value": "9.90"},
             "seller_payable_breakdown": {
-                "total_refunded_amount": {"currency_code": "EUR", "value": "2.50"}
+                "total_refunded_amount": {"currency_code": "EUR", "value": "9.90"}
             },
         },
         "CAPTURE002": {
