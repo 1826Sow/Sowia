@@ -103,7 +103,11 @@ def validate_dual_approval(
     # Reject duplicate identities/keys/nonces before invoking any external
     # trust callback, so callback order cannot mask a pair-level violation.
     for field in ("subject_id", "key_id", "nonce"):
-        values = [item.get(field) if isinstance(item, Mapping) else None for item in approvals]
+        values = [
+            _nonempty(item.get(field), f"approvals[{index}].{field}")
+            if isinstance(item, Mapping) else ""
+            for index, item in enumerate(approvals)
+        ]
         if len(set(values)) != 2:
             raise DualApprovalError(f"Both approvals must use distinct {field} values")
 
