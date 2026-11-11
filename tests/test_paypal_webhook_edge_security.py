@@ -37,7 +37,7 @@ def test_paypal_webhook_rejects_unknown_subscription_status_before_persistence()
     assert status_check < reject < write
     for status in ("APPROVAL_PENDING", "APPROVED", "ACTIVE", "SUSPENDED", "CANCELLED", "EXPIRED"):
         assert f'"{status}"' in WEBHOOK
-    assert 'status: normalizedStatus.toLowerCase()' in WEBHOOK
+    assert 'status: effectiveStatus' in WEBHOOK
 
 def test_paypal_payment_failure_blocks_premium_until_paypal_counter_resets():
     assert '"BILLING.SUBSCRIPTION.PAYMENT.FAILED"' in WEBHOOK
