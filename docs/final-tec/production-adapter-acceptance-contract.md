@@ -274,3 +274,37 @@ La CI FINAL TEC exécute désormais `tests/test_final_tec_jwks.py`. Tant que
 l'adaptateur n'a pas été raccordé à un issuer réel approuvé et testé dans son
 environnement officiel, le contrôle OIDC/JWKS de production reste
 **NOT_RUN** et G2-B reste **NO-GO / NOT_RUN**.
+
+
+## 17. Séparation entre connexion SOW IA et approbation FINAL TEC
+
+Le parcours de connexion actuel de l'application SOW IA utilise GitHub OAuth
+via Supabase Auth et PKCE. Il sert à authentifier une session applicative.
+L'identifiant de navigateur utilisé pour retrouver le vérificateur PKCE est
+un identifiant de portée, pas un justificatif d'identité ni un facteur
+d'authentification.
+
+Cette session applicative **n'est pas une preuve d'approbation FINAL TEC**.
+Elle ne doit jamais être convertie directement en approbation, ni servir à
+fabriquer les claims OIDC `acr`, `amr`, `auth_time` ou le nonce attendu.
+En particulier, un retour OAuth GitHub ne prouve pas à lui seul une
+authentification résistante à l'hameçonnage ni l'utilisation de WebAuthn.
+
+Le vérificateur FINAL TEC continue d'exiger un jeton provenant d'un issuer
+OIDC explicitement configuré, une audience exacte, une session d'approbation
+côté serveur, un nonce frais, un `auth_time` récent, l'`acr` approuvé et
+l'`amr` requis. La clé de signature doit être résolue par la source JWKS
+configurée et le rôle doit être relu dans l'annuaire d'autorité au moment de
+chaque approbation. Aucun fallback vers la session Streamlit/Supabase n'est
+autorisé si l'un de ces éléments manque ou si un fournisseur est indisponible.
+
+**Décision d'intégration actuelle :** conserver GitHub/Supabase pour la
+connexion générale de SOW IA ; laisser l'autorité OIDC d'approbation séparée
+et non configurée tant qu'un fournisseur offrant les claims et facteurs
+exigés n'a pas été choisi et vérifié. Ne pas assouplir `required_acr` ou
+`required_amr` pour faire passer le parcours OAuth existant.
+
+**Preuves de blocage ajoutées :** un test de régression vérifie explicitement
+qu'un jeton dont le seul `amr` est `oauth` est refusé par le vérificateur
+FINAL TEC. Ce test utilise des clés et un jeton générés localement ; il prouve
+le refus du code, pas la configuration d'un fournisseur réel.
