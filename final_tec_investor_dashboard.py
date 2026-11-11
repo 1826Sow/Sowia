@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from final_tec_evidence import build_pending_register
+
 
 DEMO_NOTICE = (
     "MAQUETTE DE DÉMONSTRATION — toutes les valeurs et séries affichées sont "
@@ -97,10 +99,12 @@ def render_dashboard(st: Any) -> None:
     st.markdown("### Provenance et règles de publication")
     st.dataframe(
         [
-            {"Indicateur": "Avancement technique", "Source attendue": "Jalons GitHub validés", "État": "Non connecté"},
-            {"Indicateur": "Tests IA / Edge", "Source attendue": "Rapports de benchmark reproductibles", "État": "Non connecté"},
-            {"Indicateur": "Coûts et budget", "Source attendue": "Registre financier FINAL TEC", "État": "Non connecté"},
-            {"Indicateur": "Partenariats et pilotes", "Source attendue": "Contrats ou validations autorisées", "État": "Non connecté"},
+            {
+                "Indicateur": row["indicator"],
+                "Source attendue": row["expected_source"],
+                "État": row["display_status"],
+            }
+            for row in build_pending_register()
         ],
         use_container_width=True,
         hide_index=True,
