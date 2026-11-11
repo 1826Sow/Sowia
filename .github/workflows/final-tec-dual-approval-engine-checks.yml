@@ -3,7 +3,7 @@ name: FINAL TEC dual approval engine checks
 on:
   pull_request:
     branches:
-      - feature/final-tec-ed25519-trust-verifier
+      - docs/final-tec-dual-approval-protocol-v2
     paths:
       - "final_tec_dual_approval.py"
       - "tests/test_final_tec_dual_approval.py"
