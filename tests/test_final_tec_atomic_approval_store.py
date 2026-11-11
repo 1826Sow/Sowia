@@ -846,6 +846,63 @@ def test_anchor_recovery_continues_after_one_checkpoint_temporarily_fails(tmp_pa
     assert store.verify_anchor_outbox() is True
 
 
+def test_anchor_recovery_skips_invalid_checkpoint_and_continues(tmp_path):
+    """Malformed pending data must fail closed without blocking valid entries."""
+    from dataclasses import replace
+    from final_tec_audit_anchor import ExternalAuditAnchorCoordinator
+
+    class LedgerWithMalformedPendingEntry:
+        def __init__(self, ledger, malformed, valid):
+            self.ledger = ledger
+            self.malformed = malformed
+            self.valid = valid
+
+        def pending_anchor_checkpoints(self):
+            return [self.malformed, self.valid]
+
+        def mark_checkpoint_anchored(self, authorization_id, event_hash, receipt):
+            return self.ledger.mark_checkpoint_anchored(
+                authorization_id, event_hash, receipt
+            )
+
+    class RecordingAnchor:
+        def __init__(self):
+            self.calls = []
+
+        def append_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc):
+            self.calls.append(event_hash)
+            return {"receipt_id": f"valid-{sequence}", "event_hash": event_hash}
+
+        def verify_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc, receipt):
+            return receipt == {
+                "receipt_id": f"valid-{sequence}",
+                "event_hash": event_hash,
+            }
+
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path, "outbox-invalid-pending-entry.sqlite3")
+    records = _records(now)
+    authorization_id = "auth-invalid-pending-entry"
+    event = {"event_type": "valid-pending", "authorization_id": authorization_id}
+    assert store.register_pair(authorization_id, records, now=now)
+    checkpoint = store.commit_pair_audit_and_outbox(
+        authorization_id, records, event, now=now
+    )
+    assert checkpoint is not None
+
+    malformed = replace(checkpoint, sequence=0)
+    ledger = LedgerWithMalformedPendingEntry(store, malformed, checkpoint)
+    anchor = RecordingAnchor()
+    coordinator = ExternalAuditAnchorCoordinator(ledger, anchor)
+
+    assert coordinator.recover_pending() == 1
+    assert anchor.calls == [checkpoint.event_hash]
+    assert store.anchor_outbox_status(authorization_id) == "anchored"
+    assert store.pending_anchor_checkpoints() == []
+    assert store.verify_audit_chain() is True
+    assert store.verify_anchor_outbox() is True
+
+
 def test_outbox_rejects_audit_event_with_missing_or_mismatched_authorization_id(tmp_path):
     now = datetime.now(timezone.utc)
     store = _store(tmp_path, "outbox-authorization-binding.sqlite3")
