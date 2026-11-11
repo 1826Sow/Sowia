@@ -760,3 +760,83 @@ Le fournisseur et le stockage doivent être choisis avant l'implémentation ;
 ne pas ajouter une machine d'états factice ou un adaptateur simulé présenté
 comme une preuve de production. G2-B reste **NO-GO / NOT_RUN**.
 
+### 21.7 Audit des courses concurrentes et des ressources partagées
+
+#### Garanties locales déjà démontrées par les tests existants
+
+Les tests du registre SQLite couvrent déjà les cas suivants sur un fichier local
+et un seul hôte :
+
+- plusieurs threads soumettant le même `authorization_id` et la même charge :
+  ils retrouvent le même checkpoint et ne créent qu'un audit ;
+- plusieurs processus OS sur le même fichier : convergence vers une seule
+  entrée d'outbox ;
+- un `authorization_id` ne peut pas être réaffecté à un autre événement,
+  à une autre paire de nonces ou à des expirations différentes ;
+- la clé primaire globale `nonce_digest` empêche l'enregistrement d'un nonce
+  déjà attribué, y compris sous une autre autorisation ;
+- `BEGIN IMMEDIATE` et les contraintes uniques sérialisent les commits locaux.
+
+Ces tests ne démontrent pas une concurrence multi-hôtes, ni la coordination
+avec un fournisseur OIDC ou un annuaire de rôles distant.
+
+#### Courses OIDC non résolues
+
+Le consommateur de session actuel est appelé séparément pour chaque approbateur.
+Une consommation unitaire atomique peut empêcher deux appels de gagner sur
+**la même session**, mais elle ne garantit pas que les deux sessions d'une
+paire soient acquises ensemble.
+
+Cas critique : deux opérations distinctes A et B partagent une session S1,
+mais possèdent chacune une seconde session différente (S2 et S3). Si A consomme
+S1 puis échoue avant S2, B peut ensuite échouer sur S1 ; ou l'inverse selon
+l'ordonnancement. Dans les deux cas, une session peut être consommée sans qu'une
+paire complète soit validée. Le consommateur unitaire ne peut pas réparer cet
+état. Le protocole de réservation doit donc verrouiller/attribuer les deux
+sessions comme une unité, avec une contrainte d'unicité durable et un
+`operation_id` stable.
+
+Autre cas : A et B utilisent le même `authorization_id` avec des charges
+différentes. Le registre local refuse le second commit, mais si les sessions
+ont déjà été consommées avant ce refus, cette protection arrive trop tard
+pour préserver les sessions. La réservation doit donc lier et verrouiller
+l'empreinte canonique de la demande avant toute consommation irréversible.
+
+La vérification de rôle est également distincte : le code relit le rôle courant
+avant la consommation unitaire, mais aucun mécanisme commun ne sérialise une
+révocation distante avec la réservation et le commit du registre. La règle de
+linéarisation et la fraîcheur maximale admise doivent être garanties par le
+fournisseur faisant autorité et testées sur son intégration réelle.
+
+#### Matrice de concurrence à exécuter sur le fournisseur retenu
+
+Les exigences OIDC-PAIR-04, OIDC-COMMIT-06 et LEDGER-09 existent déjà. Les
+scénarios ci-dessous les précisent pour éviter de dupliquer les tests locaux :
+
+| Scénario ciblé | Résultat exigé |
+|---|---|
+| Deux opérations, mêmes deux sessions, mêmes ou différents identifiants d'autorisation | Une seule réservation de paire gagne ; aucune consommation partielle |
+| Deux opérations, une session partagée et deux sessions partenaires distinctes | Une seule opération gagne les deux sessions ; l'autre ne consomme rien |
+| Même autorisation, charges ou empreintes différentes | Conflit détecté avant tout effet irréversible sur les sessions |
+| Deux autorisations, même nonce applicatif | Refus d'enregistrement ; aucune paire partiellement engagée |
+| Révocation de rôle pendant réservation/commit | Résultat conforme à la règle de linéarisation documentée, sans rôle périmé au-delà de la limite admise |
+| Deux workers reprennent le même `operation_id` après panne | Une seule transition logique ; résultats idempotents et état durable identique |
+| Deux workers reprennent des opérations différentes partageant une session | Verrouillage/contrainte de ressource ; aucune double attribution |
+| Deux hôtes ancrent des checkpoints simultanément | Ordre global garanti par le fournisseur externe, pas seulement par le verrou local |
+
+Les cas du registre SQLite déjà testés ne doivent pas être relancés sous un
+nouveau nom pour prétendre couvrir ces exigences. Les nouveaux essais doivent
+utiliser le fournisseur de sessions et le stockage partagés effectivement
+retenus, avec injections de panne, workers concurrents, redémarrages et
+inspection des états faisant autorité.
+
+#### Décision
+
+Aucun verrou de paire OIDC, registre de réservation, bail, identifiant
+`operation_id` ou mécanisme de coordination multi-hôtes n'est implémenté dans
+les adaptateurs actuels. Aucune correction de code ne peut être validée sans
+choisir le fournisseur et son modèle de cohérence. Les garanties SQLite
+mono-hôte restent limitées à leur périmètre. Intégrations et essais de
+concurrence OIDC réels : **NOT_CONFIGURED / NOT_RUN** ; G2-B :
+**NO-GO / NOT_RUN**.
+
