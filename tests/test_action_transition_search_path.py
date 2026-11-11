@@ -91,3 +91,19 @@ def test_action_transition_enforces_two_party_approval_and_audit_trail():
     assert "p_next_status in ('approved','rejected')" in body
     assert "insert into public.sowia_global_action_audit" in body
     assert "values(p.id,actor,p.status,p_next_status,coalesce(p_note,''))" in body
+
+
+
+def test_action_plan_insert_privileges_exclude_server_owned_workflow_fields():
+    revoke = (
+        "revoke all on public.sowia_global_action_plans, "
+        "public.sowia_global_action_audit from anon, public, authenticated"
+    )
+    assert revoke in SQL
+    assert "grant select on public.sowia_global_action_plans to authenticated" in SQL
+    assert (
+        "grant insert (\n    creator_id, title, objective, country, owner_label, budget_cap, currency,\n"
+        "    due_date, success_metric, stop_condition, approver_id\n"
+        ") on public.sowia_global_action_plans to authenticated"
+    ) in SQL
+    assert "grant select, insert on public.sowia_global_action_plans to authenticated" not in SQL
