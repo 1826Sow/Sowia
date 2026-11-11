@@ -62,20 +62,29 @@ def test_structural_preflight_never_calls_adapters_or_returns_authorization():
     class NoCallAdapter:
         production_grade = True
 
-        def __getattribute__(self, name):
-            if name in {
-                "resolve_signing_key", "load_approval_session", "has_current_role",
-                "sign", "verify", "commit_pair_and_audit", "healthcheck",
-            }:
-                raise AssertionError("Preflight must not invoke provider operations")
-            return object.__getattribute__(self, name)
+        def __init__(self):
+            self.calls = []
 
-    bundle = ProductionAdapterBundle(*(NoCallAdapter() for _ in range(6)))
+        def _called(self, name):
+            self.calls.append(name)
+            raise AssertionError("Preflight must not invoke provider operations")
+
+        def resolve_signing_key(self, *args): return self._called("resolve_signing_key")
+        def load_approval_session(self, *args): return self._called("load_approval_session")
+        def has_current_role(self, *args): return self._called("has_current_role")
+        def sign(self, *args): return self._called("sign")
+        def verify(self, *args): return self._called("verify")
+        def commit_pair_and_audit(self, *args): return self._called("commit_pair_and_audit")
+        def healthcheck(self, *args): return self._called("healthcheck")
+
+    adapters = [NoCallAdapter() for _ in range(6)]
+    bundle = ProductionAdapterBundle(*adapters)
 
     result = validate_production_adapter_bundle(bundle)
 
-    # Structural completeness is not provider verification, an approval, or
-    # an execution capability. The function intentionally returns no token.
+    # getattr/callable inspection is permitted; executing provider methods is not.
+    assert all(adapter.calls == [] for adapter in adapters)
+    # Structural completeness is not an approval or execution capability.
     assert result is None
     assert not hasattr(result, "execution_authorized")
     assert not hasattr(result, "g2b_status")
