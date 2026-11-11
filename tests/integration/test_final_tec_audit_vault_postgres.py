@@ -58,19 +58,19 @@ def install_proposal():
     yield
 
 
-def _append(index: int) -> tuple[int, str, str]:
+def _append(index: int) -> tuple[int, str]:
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
         conn.execute("set role service_role")
         conn.execute("select set_config('request.jwt.claim.role', 'service_role', false)")
         row = conn.execute("""
-            select sequence_id, event_hash, previous_hash
+            select sequence_id, event_hash
             from public.final_tec_append_audit_event(
                 %s, 'final_tec_investor_viewer', 'investor_dashboard_viewed',
                 'dashboard', %s, 'allowed', 'dashboard_view'
             )
         """, (ACTOR, f"concurrent-{index}")).fetchone()
         assert row is not None
-        return int(row[0]), str(row[1]), str(row[2])
+        return int(row[0]), str(row[1])
 
 
 def test_concurrent_appends_form_one_ordered_hash_chain():
