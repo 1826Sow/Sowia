@@ -1,6 +1,6 @@
 import pytest
 
-from financial_reporting import load_user_financial_transactions, summarize_financial_transactions
+from financial_reporting import load_user_financial_transactions, summarize_financial_transactions, summarize_subscription_statuses
 
 
 def test_reports_confirmed_crypto_and_keeps_unknown_fees_unknown():
@@ -167,4 +167,3 @@ def test_subscription_status_summary_rejects_non_list_input():
     import pytest
     with pytest.raises(ValueError):
         summarize_subscription_statuses(None)
-\n
