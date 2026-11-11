@@ -141,6 +141,7 @@ def test_accepts_standard_jwks_json_media_types(content_type):
     "text/json",
     "application/notjson",
     "application/jsonp",
+    "application/not a token+json",
     "application/xml",
 ])
 def test_rejects_non_jwks_json_media_types(content_type):
