@@ -196,7 +196,6 @@ def test_public_fetch_validates_limits_before_external_calls(monkeypatch):
     [
         {"transaction_details": [], "total_pages": None},
         {"transaction_details": [], "total_pages": "not-a-number"},
-        {"transaction_details": [], "total_pages": 0},
         {"transaction_details": [], "total_pages": True},
         {"transaction_details": []},
         {"total_pages": 1},
@@ -236,3 +235,21 @@ def test_fetch_window_rejects_more_results_than_page_size(monkeypatch):
             datetime(2026, 11, 1, tzinfo=timezone.utc),
             datetime(2026, 11, 2, tzinfo=timezone.utc),
         )
+
+
+def test_fetch_window_accepts_valid_empty_statement(monkeypatch):
+    monkeypatch.setattr(
+        statement.requests,
+        "get",
+        lambda *args, **kwargs: FakeResponse({
+            "transaction_details": [],
+            "total_pages": 0,
+        }),
+    )
+    events = statement._fetch_window(
+        {"base_url": "https://api-m.sandbox.paypal.com"},
+        {"Authorization": "Bearer sandbox-token"},
+        datetime(2026, 11, 1, tzinfo=timezone.utc),
+        datetime(2026, 11, 2, tzinfo=timezone.utc),
+    )
+    assert events == []
