@@ -188,3 +188,51 @@ def test_public_fetch_validates_limits_before_external_calls(monkeypatch):
         statement.fetch_paypal_sandbox_statement(days=0)
     with pytest.raises(ValueError):
         statement.fetch_paypal_sandbox_statement(days=30, limit=True)
+
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"transaction_details": [], "total_pages": None},
+        {"transaction_details": [], "total_pages": "not-a-number"},
+        {"transaction_details": [], "total_pages": 0},
+        {"transaction_details": [], "total_pages": True},
+        {"transaction_details": []},
+        {"total_pages": 1},
+        {"transaction_details": "not-a-list", "total_pages": 1},
+        {"transaction_details": [], "total_pages": statement.MAX_PAGES_PER_WINDOW + 1},
+    ],
+)
+def test_fetch_window_rejects_incomplete_or_inconsistent_pagination(monkeypatch, payload):
+    monkeypatch.setattr(
+        statement.requests,
+        "get",
+        lambda *args, **kwargs: FakeResponse(payload),
+    )
+    with pytest.raises(RuntimeError, match="Pagination|transactions"):
+        statement._fetch_window(
+            {"base_url": "https://api-m.sandbox.paypal.com"},
+            {"Authorization": "Bearer sandbox-token"},
+            datetime(2026, 11, 1, tzinfo=timezone.utc),
+            datetime(2026, 11, 2, tzinfo=timezone.utc),
+        )
+
+
+def test_fetch_window_rejects_more_results_than_page_size(monkeypatch):
+    payload = {
+        "transaction_details": [_event(str(index)) for index in range(statement.PAGE_SIZE + 1)],
+        "total_pages": 1,
+    }
+    monkeypatch.setattr(
+        statement.requests,
+        "get",
+        lambda *args, **kwargs: FakeResponse(payload),
+    )
+    with pytest.raises(RuntimeError, match="transactions"):
+        statement._fetch_window(
+            {"base_url": "https://api-m.sandbox.paypal.com"},
+            {"Authorization": "Bearer sandbox-token"},
+            datetime(2026, 11, 1, tzinfo=timezone.utc),
+            datetime(2026, 11, 2, tzinfo=timezone.utc),
+        )
