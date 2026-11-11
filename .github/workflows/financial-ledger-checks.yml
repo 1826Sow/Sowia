@@ -12,6 +12,7 @@ on:
       - "tests/test_financial_ledger.py"
       - "tests/test_financial_reporting.py"
       - "tests/test_paypal_payments.py"
+      - "tests/test_paypal_refund_sql_guard.py"
       - ".github/workflows/financial-ledger-checks.yml"
   pull_request:
     branches: [main]
@@ -46,3 +47,4 @@ jobs:
           tests/test_financial_ledger.py
           tests/test_financial_reporting.py
           tests/test_paypal_payments.py
+          tests/test_paypal_refund_sql_guard.py
