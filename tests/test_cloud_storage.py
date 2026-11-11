@@ -373,7 +373,7 @@ def test_create_global_action_plan_rejects_self_approver_before_database_write()
     }
 
     with pytest.raises(ValueError, match="différent du créateur"):
-        cloud_storage.create_global_action_plan(Client(), {"id": creator_id}, plan)
+        cloud_storage.create_global_action_plan(Client(), SimpleNamespace(id=creator_id), plan)
 
 
 def test_create_global_action_plan_rejects_unexpected_workflow_fields_before_write():
