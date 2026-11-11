@@ -58,7 +58,7 @@ jobs:
           PY
           pip-audit -r requirements.lock
           pip-audit -r requirements-hashes.lock
-      - name: Verify isolated clean install from committed lock
+      - name: Verify isolated clean install from generated hash lock
         run: |
           python -m venv /tmp/sowia-lock-venv
           /tmp/sowia-lock-venv/bin/python -m pip install --upgrade pip
