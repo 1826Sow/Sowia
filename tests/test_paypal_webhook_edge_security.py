@@ -253,5 +253,5 @@ def test_suspended_subscription_requires_explicit_verified_activation_to_resume(
         activation_guard = migration.index("p_event_type <> 'BILLING.SUBSCRIPTION.ACTIVATED'", suspended_guard)
         active_guard = migration.index("p_status <> 'active'", activation_guard)
         preserve = migration.index("v_effective_status := 'suspended';", active_guard)
-        activation_branch = migration.index("p_event_type = 'BILLING.SUBSCRIPTION.ACTIVATED'", preserve)
-        assert suspended_guard < activation_guard < active_guard < preserve < activation_branch
+        assert "BILLING.SUBSCRIPTION.ACTIVATED' or p_status <> 'active'" in migration[activation_guard:preserve]
+        assert suspended_guard < activation_guard < active_guard < preserve
