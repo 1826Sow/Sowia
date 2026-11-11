@@ -4,7 +4,7 @@ pypdf>=5.0
 pypdfium2>=4.30
 pytesseract>=0.3.13
 python-dotenv>=1.0
-requests>=2.32
+requests>=2.34.2
 stripe==16.1.0
 pytest>=8.0
 supabase>=2.20,<3
