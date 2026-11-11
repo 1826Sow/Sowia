@@ -101,6 +101,16 @@ def test_client_roles_cannot_read_private_audit_table(db_role: str):
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             conn.execute("select * from final_tec_private.audit_events").fetchall()
         conn.rollback()
+        conn.execute(f"set role {db_role}")
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            conn.execute(
+                "insert into final_tec_private.audit_events "
+                "(actor_id, actor_role, action, resource_type, resource_id, outcome, reason_code, previous_hash, event_hash) "
+                "values (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (ACTOR, "final_tec_investor_viewer", "investor_dashboard_viewed",
+                 "dashboard", "direct-write", "allowed", "dashboard_view", "0" * 64, "0" * 64)
+            )
+        conn.rollback()
 
 
 def test_viewer_assignment_cannot_append_an_admin_action():
@@ -118,16 +128,24 @@ def test_viewer_assignment_cannot_append_an_admin_action():
 
 def test_expired_or_missing_assignment_is_rejected():
     other_actor = uuid4()
+    expired_actor = uuid4()
     with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
+        conn.execute("""
+            insert into public.final_tec_investor_access
+                (user_id, project_key, role, status, starts_at, expires_at)
+            values (%s, 'final-tec', 'final_tec_investor_viewer', 'active',
+                    now() - interval '2 days', now() - interval '1 day')
+        """, (expired_actor,))
         conn.execute("set role service_role")
         conn.execute("select set_config('request.jwt.claim.role', 'service_role', false)")
-        with pytest.raises(psycopg.errors.RaiseException, match="active_final_tec_assignment_required"):
-            conn.execute("""
-                select * from public.final_tec_append_audit_event(
-                    %s, 'final_tec_investor_viewer', 'investor_dashboard_viewed',
-                    'dashboard', 'unassigned', 'allowed', 'dashboard_view'
-                )
-            """, (other_actor,))
+        for rejected_actor in (other_actor, expired_actor):
+            with pytest.raises(psycopg.errors.RaiseException, match="active_final_tec_assignment_required"):
+                conn.execute("""
+                    select * from public.final_tec_append_audit_event(
+                        %s, 'final_tec_investor_viewer', 'investor_dashboard_viewed',
+                        'dashboard', 'unassigned', 'allowed', 'dashboard_view'
+                    )
+                """, (rejected_actor,))
 
 
 def test_service_role_cannot_mutate_existing_audit_events():
