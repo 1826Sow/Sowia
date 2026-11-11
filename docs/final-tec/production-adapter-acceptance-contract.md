@@ -637,3 +637,40 @@ l'ordre d'exécution ou prétendre à une transaction globale avant d'avoir
 choisi le stockage et le fournisseur réels et établi leur frontière de
 cohérence. G2-B reste **NO-GO / NOT_RUN**.
 
+### 21.5 Décision d'architecture au HEAD audité
+
+L'implémentation disponible ne permet pas une transaction unique entre sessions
+OIDC et registre d'approbation :
+
+- `SQLiteAtomicApprovalStore` est explicitement un registre SQLite local,
+  mono-hôte. Ses tables couvrent les nonces, l'audit et l'outbox ; aucune table
+  de session OIDC ni opération de réservation de session n'y est définie.
+- `ApprovalSessionStore` est une interface injectée séparément. Elle expose
+  le chargement d'une session et sa consommation unitaire ; elle ne partage
+  aucun objet de transaction avec le registre.
+- `validate_dual_approval` appelle deux vérifications d'identité avant
+  `atomic_pair_audit_commit`. Le consommateur OIDC n'est donc pas inclus dans
+  la transaction SQLite.
+- Le coordinateur d'ancrage gère la reprise de l'outbox après le commit local,
+  mais ne peut ni annuler ni réserver les sessions OIDC.
+
+**Décision conservatoire :** avec les interfaces et le stockage actuellement
+présents, une transaction globale unique n'est pas démontrée. L'option
+d'architecture à retenir par défaut est donc un protocole récupérable de
+réservation/commit/finalisation, à condition que le fournisseur de sessions
+offre des réservations durables, idempotentes et récupérables. Sinon, il faudra
+reconcevoir le périmètre de stockage pour placer sessions, nonces, audit et
+outbox derrière une même frontière transactionnelle faisant autorité.
+
+Le choix du fournisseur doit être conditionné à la démonstration de cette
+capacité ; il ne faut pas sélectionner d'abord un fournisseur qui ne sait
+consommer que des sessions unitaires puis tenter de contourner cette limite.
+Aucune API de réservation n'est ajoutée au code tant que le fournisseur et le
+modèle de stockage ne sont pas retenus : une méthode abstraite non raccordée
+ne constituerait pas une correction de sécurité.
+
+**État :** analyse de frontière transactionnelle effectuée sur le code de la
+branche ; transaction globale absente/non démontrée ; fournisseur de sessions
+non sélectionné ; intégration et essais distribués **NOT_CONFIGURED / NOT_RUN**.
+G2-B reste **NO-GO / NOT_RUN**.
+
