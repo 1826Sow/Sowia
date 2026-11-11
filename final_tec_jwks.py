@@ -1,6 +1,6 @@
 """Fail-closed HTTPS JWKS resolver for FINAL TEC.
 
-The caller must explicitly allow the JWKS origin. TLS verification is always
+The caller must explicitly allow both issuer and JWKS origins. TLS verification is always
 enabled by urllib's default SSL context; redirects are rejected; responses and
 cache lifetimes are bounded. This module does not select an identity provider.
 """
@@ -72,8 +72,8 @@ class HTTPSJWKSResolver:
         issuer_origin = _https_origin(issuer)
         jwks_origin = _https_origin(jwks_url)
         allowed = {_https_origin(item) for item in allowed_origins}
-        if not allowed or jwks_origin not in allowed:
-            raise JWKSConfigurationError("JWKS origin is not explicitly allowlisted")
+        if not allowed or issuer_origin not in allowed or jwks_origin not in allowed:
+            raise JWKSConfigurationError("Issuer and JWKS origins must both be explicitly allowlisted")
         if isinstance(cache_ttl_seconds, bool) or not isinstance(cache_ttl_seconds, int) or cache_ttl_seconds <= 0:
             raise JWKSConfigurationError("cache_ttl_seconds must be a positive integer")
         if isinstance(max_cache_ttl_seconds, bool) or not isinstance(max_cache_ttl_seconds, int) or max_cache_ttl_seconds <= 0:
