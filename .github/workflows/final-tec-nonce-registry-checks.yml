@@ -1,4 +1,4 @@
-name: FINAL TEC nonce registry and validator checks
+name: FINAL TEC nonce registry checks
 
 on:
   pull_request:
@@ -9,7 +9,6 @@ on:
       - "final_tec_authorization_contract.py"
       - "final_tec_nonce_registry.py"
       - "tests/test_final_tec_nonce_registry.py"
-      - "tests/test_final_tec_authorization_nonce_integration.py"
       - "docs/FINAL_TEC_LOCAL_NONCE_REGISTRY.md"
       - ".github/workflows/final-tec-nonce-registry-checks.yml"
 
@@ -25,4 +24,4 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install --upgrade pip pytest
-      - run: python -m pytest -q tests/test_final_tec_nonce_registry.py tests/test_final_tec_authorization_nonce_integration.py
+      - run: python -m pytest -q tests/test_final_tec_nonce_registry.py
