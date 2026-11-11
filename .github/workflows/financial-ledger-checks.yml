@@ -5,7 +5,6 @@ on:
     branches: [main, "feature/**"]
     paths:
       - "app.py"
-      - "app.py"
       - "financial_ledger.py"
       - "financial_reporting.py"
       - "paypal_payments.py"
@@ -22,6 +21,7 @@ on:
   pull_request:
     branches: [main, "feature/**"]
     paths:
+      - "app.py"
       - "financial_ledger.py"
       - "financial_reporting.py"
       - "paypal_payments.py"
