@@ -36,7 +36,7 @@ DEMO_CANDIDATES = [
             "latency_summary_ms": {"p95_nearest_rank": 42.0},
             "availability": {"success_rate": 0.992},
             "cost": {"amount": 1.25, "currency": "EUR", "basis": "per_1000_requests"},
-            "evidence_status": "verified", "publication_state": "published",
+            "evidence_status": "demo_only", "publication_state": "demo_only",
         },
     },
     {
@@ -49,7 +49,7 @@ DEMO_CANDIDATES = [
             "latency_summary_ms": {"p95_nearest_rank": 68.0},
             "availability": {"success_rate": 0.999},
             "cost": {"amount": 0.85, "currency": "EUR", "basis": "per_1000_requests"},
-            "evidence_status": "verified", "publication_state": "published",
+            "evidence_status": "demo_only", "publication_state": "demo_only",
         },
     },
     {
@@ -75,7 +75,7 @@ DEMO_CANDIDATES = [
             "latency_summary_ms": {"p95_nearest_rank": 30.0},
             "availability": {"success_rate": 0.999},
             "cost": {"amount": 0.70, "currency": "EUR", "basis": "per_1000_requests"},
-            "evidence_status": "verified", "publication_state": "published",
+            "evidence_status": "demo_only", "publication_state": "demo_only",
         },
     },
 ]
@@ -125,7 +125,8 @@ st.subheader("3. Comparer les ressources fictives")
 if st.button("Lancer la simulation locale", type="primary", use_container_width=True):
     try:
         result = select_edge_resources(
-            profile, DEMO_CANDIDATES, now=DEMO_NOW, max_age_seconds=86400, weights=weights
+            profile, DEMO_CANDIDATES, now=DEMO_NOW, max_age_seconds=86400,
+            weights=weights, allow_demo_evidence=True
         )
         st.session_state["final_tec_demo_result"] = result
         st.session_state["final_tec_demo_profile_signature"] = json.dumps(
