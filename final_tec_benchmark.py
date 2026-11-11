@@ -5,6 +5,8 @@ writes, publication, or automatic verification.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import re
 from datetime import datetime
@@ -118,7 +120,7 @@ def prepare_benchmark_record(payload: dict[str, Any]) -> dict[str, Any]:
     if not CURRENCY_RE.fullmatch(currency or ""):
         raise BenchmarkValidationError("La devise doit être un code ISO 4217 à trois lettres.")
 
-    return {
+    record = {
         "benchmark_id": _identifier(payload.get("benchmark_id"), "benchmark_id"),
         "workload_id": _identifier(payload.get("workload_id"), "workload_id"),
         "workload_type": workload_type,
@@ -160,3 +162,8 @@ def prepare_benchmark_record(payload: dict[str, Any]) -> dict[str, Any]:
         "approved_by": None,
         "published_at": None,
     }
+    # Fingerprint the normalized submitted record for later integrity checks.
+    # This is a content hash, not a digital signature or proof of execution.
+    canonical = json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    record["record_fingerprint_sha256"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return record
