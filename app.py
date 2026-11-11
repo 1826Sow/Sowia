@@ -6367,21 +6367,23 @@ elif page == "Revenus & paiements":
             # Manual-review rows are also excluded from recognized totals.
             # included in recognized payment/refund totals.
             confirmed_payments = sum(
-                1 for row in rows
+                1 for row in reportable_rows
                 if row.get("transaction_type") == "payment"
                 and row.get("status") == "confirmed"
             )
             confirmed_refunds = sum(
-                1 for row in rows
+                1 for row in reportable_rows
                 if row.get("transaction_type") == "refund"
                 and row.get("status") == "refunded"
             )
             manual_review_count = sum(
-                1 for row in rows if row.get("status") == "manual_review"
+                1 for row in rows
+                if isinstance(row, dict) and row.get("status") == "manual_review"
             )
             other_status_count = sum(
                 1 for row in rows
-                if row.get("status") not in {"confirmed", "refunded", "manual_review"}
+                if isinstance(row, dict)
+                and row.get("status") not in {"confirmed", "refunded", "manual_review"}
             )
             st.markdown("#### Indicateurs de contrôle")
             metric_cols = st.columns(5)
