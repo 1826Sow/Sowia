@@ -11,7 +11,7 @@ MIGRATION = (
     Path(__file__).resolve().parents[1]
     / "supabase"
     / "migrations"
-    / "20261110000200_sowia_paypal_refund_currency_guard.sql"
+    / "20261111000200_sowia_paypal_refund_currency_guard.sql"
 )
 
 
