@@ -65,16 +65,22 @@ where table_schema = 'public'
 order by table_name, grantee, privilege_type;
 
 select
-    object_schema as sequence_schema,
-    object_name as sequence_name,
-    grantee,
-    privilege_type,
-    is_grantable
-from information_schema.role_usage_grants
-where object_type = 'SEQUENCE'
-  and object_schema = 'public'
-  and grantee in ('anon', 'authenticated', 'service_role', 'PUBLIC')
-order by sequence_name, grantee, privilege_type;
+    n.nspname as sequence_schema,
+    c.relname as sequence_name,
+    coalesce(grantee.rolname, 'PUBLIC') as grantee,
+    acl.privilege_type,
+    acl.is_grantable
+from pg_catalog.pg_class c
+join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+cross join lateral pg_catalog.aclexplode(
+    coalesce(c.relacl, pg_catalog.acldefault('S', c.relowner))
+) as acl
+left join pg_catalog.pg_roles grantee on grantee.oid = acl.grantee
+where c.relkind = 'S'
+  and n.nspname = 'public'
+  and (grantee.rolname in ('anon', 'authenticated', 'service_role')
+       or acl.grantee = 0)
+order by sequence_name, grantee, acl.privilege_type;
 
 -- 4) Confirm the private bucket configuration.
 select id, name, public, file_size_limit, allowed_mime_types
