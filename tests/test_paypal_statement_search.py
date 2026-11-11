@@ -100,8 +100,8 @@ def test_public_fetch_refuses_live_mode_before_token_or_network(monkeypatch):
         lambda name, default="": settings.get(name, default),
     )
     monkeypatch.setattr(
-        statement.paypal_payments,
-        "_access_token",
+        statement,
+        "_reporting_access_token",
         lambda config: pytest.fail("No token should be requested in live mode"),
     )
     with pytest.raises(RuntimeError, match="Sandbox"):
@@ -119,7 +119,7 @@ def test_public_fetch_reports_read_only_complete_statement(monkeypatch):
         "_setting",
         lambda name, default="": settings.get(name, default),
     )
-    monkeypatch.setattr(statement.paypal_payments, "_access_token", lambda config: "token")
+    monkeypatch.setattr(statement, "_reporting_access_token", lambda config: "token")
     monkeypatch.setattr(
         statement.requests,
         "get",
@@ -139,6 +139,44 @@ def test_public_fetch_reports_read_only_complete_statement(monkeypatch):
     assert result["windows_checked"] == 2
     assert all(set(item) == {"transaction_info"} for item in result["events"])
 
+
+
+def test_reporting_token_requires_transaction_search_scope(monkeypatch):
+    monkeypatch.setattr(
+        statement.requests,
+        "post",
+        lambda *args, **kwargs: FakeResponse({
+            "access_token": "token-without-reporting-scope",
+            "scope": "https://uri.paypal.com/services/invoicing",
+        }),
+    )
+    with pytest.raises(PermissionError, match="Transaction Search"):
+        statement._reporting_access_token({
+            "base_url": "https://api-m.sandbox.paypal.com",
+            "client_id": "sandbox-id",
+            "client_secret": "sandbox-secret",
+        })
+
+
+def test_reporting_token_accepts_transaction_search_scope(monkeypatch):
+    calls = []
+    def fake_post(url, *, auth, data, headers, timeout):
+        calls.append((url, auth, data))
+        return FakeResponse({
+            "access_token": "sandbox-reporting-token",
+            "scope": "https://uri.paypal.com/services/reporting/search/read "
+                     "https://uri.paypal.com/services/invoicing",
+        })
+    monkeypatch.setattr(statement.requests, "post", fake_post)
+    token = statement._reporting_access_token({
+        "base_url": "https://api-m.sandbox.paypal.com",
+        "client_id": "sandbox-id",
+        "client_secret": "sandbox-secret",
+    })
+    assert token == "sandbox-reporting-token"
+    assert calls[0][0] == "https://api-m.sandbox.paypal.com/v1/oauth2/token"
+    assert calls[0][1] == ("sandbox-id", "sandbox-secret")
+    assert calls[0][2] == {"grant_type": "client_credentials"}
 
 def test_public_fetch_validates_limits_before_external_calls(monkeypatch):
     monkeypatch.setattr(
