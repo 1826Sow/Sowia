@@ -164,6 +164,7 @@ def test_private_rows_are_isolated_between_two_authenticated_users(
             headers={**account_b.headers, "Prefer": "return=representation"},
             json=payload_factory(account_a.user_id, marker + "-forged"),
             timeout=20,
+            allow_redirects=False,
         )
         assert forged.status_code in (401, 403), (
             f"RLS should reject cross-owner INSERT into {table_name}; "
