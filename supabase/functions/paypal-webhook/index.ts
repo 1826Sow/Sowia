@@ -389,6 +389,11 @@ Deno.serve(async (request: Request) => {
       return json({ error: "PayPal last payment amount mismatch" }, 403);
     }
 
+    const eventTime = String(event.create_time || "").trim();
+    if (!eventTime || !Number.isFinite(Date.parse(eventTime))) {
+      return json({ error: "PayPal event timestamp is invalid" }, 422);
+    }
+
     const reconcileResponse = await fetch(
       supabaseUrl + "/rest/v1/rpc/sowia_reconcile_paypal_subscription",
       {
@@ -411,6 +416,7 @@ Deno.serve(async (request: Request) => {
             : Number(paymentAmount.value),
           p_next_billing_time: billing.next_billing_time || null,
           p_last_payment_at: lastPayment.time || null,
+          p_event_time: eventTime,
           p_recovery_verified: verifiedPaymentRecovery,
         }),
       },
