@@ -128,6 +128,39 @@ def test_unknown_kid_triggers_one_refresh_for_rotation_then_fails_closed():
     assert len(opener.calls) == 3
 
 
+@pytest.mark.parametrize("content_type", [
+    "application/json; charset=utf-8",
+    "application/jwk-set+json",
+])
+def test_accepts_standard_jwks_json_media_types(content_type):
+    opener = FakeOpener([Response({"keys": [jwk("key-1")]}, content_type=content_type)])
+    assert make_resolver(opener)("key-1") is not None
+
+
+@pytest.mark.parametrize("content_type", [
+    "text/json",
+    "application/notjson",
+    "application/jsonp",
+    "application/xml",
+])
+def test_rejects_non_jwks_json_media_types(content_type):
+    opener = FakeOpener([Response({"keys": [jwk("key-1")]}, content_type=content_type)])
+    with pytest.raises(JWKSConfigurationError, match="accepted JSON media type"):
+        make_resolver(opener)("key-1")
+
+
+class ReadFailureResponse(Response):
+    def read(self, size=-1):
+        raise OSError("sensitive body read detail")
+
+
+def test_body_read_network_failure_is_normalized():
+    opener = FakeOpener([ReadFailureResponse({"keys": [jwk("key-1")]})])
+    with pytest.raises(JWKSConfigurationError, match="could not be reached safely") as error:
+        make_resolver(opener)("key-1")
+    assert "sensitive" not in str(error.value)
+
+
 def test_rejects_non_json_response():
     opener = FakeOpener([Response({"keys": [jwk("key-1")]}, content_type="text/html")])
     with pytest.raises(JWKSConfigurationError):
