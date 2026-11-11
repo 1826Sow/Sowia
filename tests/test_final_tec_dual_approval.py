@@ -67,14 +67,13 @@ def callbacks(approvals=None, *, nonce_ok=True, audit_ok=True, identity_ok=True)
 
     def atomic_pair_audit_commit(auth_id, records, event):
         commit_attempts.append((auth_id, records, event))
-        # Model one indivisible transaction: neither state is recorded unless
-        # both nonce validation and the audit append succeed.
         if not nonce_ok or not audit_ok or len(records) != 2 or records[0][0] == records[1][0]:
             return False
         audit_events.append(event)
         return True
 
     return signature_verifier, identity_verifier, atomic_pair_audit_commit, commit_attempts, audit_events
+
 
 def validate(now, request, approvals, cb):
     signature, identity, atomic_commit, *_ = cb
@@ -160,3 +159,24 @@ def test_audit_failure_rolls_back_nonce_pair_atomically():
     with pytest.raises(DualApprovalError, match="audit"):
         validate(now, request, approvals, cb)
     assert len(cb[-2]) == 1
+
+
+@pytest.mark.parametrize("legacy_name", ["nonce_pair_consumer", "audit_append"])
+def test_legacy_split_callbacks_are_rejected_before_any_callback(legacy_name):
+    now, request, approvals = fixture()
+    calls = []
+
+    def forbidden(*args, **kwargs):
+        calls.append(True)
+        raise AssertionError("split callback must never be invoked")
+
+    kwargs = {
+        "signature_verifier": forbidden,
+        "identity_verifier": forbidden,
+        "atomic_pair_audit_commit": forbidden,
+        legacy_name: forbidden,
+        "now": now,
+    }
+    with pytest.raises(DualApprovalError, match="Separate nonce and audit callbacks are prohibited"):
+        validate_dual_approval(request, approvals, **kwargs)
+    assert calls == []
