@@ -117,3 +117,45 @@ Ne pas utiliser le nombre brut d'organisations répertoriées comme indicateur d
 - Le statut relationnel reflète des actions réellement réalisées.
 - Aucun envoi ni partage externe n'est possible sans approbation humaine.
 - Les données personnelles sont minimisées et traitées selon les règles applicables.
+
+
+## 10. Première présélection documentaire — 11 novembre 2026
+
+> Cette présélection est une photographie de thèses publiées sur les sites officiels consultés le 11/11/2026. Elle ne signifie ni que FINAL TEC est éligible, ni que ces organisations ont été contactées, ni qu'elles ont exprimé un intérêt. Les tickets et stades non explicitement publiés sont laissés inconnus.
+
+| Organisation | Type / géographie | Thèse et stade publiés | Pertinence provisoire pour FINAL TEC | Limites / prochaine vérification | Source officielle |
+|---|---|---|---|---|---|
+| EIC Fund / EIC Accelerator | Investisseur public européen, Union européenne | Deep tech à risque élevé ; composante investissement de l'EIC Accelerator et STEP. Fourchette publiée : 0,5 à 30 M€ selon le dispositif. | **Élevée si** FINAL TEC démontre une innovation technologique de rupture, une entité et une candidature conformes aux appels. | Vérifier l'appel ouvert, les critères d'éligibilité, le stade et le volet grant/equity ; ce n'est pas un fonds VC classique à démarcher comme tel. | https://eic.ec.europa.eu/eic-fund/about-eic-fund-0_en |
+| Bpifrance Digital Venture | Investisseur public / France | Seed, Series A et Series B ; startups françaises à fort potentiel. | **Élevée si** l'entité FINAL TEC est française et le projet relève du logiciel IA / infrastructure avec ambition internationale. | Vérifier l'entité juridique, le stade, le canal de candidature et l'adéquation du dossier au portefeuille actuel. | https://www.bpifrance.com/products/digital-venture/ |
+| Bpifrance Deeptech Venture | Investisseur public / France | Investissements documentés dans des entreprises deep tech ; activité 2026 publiée. | **Élevée sous condition** d'une technologie différenciante démontrée (compute, semi-conducteurs, IA de rupture). | Les critères précis et tickets n'ont pas été confirmés dans la source consultée ; obtenir la page officielle détaillée avant toute priorité ferme. | https://presse.bpifrance.fr/bilan-dactivite-du-premier-semestre-2026-bpifrance-confirme-son-soutien-a-leconomie-avce-un-niveau-record-de-financements-et-credits-ainsi-quune-forte-hausse-du-nombre-dinvestissements-directs-dans-l/ |
+| LUMO Labs | Fonds deep tech numérique / Europe | Pré-seed à Series A ; IA, data, cybersécurité, connectivité numérique, technologies quantiques logicielles ; tickets publiés de 0,5 à 5 M€. | **Élevée** pour un MVP logiciel d'orchestration IA/Edge, si la société et le marché correspondent à sa géographie d'investissement. | Vérifier les pays actuellement couverts, le fonds actif, le processus de candidature et les critères de traction. | https://lumofunds.vc/thesis |
+| Adara Ventures | Fonds deep tech / Europe et Amériques | Seed à Growth ; data frontiers, infrastructures IA de confiance, calcul spécialisé et systèmes réels ; ticket initial publié de 0,5 à 5 M€. | **Élevée** si FINAL TEC prouve une couche d'infrastructure IA/compute défendable et un besoin client concret. | Vérifier le stade d'investissement du véhicule actuel et la couverture géographique effective. | https://www.adara.vc/ |
+| Erom Ventures | Fonds deep tech / Europe | Deep-tech et plateformes d'infrastructure ; IA et infrastructure numérique, semi-conducteurs et futur du calcul, technologies de data centers. | **Élevée sur le thème** si FINAL TEC évolue vers une infrastructure de calcul mesurable. | Stade et ticket non confirmés sur la page consultée ; vérifier le fonds actif, la juridiction et le canal d'approche. | https://erom.vc/ |
+| DeepTech Capital Partners | Fonds deep tech / Europe | Seed à Series A+ ; futur du calcul, semi-conducteurs, photonique, quantique, fabrication avancée et IA physique. | **Élevée** si l'architecture et la propriété intellectuelle FINAL TEC deviennent techniquement différenciantes. | Confirmer la structure du fonds, les tickets, les pays couverts et les critères de traction. | https://www.deeptechcapitalpartners.com/how-we-invest |
+| Hasta | Syndicat européen pre-seed / seed | IA, systèmes autonomes, capacité industrielle et infrastructures stratégiques ; décisions d'investissement au cas par cas par ses membres. | **Moyenne à élevée** pour une équipe technique crédible et un projet d'infrastructure stratégique européen. | Vérifier les conditions d'accès au syndicat, les juridictions couvertes, la gouvernance et la disponibilité des membres. | https://hasta.fund/ |
+| XAnge | Fonds VC / Europe, avec activité en France | Seed à Series B ; IA, frontier tech, compute, robotique et autres technologies. | **Moyenne à élevée** pour une couche logicielle IA/compute ou un produit frontier tech différencié. | La page précise que son pilier IA vise surtout productivité et middleware plutôt que l'infrastructure pure ; vérifier l'adéquation exacte. | https://www.xange.vc/funds |
+| Scaleup Europe Fund | Fonds européen de croissance / late stage | Grandes entreprises technologiques européennes ; IA, quantique, semi-conducteurs, robotique, énergie et autres technologies stratégiques ; cible annoncée de 5 Md€. | **À surveiller pour une phase ultérieure**, après validation du produit, revenus et capacité de changement d'échelle. | Ce véhicule est orienté late-stage/growth ; ne pas le traiter comme une cible prioritaire de pré-amorçage. | https://eic.ec.europa.eu/eic-fund/scaleup-europe-fund_en |
+| Novarc | Fonds / plateforme d'investissement IA et semi-conducteurs | Infrastructure IA, calcul haute performance, data centers et couche composants / Edge. | **Très forte adéquation thématique apparente** avec l'ambition compute/Edge de FINAL TEC. | La page consultée ne permet pas de confirmer stade, tickets, juridiction, historique de financement ni canal d'approche ; statut à approfondir avant notation. | https://novarc.vc/ |
+
+### 10.1 Ordre de vérification recommandé
+
+1. **Piste logicielle IA/Edge et pré-amorçage/amorçage :** LUMO Labs, Adara Ventures, XAnge, Hasta.
+2. **Piste deep tech / futur du calcul :** Erom Ventures, DeepTech Capital Partners, Bpifrance Deeptech Venture.
+3. **Piste institutionnelle française et européenne :** Bpifrance Digital Venture, EIC Accelerator / EIC Fund.
+4. **Piste de croissance à différer :** Scaleup Europe Fund.
+5. **Piste à approfondir sans score ferme :** Novarc, tant que les informations de stade et d'accès n'ont pas été vérifiées.
+
+Cette hiérarchie est une priorité de recherche, pas une recommandation d'investissement ni une estimation de probabilité de financement. Aucun score chiffré n'est attribué avant validation du stade, du pays de la société, du MVP, de l'équipe, des droits de propriété intellectuelle et du besoin financier.
+
+### 10.2 Informations bloquantes avant une approche réelle
+
+- Pays, forme juridique, date de constitution et actionnariat de FINAL TEC.
+- Équipe fondatrice, responsables techniques et expérience pertinente.
+- Définition arrêtée du produit MVP et du client cible.
+- Démonstration reproductible des mesures de disponibilité, latence, coût et performance.
+- Propriété intellectuelle, licences, dépendances et droits sur les composants.
+- Premiers entretiens clients, lettres d'intérêt authentiques, pilotes ou revenus, s'ils existent.
+- Budget chiffré par jalon, hypothèses de coûts et scénario de trésorerie.
+- Validation juridique du dossier et du canal de financement avant toute transmission.
+
+Aucun contact, message, dépôt de candidature ou partage de document n'est autorisé par cette présélection. Toute démarche externe exige une approbation humaine distincte.
