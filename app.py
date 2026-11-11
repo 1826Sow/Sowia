@@ -6360,37 +6360,59 @@ elif page == "Revenus & paiements":
                             "Aucun remboursement non vérifié n'a été comptabilisé. "
                             f"Détail technique : {type(exc).__name__}."
                         )
-            summaries = financial_reporting.summarize_financial_transactions(rows)
-            # Read-only operational indicators: manual-review rows are never
+            reportable_rows, data_anomalies = financial_reporting.partition_financial_transactions(rows)
+            summaries = financial_reporting.summarize_financial_transactions(reportable_rows)
+            # Read-only operational indicators: malformed final-state rows are
+            # isolated for review and never silently disappear into totals.
+            # Manual-review rows are also excluded from recognized totals.
             # included in recognized payment/refund totals.
             confirmed_payments = sum(
-                1 for row in rows
+                1 for row in reportable_rows
                 if row.get("transaction_type") == "payment"
                 and row.get("status") == "confirmed"
             )
             confirmed_refunds = sum(
-                1 for row in rows
+                1 for row in reportable_rows
                 if row.get("transaction_type") == "refund"
                 and row.get("status") == "refunded"
             )
             manual_review_count = sum(
-                1 for row in rows if row.get("status") == "manual_review"
+                1 for row in rows
+                if isinstance(row, dict) and row.get("status") == "manual_review"
             )
             other_status_count = sum(
                 1 for row in rows
-                if row.get("status") not in {"confirmed", "refunded", "manual_review"}
+                if isinstance(row, dict)
+                and row.get("status") not in {"confirmed", "refunded", "manual_review"}
             )
             st.markdown("#### Indicateurs de contrôle")
-            metric_cols = st.columns(4)
+            metric_cols = st.columns(5)
             metric_cols[0].metric("Paiements confirmés", confirmed_payments)
             metric_cols[1].metric("Remboursements validés", confirmed_refunds)
             metric_cols[2].metric("À vérifier", manual_review_count)
-            metric_cols[3].metric("Autres statuts", other_status_count)
+            metric_cols[3].metric("Anomalies de données", len(data_anomalies))
+            metric_cols[4].metric("Autres statuts", other_status_count)
             st.caption(
                 "Les écritures « à vérifier » et les autres statuts sont exclus "
                 "des montants reconnus. Ces indicateurs comptent les écritures "
                 "chargées, dans la limite de 500 lignes."
             )
+            if data_anomalies:
+                st.error(
+                    "Des écritures confirmées présentent des données manquantes ou invalides. "
+                    "Elles sont exclues des montants reconnus jusqu'à vérification."
+                )
+                st.dataframe(
+                    [{
+                        "Écriture": item["record_number"],
+                        "Prestataire": item["provider"],
+                        "Type": item["transaction_type"],
+                        "Statut": item["status"],
+                        "Motifs": " · ".join(item["reasons"]),
+                    } for item in data_anomalies],
+                    use_container_width=True,
+                    hide_index=True,
+                )
             if not rows:
                 st.info(
                     "Aucune transaction n'est encore enregistrée dans le registre. "
