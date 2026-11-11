@@ -32,7 +32,7 @@ def render_evidence_monitor(st: Any) -> None:
     ]
     payload_text = st.text_area(
         "Soumissions JSON (liste)",
-        value=json.dumps(example, ensure_ascii=False, indent=2),
+        value="[]",
         height=280,
         key="final_tec_evidence_batch_json",
         help="Chaque élément exige metric_key, title, category et evidence_owner. Les champs inconnus sont rejetés.",
