@@ -24,7 +24,8 @@ Consulter le [guide de l’espace Professionnel](docs/GUIDE_ESPACE_PROFESSIONNEL
 3. Dans Supabase > SQL Editor, exécuter les scripts du dépôt dans cet ordre :
    - `supabase/schema.sql`
    - `supabase_workspaces.sql`
-   - `supabase_storage_policies.sql`
+   - `supabase/migrations/20261111000200_sowia_professional_workspace_rls.sql` (contrôle Premium RLS)
+   - `supabase_storage_policies.sql` (utilise la fonction de contrôle Premium créée à l'étape précédente)
    - `supabase_growth_crm.sql` (carnet de partenaires international)
    - `supabase_language_preferences.sql` (préférence de langue par compte)
    - `supabase_business_opportunities.sql` (pipeline d’opportunités et prévisions commerciales)
