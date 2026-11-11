@@ -60,6 +60,22 @@ class SharedAtomicApprovalLedger(Protocol):
     def healthcheck(self) -> bool: ...
 
 
+@runtime_checkable
+class ExternalAuditAnchor(Protocol):
+    """Independent external checkpoint anchor; interface only, no provider."""
+
+    production_grade: bool
+
+    def append_checkpoint(
+        self, sequence: int, previous_hash: str, event_hash: str, created_at_utc: str
+    ) -> Mapping[str, str]: ...
+
+    def verify_checkpoint(
+        self, sequence: int, previous_hash: str, event_hash: str,
+        created_at_utc: str, receipt: Mapping[str, str]
+    ) -> bool: ...
+
+
 @dataclass(frozen=True)
 class ProductionAdapterBundle:
     oidc_keys: OIDCKeySource
@@ -91,6 +107,21 @@ def _static_attribute(instance: object, name: str) -> Any:
         return inspect.getattr_static(instance, name)
     except AttributeError:
         return _MISSING
+
+
+def validate_external_audit_anchor(anchor: ExternalAuditAnchor) -> None:
+    """Static structural preflight only; never contacts or certifies an anchor."""
+    if anchor is None:
+        raise ProductionAdapterContractError("An external audit anchor is required")
+    failures: list[str] = []
+    if _static_attribute(anchor, "production_grade") is not True:
+        failures.append("audit_anchor: production_grade must be explicitly true")
+    for method in ("append_checkpoint", "verify_checkpoint"):
+        candidate = _static_attribute(anchor, method)
+        if candidate is _MISSING or not callable(candidate):
+            failures.append(f"audit_anchor: missing callable {method}")
+    if failures:
+        raise ProductionAdapterContractError("; ".join(failures))
 
 
 def validate_production_adapter_bundle(bundle: ProductionAdapterBundle) -> None:
