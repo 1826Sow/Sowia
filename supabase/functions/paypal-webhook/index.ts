@@ -132,9 +132,9 @@ Deno.serve(async (request: Request) => {
       ? event.resource as Record<string, unknown>
       : {};
 
-    // PayPal may reverse a completed capture after a dispute or risk decision.
-    // This is distinct from a merchant refund: the event resource identifies
-    // the capture itself, so verify the live capture before touching access.
+    // PAYMENT.CAPTURE.REVERSED is distinct from a merchant-initiated refund.
+    // PayPal maps this event to the Refund Captured Payment resource: resolve
+    // and verify that refund first, then follow its parent capture link.
     if (eventType === "PAYMENT.CAPTURE.REVERSED") {
       // PayPal models a capture reversal webhook as a refund resource. Its ID
       // is the refund ID; the parent capture must be resolved from the verified
