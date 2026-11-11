@@ -239,3 +239,25 @@ def test_checkpoint_rejects_empty_or_non_string_authorization_id():
             created_at_utc=datetime.now(timezone.utc).isoformat(),
         )
         assert _valid_checkpoint(checkpoint, authorization_id) is False
+
+def test_sqlite_outbox_rejects_audit_event_for_another_authorization(tmp_path):
+    from datetime import timedelta
+    from final_tec_atomic_approval_store import SQLiteAtomicApprovalStore
+
+    now = datetime.now(timezone.utc)
+    expiry = (now + timedelta(minutes=10)).isoformat()
+    records = (("r" * 48, expiry), ("s" * 48, expiry))
+    ledger = SQLiteAtomicApprovalStore(tmp_path / "mismatched-audit-auth.sqlite3")
+    assert ledger.register_pair("auth-bound", records, now=now)
+
+    # A valid pair cannot be consumed under an event naming another approval.
+    checkpoint = ledger.commit_pair_audit_and_outbox(
+        "auth-bound",
+        records,
+        {"event_type": "dual_approval_verified", "authorization_id": "auth-other"},
+        now=now,
+    )
+    assert checkpoint is None
+    assert ledger.audit_events() == []
+    assert ledger.pending_anchor_checkpoints() == []
+    assert ledger.verify_anchor_outbox() is True
