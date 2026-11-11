@@ -65,6 +65,11 @@ def test_unknown_fixture_fails_closed():
         evaluate_offline_fixture(valid_g1_manifest(), "../external", now=NOW)
 
 
+def test_non_text_fixture_identifier_fails_closed():
+    with pytest.raises(RunPolicyError, match="inconnu"):
+        evaluate_offline_fixture(valid_g1_manifest(), [], now=NOW)
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [
