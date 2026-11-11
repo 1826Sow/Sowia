@@ -237,3 +237,26 @@ def test_invalid_signature_does_not_consume_one_time_identity_session():
         )
 
     assert calls == []
+
+
+def test_second_invalid_signature_does_not_consume_first_approval_session():
+    now, request, approvals = fixture()
+    approvals[1]["signature"] = "invalid-signature"
+    signature, identity, atomic_commit, *_ = callbacks(approvals)
+    identity_calls = []
+
+    def identity_with_session_consumption(subject, role, context):
+        identity_calls.append(subject)
+        return identity(subject, role, context)
+
+    with pytest.raises(DualApprovalError, match="signature"):
+        validate_dual_approval(
+            request,
+            approvals,
+            signature_verifier=signature,
+            identity_verifier=identity_with_session_consumption,
+            atomic_pair_audit_commit=atomic_commit,
+            now=now,
+        )
+
+    assert identity_calls == []
