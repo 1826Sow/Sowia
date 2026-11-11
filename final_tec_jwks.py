@@ -29,6 +29,16 @@ class _RejectRedirects(HTTPRedirectHandler):
         return None
 
 
+def _reject_duplicate_json_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Reject ambiguous JSON objects instead of silently keeping the last value."""
+    result: dict[str, Any] = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError("duplicate JSON object member")
+        result[name] = value
+    return result
+
+
 def _https_origin(url: str) -> tuple[str, str, int]:
     if not isinstance(url, str) or not url:
         raise JWKSConfigurationError("URL is required")
@@ -144,7 +154,7 @@ class HTTPSJWKSResolver:
             # keys and never expose provider/network details to callers.
             raise JWKSConfigurationError("JWKS endpoint could not be reached safely") from exc
         try:
-            document = json.loads(raw)
+            document = json.loads(raw, object_pairs_hook=_reject_duplicate_json_members)
         except (UnicodeDecodeError, ValueError, RecursionError) as exc:
             # JSON parsing must fail closed for malformed, excessively nested,
             # or oversized numeric tokens without leaking parser exceptions.
