@@ -98,7 +98,7 @@ def test_rejects_issuer_origin_missing_from_allowlist():
 
 def test_resolves_rsa_rs256_key_and_uses_bounded_cache():
     opener = FakeOpener([Response({"keys": [jwk("key-1")]}, cache_control="max-age=99999")])
-    resolver = make_resolver(opener, max_cache_ttl_seconds=120)
+    resolver = make_resolver(opener, cache_ttl_seconds=60, max_cache_ttl_seconds=120)
     assert resolver("key-1") is not None
     assert resolver("key-1") is not None
     assert len(opener.calls) == 1
