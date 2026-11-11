@@ -101,9 +101,10 @@ class Ed25519ApprovalVerifier:
             return False
 
         try:
-            issued_at = datetime.fromisoformat(
-                str(payload["issued_at"]).replace("Z", "+00:00")
-            ).astimezone(timezone.utc)
+            issued_at = _utc(
+                datetime.fromisoformat(str(payload["issued_at"]).replace("Z", "+00:00")),
+                "issued_at",
+            )
             now = datetime.now(timezone.utc)
             valid_from = _utc(record.valid_from, "valid_from")
             valid_until = _utc(record.valid_until, "valid_until")
@@ -113,7 +114,10 @@ class Ed25519ApprovalVerifier:
                 return False
             if record.revoked_at is not None and now >= _utc(record.revoked_at, "revoked_at"):
                 return False
-            if record.signing_disabled_at is not None and issued_at >= _utc(
+            # A signed issued_at value is not an independent trusted
+            # timestamp. Once signing is disabled, reject all verification
+            # rather than accepting potentially backdated signatures.
+            if record.signing_disabled_at is not None and now >= _utc(
                 record.signing_disabled_at, "signing_disabled_at"
             ):
                 return False
