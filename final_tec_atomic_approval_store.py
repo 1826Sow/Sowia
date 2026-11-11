@@ -560,6 +560,7 @@ class SQLiteAtomicApprovalStore:
                 return False
             if (
                 not isinstance(event_value, dict)
+                or event_value.get("authorization_id") != authorization_id
                 or not isinstance(nonce_records, list)
                 or len(nonce_records) != 2
             ):
