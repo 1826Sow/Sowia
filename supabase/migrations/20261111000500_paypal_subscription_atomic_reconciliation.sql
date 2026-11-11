@@ -26,6 +26,8 @@ set search_path = ''
 as $$
 declare
     v_existing_status text;
+    v_existing_user_id uuid;
+    v_existing_plan_id text;
     v_existing_review_at timestamptz;
     v_existing_event_time timestamptz;
     v_review_at timestamptz;
@@ -70,11 +72,18 @@ begin
         pg_catalog.hashtextextended(p_paypal_subscription_id, 0)
     );
 
-    select status, payment_review_at, last_webhook_event_time
-      into v_existing_status, v_existing_review_at, v_existing_event_time
+    select status, user_id, paypal_plan_id, payment_review_at, last_webhook_event_time
+      into v_existing_status, v_existing_user_id, v_existing_plan_id, v_existing_review_at, v_existing_event_time
       from public.sowia_subscriptions
      where paypal_subscription_id = p_paypal_subscription_id
      for update;
+
+    -- A PayPal subscription is permanently bound to its first SOW IA owner
+    -- and plan. Never let later webhook metadata transfer the subscription.
+    if v_existing_user_id is not null and
+       (v_existing_user_id <> p_user_id or v_existing_plan_id <> p_paypal_plan_id) then
+        raise exception 'PayPal subscription owner or plan is immutable';
+    end if;
 
     -- Ignore out-of-order provider events. A delayed success notification
     -- must never clear a newer refund/reversal hold.
