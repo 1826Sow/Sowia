@@ -46,7 +46,7 @@ Un test ignoré ne constitue pas une validation RLS réelle. La validation exige
 
 ## Diagnostic préalable des politiques et privilèges (lecture seule)
 
-Avant de configurer les six secrets CI, exécuter `supabase_security_diagnostics.sql` dans le SQL Editor du projet de test, avec un rôle administrateur. Le script est strictement en lecture seule : il inventorie toutes les politiques de `storage.objects`, l'état RLS des tables SOW IA, les privilèges des rôles applicatifs et la configuration du bucket `sowia-files`.
+Avant de configurer les six secrets CI, exécuter `supabase_security_diagnostics.sql` dans le SQL Editor du projet de test, avec un rôle administrateur. Le script est strictement en lecture seule : il inventorie toutes les politiques de `storage.objects` et des tables privées `sowia_messages`, `sowia_memory_items` et `sowia_entitlements`, l'état RLS, les privilèges sur les tables et séquences, ainsi que la configuration du bucket `sowia-files`.
 
 Examiner chaque politique Storage, quel que soit son nom : les politiques permissives sont combinées par OR. Toute politique trop large doit être comprise et corrigée dans le projet de test avant d'exécuter les tests à deux comptes. Vérifier également que `sowia_entitlements` n'accorde pas d'écriture à `authenticated`, que `anon` n'a aucun accès aux données privées et que le bucket reste privé.
 
