@@ -67,8 +67,9 @@ def validate_dual_approval(
     *,
     signature_verifier: Callable[[Mapping[str, Any], Mapping[str, Any]], bool],
     identity_verifier: Callable[[str, str, Mapping[str, Any]], bool],
-    nonce_pair_consumer: Callable[[str, Sequence[tuple[str, str]]], bool],
-    audit_append: Callable[[Mapping[str, Any]], bool],
+    nonce_pair_consumer: Callable[[str, Sequence[tuple[str, str]]], bool] | None = None,
+    audit_append: Callable[[Mapping[str, Any]], bool] | None = None,
+    atomic_pair_audit_commit: Callable[[str, Sequence[tuple[str, str]], Mapping[str, Any]], bool] | None = None,
     now: datetime | None = None,
     required_role: str = "security-approver",
 ) -> dict[str, Any]:
@@ -167,9 +168,6 @@ def validate_dual_approval(
             "expires_at": expires.isoformat(),
         })
 
-    if nonce_pair_consumer(request["authorization_id"], tuple(nonce_records)) is not True:
-        raise DualApprovalError("Nonce pair unknown, expired, revoked, or already consumed")
-
     audit_event = {
         "event_type": "dual_approval_verified",
         "authorization_id": request["authorization_id"],
@@ -179,8 +177,23 @@ def validate_dual_approval(
         "occurred_at": current.isoformat(),
         "execution_authorized": False,
     }
-    if audit_append(audit_event) is not True:
-        raise DualApprovalError("Append-only audit confirmation unavailable")
+
+    atomic_commit_used = atomic_pair_audit_commit is not None
+    if atomic_commit_used:
+        if atomic_pair_audit_commit(
+            request["authorization_id"], tuple(nonce_records), audit_event
+        ) is not True:
+            raise DualApprovalError("Atomic nonce-pair and audit commit unavailable")
+    else:
+        # Compatibility path for earlier tests and adapters. It is NOT atomic
+        # across nonce consumption and audit append; production callers should
+        # use atomic_pair_audit_commit backed by one transactional store.
+        if nonce_pair_consumer is None or audit_append is None:
+            raise DualApprovalError("Atomic pair/audit commit callback is required")
+        if nonce_pair_consumer(request["authorization_id"], tuple(nonce_records)) is not True:
+            raise DualApprovalError("Nonce pair unknown, expired, revoked, or already consumed")
+        if audit_append(audit_event) is not True:
+            raise DualApprovalError("Append-only audit confirmation unavailable")
 
     return {
         "authorization_id": request["authorization_id"],
@@ -192,6 +205,7 @@ def validate_dual_approval(
         "identities_verified_by_injected_authority": True,
         "nonce_pair_consumed_atomically": True,
         "audit_appended": True,
+        "nonce_pair_and_audit_committed_atomically": atomic_commit_used,
         "execution_authorized": False,
         "workload_executed": False,
         "g2b_status": "NO-GO / NOT_RUN",
