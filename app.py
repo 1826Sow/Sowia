@@ -45,7 +45,10 @@ import sowia_global_messenger
 import sowia_global_alerts
 import sowia_business_card
 import final_tec_investor_dashboard
-from final_tec_access import authorize_final_tec_investor_viewer
+from final_tec_access import (
+    authorize_final_tec_investor_viewer,
+    fetch_published_final_tec_metrics,
+)
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -6925,7 +6928,8 @@ elif page == "FINAL TEC LIVE — investisseurs":
         and supabase_client is not None
         and authorize_final_tec_investor_viewer(supabase_client, current_user)
     ):
-        final_tec_investor_dashboard.render_dashboard(st)
+        published_metrics = fetch_published_final_tec_metrics(supabase_client)
+        final_tec_investor_dashboard.render_dashboard(st, published_metrics)
         st.caption("Documentation technique : docs/FINAL_TEC_LIVE_INVESTOR_DASHBOARD.md")
     else:
         st.error(
