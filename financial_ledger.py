@@ -44,6 +44,7 @@ def record_paypal_capture(admin_client, *, user_id, order_id, capture, amount, c
         "user_id": user_id,
         "provider": "paypal",
         "provider_payment_id": capture_id,
+        "paypal_order_id": order_id,
         "transaction_type": "payment",
         "status": "confirmed",
         "gross_amount": f"{value:.2f}",
