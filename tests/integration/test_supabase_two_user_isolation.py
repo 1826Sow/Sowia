@@ -82,6 +82,7 @@ class SupabaseTestSession:
             params=params,
             json=payload,
             timeout=20,
+            allow_redirects=False,
         )
         response.raise_for_status()
         return response.json() if response.content else []
