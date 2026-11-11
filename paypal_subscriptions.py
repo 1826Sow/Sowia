@@ -248,6 +248,47 @@ def ensure_premium_plan(admin_client):
     return str(plan_id)
 
 
+
+def _validate_paypal_plan_price(config, token, plan_id: str):
+    """Fail closed unless PayPal confirms the active monthly plan is EUR 9.90."""
+    normalized_plan_id = str(plan_id or "").strip()
+    if not re.fullmatch(r"P-[A-Z0-9]+", normalized_plan_id):
+        raise ValueError("Identifiant du forfait PayPal invalide.")
+    response = requests.get(
+        f"{config['base_url']}/v1/billing/plans/{normalized_plan_id}",
+        headers=_api_headers(config, token),
+        timeout=TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    plan = response.json()
+    if plan.get("id") != normalized_plan_id or str(plan.get("status") or "").upper() != "ACTIVE":
+        raise PermissionError("Le forfait PayPal n'est pas actif ou ne correspond pas.")
+    cycles = plan.get("billing_cycles")
+    if not isinstance(cycles, list):
+        raise PermissionError("Le forfait PayPal ne contient aucun cycle de facturation valide.")
+    regular_cycles = [
+        cycle for cycle in cycles
+        if isinstance(cycle, dict) and str(cycle.get("tenure_type") or "").upper() == "REGULAR"
+    ]
+    if not regular_cycles:
+        raise PermissionError("Le forfait PayPal ne contient pas de tarif récurrent.")
+    for cycle in regular_cycles:
+        frequency = cycle.get("frequency") or {}
+        price = ((cycle.get("pricing_scheme") or {}).get("fixed_price") or {})
+        try:
+            value = Decimal(str(price.get("value"))).quantize(Decimal("0.01"))
+        except (InvalidOperation, ValueError, TypeError):
+            raise PermissionError("Le tarif du forfait PayPal est invalide.") from None
+        if (
+            str(frequency.get("interval_unit") or "").upper() != "MONTH"
+            or int(frequency.get("interval_count") or 0) != 1
+            or not value.is_finite()
+            or value != Decimal(PREMIUM_PRICE)
+            or str(price.get("currency_code") or "").upper() != PREMIUM_CURRENCY
+        ):
+            raise PermissionError("Le tarif PayPal doit être de 9,90 EUR par mois.")
+    return plan
+
 def reconcile_returned_subscription(subscription_id: str, user_id: str):
     """Validate PayPal's browser return server-side and persist an ACTIVE subscription.
 
@@ -287,17 +328,32 @@ def reconcile_returned_subscription(subscription_id: str, user_id: str):
     if status != "ACTIVE":
         raise RuntimeError("PayPal n'a pas encore confirmé un abonnement actif.")
 
+    token = _access_token(config)
+    _validate_paypal_plan_price(config, token, expected_plan_id)
     billing = details.get("billing_info") or {}
     last_payment = billing.get("last_payment") or {}
-    amount = (last_payment.get("amount") or {})
+    amount = last_payment.get("amount") or {}
+    # If PayPal reports a payment, it must match the configured recurring price.
+    # No synthetic payment amount is created when the first billing cycle is pending.
+    if amount:
+        try:
+            paid_amount = Decimal(str(amount.get("value"))).quantize(Decimal("0.01"))
+        except (InvalidOperation, ValueError, TypeError):
+            raise PermissionError("Le montant du dernier paiement PayPal est invalide.") from None
+        if (
+            not paid_amount.is_finite()
+            or paid_amount != Decimal(PREMIUM_PRICE)
+            or str(amount.get("currency_code") or "").upper() != PREMIUM_CURRENCY
+        ):
+            raise PermissionError("Le dernier paiement PayPal ne correspond pas au tarif Premium.")
     payload = {
         "user_id": normalized_user_id,
         "provider": "paypal",
         "paypal_subscription_id": normalized_subscription_id,
         "paypal_plan_id": expected_plan_id,
         "status": "active",
-        "currency": amount.get("currency_code") or "EUR",
-        "amount": amount.get("value") or PREMIUM_PRICE,
+        "currency": PREMIUM_CURRENCY,
+        "amount": PREMIUM_PRICE,
         "next_billing_time": billing.get("next_billing_time"),
         "last_payment_at": last_payment.get("time"),
     }
