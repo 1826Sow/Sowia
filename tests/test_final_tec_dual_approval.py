@@ -55,7 +55,7 @@ def fixture():
 
 def callbacks(approvals=None, *, nonce_ok=True, audit_ok=True, identity_ok=True):
     trusted = {a["subject_id"]: a["key_id"] for a in (approvals or [])}
-    nonce_calls = []
+    commit_attempts = []
     audit_events = []
 
     def signature_verifier(envelope, approval):
@@ -65,25 +65,24 @@ def callbacks(approvals=None, *, nonce_ok=True, audit_ok=True, identity_ok=True)
     def identity_verifier(subject, role, context):
         return identity_ok and trusted.get(subject) == context["approval"]["key_id"] and role == "security-approver"
 
-    def nonce_pair_consumer(auth_id, records):
-        nonce_calls.append((auth_id, records))
-        return nonce_ok and len(records) == 2 and records[0][0] != records[1][0]
-
-    def audit_append(event):
+    def atomic_pair_audit_commit(auth_id, records, event):
+        commit_attempts.append((auth_id, records, event))
+        # Model one indivisible transaction: neither state is recorded unless
+        # both nonce validation and the audit append succeed.
+        if not nonce_ok or not audit_ok or len(records) != 2 or records[0][0] == records[1][0]:
+            return False
         audit_events.append(event)
-        return audit_ok
+        return True
 
-    return signature_verifier, identity_verifier, nonce_pair_consumer, audit_append, nonce_calls, audit_events
-
+    return signature_verifier, identity_verifier, atomic_pair_audit_commit, commit_attempts, audit_events
 
 def validate(now, request, approvals, cb):
-    signature, identity, nonce, audit, *_ = cb
+    signature, identity, atomic_commit, *_ = cb
     return validate_dual_approval(
         request, approvals,
         signature_verifier=signature,
         identity_verifier=identity,
-        nonce_pair_consumer=nonce,
-        audit_append=audit,
+        atomic_pair_audit_commit=atomic_commit,
         now=now,
     )
 
@@ -134,7 +133,7 @@ def test_identity_or_role_failure_blocks_before_nonce_consumption():
 def test_nonce_pair_must_be_consumed_atomically_and_successfully():
     now, request, approvals = fixture()
     cb = callbacks(approvals, nonce_ok=False)
-    with pytest.raises(DualApprovalError, match="Nonce pair"):
+    with pytest.raises(DualApprovalError, match="Atomic nonce-pair"):
         validate(now, request, approvals, cb)
     assert cb[-1] == []
 
@@ -155,7 +154,7 @@ def test_approver_cannot_be_requester_operator_or_reviewer():
         validate(now, request, approvals, cb)
 
 
-def test_audit_failure_fails_closed_after_nonce_pair_consumption():
+def test_audit_failure_rolls_back_nonce_pair_atomically():
     now, request, approvals = fixture()
     cb = callbacks(approvals, audit_ok=False)
     with pytest.raises(DualApprovalError, match="audit"):
