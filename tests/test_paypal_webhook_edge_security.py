@@ -79,5 +79,5 @@ def test_one_time_capture_refund_is_verified_and_revokes_only_linked_entitlement
     assert capture_events < handler < capture_fetch < capture_status < ledger_lookup < order_check < revoke < write
     assert '"PAYMENT.CAPTURE.REVERSED"' in source
     assert '"REFUNDED"' in source and '"REVERSED"' in source
-    assert '"status": "inactive"' in source
+    assert 'JSON.stringify({ status: "inactive" })' in source
     assert '"return=representation"' in source
