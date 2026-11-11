@@ -91,6 +91,12 @@ begin
         return v_existing_status;
     end if;
 
+    -- CANCELLED and EXPIRED are terminal in PayPal's subscription lifecycle.
+    -- A later or duplicated webhook must not restore Premium on this record.
+    if v_existing_status in ('cancelled', 'expired') then
+        return v_existing_status;
+    end if;
+
     v_review_at := v_existing_review_at;
     if p_event_type in ('PAYMENT.SALE.REFUNDED', 'PAYMENT.SALE.REVERSED') then
         v_effective_status := 'payment_review';
