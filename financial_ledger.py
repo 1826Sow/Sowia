@@ -62,6 +62,44 @@ def record_paypal_capture(admin_client, *, user_id, order_id, capture, amount, c
 
 
 
+def grant_paypal_one_time_entitlement(
+    admin_client, *, user_id, order_id, capture, amount, currency
+):
+    """Atomically persist a validated PayPal capture and grant its entitlement.
+
+    The SQL RPC is the sole write path for this one-time checkout. It records
+    the ledger row and entitlement in one transaction and ignores stale replays.
+    """
+    if admin_client is None:
+        raise RuntimeError("Client d'administration Supabase indisponible.")
+    user_id = str(user_id or "").strip()
+    order_id = str(order_id or "").strip()
+    capture_id = str((capture or {}).get("id") or "").strip()
+    normalized_currency = str(currency or "").strip().upper()
+    if not user_id or not re.fullmatch(r"[A-Z0-9]{1,50}", order_id):
+        raise ValueError("Utilisateur ou commande PayPal invalide.")
+    if not re.fullmatch(r"[A-Z0-9_-]{5,100}", capture_id):
+        raise ValueError("Identifiant de capture PayPal invalide.")
+    if normalized_currency != "EUR":
+        raise ValueError("Seule la devise EUR est admise pour ce parcours PayPal.")
+    value = _currency_amount(amount, "Montant PayPal")
+    result = admin_client.rpc(
+        "sowia_grant_paypal_one_time_entitlement",
+        {
+            "p_user_id": user_id,
+            "p_order_id": order_id,
+            "p_capture_id": capture_id,
+            "p_amount": f"{value:.2f}",
+            "p_currency": "EUR",
+        },
+    ).execute()
+    outcome = getattr(result, "data", None)
+    if outcome not in {"granted", "already_granted", "replay_ignored"}:
+        raise RuntimeError("La confirmation atomique de l'achat PayPal a retourné un résultat inattendu.")
+    return outcome
+
+
+
 def record_paypal_billing_transaction(
     admin_client, *, user_id, subscription_id, transaction
 ):
