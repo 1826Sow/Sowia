@@ -149,3 +149,22 @@ def test_manual_review_rows_never_enter_recognized_totals():
 def test_empty_financial_ledger_returns_no_currency_groups():
     assert summarize_financial_transactions([]) == []
 
+def test_subscription_status_summary_keeps_unknown_states_separate():
+    rows = [
+        {"status": "active"},
+        {"status": "ACTIVE"},
+        {"status": "suspended"},
+        {"status": "cancelled"},
+        {"status": "approval_pending"},
+        {"status": None},
+    ]
+    assert summarize_subscription_statuses(rows) == {
+        "active": 2, "suspended": 1, "cancelled": 1, "other": 2
+    }
+
+
+def test_subscription_status_summary_rejects_non_list_input():
+    import pytest
+    with pytest.raises(ValueError):
+        summarize_subscription_statuses(None)
+\n
