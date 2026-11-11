@@ -129,3 +129,14 @@ UTC et l'identifiant de corrélation, sans inclure de secret ni donnée personne
 La réussite d'un sous-ensemble ne permet pas de déclarer le domaine complet
 conforme. Toute sonde obligatoire absente, non exécutée ou non vérifiable
 maintient le domaine en **NOT_RUN** et bloque G2-B.
+
+
+## 10. Ancrage externe indépendant des checkpoints d'audit
+
+L'interface distincte ExternalAuditAnchor formalise le futur raccordement d'un journal externe indépendant du stockage SQLite applicatif. Elle expose append_checkpoint et verify_checkpoint. Un checkpoint lie au minimum le numéro de séquence, le hash précédent, le hash de l'événement et son horodatage UTC ; le reçu externe doit être conservé et vérifiable.
+
+Le contrôle local validate_external_audit_anchor vérifie uniquement les deux méthodes et l'assertion production_grade = True, sans exécuter de code de l'adaptateur. Il ne contacte aucun service et ne valide ni l'indépendance administrative, ni la rétention WORM, ni l'horodatage, ni l'authenticité du reçu. Les tests avec fakes sont structurels, pas des preuves d'ancrage externe.
+
+Critères d'acceptation d'un fournisseur réel : identité et contrôle d'accès distincts de l'administration SQLite ; rétention verrouillée WORM ou équivalent ; reçu externe authentifiable lié au checkpoint ; refus fermé si écriture, vérification ou reçu échoue ; tests de suppression, réécriture, troncature, rejeu, panne, reprise et restauration ; preuves expurgées et revue indépendante.
+
+Limite actuelle : aucun appel d'ancrage n'est intégré au commit SQLite, aucun fournisseur n'est sélectionné et aucun reçu externe n'est émis. Le hash-chain SQLite ne protège pas contre un administrateur privilégié capable de réécrire ou tronquer toute la base. L'ancrage externe reste NOT_RUN et G2-B reste NO-GO / NOT_RUN.
