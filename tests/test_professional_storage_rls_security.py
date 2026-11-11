@@ -9,15 +9,15 @@ POLICIES = (ROOT / "supabase_storage_policies.sql").read_text(encoding="utf-8").
 
 def test_professional_pdf_reads_require_active_premium_access():
     normalized = " ".join(POLICIES.split())
-    assert "sowia users can read own workspace pdfs" in normalized
+    assert "sow ia users can read own workspace pdfs" in normalized
     assert "(storage.foldername(name))[2] = 'professional'" in normalized
     assert "and public.sowia_has_professional_access()" in normalized
 
 
 def test_professional_pdf_uploads_and_deletes_require_active_premium_access():
     normalized = " ".join(POLICIES.split())
-    assert "sowia users can upload own workspace pdfs" in normalized
-    assert "sowia users can delete own workspace pdfs" in normalized
+    assert "sow ia users can upload own workspace pdfs" in normalized
+    assert "sow ia users can delete own workspace pdfs" in normalized
     assert normalized.count("and public.sowia_has_professional_access()") == 3
 
 
