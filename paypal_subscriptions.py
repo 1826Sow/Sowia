@@ -7,6 +7,7 @@ SOW IA user and persisted by a separate trusted handler.
 from __future__ import annotations
 
 import re
+from decimal import Decimal, InvalidOperation
 from uuid import uuid4
 from datetime import timezone
 
