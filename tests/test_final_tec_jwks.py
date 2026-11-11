@@ -231,3 +231,18 @@ def test_ambiguous_or_malformed_max_age_forces_fetch_on_each_call(cache_control)
     assert resolver("key-1") is not None
     assert resolver("key-1") is not None
     assert len(opener.calls) == 2
+
+
+@pytest.mark.parametrize("cache_control", [
+    "max-age=" + "9" * 5000,
+    "max-age=１２",
+])
+def test_extreme_or_non_ascii_max_age_forces_fetch_on_each_call(cache_control):
+    opener = FakeOpener([
+        Response({"keys": [jwk("key-1")]}, cache_control=cache_control),
+        Response({"keys": [jwk("key-1")]}, cache_control=cache_control),
+    ])
+    resolver = make_resolver(opener)
+    assert resolver("key-1") is not None
+    assert resolver("key-1") is not None
+    assert len(opener.calls) == 2
