@@ -325,3 +325,52 @@ def test_invalid_accessibility_preferences_are_rejected_before_database_write(in
 
     with pytest.raises(ValueError):
         cloud_storage.set_accessibility_preferences(Client(), User(), invalid)
+
+
+def test_create_global_action_plan_uses_database_owned_draft_status():
+    client = FakeClient()
+    plan = {
+        "title": "Pilote",
+        "objective": "Tester un périmètre restreint.",
+        "country": "France",
+        "owner_label": "Équipe SOWIA",
+        "approver_id": "123e4567-e89b-12d3-a456-426614174000",
+        "budget_cap": 250,
+        "currency": "EUR",
+        "due_date": "2027-03-31",
+        "success_metric": "10 utilisateurs actifs",
+        "stop_condition": "Arrêt si le plafond est atteint.",
+    }
+
+    cloud_storage.create_global_action_plan(client, User(), plan)
+
+    payload = client.tables["sowia_global_action_plans"].inserted
+    assert payload["creator_id"] == "user-123"
+    assert "status" not in payload
+    assert "approval_note" not in payload
+    assert "approved_at" not in payload
+    assert "created_at" not in payload
+    assert "updated_at" not in payload
+
+
+def test_create_global_action_plan_rejects_unexpected_workflow_fields_before_write():
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid input")
+
+    plan = {
+        "title": "Pilote",
+        "objective": "Tester un périmètre restreint.",
+        "country": "France",
+        "owner_label": "Équipe SOWIA",
+        "approver_id": "123e4567-e89b-12d3-a456-426614174000",
+        "budget_cap": 250,
+        "currency": "EUR",
+        "due_date": "2027-03-31",
+        "success_metric": "10 utilisateurs actifs",
+        "stop_condition": "Arrêt si le plafond est atteint.",
+        "status": "approved",
+    }
+
+    with pytest.raises(TypeError):
+        cloud_storage.create_global_action_plan(Client(), User(), plan)
