@@ -375,34 +375,12 @@ Deno.serve(async (request: Request) => {
       ? "past_due"
       : normalizedStatus.toLowerCase();
 
-    // A refund or reversal of a subscription sale must suspend Premium even
-    // when PayPal still reports the subscription itself as ACTIVE. Keep that
-    // hold through ordinary UPDATED/ACTIVATED notifications; only a verified
-    // successful subscription payment with a zero failure counter clears it.
-    const isRefundOrReversal = eventType === "PAYMENT.SALE.REFUNDED" ||
-      eventType === "PAYMENT.SALE.REVERSED";
-    const existingResponse = await fetch(
-      supabaseUrl + "/rest/v1/sowia_subscriptions?paypal_subscription_id=eq." +
-        encodeURIComponent(subscriptionId) + "&select=status&limit=1",
-      {
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: "Bearer " + serviceRoleKey,
-          Accept: "application/json",
-        },
-      },
-    );
-    if (!existingResponse.ok) {
-      throw new Error("Unable to read existing subscription state");
-    }
-    const existingRows = await existingResponse.json();
-    const paymentReviewAlreadyActive = Array.isArray(existingRows) &&
-      existingRows.some((row: Record<string, unknown>) => row.status === "payment_review");
-    const verifiedPaymentRecovery = eventType === "BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED" &&
+    // The database RPC serializes state transitions under a transaction lock.
+    // This prevents simultaneous refund and recovery notifications from
+    // overwriting payment_review based on stale reads.
+    const verifiedPaymentRecovery =
+      eventType === "BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED" &&
       normalizedStatus === "ACTIVE" && failedPaymentsCount === 0;
-    if (isRefundOrReversal || (paymentReviewAlreadyActive && !verifiedPaymentRecovery)) {
-      effectiveStatus = "payment_review";
-    }
     const lastPayment = billing.last_payment || {};
     const paymentAmount = lastPayment.amount || {};
     if (paymentAmount.value !== undefined &&
@@ -410,42 +388,46 @@ Deno.serve(async (request: Request) => {
          String(paymentAmount.currency_code || "").toUpperCase() !== "EUR")) {
       return json({ error: "PayPal last payment amount mismatch" }, 403);
     }
-    const payload = {
-      user_id: userId,
-      provider: "paypal",
-      paypal_subscription_id: subscriptionId,
-      paypal_plan_id: planId,
-      status: effectiveStatus,
-      currency: paymentAmount.currency_code || null,
-      amount: paymentAmount.value || null,
-      next_billing_time: billing.next_billing_time || null,
-      last_payment_at: lastPayment.time || null,
-      updated_at: new Date().toISOString(),
-    };
 
-    const writeResponse = await fetch(
-      supabaseUrl +
-        "/rest/v1/sowia_subscriptions?on_conflict=paypal_subscription_id",
+    const reconcileResponse = await fetch(
+      supabaseUrl + "/rest/v1/rpc/sowia_reconcile_paypal_subscription",
       {
         method: "POST",
         headers: {
           apikey: serviceRoleKey,
           Authorization: "Bearer " + serviceRoleKey,
           "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates,return=minimal",
+          Accept: "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          p_user_id: userId,
+          p_paypal_subscription_id: subscriptionId,
+          p_paypal_plan_id: planId,
+          p_event_type: eventType,
+          p_status: effectiveStatus,
+          p_currency: paymentAmount.currency_code || null,
+          p_amount: paymentAmount.value === undefined
+            ? null
+            : Number(paymentAmount.value),
+          p_next_billing_time: billing.next_billing_time || null,
+          p_last_payment_at: lastPayment.time || null,
+          p_recovery_verified: verifiedPaymentRecovery,
+        }),
       },
     );
-    if (!writeResponse.ok) {
+    if (!reconcileResponse.ok) {
       console.error(
-        "Supabase subscription upsert failed",
-        await writeResponse.text(),
+        "Supabase atomic subscription reconciliation failed",
+        await reconcileResponse.text(),
       );
       throw new Error("Unable to persist subscription state");
     }
-
-    return json({ received: true, reconciled: true });
+    const reconciledStatus = await reconcileResponse.json();
+    return json({
+      received: true,
+      reconciled: true,
+      status: reconciledStatus,
+    });
   } catch (error) {
     console.error("PayPal webhook handler error", error);
     return json({ error: "Webhook processing failed" }, 500);
