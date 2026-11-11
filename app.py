@@ -44,6 +44,7 @@ import sowia_global_connect
 import sowia_global_messenger
 import sowia_global_alerts
 import sowia_business_card
+import financial_command_center_ui
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -387,7 +388,7 @@ NAV_GROUPS = {
         "SOWIA GLOBAL EXECUTIVE REPORTS",
     ],
     "💶 SOWIA FINANCIAL HUB": [
-        "Finance & investissements", "Revenus & paiements",
+        "SOWIA FINANCIAL COMMAND CENTER", "Finance & investissements", "Revenus & paiements",
     ],
     "💳 Abonnements & compte": [
         "Abonnement",
@@ -6733,6 +6734,20 @@ elif page == "Centre de notifications":
 
     st.divider()
     st.caption("Ce centre regroupe les données déjà enregistrées. Il n'envoie pas d'e-mail, de SMS ou de notification push et ne surveille pas les événements en arrière-plan.")
+
+
+elif page == "SOWIA FINANCIAL COMMAND CENTER":
+    st.subheader("🏦 SOWIA FINANCIAL COMMAND CENTER")
+    admin_metadata = getattr(current_user, "app_metadata", None) or {} if current_user is not None else {}
+    is_sowia_admin = isinstance(admin_metadata, dict) and (
+        admin_metadata.get("sowia_admin") is True or admin_metadata.get("role") == "admin"
+    )
+    if not cloud_mode or current_user is None:
+        st.info("Connectez-vous avec un compte SOWIA autorisé pour accéder à cet espace de pilotage.")
+    elif not is_sowia_admin:
+        st.error("Accès refusé. Le prototype est réservé aux administrateurs SOWIA.")
+    else:
+        financial_command_center_ui.render_financial_command_center()
 
 
 elif page == "SOWIA CONTROL CENTER":
