@@ -1000,3 +1000,30 @@ def test_outbox_rejects_audit_event_with_missing_or_mismatched_authorization_id(
     )
     assert checkpoint is not None
     assert len(store.audit_events()) == 1
+
+
+def test_mark_checkpoint_anchored_rejects_malformed_receipts_without_corrupting_outbox(tmp_path):
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path, "outbox-invalid-receipts.sqlite3")
+    records = _records(now)
+    authorization_id = "auth-invalid-receipts"
+    assert store.register_pair(authorization_id, records, now=now)
+    checkpoint = store.commit_pair_audit_and_outbox(
+        authorization_id,
+        records,
+        {"event_type": "approved", "authorization_id": authorization_id},
+        now=now,
+    )
+    assert checkpoint is not None
+
+    for invalid_receipt in ({}, {"receipt_id": 7}, {"receipt_id": "   "}, None):
+        assert store.mark_checkpoint_anchored(
+            authorization_id, checkpoint.event_hash, invalid_receipt
+        ) is False
+        assert store.anchor_outbox_status(authorization_id) == "pending"
+        assert store.verify_integrity() is True
+
+    assert store.mark_checkpoint_anchored(
+        authorization_id, checkpoint.event_hash, {"receipt_id": "valid-receipt"}
+    ) is True
+    assert store.verify_integrity() is True
