@@ -9,7 +9,7 @@ alter table public.sowia_subscriptions
 
 -- Replace the prior RPC signature so exact duplicate event IDs can be ignored.
 drop function if exists public.sowia_reconcile_paypal_subscription(
-    uuid, text, text, text, text, text, numeric, timestamptz, timestamptz, timestamptz, text, boolean
+    uuid, text, text, text, text, text, numeric, timestamptz, timestamptz, timestamptz, boolean
 );
 
 create or replace function public.sowia_reconcile_paypal_subscription(
@@ -165,10 +165,10 @@ end;
 $$;
 
 revoke all on function public.sowia_reconcile_paypal_subscription(
-    uuid, text, text, text, text, text, numeric, timestamptz, timestamptz, timestamptz, boolean
+    uuid, text, text, text, text, text, numeric, timestamptz, timestamptz, timestamptz, text, boolean
 ) from public, anon, authenticated;
 grant execute on function public.sowia_reconcile_paypal_subscription(
-    uuid, text, text, text, text, text, numeric, timestamptz, timestamptz, timestamptz, boolean
+    uuid, text, text, text, text, text, numeric, timestamptz, timestamptz, timestamptz, text, boolean
 ) to service_role;
 
 commit;
