@@ -5,10 +5,12 @@ on:
     paths:
       - "app.py"
       - "final_tec_access.py"
+      - "final_tec_evidence_intake.py"
       - "final_tec_investor_dashboard.py"
       - "final_tec_evidence.py"
       - "tests/test_final_tec_access.py"
       - "tests/test_final_tec_published_metrics.py"
+      - "tests/test_final_tec_evidence_intake.py"
       - "tests/test_final_tec_investor_dashboard.py"
       - "tests/test_final_tec_evidence.py"
       - ".github/workflows/final-tec-dashboard-checks.yml"
@@ -17,13 +19,16 @@ on:
       - "feature/final-tec-investor-live-dashboard"
       - "security/final-tec-server-side-access-guard"
       - "feature/final-tec-published-metrics-dashboard"
+      - "feature/final-tec-evidence-intake"
     paths:
       - "app.py"
       - "final_tec_access.py"
+      - "final_tec_evidence_intake.py"
       - "final_tec_investor_dashboard.py"
       - "final_tec_evidence.py"
       - "tests/test_final_tec_access.py"
       - "tests/test_final_tec_published_metrics.py"
+      - "tests/test_final_tec_evidence_intake.py"
       - "tests/test_final_tec_investor_dashboard.py"
       - "tests/test_final_tec_evidence.py"
       - ".github/workflows/final-tec-dashboard-checks.yml"
@@ -42,6 +47,6 @@ jobs:
       - name: Install test runner
         run: python -m pip install --upgrade pytest
       - name: Run focused FINAL TEC dashboard tests
-        run: python -m pytest -q tests/test_final_tec_access.py tests/test_final_tec_published_metrics.py tests/test_final_tec_investor_dashboard.py tests/test_final_tec_evidence.py
+        run: python -m pytest -q tests/test_final_tec_access.py tests/test_final_tec_published_metrics.py tests/test_final_tec_evidence_intake.py tests/test_final_tec_investor_dashboard.py tests/test_final_tec_evidence.py
       - name: Compile guarded application modules
-        run: python -m py_compile app.py final_tec_access.py final_tec_investor_dashboard.py final_tec_evidence.py
+        run: python -m py_compile app.py final_tec_access.py final_tec_evidence_intake.py final_tec_investor_dashboard.py final_tec_evidence.py
