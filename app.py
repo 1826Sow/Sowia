@@ -6269,6 +6269,59 @@ elif page == "Revenus & paiements":
             rows = financial_reporting.load_user_financial_transactions(
                 supabase_client, current_user, limit=500
             )
+            # Subscription overview: read only, scoped to the signed-in owner.
+            # Status values are shown as stored; no status is inferred from dates.
+            try:
+                subscription_admin = premium_access.create_admin_client()
+                if subscription_admin is None:
+                    st.info("Vue des abonnements indisponible : accès serveur Supabase non configuré.")
+                else:
+                    subscription_rows = (
+                        subscription_admin.table("sowia_subscriptions")
+                        .select(
+                            "provider, paypal_subscription_id, status, amount, currency, "
+                            "next_billing_time, last_payment_at"
+                        )
+                        .eq("user_id", str(current_user.id))
+                        .eq("provider", "paypal")
+                        .order("next_billing_time", desc=False)
+                        .execute()
+                        .data or []
+                    )
+                    subscription_statuses = financial_reporting.summarize_subscription_statuses(
+                        subscription_rows
+                    )
+                    st.markdown("#### Abonnements PayPal")
+                    subscription_cols = st.columns(4)
+                    subscription_cols[0].metric("Actifs", subscription_statuses["active"])
+                    subscription_cols[1].metric("Suspendus", subscription_statuses["suspended"])
+                    subscription_cols[2].metric("Annulés", subscription_statuses["cancelled"])
+                    subscription_cols[3].metric("Autres statuts", subscription_statuses["other"])
+                    if subscription_rows:
+                        st.dataframe(
+                            [{
+                                "Abonnement": row.get("paypal_subscription_id") or "—",
+                                "Statut enregistré": row.get("status") or "Inconnu",
+                                "Montant": (
+                                    str(row.get("amount")) + " " + str(row.get("currency"))
+                                    if row.get("amount") is not None and row.get("currency")
+                                    else "Non renseigné"
+                                ),
+                                "Prochaine échéance enregistrée": row.get("next_billing_time") or "—",
+                                "Dernier paiement enregistré": row.get("last_payment_at") or "—",
+                            } for row in subscription_rows],
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                        st.caption(
+                            "Statuts issus du dernier enregistrement SOWIA, pas d'une interrogation "
+                            "en temps réel de PayPal. Les statuts inconnus restent dans « Autres »."
+                        )
+                    else:
+                        st.info("Aucun abonnement PayPal n'est enregistré pour ce compte.")
+            except Exception as subscription_error:
+                st.warning("La liste des abonnements n'est pas accessible pour le moment.")
+                st.caption("Diagnostic : " + type(subscription_error).__name__)
             if st.session_state.pop("paypal_sync_has_more", False):
                 st.warning(
                     "La période contient encore des pages PayPal à récupérer. "
