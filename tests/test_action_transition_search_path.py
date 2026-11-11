@@ -48,3 +48,18 @@ def test_action_transition_uses_one_valid_plpgsql_declare_section():
         body,
     ), "PL/pgSQL variables must share one DECLARE section"
     assert not re.search(r"\bdeclare\s+p[^;]+;\s*declare\b", body)
+
+
+def test_action_tables_revoke_old_authenticated_grants_before_allowlisting():
+    revoke = (
+        "revoke all on public.sowia_global_action_plans, "
+        "public.sowia_global_action_audit from anon, public, authenticated"
+    )
+    assert revoke in SQL
+    assert (
+        "grant select, insert on public.sowia_global_action_plans to authenticated"
+    ) in SQL
+    assert "grant select on public.sowia_global_action_audit to authenticated" in SQL
+    assert "grant update on public.sowia_global_action_plans to authenticated" not in SQL
+    assert "grant delete on public.sowia_global_action_plans to authenticated" not in SQL
+    assert "grant insert on public.sowia_global_action_audit to authenticated" not in SQL
