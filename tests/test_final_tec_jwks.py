@@ -360,7 +360,7 @@ def test_url_error_is_normalized():
 
 def test_json_nesting_limit_accepts_exact_boundary():
     nested = 0
-    for _ in range(63):
+    for _ in range(60):
         nested = [nested]
     opener = FakeOpener([Response({"keys": [jwk("key-1")], "extra": nested})])
     assert make_resolver(opener)("key-1") is not None
@@ -368,7 +368,7 @@ def test_json_nesting_limit_accepts_exact_boundary():
 
 def test_json_nesting_limit_rejects_one_level_over_boundary():
     nested = 0
-    for _ in range(64):
+    for _ in range(61):
         nested = [nested]
     opener = FakeOpener([Response({"keys": [jwk("key-1")], "extra": nested})])
     with pytest.raises(JWKSConfigurationError, match="invalid JSON"):
