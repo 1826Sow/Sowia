@@ -1,0 +1,25 @@
+name: FINAL TEC dual approval engine checks
+
+on:
+  pull_request:
+    branches:
+      - docs/final-tec-dual-approval-protocol-v2
+    paths:
+      - "final_tec_dual_approval.py"
+      - "tests/test_final_tec_dual_approval.py"
+      - ".github/workflows/final-tec-dual-approval-engine-checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  dual-approval-engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install "rfc8785>=0.1.4,<1" pytest
+      - run: python -m pytest -q tests/test_final_tec_dual_approval.py
