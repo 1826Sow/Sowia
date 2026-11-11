@@ -44,7 +44,7 @@ def test_paypal_payment_failure_blocks_premium_until_paypal_counter_resets():
     assert '"BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED"' in WEBHOOK
     counter = WEBHOOK.index("const failedPaymentsCount = Number(billing.failed_payments_count);")
     validation = WEBHOOK.index("if (!Number.isInteger(failedPaymentsCount)", counter)
-    gate = WEBHOOK.index('const effectiveStatus = normalizedStatus === "ACTIVE" && failedPaymentsCount > 0', validation)
+    gate = WEBHOOK.index('let effectiveStatus = normalizedStatus === "ACTIVE" && failedPaymentsCount > 0', validation)
     write = WEBHOOK.index('"/rest/v1/sowia_subscriptions?on_conflict=paypal_subscription_id"', gate)
     assert counter < validation < gate < write
     assert '? "past_due"' in WEBHOOK
