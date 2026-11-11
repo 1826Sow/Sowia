@@ -480,3 +480,87 @@ indépendante avec rétention verrouillée ; preuves examinées indépendamment.
 partagé multi-hôtes ni service WORM réel n'est raccordé. Tous les essais
 d'infrastructure de cette section restent **NOT_CONFIGURED / NOT_RUN**.
 Cette matrice ne modifie pas le statut G2-B.
+
+## 20. Consommation atomique du couple de sessions OIDC
+
+### 20.1 Écart constaté
+
+Le vérificateur actuel expose `consume_assertion_session(session_id, expected_nonce)`
+et le moteur appelle le vérificateur d'identité séparément pour chacun des
+deux approbateurs, après validation des deux signatures. Chaque session peut
+donc être consommée individuellement. Si la première consommation réussit et
+que la seconde échoue (session expirée, révoquée, déjà consommée ou stockage
+indisponible), la première consommation n'est pas annulée.
+
+La transaction SQLite `atomic_pair_audit_commit` porte sur les deux nonces
+applicatifs et l'événement d'audit ; elle ne rend pas atomiques les deux
+sessions OIDC. Ces deux mécanismes ne doivent pas être confondus.
+
+### 20.2 Contrat obligatoire de l'adaptateur groupé
+
+Avant toute approbation positive, l'intégration doit fournir une opération
+groupée, par exemple
+`consume_approval_session_pair(session_records)`, qui reçoit exactement
+deux enregistrements liés aux deux approbateurs. Chaque enregistrement doit
+contenir des références de session côté serveur, le nonce attendu, le sujet
+attendu et le rôle exigé. Aucun identifiant de session, nonce attendu ou jeton
+ne peut être pris depuis une donnée non fiable fournie dans le manifeste
+d'approbation.
+
+L'opération doit, comme une seule unité atomique et durable :
+
+1. charger les deux sessions dans le stockage partagé faisant autorité ;
+2. vérifier pour chacune l'existence, l'état non consommé, l'expiration,
+   la liaison exacte au nonce et au sujet attendus, ainsi que l'usage prévu ;
+3. confirmer l'autorisation courante des deux sujets pour le rôle requis,
+   selon une règle de fraîcheur et de révocation explicitement documentée ;
+4. consommer les deux sessions ensemble, ou n'en consommer aucune ;
+5. retourner strictement `True` uniquement si les deux consommations sont
+   durablement validées ; tout conflit, indisponibilité ou résultat ambigu
+   doit retourner un refus fermé.
+
+Une implémentation qui appelle deux consommateurs unitaires successifs,
+même dans un même callback, ne satisfait pas ce contrat. Une transaction
+locale ne peut pas être déclarée atomique si les sessions et l'annuaire de
+rôles relèvent de systèmes indépendants sans protocole de réservation,
+validation et commit documenté. Dans ce cas, l'adaptateur doit définir une
+stratégie de réservation récupérable et idempotente, avec expiration,
+réconciliation et preuve qu'aucune session ne reste consommée seule après
+un échec. À défaut, l'intégration reste bloquée.
+
+### 20.3 Essais d'acceptation obligatoires
+
+| ID | Scénario | Résultat exigé |
+|---|---|---|
+| OIDC-PAIR-01 | Deux sessions valides | Les deux passent à consommées dans un seul commit durable |
+| OIDC-PAIR-02 | Première session invalide | Aucune session consommée |
+| OIDC-PAIR-03 | Deuxième session invalide/expirée/révoquée | Aucune session consommée |
+| OIDC-PAIR-04 | Deux appels concurrents avec le même couple | Un seul gagnant ; aucun état partiel |
+| OIDC-PAIR-05 | Même session présentée dans les deux emplacements | Refus avant consommation |
+| OIDC-PAIR-06 | Nonce ou sujet substitué sur l'un des deux enregistrements | Refus ; aucune consommation |
+| OIDC-PAIR-07 | Panne avant commit | Aucune consommation |
+| OIDC-PAIR-08 | Commit réussi, réponse perdue | Requête idempotente réconciliée sans seconde consommation |
+| OIDC-PAIR-09 | Révocation concurrente d'un rôle | Résultat conforme à la règle de linéarisation/fraîcheur documentée ; jamais d'approbation sur rôle périmé au-delà de cette limite |
+| OIDC-PAIR-10 | Stockage ou annuaire indisponible | Refus fermé, aucune approbation positive |
+| OIDC-PAIR-11 | Rejeu après succès | Refus ; aucun nouvel événement d'approbation |
+| OIDC-PAIR-12 | Redémarrage pendant réservation/réconciliation | État récupéré sans session orpheline consommée seule |
+
+Les tests doivent utiliser le véritable adaptateur de session dans un
+environnement isolé, puis être complétés par des tests de concurrence,
+d'injection de panne et de révocation. Des fakes unitaires seuls ne valent
+pas preuve d'intégration.
+
+### 20.4 État et décision
+
+Le code actuel ne fournit pas cette opération groupée et le stockage réel des
+sessions d'approbation n'est pas configuré. Les essais OIDC-PAIR-01 à
+OIDC-PAIR-12 sont donc **NOT_CONFIGURED / NOT_RUN**. Les tests existants
+prouvant que les deux signatures sont vérifiées avant les callbacks d'identité
+restent valides, mais ne démontrent pas l'atomicité des sessions.
+
+Ne pas remplacer prématurément le flux unitaire par une abstraction simulée.
+L'intégration devra être conçue avec le fournisseur et le stockage réellement
+retenus, puis les tests devront être exécutés sur cet adaptateur. Jusqu'à
+acceptation de ces preuves, le contrôle des sessions d'approbation reste
+bloquant et G2-B reste **NO-GO / NOT_RUN**.
+
