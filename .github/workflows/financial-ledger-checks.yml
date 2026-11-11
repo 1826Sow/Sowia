@@ -5,6 +5,7 @@ on:
     branches: [main, "feature/**"]
     paths:
       - "app.py"
+      - "app.py"
       - "financial_ledger.py"
       - "financial_reporting.py"
       - "paypal_payments.py"
@@ -30,6 +31,8 @@ on:
       - "tests/test_financial_reporting.py"
       - "paypal_statement_search.py"
       - "tests/test_paypal_statement_search.py"
+      - "paypal_statement_analysis.py"
+      - "tests/test_paypal_statement_analysis.py"
       - "tests/test_paypal_payments.py"
       - ".github/workflows/financial-ledger-checks.yml"
 
@@ -53,5 +56,5 @@ jobs:
           tests/test_financial_ledger.py
           tests/test_financial_reporting.py
           tests/test_paypal_payments.py
-          tests/test_paypal_statement_search.py \\
+          tests/test_paypal_statement_search.py
           tests/test_paypal_statement_analysis.py
