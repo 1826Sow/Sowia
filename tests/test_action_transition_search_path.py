@@ -14,7 +14,7 @@ def test_action_transition_security_definer_uses_empty_search_path():
         SQL,
     )
     assert match, "Action transition function must exist with a valid dollar-quoted body"
-    declaration = SQL[match.start():match.start(500)]
+    declaration = SQL[match.start():match.start(1)]
     body = match.group(2)
     assert "security definer" in declaration
     assert "set search_path = ''" in declaration
