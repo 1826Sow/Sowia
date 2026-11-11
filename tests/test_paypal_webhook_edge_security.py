@@ -164,7 +164,7 @@ def test_subscription_webhook_deduplicates_exact_paypal_event_ids():
     source = WEBHOOK
     event_time = source.index('const eventTime = String(event.create_time || "").trim();')
     event_id = source.index('const eventId = String(event.id || "").trim();', event_time)
-    rpc = source.index('"p_event_id: eventId', event_id)
+    rpc = source.index("p_event_id: eventId", event_id)
     assert event_time < event_id < rpc
     assert 'eventId.length > 128' in source
 
