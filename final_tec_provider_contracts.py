@@ -48,14 +48,25 @@ class RemoteApprovalSignatureVerifier(Protocol):
 
 @runtime_checkable
 class SharedAtomicApprovalLedger(Protocol):
+    """Shared ledger must atomically persist pair, audit, and anchor outbox."""
+
     production_grade: bool
 
-    def commit_pair_and_audit(
+    def commit_pair_audit_and_outbox(
         self,
         authorization_id: str,
         nonce_records: Sequence[tuple[str, str]],
         audit_event: Mapping[str, Any],
+    ) -> Any: ...
+
+    def mark_checkpoint_anchored(
+        self,
+        authorization_id: str,
+        event_hash: str,
+        receipt: Mapping[str, str],
     ) -> bool: ...
+
+    def pending_anchor_checkpoints(self) -> Sequence[Any]: ...
 
     def healthcheck(self) -> bool: ...
 
@@ -84,6 +95,7 @@ class ProductionAdapterBundle:
     signer: RemoteApprovalSigner
     signature_verifier: RemoteApprovalSignatureVerifier
     ledger: SharedAtomicApprovalLedger
+    audit_anchor: ExternalAuditAnchor
 
 
 _REQUIRED_METHODS = {
@@ -92,7 +104,13 @@ _REQUIRED_METHODS = {
     "roles": ("has_current_role",),
     "signer": ("sign",),
     "signature_verifier": ("verify",),
-    "ledger": ("commit_pair_and_audit", "healthcheck"),
+    "ledger": (
+        "commit_pair_audit_and_outbox",
+        "mark_checkpoint_anchored",
+        "pending_anchor_checkpoints",
+        "healthcheck",
+    ),
+    "audit_anchor": ("append_checkpoint", "verify_checkpoint"),
 }
 _MISSING = object()
 
