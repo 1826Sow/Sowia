@@ -140,6 +140,7 @@ Deno.serve(async (request: Request) => {
       "BILLING.SUBSCRIPTION.SUSPENDED",
       "BILLING.SUBSCRIPTION.EXPIRED",
       "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
+      "BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED",
       "PAYMENT.SALE.COMPLETED",
       "PAYMENT.SALE.REFUNDED",
       "PAYMENT.SALE.REVERSED",
@@ -253,6 +254,16 @@ Deno.serve(async (request: Request) => {
     }
 
     const billing = subscription.billing_info || {};
+    const failedPaymentsCount = Number(billing.failed_payments_count);
+    if (!Number.isInteger(failedPaymentsCount) || failedPaymentsCount < 0) {
+      return json({ error: "PayPal failed-payment counter is invalid" }, 422);
+    }
+    // PayPal keeps a subscription ACTIVE while retrying failed charges.
+    // Do not grant Premium during that retry window; PayPal resets this
+    // consecutive-failure counter to zero after a successful payment.
+    const effectiveStatus = normalizedStatus === "ACTIVE" && failedPaymentsCount > 0
+      ? "past_due"
+      : normalizedStatus.toLowerCase();
     const lastPayment = billing.last_payment || {};
     const paymentAmount = lastPayment.amount || {};
     if (paymentAmount.value !== undefined &&
@@ -265,7 +276,7 @@ Deno.serve(async (request: Request) => {
       provider: "paypal",
       paypal_subscription_id: subscriptionId,
       paypal_plan_id: planId,
-      status: normalizedStatus.toLowerCase(),
+      status: effectiveStatus,
       currency: paymentAmount.currency_code || null,
       amount: paymentAmount.value || null,
       next_billing_time: billing.next_billing_time || null,
