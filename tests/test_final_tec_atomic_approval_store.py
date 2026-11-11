@@ -964,10 +964,12 @@ def test_anchor_recovery_skips_invalid_checkpoint_and_continues(tmp_path):
     anchor = RecordingAnchor()
     coordinator = ExternalAuditAnchorCoordinator(ledger, anchor)
 
-    assert coordinator.recover_pending() == 1
-    assert anchor.calls == [checkpoint.event_hash]
-    assert store.anchor_outbox_status(authorization_id) == "anchored"
-    assert store.pending_anchor_checkpoints() == []
+    # A malformed earlier pending entry makes the recovery view ambiguous.
+    # Fail closed: do not skip it and anchor a later checkpoint.
+    assert coordinator.recover_pending() == 0
+    assert anchor.calls == []
+    assert store.anchor_outbox_status(authorization_id) == "pending"
+    assert len(store.pending_anchor_checkpoints()) == 1
     assert store.verify_audit_chain() is True
     assert store.verify_anchor_outbox() is True
 
@@ -999,6 +1001,34 @@ def test_outbox_rejects_audit_event_with_missing_or_mismatched_authorization_id(
     assert checkpoint is not None
     assert len(store.audit_events()) == 1
 
+
+
+def test_external_anchor_rejects_receipt_bound_to_different_checkpoint(tmp_path):
+    """A receipt for another event must never advance the local outbox."""
+    from final_tec_audit_anchor import ExternalAuditAnchorCoordinator
+
+    class SubstitutedReceiptAnchor:
+        def append_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc):
+            return {"receipt_id": f"receipt-{sequence}", "event_hash": "f" * 64}
+
+        def verify_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc, receipt):
+            return (
+                receipt.get("event_hash") == event_hash
+                and receipt.get("receipt_id") == f"receipt-{sequence}"
+            )
+
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path, "outbox-substituted-receipt.sqlite3")
+    records = _records(now)
+    authorization_id = "auth-substituted-receipt"
+    event = {"event_type": "receipt-substitution", "authorization_id": authorization_id}
+    assert store.register_pair(authorization_id, records, now=now)
+    coordinator = ExternalAuditAnchorCoordinator(store, SubstitutedReceiptAnchor())
+
+    assert coordinator.commit_and_anchor(authorization_id, records, event) is False
+    assert store.anchor_outbox_status(authorization_id) == "pending"
+    assert len(store.pending_anchor_checkpoints()) == 1
+    assert store.verify_integrity() is True
 
 def test_mark_checkpoint_anchored_rejects_malformed_receipts_without_corrupting_outbox(tmp_path):
     now = datetime.now(timezone.utc)
