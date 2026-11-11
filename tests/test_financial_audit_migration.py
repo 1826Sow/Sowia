@@ -10,24 +10,10 @@ PREFLIGHT = ROOT / "supabase_financial_audit_preflight.sql"
 def test_audit_migration_captures_all_financial_ledger_fields_before_and_after():
     sql = MIGRATION.read_text(encoding="utf-8")
     fields = (
-        "id",
-        "user_id",
-        "order_id",
-        "provider",
-        "provider_payment_id",
-        "parent_capture_id",
-        "transaction_type",
-        "status",
-        "gross_amount",
-        "gross_currency",
-        "reference_amount_eur",
-        "fee_amount",
-        "fee_currency",
-        "net_amount",
-        "net_currency",
-        "tax_amount_eur",
-        "occurred_at",
-        "created_at",
+        "id", "user_id", "order_id", "provider", "provider_payment_id",
+        "parent_capture_id", "transaction_type", "status", "gross_amount",
+        "gross_currency", "reference_amount_eur", "fee_amount", "fee_currency",
+        "net_amount", "net_currency", "tax_amount_eur", "occurred_at", "created_at",
     )
     for field in fields:
         assert re.search(rf"'{field}'\s*,\s*old\.{field}\b", sql), field
@@ -67,6 +53,5 @@ def test_preflight_is_read_only_and_checks_audit_prerequisites():
     assert "sowia_financial_ledger_audit" in sql
     assert "reference_amount_eur" in sql
     assert "tax_amount_eur" in sql
-    # Remove comments before checking for mutating SQL statements.
-    uncommented = re.sub(r"--[^\\n]*", "", sql)
-    assert not re.search(r"\\b(create|alter|insert|update|delete|drop|truncate)\\s+\\b", uncommented)
+    uncommented = re.sub(r"--[^\n]*", "", sql)
+    assert not re.search(r"\b(create|alter|insert|update|delete|drop|truncate)\s+\b", uncommented)
