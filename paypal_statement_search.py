@@ -36,6 +36,25 @@ def _date_windows(start: datetime, end: datetime):
         cursor = boundary
 
 
+def _safe_transaction_info(info: dict):
+    """Keep accounting identifiers and amounts; discard free text and personal data."""
+    allowed = {
+        "transaction_id",
+        "paypal_reference_id",
+        "paypal_reference_id_type",
+        "transaction_event_code",
+        "transaction_initiation_date",
+        "transaction_updated_date",
+        "transaction_amount",
+        "fee_amount",
+        "sales_tax_amount",
+        "transaction_status",
+        "invoice_id",
+        "ending_balance",
+    }
+    return {key: value for key, value in info.items() if key in allowed}
+
+
 def _event_key(info: dict):
     amount = info.get("transaction_amount") or {}
     fee = info.get("fee_amount") or {}
@@ -90,9 +109,9 @@ def _fetch_window(config, headers, start, end):
                 continue
             info = item.get("transaction_info")
             if isinstance(info, dict):
-                # Requesting transaction_info only avoids importing payer names,
-                # email addresses, phone numbers, and postal addresses.
-                events.append({"transaction_info": dict(info)})
+                # Retain only structured accounting fields. Drop payer details,
+                # free-text notes/subjects, and unrelated personal information.
+                events.append({"transaction_info": _safe_transaction_info(info)})
 
         try:
             total_pages = int(payload.get("total_pages") or 0)
