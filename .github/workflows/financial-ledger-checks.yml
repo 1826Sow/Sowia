@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, "feature/**"]
     paths:
+      - "app.py"
       - "financial_ledger.py"
       - "financial_reporting.py"
       - "paypal_payments.py"
@@ -16,7 +17,7 @@ on:
       - "tests/test_paypal_statement_search.py"
       - ".github/workflows/financial-ledger-checks.yml"
   pull_request:
-    branches: [main]
+    branches: [main, "feature/**"]
     paths:
       - "financial_ledger.py"
       - "financial_reporting.py"
@@ -25,6 +26,8 @@ on:
       - "supabase_crypto_payments.sql"
       - "tests/test_financial_ledger.py"
       - "tests/test_financial_reporting.py"
+      - "paypal_statement_search.py"
+      - "tests/test_paypal_statement_search.py"
       - "tests/test_paypal_payments.py"
       - ".github/workflows/financial-ledger-checks.yml"
 
