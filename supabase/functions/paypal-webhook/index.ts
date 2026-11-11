@@ -493,25 +493,33 @@ Deno.serve(async (request: Request) => {
         }
       }
 
-      const revokeResponse = await fetch(
-        supabaseUrl + "/rest/v1/sowia_entitlements?user_id=eq." +
-          encodeURIComponent(String(ledger.user_id)) + "&paypal_order_id=eq." +
-          encodeURIComponent(orderId) + "&status=eq.active",
-        { method: "PATCH", headers: {
-          apikey: serviceRoleKey,
-          Authorization: "Bearer " + serviceRoleKey,
-          "Content-Type": "application/json",
-          Prefer: "return=representation",
-        }, body: JSON.stringify({ status: "inactive" }) },
-      );
-      if (!revokeResponse.ok) {
-        throw new Error("Unable to revoke refunded Premium entitlement");
+      // A partial refund is not a full loss of the purchase. Keep Premium
+      // active while the exact refund remains in manual review. Revoke only
+      // when PayPal confirms that the entire capture is REFUNDED.
+      let revokedRows: unknown[] = [];
+      if (captureStatus === "REFUNDED") {
+        const revokeResponse = await fetch(
+          supabaseUrl + "/rest/v1/sowia_entitlements?user_id=eq." +
+            encodeURIComponent(String(ledger.user_id)) + "&paypal_order_id=eq." +
+            encodeURIComponent(orderId) + "&status=eq.active",
+          { method: "PATCH", headers: {
+            apikey: serviceRoleKey,
+            Authorization: "Bearer " + serviceRoleKey,
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          }, body: JSON.stringify({ status: "inactive" }) },
+        );
+        if (!revokeResponse.ok) {
+          throw new Error("Unable to revoke refunded Premium entitlement");
+        }
+        const revoked = await revokeResponse.json();
+        revokedRows = Array.isArray(revoked) ? revoked : [];
       }
-      const revokedRows = await revokeResponse.json();
       return json({
         received: true,
         reconciled: true,
-        entitlement_revoked: Array.isArray(revokedRows) && revokedRows.length > 0,
+        refund_status: captureStatus,
+        entitlement_revoked: revokedRows.length > 0,
       });
     }
     const catalogResponse = await fetch(
