@@ -40,14 +40,19 @@ def make_token(private, **overrides):
 
 def build_verifier(token, public, *, role_ok=True, expected_nonce=NONCE,
                    key_resolver=None, role_resolver=None, assertion_resolver=None,
-                   clock=time.time):
+                   consume_assertion_session=None, clock=time.time):
     return OIDCApprovalIdentityVerifier(
         issuer=ISSUER,
         audience=AUDIENCE,
         signing_key_resolver=key_resolver or (lambda kid: public if kid == "issuer-key-1" else None),
         assertion_resolver=assertion_resolver or (
-            lambda context: {"id_token": token, "expected_nonce": expected_nonce}
+            lambda context: {
+                "id_token": token,
+                "expected_nonce": expected_nonce,
+                "session_id": "server-session-001",
+            }
         ),
+        consume_assertion_session=consume_assertion_session or (lambda session_id, nonce: True),
         role_resolver=role_resolver or (lambda subject, role: role_ok and role == "security-approver"),
         required_acr="urn:example:loa:phishing-resistant",
         required_amr="webauthn",
@@ -177,6 +182,7 @@ def test_invalid_configuration_is_rejected():
             issuer="", audience=AUDIENCE,
             signing_key_resolver=lambda kid: None,
             assertion_resolver=lambda context: {},
+            consume_assertion_session=lambda session_id, nonce: True,
             role_resolver=lambda subject, role: False,
             required_acr="acr",
         )
@@ -196,6 +202,7 @@ def test_insecure_or_ambiguous_issuer_configuration_is_rejected(issuer):
             audience=AUDIENCE,
             signing_key_resolver=lambda kid: None,
             assertion_resolver=lambda context: {},
+            consume_assertion_session=lambda session_id, nonce: True,
             role_resolver=lambda subject, role: False,
             required_acr="acr",
         )
@@ -208,6 +215,7 @@ def test_boolean_auth_age_configuration_is_rejected():
             audience=AUDIENCE,
             signing_key_resolver=lambda kid: None,
             assertion_resolver=lambda context: {},
+            consume_assertion_session=lambda session_id, nonce: True,
             role_resolver=lambda subject, role: False,
             required_acr="acr",
             max_auth_age_seconds=True,
@@ -227,6 +235,7 @@ def test_oidc_verifier_integrates_with_dual_approval_engine(signing_material):
     }
     keys = {"issuer-key-1": public_a}
     nonces = {"key-a": "nonce-a", "key-b": "nonce-b"}
+    consumed_sessions = set()
     verifier = OIDCApprovalIdentityVerifier(
         issuer=ISSUER,
         audience=AUDIENCE,
@@ -234,7 +243,10 @@ def test_oidc_verifier_integrates_with_dual_approval_engine(signing_material):
         assertion_resolver=lambda context: {
             "id_token": tokens[context["approval"]["key_id"]],
             "expected_nonce": nonces[context["approval"]["key_id"]],
+            "session_id": "server-session-" + context["approval"]["key_id"],
         },
+        consume_assertion_session=lambda session_id, nonce: session_id not in consumed_sessions
+            and not consumed_sessions.add(session_id),
         role_resolver=lambda subject, role: (
             subject in {"approver-a", "approver-b"} and role == "security-approver"
         ),
