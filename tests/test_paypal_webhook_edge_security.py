@@ -49,3 +49,18 @@ def test_paypal_payment_failure_blocks_premium_until_paypal_counter_resets():
     assert counter < validation < gate < write
     assert '? "past_due"' in WEBHOOK
     assert "failedPaymentsCount > 0" in WEBHOOK
+
+
+def test_subscription_refund_or_reversal_blocks_premium_until_verified_successful_payment():
+    source = WEBHOOK
+    refund_gate = source.index("const isRefundOrReversal =")
+    existing_state = source.index('"&select=status&limit=1"', refund_gate)
+    recovery = source.index("const verifiedPaymentRecovery =", existing_state)
+    hold = source.index('effectiveStatus = "payment_review"', recovery)
+    write = source.index('"/rest/v1/sowia_subscriptions?on_conflict=paypal_subscription_id"', hold)
+    assert refund_gate < existing_state < recovery < hold < write
+    assert 'eventType === "PAYMENT.SALE.REFUNDED"' in source
+    assert 'eventType === "PAYMENT.SALE.REVERSED"' in source
+    assert 'eventType === "BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED"' in source
+    assert "paymentReviewAlreadyActive && !verifiedPaymentRecovery" in source
+    assert 'effectiveStatus = "payment_review"' in source
