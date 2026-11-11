@@ -73,12 +73,16 @@ def validate_dual_approval(
     now: datetime | None = None,
     required_role: str = "security-approver",
 ) -> dict[str, Any]:
-    """Validate two approvals and consume both nonces atomically.
+    """Validate two approvals and consume both nonces with one audit transaction.
 
-    nonce_pair_consumer(authorization_id, [(nonce_a, expiry_a), ...]) must
-    commit both nonce consumptions in one transaction or consume neither.
-    Trust callbacks must use independent authoritative sources.
+    The legacy split callbacks remain in the signature only to fail explicitly
+    for old callers. They are never invoked or accepted. Trust callbacks must
+    use independent authoritative sources.
     """
+    if nonce_pair_consumer is not None or audit_append is not None:
+        raise DualApprovalError(
+            "Separate nonce and audit callbacks are prohibited; use atomic_pair_audit_commit"
+        )
     if not isinstance(request, Mapping) or set(request) != _REQUEST_FIELDS:
         raise DualApprovalError("Request fields are incomplete or unexpected")
     if not isinstance(approvals, Sequence) or isinstance(approvals, (str, bytes)) or len(approvals) != 2:
@@ -178,16 +182,12 @@ def validate_dual_approval(
         "execution_authorized": False,
     }
 
-    # Never accept the historical split callbacks: consuming nonces and
-    # appending the audit separately can leave a partial, unrecoverable state.
-    # Production and test callers must supply one transactional callback.
     if atomic_pair_audit_commit is None:
         raise DualApprovalError("Atomic pair/audit commit callback is required")
     if atomic_pair_audit_commit(
         request["authorization_id"], tuple(nonce_records), audit_event
     ) is not True:
         raise DualApprovalError("Atomic nonce-pair and audit commit unavailable")
-    atomic_commit_used = True
 
     return {
         "authorization_id": request["authorization_id"],
@@ -199,7 +199,7 @@ def validate_dual_approval(
         "identities_verified_by_injected_authority": True,
         "nonce_pair_consumed_atomically": True,
         "audit_appended": True,
-        "nonce_pair_and_audit_committed_atomically": atomic_commit_used,
+        "nonce_pair_and_audit_committed_atomically": True,
         "execution_authorized": False,
         "workload_executed": False,
         "g2b_status": "NO-GO / NOT_RUN",
