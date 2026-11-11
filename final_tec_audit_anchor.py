@@ -108,6 +108,19 @@ class ExternalAuditAnchorCoordinator:
         if not _valid_checkpoint(checkpoint, checkpoint.authorization_id):
             return False
         try:
+            # Preserve the global audit-chain order. A later checkpoint must
+            # not be sent while any earlier checkpoint is still pending.
+            pending = self.ledger.pending_anchor_checkpoints()
+            if not isinstance(pending, Sequence) or isinstance(pending, (str, bytes)):
+                return False
+            if any(
+                isinstance(item, AuditCheckpoint)
+                and isinstance(item.sequence, int)
+                and not isinstance(item.sequence, bool)
+                and item.sequence < checkpoint.sequence
+                for item in pending
+            ):
+                return False
             receipt = self.anchor.append_checkpoint(
                 checkpoint.sequence,
                 checkpoint.previous_hash,
