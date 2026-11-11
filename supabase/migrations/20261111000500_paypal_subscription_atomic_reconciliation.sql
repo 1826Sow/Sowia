@@ -60,7 +60,10 @@ begin
        or (p_amount is not null and (p_amount <= 0 or p_amount <> round(p_amount, 2)))
        or (p_currency is not null and p_currency <> 'EUR')
        or p_recovery_verified is distinct from (
-           p_event_type = 'BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED'
+           p_event_type in (
+               'BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED',
+               'PAYMENT.SALE.COMPLETED'
+           )
            and p_status = 'active'
        ) then
         raise exception 'Invalid PayPal subscription reconciliation input';
