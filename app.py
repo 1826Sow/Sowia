@@ -6494,6 +6494,30 @@ elif page == "Revenus & paiements":
                             else str(item['net_reported']) + ' ' + str(item['net_currency']),
                             help="Ce montant n'est pas calculé à partir du brut : il reprend uniquement les montants nets fournis."
                         )
+                        alert_cols = st.columns(3)
+                        alert_cols[0].metric(
+                            "Frais manquants",
+                            int(item.get("fee_records_missing", 0)),
+                        )
+                        alert_cols[1].metric(
+                            "Montants nets manquants",
+                            int(item.get("net_records_missing", 0)),
+                        )
+                        alert_cols[2].metric(
+                            "Remboursements excessifs",
+                            "Oui" if item.get("refunds_exceed_payments") else "Non",
+                        )
+                        if item.get("refunds_exceed_payments"):
+                            st.error(
+                                "Anomalie : les remboursements enregistrés dépassent les paiements "
+                                "confirmés pour ce prestataire et cette devise. Vérification requise."
+                            )
+                        if item.get("fee_records_missing") or item.get("net_records_missing"):
+                            st.warning(
+                                "Rapprochement incomplet : certaines écritures ne disposent pas "
+                                "de frais ou de montants nets exploitables. Aucun montant manquant "
+                                "n'est estimé."
+                            )
                     st.markdown("#### Détail comptable par fournisseur et devise")
                     st.dataframe(
                         [{
@@ -6529,6 +6553,44 @@ elif page == "Revenus & paiements":
                     "règlement en euros. Les échéances PayPal importées sont rattachées à leur "
                     "abonnement ; les anciens paiements non importés restent hors de cette vue."
                 )
+                st.divider()
+                st.markdown("#### 🔐 Journal d'audit financier")
+                st.caption(
+                    "Historique technique en lecture seule des créations, modifications et "
+                    "suppressions d'écritures du registre. Les instantanés complets ne sont pas "
+                    "exposés dans cette vue."
+                )
+                try:
+                    audit_admin_client = premium_access.create_admin_client()
+                    if audit_admin_client is None:
+                        st.info("Journal d'audit indisponible : accès serveur Supabase non configuré.")
+                    else:
+                        import financial_audit
+                        audit_rows = financial_audit.load_user_financial_audit_events(
+                            audit_admin_client, str(current_user.id), limit=200
+                        )
+                        if audit_rows:
+                            st.metric("Événements d'audit consultés", len(audit_rows))
+                            st.dataframe(
+                                financial_audit.present_audit_events(audit_rows),
+                                use_container_width=True,
+                                hide_index=True,
+                            )
+                            st.caption(
+                                "Affichage limité aux 200 événements les plus récents de votre compte. "
+                                "Le journal reste réservé au serveur ; cette page ne permet aucune modification."
+                            )
+                        else:
+                            st.info(
+                                "Aucun événement d'audit disponible. Vérifiez que la migration "
+                                "sowia_financial_audit_log a été appliquée."
+                            )
+                except Exception as audit_error:
+                    st.warning(
+                        "Le journal d'audit n'est pas encore accessible. "
+                        "Vérifiez l'application de la migration dédiée. "
+                        f"Diagnostic : {type(audit_error).__name__}."
+                    )
         except Exception:
             st.error(
                 "Le registre financier n'est pas accessible. Vérifiez que la migration "

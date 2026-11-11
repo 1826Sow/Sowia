@@ -72,4 +72,4 @@ jobs:
       - name: Verify real two-user RLS isolation
         if: steps.credentials.outputs.configured == 'true'
         run: >-
-          pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py
+          pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py tests/integration/test_supabase_financial_audit_access.py
