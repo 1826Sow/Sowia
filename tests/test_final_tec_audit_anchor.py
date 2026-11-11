@@ -35,6 +35,9 @@ class FakeOutboxLedger:
         self.receipt = dict(receipt)
         return True
 
+    def pending_anchor_checkpoints(self):
+        return [self.checkpoint] if self.checkpoint is not None and not self.anchored else []
+
 
 class FakeExternalAnchor:
     def __init__(self, *, verify=True, fail_append=False):
