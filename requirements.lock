@@ -15,6 +15,7 @@ h2==4.4.1
 hpack==4.2.0
 httpcore==1.0.9
 httpcore2==2.16.0
+httpx[http2]==0.28.1
 httpx2==2.16.0
 hyperframe==6.1.0
 idna==3.20
@@ -22,8 +23,8 @@ iniconfig==2.3.1
 itsdangerous==2.2.0
 jinja2==3.1.6
 jiter==0.19.0
-jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
+jsonschema==4.26.0
 markupsafe==3.0.4
 multidict==7.2.1
 narwhals==2.28.0
@@ -38,10 +39,11 @@ propcache==0.5.4
 protobuf==7.36.2
 pyarrow==26.0.1
 pycparser==3.12
-pydantic==2.14.3
 pydantic-core==2.50.4
+pydantic==2.14.3
 pydeck==0.9.3
 pygments==2.21.0
+PyJWT[crypto]==2.15.1
 pypdf==7.0.1
 pypdfium2==5.15.2
 pytesseract==0.3.13
@@ -49,6 +51,7 @@ pytest==9.2.0
 python-dateutil==4.0.0
 python-dotenv==1.2.4
 python-multipart==0.0.33
+qrcode[pil]==8.2
 realtime==2.34.1
 referencing==0.37.0
 reportlab==5.1.0
@@ -60,9 +63,9 @@ starlette==1.10.0
 storage3==2.34.1
 streamlit==1.67.0
 stripe==16.1.0
-supabase==2.34.1
 supabase-auth==2.34.1
 supabase-functions==2.34.1
+supabase==2.34.1
 truststore==0.10.5
 typing-extensions==4.16.0
 typing-inspection==0.4.5
