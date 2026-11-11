@@ -156,8 +156,10 @@ begin
         v_effective_status := 'payment_review';
         v_review_at := greatest(coalesce(v_review_at, p_event_time), p_event_time);
     elsif v_existing_status = 'payment_review' then
-        if p_recovery_verified and
-           (v_review_at is null or p_event_time > v_review_at) then
+        if p_recovery_verified
+           and p_last_payment_at is not null
+           and (v_review_at is null or p_last_payment_at > v_review_at)
+           and (v_review_at is null or p_event_time > v_review_at) then
             v_effective_status := p_status;
             v_review_at := null;
         else
