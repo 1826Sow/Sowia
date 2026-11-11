@@ -564,3 +564,76 @@ retenus, puis les tests devront être exécutés sur cet adaptateur. Jusqu'à
 acceptation de ces preuves, le contrôle des sessions d'approbation reste
 bloquant et G2-B reste **NO-GO / NOT_RUN**.
 
+## 21. Cohérence entre sessions OIDC et commit nonce/audit
+
+### 21.1 Deux frontières transactionnelles distinctes
+
+Le moteur actuel consomme les identités/sessions après validation des deux
+signatures, puis appelle séparément `atomic_pair_audit_commit` pour persister
+les deux nonces applicatifs et l'événement d'audit. Même si
+`consume_approval_session_pair` est ajouté et atomique pour les deux sessions,
+un échec du commit nonce/audit après la consommation des sessions laisserait
+les sessions OIDC consommées sans approbation durable correspondante.
+
+L'atomicité des deux sessions entre elles ne suffit donc pas. Le système doit
+traiter comme une seule décision cohérente les quatre effets : consommation
+des deux sessions OIDC, consommation des deux nonces applicatifs, écriture de
+l'audit et création de l'outbox d'ancrage.
+
+### 21.2 Architecture acceptable
+
+Ordre de préférence :
+
+1. **Transaction unique dans un même stockage faisant autorité** : les sessions
+   d'approbation, les nonces, l'audit et l'outbox sont validés dans une seule
+   transaction durable, après validation cryptographique et autorisation
+   courante. La frontière transactionnelle et l'isolation doivent être
+   démontrées.
+2. **Protocole de réservation/commit récupérable** : si les sessions OIDC
+   résident dans un service distinct, réserver les deux sessions sans les
+   consommer définitivement, valider les autres conditions, engager le commit
+   nonce/audit/outbox, puis finaliser les deux sessions. Le protocole doit
+   avoir des identifiants idempotents, des baux/expirations, une récupération
+   après crash, une compensation sûre et une règle explicite pour les résultats
+   ambigus. Aucun état intermédiaire ne peut produire une approbation positive.
+3. **À défaut** : si ni transaction unique ni protocole récupérable démontrable
+   n'est disponible, ne pas déclarer le flux prêt pour production. Un simple
+   appel groupé des sessions suivi d'un commit SQLite séparé n'est pas suffisant.
+
+Le statut final ne peut être positif qu'après confirmation durable de toutes
+les composantes requises, y compris l'ancrage externe lorsque celui-ci est
+obligatoire. Toute réponse ambiguë doit conduire à une réconciliation à partir
+de l'identifiant d'opération stable, jamais à une nouvelle consommation
+aveugle.
+
+### 21.3 Essais d'acceptation supplémentaires
+
+| ID | Scénario | Résultat exigé |
+|---|---|---|
+| OIDC-COMMIT-01 | Sessions réservées, commit nonce/audit/outbox réussi | Les deux sessions et les effets d'approbation sont finalisés une seule fois |
+| OIDC-COMMIT-02 | Commit nonce/audit échoue après réservation | Aucune session définitivement consommée ; réservation libérée ou réconciliée |
+| OIDC-COMMIT-03 | Crash après commit local avant finalisation des sessions | Reprise idempotente qui finalise le même dossier, sans nouvelle approbation |
+| OIDC-COMMIT-04 | Réponse perdue après commit | Recherche par identifiant stable ; aucune double consommation ni audit |
+| OIDC-COMMIT-05 | Crash entre finalisation session et acquittement appelant | État durable récupéré sans approbation partielle ni rejet contradictoire |
+| OIDC-COMMIT-06 | Deux opérations concurrentes sur une session partagée | Une seule opération gagne ; aucune session ou paire de nonces partiellement engagée |
+| OIDC-COMMIT-07 | Outbox non créée ou ancrage obligatoire non confirmé | Aucune réponse de succès final ; état pending/blocked récupérable |
+| OIDC-COMMIT-08 | Expiration du bail de réservation pendant panne | Expiration et reprise sans double attribution ni session orpheline |
+
+Les essais doivent injecter des pannes à chaque frontière et vérifier l'état
+durable dans chaque stockage concerné après redémarrage. Les tests doivent
+être exécutés sur l'architecture réelle ; les callbacks simulés ne prouvent
+pas une atomicité entre services.
+
+### 21.4 État et décision
+
+Le code sépare actuellement la vérification/consommation OIDC du commit
+nonce/audit/outbox. Aucun protocole distribué de réservation/commit entre
+ces composants n'est configuré ou démontré. Les scénarios OIDC-COMMIT-01 à
+OIDC-COMMIT-08 sont **NOT_CONFIGURED / NOT_RUN**.
+
+Cette limite est distincte du défaut de consommation atomique des deux
+sessions décrit en section 20. Les deux doivent être résolus. Ne pas modifier
+l'ordre d'exécution ou prétendre à une transaction globale avant d'avoir
+choisi le stockage et le fournisseur réels et établi leur frontière de
+cohérence. G2-B reste **NO-GO / NOT_RUN**.
+
