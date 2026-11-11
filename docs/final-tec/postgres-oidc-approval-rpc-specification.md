@@ -299,3 +299,20 @@ Each test inspects committed database rows after fault injection; checking only 
 | Production IdP/KMS/HSM/anchor | Not configured |
 
 **Decision:** architecture and database contract are now sufficiently specified for a design review, but not for a production migration. Do not create SQL or connect a live provider until the authority-model and security gates in sections 7 and 10 are resolved. **G2-B remains NO-GO / NOT_RUN.**
+
+### 7.2 Administrative-claim and revocation boundary (verified at commit eec2013f)
+
+The inspected SQL uses JWT `app_metadata` claims (`role=admin` and/or `sowia_admin=true`) as the authorization predicate for selected GLOBAL ID and technical-incident operations. The repository evidence inspected here does not establish a PostgreSQL-owned, versioned assignment/revocation record for those claims, nor a transactional mechanism that invalidates already-issued JWTs at the moment an administrator is revoked.
+
+Consequences for FINAL TEC:
+
+- A role decision based only on the current JWT can remain stale until token expiry/refresh; JWT claim presence is not proof of immediate revocation freshness.
+- A PostgreSQL challenge-commit RPC cannot close that gap unless it checks a protected authoritative role record and version inside the same transaction that commits the approval pair.
+- A privileged operator who can alter Auth user metadata or issue equivalent privileged tokens remains inside the trust boundary. The approval design must document and audit that administrative trust boundary; it must not claim protection against unrestricted project-owner/Supabase service-role compromise.
+- Existing GLOBAL ID trigger logic lets JWT admin claims bypass owner-preserved verification fields. This is a separate existing administrative path, not an approval-role registry.
+- The technical-incident RLS policy permits admin-claim users to update incident rows; the inspected migration does not add a separate append-only audit of those updates. This cannot be reused as a trusted FINAL TEC audit log.
+
+**Required revocation rule:** role grant/revoke must increment a monotonic role version in the authoritative store. At pair reservation and again at pair commit, the server must compare both approvers' recorded role version with the current authoritative version under transactionally consistent locking. If either version changed, the operation must become blocked/restart-required; it must never silently accept the earlier decision. Any emergency revocation must also invalidate or supersede outstanding leases/reservations.
+
+**Status:** no such authoritative versioned role store or concurrent-revocation enforcement was found in the inspected repository. Model A remains unproven; model B remains unconfigured. No executable SQL should be written against an assumed authority.
+
