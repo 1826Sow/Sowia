@@ -77,7 +77,10 @@ def require_workspace_access(workspace_id, user_client, user):
     The Personal workspace remains free. Professional access fails closed if
     the user is unauthenticated or the entitlement is missing/unreadable.
     """
-    if str(workspace_id or "").strip().lower() != "professional":
+    workspace = str(workspace_id or "").strip().lower()
+    if workspace not in {"personal", "professional"}:
+        raise ValueError("Espace de travail invalide.")
+    if workspace == "personal":
         return None
     return require_active_entitlement(user_client, user)
 
