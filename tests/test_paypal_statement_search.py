@@ -91,10 +91,11 @@ def test_fetch_window_rejects_403_with_permission_message(monkeypatch):
 
 
 def test_public_fetch_refuses_live_mode_before_token_or_network(monkeypatch):
+    settings = {"PAYPAL_MODE": "live", "PAYPAL_CLIENT_ID": "id", "PAYPAL_CLIENT_SECRET": "secret"}
     monkeypatch.setattr(
         statement.paypal_payments,
-        "paypal_configuration",
-        lambda: {"mode": "live", "base_url": "https://api-m.paypal.com"},
+        "_setting",
+        lambda name, default="": settings.get(name, default),
     )
     monkeypatch.setattr(
         statement.paypal_payments,
@@ -106,13 +107,15 @@ def test_public_fetch_refuses_live_mode_before_token_or_network(monkeypatch):
 
 
 def test_public_fetch_reports_read_only_complete_statement(monkeypatch):
+    settings = {
+        "PAYPAL_MODE": "sandbox",
+        "PAYPAL_CLIENT_ID": "sandbox-id",
+        "PAYPAL_CLIENT_SECRET": "sandbox-secret",
+    }
     monkeypatch.setattr(
         statement.paypal_payments,
-        "paypal_configuration",
-        lambda: {
-            "mode": "sandbox",
-            "base_url": "https://api-m.sandbox.paypal.com",
-        },
+        "_setting",
+        lambda name, default="": settings.get(name, default),
     )
     monkeypatch.setattr(statement.paypal_payments, "_access_token", lambda config: "token")
     monkeypatch.setattr(
@@ -138,8 +141,8 @@ def test_public_fetch_reports_read_only_complete_statement(monkeypatch):
 def test_public_fetch_validates_limits_before_external_calls(monkeypatch):
     monkeypatch.setattr(
         statement.paypal_payments,
-        "paypal_configuration",
-        lambda: pytest.fail("Configuration should not be read for invalid limits"),
+        "_setting",
+        lambda *args: pytest.fail("Configuration should not be read for invalid limits"),
     )
     with pytest.raises(ValueError):
         statement.fetch_paypal_sandbox_statement(days=0)
