@@ -131,11 +131,32 @@ def test_real_sqlite_outbox_retries_external_anchor_without_nonce_replay(tmp_pat
     assert ledger.anchor_outbox_status("auth-real-outbox") == "pending"
     assert len(ledger.audit_events()) == 1
 
-    # Simulate provider recovery. Exact retry returns the persisted checkpoint;
-    # it does not consume either nonce or append a second audit row.
+    # Simulate process restart and provider recovery. Recovery reads only
+    # the durable outbox; it does not need nonce values or re-run validation.
     anchor.fail_append = False
-    assert coordinator.commit_and_anchor("auth-real-outbox", records, event) is True
+    restarted_coordinator = ExternalAuditAnchorCoordinator(ledger, anchor)
+    assert restarted_coordinator.recover_pending() == 1
     assert ledger.anchor_outbox_status("auth-real-outbox") == "anchored"
     assert ledger.pending_anchor_checkpoints() == []
     assert len(ledger.audit_events()) == 1
     assert ledger.verify_audit_chain() is True
+
+
+
+def test_recovery_stays_fail_closed_when_provider_is_still_unavailable(tmp_path):
+    from datetime import timedelta
+    from final_tec_atomic_approval_store import SQLiteAtomicApprovalStore
+
+    now = datetime.now(timezone.utc)
+    records = (("m" * 48, (now + timedelta(minutes=10)).isoformat()),
+               ("n" * 48, (now + timedelta(minutes=10)).isoformat()))
+    ledger = SQLiteAtomicApprovalStore(tmp_path / "pending-recovery.sqlite3")
+    assert ledger.register_pair("auth-pending-recovery", records, now=now)
+    anchor = FakeExternalAnchor(fail_append=True)
+    coordinator = ExternalAuditAnchorCoordinator(ledger, anchor)
+    assert coordinator.commit_and_anchor(
+        "auth-pending-recovery", records, {"event_type": "pending"}
+    ) is False
+    assert coordinator.recover_pending() == 0
+    assert ledger.anchor_outbox_status("auth-pending-recovery") == "pending"
+    assert len(ledger.audit_events()) == 1
