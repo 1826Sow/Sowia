@@ -212,3 +212,28 @@ def test_request_digest_rejects_non_hex_character_even_at_sha256_length():
     with pytest.raises(DualApprovalError, match="SHA-256"):
         validate(now, request, approvals, cb)
     assert cb[-2] == []
+
+
+def test_invalid_signature_does_not_consume_one_time_identity_session():
+    now, request, approvals = fixture()
+    calls = []
+    signature, identity, atomic_commit, *_ = callbacks(approvals)
+
+    def invalid_signature(envelope, approval):
+        return False
+
+    def identity_with_session_consumption(subject, role, context):
+        calls.append(subject)
+        return identity(subject, role, context)
+
+    with pytest.raises(DualApprovalError, match="signature"):
+        validate_dual_approval(
+            request,
+            approvals,
+            signature_verifier=invalid_signature,
+            identity_verifier=identity_with_session_consumption,
+            atomic_pair_audit_commit=atomic_commit,
+            now=now,
+        )
+
+    assert calls == []
