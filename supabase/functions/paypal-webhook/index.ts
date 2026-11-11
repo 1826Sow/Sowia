@@ -122,6 +122,7 @@ Deno.serve(async (request: Request) => {
       "PAYMENT.SALE.REFUNDED",
       "PAYMENT.SALE.REVERSED",
       "PAYMENT.CAPTURE.REFUNDED",
+      "PAYMENT.CAPTURE.REVERSED",
     ]);
     if (!supportedEvents.has(eventType)) {
       return json({ received: true, ignored: true });
@@ -130,6 +131,179 @@ Deno.serve(async (request: Request) => {
     const resource = (event.resource && typeof event.resource === "object")
       ? event.resource as Record<string, unknown>
       : {};
+
+    // PayPal may reverse a completed capture after a dispute or risk decision.
+    // This is distinct from a merchant refund: the event resource identifies
+    // the capture itself, so verify the live capture before touching access.
+    if (eventType === "PAYMENT.CAPTURE.REVERSED") {
+      const captureId = String(resource.id || "").trim();
+      const eventId = String(event.id || "").trim();
+      const reversalEventTime = String(event.create_time || "").trim();
+      if (!/^[A-Z0-9]{8,64}$/i.test(captureId) ||
+          !eventId || eventId.length > 128 ||
+          !reversalEventTime || !Number.isFinite(Date.parse(reversalEventTime))) {
+        return json({ error: "Invalid PayPal capture reversal identifiers" }, 422);
+      }
+      const captureResponse = await fetch(
+        baseUrl + "/v2/payments/captures/" + encodeURIComponent(captureId),
+        { headers: { Authorization: "Bearer " + token, Accept: "application/json" } },
+      );
+      if (!captureResponse.ok) {
+        throw new Error("Unable to verify reversed PayPal capture");
+      }
+      const capture = await captureResponse.json();
+      const captureAmount = capture.amount || {};
+      if (capture.id !== captureId ||
+          String(capture.status || "").toUpperCase() !== "REVERSED" ||
+          String(captureAmount.currency_code || "").toUpperCase() !== "EUR" ||
+          !Number.isFinite(Number(captureAmount.value)) ||
+          Number(captureAmount.value) <= 0) {
+        return json({ error: "PayPal capture reversal validation failed" }, 403);
+      }
+      const orderId = String(capture.supplementary_data?.related_ids?.order_id || "").trim();
+      if (!orderId) {
+        return json({ error: "Reversed PayPal capture has no verified order" }, 422);
+      }
+      const ledgerHeaders = {
+        apikey: serviceRoleKey,
+        Authorization: "Bearer " + serviceRoleKey,
+        Accept: "application/json",
+      };
+      const captureLedgerResponse = await fetch(
+        supabaseUrl + "/rest/v1/sowia_financial_transactions" +
+          "?provider=eq.paypal&transaction_type=eq.payment&provider_payment_id=eq." +
+          encodeURIComponent(captureId) +
+          "&select=user_id,paypal_order_id,gross_amount,gross_currency&limit=1",
+        { headers: ledgerHeaders },
+      );
+      if (!captureLedgerResponse.ok) {
+        throw new Error("Unable to locate reversed PayPal capture ownership");
+      }
+      const captureLedgerRows = await captureLedgerResponse.json();
+      const captureLedger = Array.isArray(captureLedgerRows) && captureLedgerRows.length === 1
+        ? captureLedgerRows[0]
+        : null;
+      const uuidPattern =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!captureLedger || !uuidPattern.test(String(captureLedger.user_id || "")) ||
+          captureLedger.paypal_order_id !== orderId ||
+          Number(captureLedger.gross_amount) !== Number(captureAmount.value) ||
+          String(captureLedger.gross_currency || "").toUpperCase() !== "EUR") {
+        return json({ error: "Reversed capture ownership or order validation failed" }, 403);
+      }
+
+      // Record only the unreimbursed remainder. The database trigger locks the
+      // parent capture and rechecks the cumulative total, making this safe
+      // against a refund and reversal webhook arriving concurrently.
+      const priorRefundsResponse = await fetch(
+        supabaseUrl + "/rest/v1/sowia_financial_transactions" +
+          "?provider=eq.paypal&transaction_type=eq.refund&parent_capture_id=eq." +
+          encodeURIComponent(captureId) + "&select=gross_amount",
+        { headers: ledgerHeaders },
+      );
+      if (!priorRefundsResponse.ok) {
+        throw new Error("Unable to inspect prior PayPal refunds for reversed capture");
+      }
+      const priorRefundRows = await priorRefundsResponse.json();
+      const priorRefundTotal = Array.isArray(priorRefundRows)
+        ? priorRefundRows.reduce((sum: number, row: Record<string, unknown>) =>
+            sum + Number(row.gross_amount || 0), 0)
+        : NaN;
+      const remainingAmount = Number((Number(captureAmount.value) - priorRefundTotal).toFixed(2));
+      if (!Number.isFinite(priorRefundTotal) || remainingAmount < 0) {
+        return json({ error: "PayPal reversal conflicts with the refund ledger" }, 409);
+      }
+      if (remainingAmount > 0) {
+        const reversalLedgerId = "reversal:" + eventId;
+        const reversalLedgerUrl = supabaseUrl +
+          "/rest/v1/sowia_financial_transactions?provider=eq.paypal" +
+          "&transaction_type=eq.refund&provider_payment_id=eq." +
+          encodeURIComponent(reversalLedgerId) +
+          "&select=user_id,parent_capture_id,gross_amount,gross_currency,status&limit=1";
+        const reversalLedgerMatches = (row: Record<string, unknown>) =>
+          String(row.user_id || "") === String(captureLedger.user_id) &&
+          String(row.parent_capture_id || "") === captureId &&
+          Number(row.gross_amount) === remainingAmount &&
+          String(row.gross_currency || "").toUpperCase() === "EUR" &&
+          String(row.status || "") === "manual_review";
+        const existingReversalResponse = await fetch(reversalLedgerUrl, { headers: ledgerHeaders });
+        if (!existingReversalResponse.ok) {
+          throw new Error("Unable to check PayPal reversal ledger idempotency");
+        }
+        const existingReversalRows = await existingReversalResponse.json();
+        const existingReversal = Array.isArray(existingReversalRows) && existingReversalRows.length === 1
+          ? existingReversalRows[0]
+          : null;
+        if (existingReversal && !reversalLedgerMatches(existingReversal)) {
+          return json({ error: "Existing PayPal reversal ledger entry conflicts" }, 409);
+        }
+        if (!existingReversal) {
+          const insertReversalResponse = await fetch(
+            supabaseUrl + "/rest/v1/sowia_financial_transactions" +
+              "?on_conflict=provider,provider_payment_id,transaction_type",
+            {
+              method: "POST",
+              headers: {
+                ...ledgerHeaders,
+                "Content-Type": "application/json",
+                Prefer: "resolution=ignore-duplicates,return=minimal",
+              },
+              body: JSON.stringify({
+                user_id: String(captureLedger.user_id),
+                provider: "paypal",
+                provider_payment_id: reversalLedgerId,
+                parent_capture_id: captureId,
+                transaction_type: "refund",
+                status: "manual_review",
+                gross_amount: remainingAmount,
+                gross_currency: "EUR",
+                occurred_at: reversalEventTime,
+              }),
+            },
+          );
+          if (!insertReversalResponse.ok) {
+            throw new Error("Unable to persist verified PayPal capture reversal");
+          }
+          const confirmReversalResponse = await fetch(reversalLedgerUrl, { headers: ledgerHeaders });
+          if (!confirmReversalResponse.ok) {
+            throw new Error("Unable to confirm PayPal capture reversal ledger entry");
+          }
+          const confirmedReversalRows = await confirmReversalResponse.json();
+          const confirmedReversal = Array.isArray(confirmedReversalRows) && confirmedReversalRows.length === 1
+            ? confirmedReversalRows[0]
+            : null;
+          if (!confirmedReversal || !reversalLedgerMatches(confirmedReversal)) {
+            return json({ error: "PayPal capture reversal ledger confirmation failed" }, 409);
+          }
+        }
+      }
+
+      const revokeResponse = await fetch(
+        supabaseUrl + "/rest/v1/sowia_entitlements?user_id=eq." +
+          encodeURIComponent(String(captureLedger.user_id)) + "&paypal_order_id=eq." +
+          encodeURIComponent(orderId) + "&status=eq.active",
+        {
+          method: "PATCH",
+          headers: {
+            apikey: serviceRoleKey,
+            Authorization: "Bearer " + serviceRoleKey,
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify({ status: "inactive" }),
+        },
+      );
+      if (!revokeResponse.ok) {
+        throw new Error("Unable to revoke reversed Premium entitlement");
+      }
+      const revokedRows = await revokeResponse.json();
+      return json({
+        received: true,
+        reconciled: true,
+        capture_reversed: true,
+        entitlement_revoked: Array.isArray(revokedRows) && revokedRows.length > 0,
+      });
+    }
 
     // One-time Premium purchases use Orders API captures, not subscription
     // sales. PAYMENT.CAPTURE.REFUNDED identifies the refund resource; resolve
