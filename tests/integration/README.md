@@ -1,6 +1,6 @@
 # Tests d'intégration Supabase (schéma actuel)
 
-Les tests d'intégration vérifient les politiques RLS réellement appliquées aux tables `public.sowia_messages` et `public.sowia_memory_items`, ainsi que l'isolation du bucket privé `sowia-files` pour les PDF.
+Les tests d'intégration vérifient les politiques RLS réellement appliquées aux tables `public.sowia_messages` et `public.sowia_memory_items`, l'isolation du bucket privé `sowia-files` pour les PDF, et l'interdiction de lecture du journal financier par les comptes authentifiés.
 
 ## Préparation sûre
 
@@ -8,6 +8,7 @@ Les tests d'intégration vérifient les politiques RLS réellement appliquées a
 2. Dans **Authentication → Users**, créer deux comptes de test distincts (A et B) avec des adresses et mots de passe dédiés. Vérifier que les deux comptes peuvent se connecter.
 3. Dans le **SQL Editor** de ce projet de test, exécuter dans cet ordre :
    - `supabase/schema.sql` (tables, RLS et droits de lecture Premium).
+   - `supabase/migrations/20261110000300_sowia_financial_audit_log.sql` (journal financier immuable, après création du registre).
    - `supabase_workspaces.sql` (ajout des espaces Personnel et Professionnel).
    - `supabase_storage_policies.sql` (création du bucket privé `sowia-files` et règles d'accès PDF).
 4. Dans les paramètres API du projet de test, récupérer l'URL du projet et la clé publique **anon/publishable**. Ne pas utiliser la clé `service_role` ou une clé secrète.
@@ -29,7 +30,7 @@ Ne jamais utiliser les comptes de production, ni inscrire les secrets dans Git, 
 Depuis la racine du dépôt :
 
 ```bash
-pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py
+pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py tests/integration/test_supabase_financial_audit_access.py
 ```
 
 ## Exécution automatique dans GitHub Actions
@@ -43,3 +44,6 @@ Avec les six variables, deux sessions authentifiées vérifient pour chaque tabl
 Le test Storage utilise les mêmes six secrets, vérifie que le compte A peut déposer et télécharger son PDF, que B ne peut ni le télécharger, ni déposer un fichier dans le dossier de A, ni supprimer le PDF de A. Le propriétaire supprime le fichier temporaire dans un bloc `finally`. Il cible le bucket `sowia-files` et les chemins `<user_id>/personal/<fichier>`.
 
 Un test ignoré ne constitue pas une validation RLS réelle. La validation exige un projet de test configuré et un résultat d'exécution réussi.
+
+
+Le test `test_supabase_financial_audit_access.py` se connecte successivement avec les comptes A et B puis vérifie que chacun reçoit HTTP 401 ou 403 lorsqu'il tente de lire uniquement la colonne `event_id` du journal `sowia_financial_audit_log`. Il ne lit aucune donnée de paiement et n'utilise jamais `service_role`. La migration du journal doit être appliquée au projet de test avant l'exécution ; une table absente ou une réponse HTTP 200 fait échouer le test.
