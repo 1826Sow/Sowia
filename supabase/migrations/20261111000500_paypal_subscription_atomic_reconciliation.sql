@@ -98,7 +98,15 @@ begin
     end if;
 
     v_review_at := v_existing_review_at;
-    if p_event_type in ('PAYMENT.SALE.REFUNDED', 'PAYMENT.SALE.REVERSED') then
+    -- Explicit cancellation/expiration must override a prior payment-review
+    -- hold; otherwise a later successful retry could incorrectly reactivate it.
+    if p_event_type = 'BILLING.SUBSCRIPTION.CANCELLED' then
+        v_effective_status := 'cancelled';
+    elsif p_event_type = 'BILLING.SUBSCRIPTION.EXPIRED' then
+        v_effective_status := 'expired';
+    elsif p_event_type = 'BILLING.SUBSCRIPTION.SUSPENDED' then
+        v_effective_status := 'suspended';
+    elsif p_event_type in ('PAYMENT.SALE.REFUNDED', 'PAYMENT.SALE.REVERSED') then
         v_effective_status := 'payment_review';
         v_review_at := greatest(coalesce(v_review_at, p_event_time), p_event_time);
     elsif v_existing_status = 'payment_review' then
