@@ -93,7 +93,7 @@ grant insert (
     services_offered, services_wanted, night_start, night_end
 ) on public.sowia_night_exchange_apps to authenticated;
 grant update (
-    workspace_id, app_name, country, timezone, categories,
+    app_name, country, timezone, categories,
     services_offered, services_wanted, night_start, night_end
 ) on public.sowia_night_exchange_apps to authenticated;
 revoke all on public.sowia_night_exchange_apps from anon;
