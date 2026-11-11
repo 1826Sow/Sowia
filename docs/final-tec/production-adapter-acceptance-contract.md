@@ -384,3 +384,84 @@ promues automatiquement en ACCEPTED.
 **NO-GO / NOT_RUN** pour G2-B. Ce registre ne configure aucun fournisseur,
 ne crée aucun secret, ne lance aucun workload et n'autorise ni fusion ni
 déploiement.
+
+## 19. Matrice d'acceptation du registre partagé et de l'ancre WORM
+
+Cette matrice définit les essais obligatoires avant tout raccordement de production. Elle ne désigne aucun fournisseur et ne constitue pas une preuve d'infrastructure réelle.
+
+### 19.1 Registre transactionnel partagé multi-hôtes
+
+| ID | Scénario | Résultat exigé | Preuve |
+|---|---|---|---|
+| LEDGER-01 | Deux hôtes consomment simultanément la même paire de nonces | Un seul commit gagnant ; aucun audit en double | Test concurrent multi-processus et multi-hôtes |
+| LEDGER-02 | Même authorization_id avec charges différentes | Refus du conflit, aucune substitution de charge | Test de collision et empreintes persistées |
+| LEDGER-03 | Panne à chaque frontière du commit | Aucun nonce partiellement consommé ni état partiel | Injection de panne et inspection transactionnelle |
+| LEDGER-04 | Perte de connexion pendant un commit au résultat ambigu | Réconciliation idempotente, aucune double consommation | Coupure réseau et reprise par identifiant stable |
+| LEDGER-05 | Bascule primaire/réplica pendant une approbation | Aucun split-brain ni acquittement non durable | Failover réel, preuve de quorum et de fencing |
+| LEDGER-06 | Redémarrage d'un nœud avec outbox pending | Reprise du checkpoint exact, sans rejouer les nonces | Test multi-hôtes et corrélation des identifiants |
+| LEDGER-07 | Restauration d'une sauvegarde | Détection du rollback, des séquences perdues et des checkpoints déjà ancrés | Exercice de restauration et rapport d'intégrité |
+| LEDGER-08 | Saturation, timeout ou indisponibilité du stockage | Refus fermé, aucun fallback SQLite local | Tests de panne et journaux expurgés |
+| LEDGER-09 | Révocation de rôle pendant une course | Règle de fraîcheur explicitée et respectée | Test concurrent révocation/approbation |
+| LEDGER-10 | Échec d'écriture audit/outbox | Rollback complet de la transaction locale | Injection d'erreur DB et inspection |
+
+Le contrat réel devra préciser isolation transactionnelle, cohérence, quorum,
+durabilité des acquittements, fencing des anciens primaires, limites de retry
+et traitement des commits dont la réponse réseau est ambiguë. Une base
+éventuellement cohérente ne satisfait pas automatiquement l'exigence d'unicité
+atomique.
+
+### 19.2 Ancre externe WORM indépendante
+
+| ID | Scénario | Résultat exigé | Preuve |
+|---|---|---|---|
+| WORM-01 | Append valide | Reçu vérifiable lié à la séquence et aux hashes exacts | Reçu et spécification de vérification |
+| WORM-02 | Rejeu du même append après timeout | Résultat idempotent, aucun doublon contradictoire | Test de déduplication fournisseur |
+| WORM-03 | Reçu falsifié ou lié à un autre hash | Refus ; outbox reste pending | Tests de falsification |
+| WORM-04 | Modification/suppression après verrouillage | Refus effectif, y compris pour l'administrateur ordinaire | Test WORM et configuration de rétention |
+| WORM-05 | Raccourcissement/suspension de rétention | Détection et alerte bloquante | Test IAM et journal d'audit |
+| WORM-06 | Panne ou timeout fournisseur | Aucun succès ; checkpoint pending récupérable | Injection de panne et reprise |
+| WORM-07 | Append distant réussi mais réponse perdue | Recherche par clé idempotente avant nouvel append | Test timeout après acceptation |
+| WORM-08 | Rupture de chaîne ou séquence dupliquée | Refus et alerte ; jamais anchored | Tests négatifs de chaîne |
+| WORM-09 | Compromission du compte applicatif | Ce compte ne peut supprimer ni raccourcir la rétention | Matrice IAM et tests négatifs |
+| WORM-10 | Export et vérification par un tiers | Vérification hors bande sans secret applicatif | Rapport indépendant reproductible |
+
+L'ancre doit être administrativement et techniquement indépendante du registre.
+Le compte applicatif d'écriture ne doit pas pouvoir modifier la rétention ni
+supprimer les objets verrouillés. Les rôles d'administration de rétention
+doivent être distincts et contrôlés.
+
+### 19.3 Sémantique de cohérence
+
+Le registre et l'ancre ne forment pas une transaction distribuée unique.
+Le modèle admis est : transaction locale atomique (nonces + audit + outbox
+pending), append externe idempotent, vérification indépendante du reçu, puis
+marquage durable anchored.
+
+États autorisés :
+- **pending** : transaction locale validée, preuve externe non confirmée.
+- **anchored** : reçu vérifié pour le checkpoint exact et marquage durable confirmé.
+- **blocked** : incohérence ou preuve invalide ; aucune approbation positive.
+- **reconciliation_required** : résultat distant ambigu ; rechercher le reçu
+  avec l'identifiant idempotent avant tout nouvel append.
+
+Une approbation positive exige l'état anchored lorsque l'ancrage externe est
+obligatoire. Les retries sont bornés, observables et conservent le tuple exact.
+Aucun fallback vers SQLite mono-hôte n'est permis en production.
+
+### 19.4 Critères de sortie et preuves
+
+Pour chaque ID, conserver le résultat positif et négatif, le SHA exact, la
+version du schéma, la configuration effective, l'environnement, les
+corrélations, les horodatages UTC, les rapports expurgés, les métriques de
+reprise et la décision du relecteur. Exclure secrets, jetons, nonces en clair
+et clés privées.
+
+La sortie exige cumulativement : essais LEDGER et WORM réussis dans un
+environnement représentatif ; exercices de panne, failover et restauration ;
+garanties de cohérence/durabilité documentées ; IAM vérifié ; ancre réellement
+indépendante avec rétention verrouillée ; preuves examinées indépendamment.
+
+**État actuel :** interfaces et simulations locales seulement. Aucun registre
+partagé multi-hôtes ni service WORM réel n'est raccordé. Tous les essais
+d'infrastructure de cette section restent **NOT_CONFIGURED / NOT_RUN**.
+Cette matrice ne modifie pas le statut G2-B.
