@@ -150,6 +150,12 @@ begin
         v_effective_status := 'cancelled';
     elsif p_event_type = 'BILLING.SUBSCRIPTION.EXPIRED' then
         v_effective_status := 'expired';
+    elsif v_existing_status = 'suspended'
+          and (p_event_type <> 'BILLING.SUBSCRIPTION.ACTIVATED' or p_status <> 'active') then
+        -- A sale completion or generic update must not silently resume a
+        -- suspended subscription. Require PayPal's explicit ACTIVATED event
+        -- and an independently fetched ACTIVE provider status.
+        v_effective_status := 'suspended';
     elsif p_event_type = 'BILLING.SUBSCRIPTION.SUSPENDED' then
         v_effective_status := 'suspended';
     elsif p_event_type in ('PAYMENT.SALE.REFUNDED', 'PAYMENT.SALE.REVERSED') then
