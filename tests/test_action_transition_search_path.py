@@ -10,12 +10,12 @@ SQL = (ROOT / "supabase_global_action_governance.sql").read_text(encoding="utf-8
 
 def test_action_transition_security_definer_uses_empty_search_path():
     match = re.search(
-        r"create or replace function public\.sowia_action_transition\([\s\S]*?as \$\$(.*?)\$\$;",
+        r"create or replace function public\.sowia_action_transition\([\s\S]*?as (\$[a-z_]*\$)(.*?)\1;",
         SQL,
     )
-    assert match, "Action transition function must exist"
+    assert match, "Action transition function must exist with a valid dollar-quoted body"
     declaration = SQL[match.start():match.start(500)]
-    body = match.group(1)
+    body = match.group(2)
     assert "security definer" in declaration
     assert "set search_path = ''" in declaration
     assert "auth.uid()" in body
