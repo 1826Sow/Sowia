@@ -308,3 +308,79 @@ exigés n'a pas été choisi et vérifié. Ne pas assouplir `required_acr` ou
 qu'un jeton dont le seul `amr` est `oauth` est refusé par le vérificateur
 FINAL TEC. Ce test utilise des clés et un jeton générés localement ; il prouve
 le refus du code, pas la configuration d'un fournisseur réel.
+
+## 18. Registre de preuves et séquence de levée des blocages
+
+Ce registre distingue les contrôles de code déjà automatisés des preuves
+d'infrastructure et d'exploitation qui ne peuvent pas être déduites d'une CI
+sur fakes. Les statuts ci-dessous décrivent l'état connu de la branche au
+11 novembre 2026 ; ils ne valent pas attestation externe.
+
+### 18.1 Statuts normalisés
+
+- **PASS_LOCAL** : test automatisé local/CI réussi ; portée limitée au code et
+  aux dépendances effectivement testés.
+- **NOT_CONFIGURED** : fournisseur ou infrastructure non sélectionné(e) ou
+  non raccordé(e).
+- **NOT_RUN** : preuve réelle requise mais non exécutée ou non fournie.
+- **BLOCKED_REVIEW** : preuve technique éventuellement disponible, mais
+  validation indépendante obligatoire absente.
+- **ACCEPTED** : preuve vérifiée, versionnée, attribuée à un environnement
+  identifié et approuvée selon le processus de revue. Ce statut ne peut pas
+  être attribué par une simple déclaration production_grade.
+
+### 18.2 État des preuves à la date de référence
+
+| Contrôle | État connu | Ce qui est effectivement prouvé | Preuve manquante pour ACCEPTED |
+|---|---|---|---|
+| Vérificateur OIDC et séparation OAuth applicatif | PASS_LOCAL | Tests locaux, dont le refus d'un jeton amr=oauth seul | Issuer approuvé, claims ACR/AMR réels, tests d'intégration officiels |
+| Résolution JWKS et logique de rotation | PASS_LOCAL | Tests avec faux transport, clés générées et scénarios de rotation simulés | TLS réel, issuer/JWKS autorisés, rotation et révocation chez le fournisseur |
+| Session d'approbation côté serveur | NOT_CONFIGURED | Interface contractuelle seulement | Adaptateur réel, stockage sécurisé, expiration, liaison nonce/session, tests de panne |
+| Annuaire de rôles courant | NOT_CONFIGURED | Interface contractuelle seulement | Source d'autorité, retrait de rôle/compte et mesure de latence |
+| Signature distante KMS/HSM | NOT_CONFIGURED | Interfaces et contrôles locaux seulement | Service réel, IAM minimal, journaux, rotation et révocation testées |
+| Registre partagé multi-hôtes | NOT_CONFIGURED | SQLite local, atomicité/outbox/reprise et concurrence locale testées | Adaptateur transactionnel partagé, tests multi-hôtes, sauvegarde/restauration |
+| Ancre externe WORM | NOT_CONFIGURED | Coordinateur et tests avec ancre simulée | Service indépendant, reçus vérifiables, rétention verrouillée et tests d'altération |
+| RLS Supabase avec deux comptes réels | NOT_RUN | Aucun résultat de test réel dans le workflow PR | Exécution contrôlée avec deux comptes distincts et preuves expurgées |
+| Revue de sécurité indépendante | BLOCKED_REVIEW | Aucun avis indépendant enregistré sur la PR | Revue par une personne/équipe distincte, avec décision et périmètre consignés |
+| Autorisation G2-B | NO-GO / NOT_RUN | Aucun workload exécuté ni déploiement autorisé | Tous les contrôles obligatoires ACCEPTED et approbation formelle |
+
+### 18.3 Ordre de levée des blocages
+
+1. **Décision d'identité** : sélectionner explicitement un fournisseur OIDC
+   capable de satisfaire les exigences d'authentification forte, d'ACR/AMR,
+   de fraîcheur et de révocation. Documenter issuer, audience et politique
+   de claims approuvés. Ne pas modifier les exigences pour s'adapter à un
+   fournisseur insuffisant.
+2. **Identité et autorisations** : intégrer l'issuer/JWKS dans un environnement
+   de test isolé, puis la session d'approbation serveur et l'annuaire de rôles.
+   Exécuter les cas positifs et négatifs, y compris révocation et rejeu.
+3. **Clés et audit** : raccorder le KMS/HSM, le registre transactionnel partagé
+   et l'ancre WORM indépendante. Démontrer les contrôles IAM, l'atomicité
+   locale requise, l'idempotence, la reprise et les refus fermés.
+4. **Validation de plateforme** : exécuter les tests RLS avec deux comptes
+   réels, puis les tests multi-processus/multi-hôtes, de restauration et
+   d'incident dans l'environnement représentatif approuvé.
+5. **Revue indépendante** : faire examiner les configurations, les preuves,
+   les scénarios d'abus et les limites résiduelles par une personne ou équipe
+   distincte de l'implémentation. Consigner les constats et leur résolution.
+6. **Décision G2-B** : seulement après acceptation de chaque ligne obligatoire,
+   soumettre une décision formelle distincte. La réussite CI seule ne déclenche
+   jamais cette décision.
+
+### 18.4 Format minimal de chaque preuve
+
+Chaque dossier de preuve doit contenir : identifiant unique, contrôle couvert,
+résultat attendu et observé, statut, SHA du code testé, version/configuration
+de l'adaptateur, environnement et fournisseur, horodatage UTC, identifiant de
+corrélation, opérateur/exécutant, lien vers le rapport expurgé et décision du
+relecteur indépendant lorsqu'elle est requise. Aucun jeton, secret, nonce en
+clair, clé privée ni donnée personnelle ne doit être joint au registre.
+
+Une preuve expirée après changement de code, de configuration, de fournisseur
+ou de politique doit être réexécutée. Les preuves PASS_LOCAL ne sont jamais
+promues automatiquement en ACCEPTED.
+
+**Décision conservatoire :** au vu des statuts ci-dessus, FINAL TEC demeure
+**NO-GO / NOT_RUN** pour G2-B. Ce registre ne configure aucun fournisseur,
+ne crée aucun secret, ne lance aucun workload et n'autorise ni fusion ni
+déploiement.
