@@ -6494,6 +6494,30 @@ elif page == "Revenus & paiements":
                             else str(item['net_reported']) + ' ' + str(item['net_currency']),
                             help="Ce montant n'est pas calculé à partir du brut : il reprend uniquement les montants nets fournis."
                         )
+                        alert_cols = st.columns(3)
+                        alert_cols[0].metric(
+                            "Frais manquants",
+                            int(item.get("fee_records_missing", 0)),
+                        )
+                        alert_cols[1].metric(
+                            "Montants nets manquants",
+                            int(item.get("net_records_missing", 0)),
+                        )
+                        alert_cols[2].metric(
+                            "Remboursements excessifs",
+                            "Oui" if item.get("refunds_exceed_payments") else "Non",
+                        )
+                        if item.get("refunds_exceed_payments"):
+                            st.error(
+                                "Anomalie : les remboursements enregistrés dépassent les paiements "
+                                "confirmés pour ce prestataire et cette devise. Vérification requise."
+                            )
+                        if item.get("fee_records_missing") or item.get("net_records_missing"):
+                            st.warning(
+                                "Rapprochement incomplet : certaines écritures ne disposent pas "
+                                "de frais ou de montants nets exploitables. Aucun montant manquant "
+                                "n'est estimé."
+                            )
                     st.markdown("#### Détail comptable par fournisseur et devise")
                     st.dataframe(
                         [{
