@@ -51,10 +51,8 @@ def _sha256_digest(value: Any, field: str) -> str:
     digest = _nonempty(value, field)
     if len(digest) != 64:
         raise DualApprovalError(f"{field}: 64-character SHA-256 hex digest required")
-    try:
-        int(digest, 16)
-    except ValueError as exc:
-        raise DualApprovalError(f"{field}: invalid SHA-256 hex digest") from exc
+    if any(character not in "0123456789abcdefABCDEF" for character in digest):
+        raise DualApprovalError(f"{field}: invalid SHA-256 hex digest")
     return digest.lower()
 
 
