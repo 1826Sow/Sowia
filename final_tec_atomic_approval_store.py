@@ -329,6 +329,10 @@ class SQLiteAtomicApprovalStore:
             return None
         if len(records) != 2:
             return None
+        # Bind the canonical audit record to the same authorization whose
+        # nonces are being consumed and whose outbox row will be created.
+        if not isinstance(audit_event, Mapping) or audit_event.get("authorization_id") != authorization_id:
+            return None
         try:
             current = _epoch(now or datetime.now(timezone.utc), "now")
             prepared = [(_nonce_digest(nonce), _parse_expiry(expiry)) for nonce, expiry in records]
