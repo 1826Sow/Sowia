@@ -24,6 +24,15 @@ def test_refund_guard_compares_currency_to_parent_capture():
     assert "paypal refund currency does not match its parent capture" in sql
 
 
+def test_refund_guard_rejects_missing_or_blank_currency():
+    sql = MIGRATION.read_text(encoding="utf-8").lower()
+    assert "new.gross_currency is null" in sql
+    assert "btrim(new.gross_currency) = ''" in sql
+    assert "v_capture_currency is null" in sql
+    assert "btrim(v_capture_currency) = ''" in sql
+    assert "paypal refund and parent capture must both have a currency" in sql
+
+
 def test_refund_guard_keeps_parent_capture_lock():
     sql = MIGRATION.read_text(encoding="utf-8").lower()
     assert "for update" in sql
