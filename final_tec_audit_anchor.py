@@ -38,6 +38,8 @@ class TransactionalAuditOutbox(Protocol):
         receipt: Mapping[str, str],
     ) -> bool: ...
 
+    def pending_anchor_checkpoints(self) -> Sequence[AuditCheckpoint]: ...
+
 
 class ExternalCheckpointAnchor(Protocol):
     """Append must be idempotent for an identical checkpoint tuple."""
@@ -90,20 +92,10 @@ class ExternalAuditAnchorCoordinator:
         self.ledger = ledger
         self.anchor = anchor
 
-    def commit_and_anchor(
-        self,
-        authorization_id: str,
-        nonce_records: Sequence[tuple[str, str]],
-        audit_event: Mapping[str, Any],
-    ) -> bool:
-        if not isinstance(authorization_id, str) or not authorization_id.strip():
+    def _anchor_checkpoint(self, checkpoint: AuditCheckpoint) -> bool:
+        if not _valid_checkpoint(checkpoint, checkpoint.authorization_id):
             return False
         try:
-            checkpoint = self.ledger.commit_pair_audit_and_outbox(
-                authorization_id, nonce_records, audit_event
-            )
-            if not _valid_checkpoint(checkpoint, authorization_id):
-                return False
             receipt = self.anchor.append_checkpoint(
                 checkpoint.sequence,
                 checkpoint.previous_hash,
@@ -127,11 +119,41 @@ class ExternalAuditAnchorCoordinator:
             ) is not True:
                 return False
             return self.ledger.mark_checkpoint_anchored(
-                authorization_id, checkpoint.event_hash, dict(receipt)
+                checkpoint.authorization_id, checkpoint.event_hash, dict(receipt)
             ) is True
         except Exception:
             # Do not leak provider exception details into caller-visible output.
             return False
+
+    def commit_and_anchor(
+        self,
+        authorization_id: str,
+        nonce_records: Sequence[tuple[str, str]],
+        audit_event: Mapping[str, Any],
+    ) -> bool:
+        if not isinstance(authorization_id, str) or not authorization_id.strip():
+            return False
+        try:
+            checkpoint = self.ledger.commit_pair_audit_and_outbox(
+                authorization_id, nonce_records, audit_event
+            )
+        except Exception:
+            return False
+        if not _valid_checkpoint(checkpoint, authorization_id):
+            return False
+        return self._anchor_checkpoint(checkpoint)
+
+    def recover_pending(self) -> int:
+        """Retry pending outbox entries without touching or re-consuming nonces."""
+        try:
+            pending = self.ledger.pending_anchor_checkpoints()
+        except Exception:
+            return 0
+        recovered = 0
+        for checkpoint in pending:
+            if self._anchor_checkpoint(checkpoint):
+                recovered += 1
+        return recovered
 
     def callback(self) -> Callable[
         [str, Sequence[tuple[str, str]], Mapping[str, Any]], bool
