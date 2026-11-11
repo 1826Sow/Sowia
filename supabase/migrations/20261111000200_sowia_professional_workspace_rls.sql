@@ -33,31 +33,51 @@ $constraints$;
 
 create or replace function public.sowia_has_professional_access()
 returns boolean
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $function$
-    select
-        (select auth.uid()) is not null
-        and (
-            exists (
-                select 1
-                from public.sowia_entitlements as entitlement
-                where entitlement.user_id = (select auth.uid())
-                  and entitlement.status = 'active'
-                  and entitlement.provider = 'paypal'
-            )
-            or exists (
+declare
+    current_user_id uuid;
+    has_one_time_entitlement boolean := false;
+    has_recurring_subscription boolean := false;
+begin
+    current_user_id := (select auth.uid());
+    if current_user_id is null then
+        return false;
+    end if;
+
+    select exists (
+        select 1
+        from public.sowia_entitlements as entitlement
+        where entitlement.user_id = current_user_id
+          and entitlement.status = 'active'
+          and entitlement.provider = 'paypal'
+    ) into has_one_time_entitlement;
+
+    -- Recurring subscriptions are an optional module. Use a fixed, trusted
+    -- query only when its table has been installed; otherwise fail closed
+    -- for recurring access while preserving one-time entitlements.
+    if to_regclass('public.sowia_subscriptions') is not null then
+        execute
+            'select exists (
                 select 1
                 from public.sowia_subscriptions as subscription
-                where subscription.user_id = (select auth.uid())
-                  and subscription.status = 'active'
-                  and subscription.provider = 'paypal'
-            )
-        );
-$function$;
+                where subscription.user_id = $1
+                  and subscription.status = ''active''
+                  and subscription.provider = ''paypal''
+            )'
+        into has_recurring_subscription
+        using current_user_id;
+    end if;
 
+    return coalesce(
+        has_one_time_entitlement or has_recurring_subscription,
+        false
+    );
+end;
+$function$;
 revoke all on function public.sowia_has_professional_access() from public, anon;
 grant execute on function public.sowia_has_professional_access() to authenticated;
 
