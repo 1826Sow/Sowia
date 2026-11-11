@@ -155,10 +155,21 @@ class HTTPSJWKSResolver:
                 or not isinstance(item.get("e"), str)
             ):
                 continue
+            # A verification-only JWKS must never expose private RSA material.
+            # Reject the whole document rather than silently accepting a mixed
+            # public/private key set from an identity authority.
+            if any(name in item for name in ("d", "p", "q", "dp", "dq", "qi", "oth")):
+                raise JWKSConfigurationError("JWKS must not contain private RSA parameters")
             try:
-                parsed[item_kid] = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(item))
+                public_key = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(item))
             except (ValueError, TypeError, KeyError):
                 continue
+            # Enforce modern RSA strength and a conventional public exponent.
+            if getattr(public_key, "key_size", 0) < 2048:
+                raise JWKSConfigurationError("JWKS RSA keys must be at least 2048 bits")
+            if public_key.public_numbers().e < 65537 or public_key.public_numbers().e % 2 == 0:
+                raise JWKSConfigurationError("JWKS RSA public exponent is too weak")
+            parsed[item_kid] = public_key
         if not parsed:
             raise JWKSConfigurationError("JWKS contains no usable RS256 RSA verification keys")
         self._keys = parsed
