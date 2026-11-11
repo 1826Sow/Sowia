@@ -51,6 +51,10 @@ from final_tec_access import (
     authorize_final_tec_investor_viewer,
     fetch_published_final_tec_metrics,
 )
+from final_tec_audit_service import (
+    append_authenticated_audit_event,
+    create_server_audit_client,
+)
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -6955,9 +6959,21 @@ elif page == "FINAL TEC LIVE — investisseurs":
         and supabase_client is not None
         and authorize_final_tec_investor_viewer(supabase_client, current_user)
     ):
-        published_metrics = fetch_published_final_tec_metrics(supabase_client)
-        final_tec_investor_dashboard.render_dashboard(st, published_metrics)
-        st.caption("Documentation technique : docs/FINAL_TEC_LIVE_INVESTOR_DASHBOARD.md")
+        # Do not render investor information unless the server audit write succeeds.
+        audit_server_client = create_server_audit_client()
+        audit_receipt = append_authenticated_audit_event(
+            user_client=supabase_client, server_client=audit_server_client,
+            authenticated_user=current_user, actor_role="final_tec_investor_viewer",
+            action="investor_dashboard_viewed", resource_type="dashboard",
+            resource_id="investor-live", outcome="allowed", reason_code="dashboard_view",
+        )
+        if audit_receipt is None:
+            st.error("Accès suspendu : le journal d'audit sécurisé n'a pas confirmé l'enregistrement.")
+            st.info("Aucune donnée investisseur n'a été chargée. Le service d'audit doit être configuré et disponible.")
+        else:
+            published_metrics = fetch_published_final_tec_metrics(supabase_client)
+            final_tec_investor_dashboard.render_dashboard(st, published_metrics)
+            st.caption("Documentation technique : docs/FINAL_TEC_LIVE_INVESTOR_DASHBOARD.md")
     else:
         st.error(
             "Accès FINAL TEC non autorisé ou service de vérification indisponible. "

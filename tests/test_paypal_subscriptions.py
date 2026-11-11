@@ -1,4 +1,5 @@
 """Unit tests for the isolated PayPal recurring-subscription helpers."""
+import pytest
 import paypal_subscriptions as paypal
 
 
