@@ -5,8 +5,12 @@ pypdfium2>=4.30
 pytesseract>=0.3.13
 python-dotenv>=1.0
 requests>=2.32
-stripe>=11.0
+stripe==16.1.0
 pytest>=8.0
 supabase>=2.20,<3
 reportlab>=4.2
 qrcode[pil]>=8.0
+# FINAL TEC dual-approval security adapters
+cryptography>=50,<51
+rfc8785>=0.1.4,<1
+PyJWT[crypto]>=2.10,<3

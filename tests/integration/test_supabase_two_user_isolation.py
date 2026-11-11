@@ -5,6 +5,7 @@ The tests use the public anon key and authenticated user JWTs, never service_rol
 """
 import os
 import uuid
+from urllib.parse import urlsplit
 
 import pytest
 import requests
@@ -17,17 +18,38 @@ _REQUIRED = (
     "SOWIA_TEST_USER_A_PASSWORD",
     "SOWIA_TEST_USER_B_EMAIL",
     "SOWIA_TEST_USER_B_PASSWORD",
+    "SOWIA_TEST_PROJECT_CONFIRMATION",
 )
 _MISSING = [name for name in _REQUIRED if not os.getenv(name)]
+_CONFIRMATION = "I_CONFIRM_THIS_IS_A_DEDICATED_SOWIA_TEST_PROJECT"
+if not _MISSING and os.environ["SOWIA_TEST_PROJECT_CONFIRMATION"] != _CONFIRMATION:
+    raise RuntimeError("Refusing live tests: explicit dedicated-test-project confirmation is missing")
 pytestmark = pytest.mark.skipif(
     bool(_MISSING),
     reason="Dedicated live Supabase test credentials are not configured",
 )
 
 
+def _validated_supabase_url(value):
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or not parsed.hostname.endswith(".supabase.co")
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port is not None
+        or parsed.query
+        or parsed.fragment
+        or parsed.path not in ("", "/")
+    ):
+        raise ValueError("Refusing live tests: URL must be a plain HTTPS hosted Supabase project URL")
+    return value.rstrip("/")
+
+
 class SupabaseTestSession:
     def __init__(self, url, anon_key, email, password):
-        self.url = url.rstrip("/")
+        self.url = _validated_supabase_url(url)
         self.anon_key = anon_key
         self.http = requests.Session()
         response = self.http.post(
@@ -36,6 +58,7 @@ class SupabaseTestSession:
             headers={"apikey": anon_key, "Content-Type": "application/json"},
             json={"email": email, "password": password},
             timeout=20,
+            allow_redirects=False,
         )
         response.raise_for_status()
         payload = response.json()
@@ -59,6 +82,7 @@ class SupabaseTestSession:
             params=params,
             json=payload,
             timeout=20,
+            allow_redirects=False,
         )
         response.raise_for_status()
         return response.json() if response.content else []
@@ -140,6 +164,7 @@ def test_private_rows_are_isolated_between_two_authenticated_users(
             headers={**account_b.headers, "Prefer": "return=representation"},
             json=payload_factory(account_a.user_id, marker + "-forged"),
             timeout=20,
+            allow_redirects=False,
         )
         assert forged.status_code in (401, 403), (
             f"RLS should reject cross-owner INSERT into {table_name}; "
