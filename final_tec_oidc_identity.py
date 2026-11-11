@@ -9,6 +9,7 @@ from __future__ import annotations
 import hmac
 import math
 import time
+from urllib.parse import urlsplit
 from typing import Any, Callable, Mapping
 
 import jwt
@@ -44,8 +45,18 @@ class OIDCApprovalIdentityVerifier:
         max_auth_age_seconds: int = 300,
         clock: Callable[[], float] = time.time,
     ) -> None:
-        if not issuer or not audience or not required_acr or not required_amr:
+        if not all(isinstance(value, str) and value.strip() for value in (issuer, audience, required_acr, required_amr)):
             raise OIDCIdentityError("issuer, audience, ACR and AMR policy are required")
+        parsed_issuer = urlsplit(issuer)
+        if (
+            parsed_issuer.scheme.lower() != "https"
+            or not parsed_issuer.hostname
+            or parsed_issuer.username is not None
+            or parsed_issuer.password is not None
+            or parsed_issuer.query
+            or parsed_issuer.fragment
+        ):
+            raise OIDCIdentityError("issuer must be an HTTPS URL without credentials, query or fragment")
         if isinstance(max_auth_age_seconds, bool) or not isinstance(max_auth_age_seconds, int) or max_auth_age_seconds <= 0:
             raise OIDCIdentityError("max_auth_age_seconds must be a positive integer")
         self.issuer = issuer
