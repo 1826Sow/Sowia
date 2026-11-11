@@ -118,3 +118,16 @@ def require_active_entitlement(user_client, user):
     if subscription is not None:
         return subscription
     raise PermissionError("Un accès SOW IA Premium actif est nécessaire.")
+
+
+def is_sowia_admin(user):
+    """Return True only for a server-managed SOWIA admin claim.
+
+    Supabase app_metadata is managed by trusted server-side/admin operations;
+    user_metadata is user-editable and is deliberately never consulted.
+    Missing, malformed, or absent claims fail closed.
+    """
+    metadata = getattr(user, "app_metadata", None)
+    if not isinstance(metadata, dict):
+        return False
+    return metadata.get("sowia_admin") is True or metadata.get("role") == "admin"
