@@ -14,6 +14,22 @@ declare
     v_prior_refunds numeric(30,12);
     v_refund_currency_mismatch boolean;
 begin
+    -- A recorded refund must remain attached to the same immutable payment
+    -- identity. Otherwise changing its provider/type/parent could bypass the
+    -- PayPal checks and silently detach it from the original capture.
+    if tg_op = 'UPDATE'
+       and old.provider = 'paypal'
+       and old.transaction_type = 'refund'
+       and (
+           new.user_id is distinct from old.user_id
+           or new.provider is distinct from old.provider
+           or new.transaction_type is distinct from old.transaction_type
+           or new.provider_payment_id is distinct from old.provider_payment_id
+           or new.parent_capture_id is distinct from old.parent_capture_id
+       ) then
+        raise exception 'PayPal refund identity and parent capture cannot change';
+    end if;
+
     -- A capture with child refunds is the anchor for those refunds. Do not
     -- let an update silently detach those refunds from their original capture.
     if tg_op = 'UPDATE'
