@@ -59,14 +59,9 @@ def test_partner_edits_cannot_self_approve_or_retain_moderation_metadata():
 
 
 def test_clients_can_write_only_partner_editable_columns():
-    assert (
-        "revoke insert, update on public.sowia_night_exchange_apps from authenticated"
-    ) in SQL
-    assert (
-        "grant insert ( user_id, workspace_id, app_name, country, timezone, categories,"
-    ) in SQL
-    assert (
-        "grant update ( workspace_id, app_name, country, timezone, categories,"
-    ) in SQL
-    assert "grant select, delete on public.sowia_night_exchange_apps to authenticated" in SQL
-    assert "grant select, insert, update, delete on public.sowia_night_exchange_apps to authenticated" not in SQL
+    normalized = " ".join(SQL.split())
+    assert "revoke insert, update on public.sowia_night_exchange_apps from authenticated" in normalized
+    assert "grant insert ( user_id, workspace_id, app_name, country, timezone, categories," in normalized
+    assert "grant update ( workspace_id, app_name, country, timezone, categories," in normalized
+    assert "grant select, delete on public.sowia_night_exchange_apps to authenticated" in normalized
+    assert "grant select, insert, update, delete on public.sowia_night_exchange_apps to authenticated" not in normalized
