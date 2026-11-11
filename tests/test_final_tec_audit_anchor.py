@@ -210,3 +210,32 @@ def test_pending_outbox_survives_sqlite_reopen_and_recovers_without_nonce_replay
     ) == pending[0]
     assert len(reopened_store.audit_events()) == 1
     assert recovered_anchor.append_calls == 1
+
+
+
+def test_checkpoint_rejects_non_utc_offset_and_naive_timestamp():
+    from final_tec_audit_anchor import _valid_checkpoint
+
+    for timestamp in ("2026-11-11T12:00:00+01:00", "2026-11-11T12:00:00"):
+        checkpoint = AuditCheckpoint(
+            authorization_id="auth-time",
+            sequence=1,
+            previous_hash="a" * 64,
+            event_hash="b" * 64,
+            created_at_utc=timestamp,
+        )
+        assert _valid_checkpoint(checkpoint, "auth-time") is False
+
+
+def test_checkpoint_rejects_empty_or_non_string_authorization_id():
+    from final_tec_audit_anchor import _valid_checkpoint
+
+    for authorization_id in ("", "   ", None):
+        checkpoint = AuditCheckpoint(
+            authorization_id=authorization_id,
+            sequence=1,
+            previous_hash="a" * 64,
+            event_hash="b" * 64,
+            created_at_utc=datetime.now(timezone.utc).isoformat(),
+        )
+        assert _valid_checkpoint(checkpoint, authorization_id) is False
