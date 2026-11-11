@@ -127,3 +127,17 @@ def test_refund_cap_uses_persisted_capture_amount_not_caller_supplied_amount():
             refund=base_refund("REFUND00003", "10.01"),
         )
     assert admin.writes == []
+
+@pytest.mark.parametrize("timestamp", ["not-a-date", "2026-11-02T10:00:00"])
+def test_refund_requires_valid_timezone_aware_timestamp(timestamp):
+    admin = Admin([
+        {"user_id": "u1", "provider": "paypal", "provider_payment_id": "CAPTURE12345",
+         "transaction_type": "payment", "gross_amount": "10.00"},
+    ])
+    refund = base_refund("REFUND00004", "1.00")
+    refund["create_time"] = timestamp
+    with pytest.raises(ValueError, match="Date|fuseau"):
+        record_paypal_refund_for_review(
+            admin, user_id="u1", capture_row=capture(), refund=refund
+        )
+    assert admin.writes == []
