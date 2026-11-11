@@ -4,6 +4,22 @@ from decimal import Decimal, InvalidOperation
 import re
 
 
+def _currency_amount(value, field, *, allow_zero=False):
+    """Parse a currency amount without silently rounding fractional cents."""
+    try:
+        amount = Decimal(str(value))
+        if not amount.is_finite():
+            raise ValueError
+        cents = amount.quantize(Decimal("0.01"))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError(f"{field} invalide.") from None
+    if amount != cents:
+        raise ValueError(f"{field} comporte plus de deux décimales.")
+    if (amount < 0 if allow_zero else amount <= 0) or amount > Decimal("9999.99"):
+        raise ValueError(f"{field} hors limites.")
+    return cents
+
+
 def record_paypal_capture(admin_client, *, user_id, order_id, capture, amount, currency):
     """Record a server-validated PayPal capture idempotently.
 
@@ -22,12 +38,7 @@ def record_paypal_capture(admin_client, *, user_id, order_id, capture, amount, c
         raise ValueError("Identifiant de capture PayPal invalide.")
     if currency != "EUR":
         raise ValueError("Seule la devise EUR est admise pour ce parcours PayPal.")
-    try:
-        value = Decimal(str(amount)).quantize(Decimal("0.01"))
-    except (InvalidOperation, TypeError, ValueError):
-        raise ValueError("Montant PayPal invalide.") from None
-    if not value.is_finite() or value <= 0 or value > Decimal("9999.99"):
-        raise ValueError("Montant PayPal hors limites.")
+    value = _currency_amount(amount, "Montant PayPal")
 
     payload = {
         "user_id": user_id,
@@ -74,12 +85,7 @@ def record_paypal_billing_transaction(
     currency = str(gross.get("currency_code") or "").strip().upper()
     if currency != "EUR":
         raise ValueError("La transaction récurrente doit être libellée en EUR.")
-    try:
-        gross_value = Decimal(str(gross.get("value"))).quantize(Decimal("0.01"))
-    except (InvalidOperation, TypeError, ValueError):
-        raise ValueError("Montant brut PayPal invalide.") from None
-    if not gross_value.is_finite() or gross_value <= 0 or gross_value > Decimal("9999.99"):
-        raise ValueError("Montant brut PayPal hors limites.")
+    gross_value = _currency_amount(gross.get("value"), "Montant brut PayPal")
 
     fee_obj = breakdown.get("fee_amount") or {}
     net_obj = breakdown.get("net_amount") or {}
@@ -170,12 +176,7 @@ def flag_paypal_refund_for_review(admin_client, *, user_id, transaction):
     currency = str(gross.get("currency_code") or "").strip().upper()
     if currency != "EUR":
         raise ValueError("La capture à contrôler doit être libellée en EUR.")
-    try:
-        gross_value = Decimal(str(gross.get("value"))).quantize(Decimal("0.01"))
-    except (InvalidOperation, TypeError, ValueError):
-        raise ValueError("Montant brut PayPal invalide.") from None
-    if not gross_value.is_finite() or gross_value <= 0 or gross_value > Decimal("9999.99"):
-        raise ValueError("Montant brut PayPal hors limites.")
+    gross_value = _currency_amount(gross.get("value"), "Montant brut PayPal")
     occurred_at = str(transaction.get("time") or "").strip()
     if not occurred_at:
         raise ValueError("Date de transaction PayPal manquante.")
@@ -237,14 +238,7 @@ def record_paypal_refund_for_review(
     currency = str(amount_obj.get("currency") or amount_obj.get("currency_code") or "").strip().upper()
     if currency != "EUR":
         raise ValueError("Seuls les remboursements EUR sont admis.")
-    try:
-        amount = Decimal(str(amount_obj.get("value"))).quantize(Decimal("0.01"))
-    except (InvalidOperation, TypeError, ValueError):
-        raise ValueError("Montant de remboursement invalide.") from None
-    if (
-        not amount.is_finite() or amount <= 0 or amount > Decimal("9999.99")
-    ):
-        raise ValueError("Montant de remboursement hors limites.")
+    amount = _currency_amount(amount_obj.get("value"), "Montant de remboursement")
     occurred_at = str(refund.get("update_time") or refund.get("create_time") or "").strip()
     try:
         parsed_refund_time = datetime.fromisoformat(occurred_at.replace("Z", "+00:00"))
@@ -268,11 +262,11 @@ def record_paypal_refund_for_review(
 
     # Use the owner-scoped persisted amount, never a caller-supplied value.
     try:
-        capture_amount = Decimal(str(parent.data[0].get("gross_amount"))).quantize(Decimal("0.01"))
-    except (InvalidOperation, TypeError, ValueError, IndexError):
+        capture_amount = _currency_amount(
+            parent.data[0].get("gross_amount"), "Montant de la capture parente"
+        )
+    except (ValueError, IndexError):
         raise RuntimeError("Montant de la capture parente introuvable ou invalide.") from None
-    if not capture_amount.is_finite() or capture_amount <= 0:
-        raise RuntimeError("Montant de la capture parente invalide.")
     if amount > capture_amount:
         raise ValueError("Le remboursement dépasse le montant de la capture.")
 
