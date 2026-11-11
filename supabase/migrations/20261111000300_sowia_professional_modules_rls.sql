@@ -20,8 +20,8 @@ create policy "Require Premium for Professional relationship events"
 drop policy if exists "Require Premium for Business Club profiles" on public.sowia_business_club_profiles;
 create policy "Require Premium for Business Club profiles"
     on public.sowia_business_club_profiles as restrictive for all to authenticated
-    using (workspace_id = 'personal' or public.sowia_has_professional_access())
-    with check (workspace_id = 'personal' or public.sowia_has_professional_access());
+    using (public.sowia_has_professional_access())
+    with check (public.sowia_has_professional_access());
 
 drop policy if exists "Require Premium for Business Club requests" on public.sowia_business_club_requests;
 create policy "Require Premium for Business Club requests"
@@ -40,8 +40,8 @@ create policy "Require Premium for Business Club meetings"
 drop policy if exists "Require Premium for NIGHT EXCHANGE apps" on public.sowia_night_exchange_apps;
 create policy "Require Premium for NIGHT EXCHANGE apps"
     on public.sowia_night_exchange_apps as restrictive for all to authenticated
-    using (workspace_id = 'personal' or public.sowia_has_professional_access())
-    with check (workspace_id = 'personal' or public.sowia_has_professional_access());
+    using (public.sowia_has_professional_access())
+    with check (public.sowia_has_professional_access());
 
 drop policy if exists "Require Premium for NIGHT EXCHANGE events" on public.sowia_night_exchange_events;
 create policy "Require Premium for NIGHT EXCHANGE events"
