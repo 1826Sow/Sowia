@@ -4,8 +4,7 @@ begin;
 
 alter table public.sowia_subscriptions
     add column if not exists payment_review_at timestamptz,
-    add column if not exists last_webhook_event_time timestamptz,
-    add column if not exists last_webhook_event_id text;
+    add column if not exists last_webhook_event_time timestamptz;
 
 -- Replace the prior RPC signature so exact duplicate event IDs can be ignored.
 drop function if exists public.sowia_reconcile_paypal_subscription(
@@ -37,7 +36,7 @@ declare
     v_existing_plan_id text;
     v_existing_review_at timestamptz;
     v_existing_event_time timestamptz;
-    v_existing_event_id text;
+    v_claimed_event_id text;
     v_review_at timestamptz;
     v_effective_status text;
 begin
@@ -83,8 +82,8 @@ begin
         pg_catalog.hashtextextended(p_paypal_subscription_id, 0)
     );
 
-    select status, user_id, paypal_plan_id, payment_review_at, last_webhook_event_time, last_webhook_event_id
-      into v_existing_status, v_existing_user_id, v_existing_plan_id, v_existing_review_at, v_existing_event_time, v_existing_event_id
+    select status, user_id, paypal_plan_id, payment_review_at, last_webhook_event_time
+      into v_existing_status, v_existing_user_id, v_existing_plan_id, v_existing_review_at, v_existing_event_time
       from public.sowia_subscriptions
      where paypal_subscription_id = p_paypal_subscription_id
      for update;
@@ -96,8 +95,25 @@ begin
         raise exception 'PayPal subscription owner or plan is immutable';
     end if;
 
-    -- Ignore exact duplicate deliveries even when their timestamps match.
-    if v_existing_event_id is not null and v_existing_event_id = p_event_id then
+    -- Claim each PayPal event ID once, durably, even if a duplicate arrives
+    -- after other events with the same timestamp have already been processed.
+    insert into public.sowia_paypal_webhook_events (
+        event_id, paypal_subscription_id, event_type, event_time
+    ) values (
+        p_event_id, p_paypal_subscription_id, p_event_type, p_event_time
+    ) on conflict (event_id) do nothing
+    returning event_id into v_claimed_event_id;
+
+    if v_claimed_event_id is null then
+        if not exists (
+            select 1 from public.sowia_paypal_webhook_events
+             where event_id = p_event_id
+               and paypal_subscription_id = p_paypal_subscription_id
+               and event_type = p_event_type
+               and event_time = p_event_time
+        ) then
+            raise exception 'PayPal webhook event ID conflicts with another event';
+        end if;
         return v_existing_status;
     end if;
 
@@ -140,11 +156,11 @@ begin
     insert into public.sowia_subscriptions (
         user_id, provider, paypal_subscription_id, paypal_plan_id, status,
         currency, amount, next_billing_time, last_payment_at,
-        payment_review_at, last_webhook_event_time, last_webhook_event_id, updated_at
+        payment_review_at, last_webhook_event_time, updated_at
     ) values (
         p_user_id, 'paypal', p_paypal_subscription_id, p_paypal_plan_id,
         v_effective_status, p_currency, p_amount, p_next_billing_time,
-        p_last_payment_at, v_review_at, p_event_time, p_event_id, pg_catalog.now()
+        p_last_payment_at, v_review_at, p_event_time, pg_catalog.now()
     )
     on conflict (paypal_subscription_id) do update
        set user_id = excluded.user_id,
@@ -157,7 +173,6 @@ begin
            last_payment_at = excluded.last_payment_at,
            payment_review_at = v_review_at,
            last_webhook_event_time = excluded.last_webhook_event_time,
-           last_webhook_event_id = excluded.last_webhook_event_id,
            updated_at = pg_catalog.now();
 
     return v_effective_status;
