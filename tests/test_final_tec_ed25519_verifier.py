@@ -166,7 +166,7 @@ def test_key_rotation_supports_new_key_and_old_verification_only_key():
         key_id=old_record.key_id, approver_id=old_record.approver_id,
         approver_role=old_record.approver_role, public_key_raw=old_record.public_key_raw,
         valid_from=old_record.valid_from, valid_until=old_record.valid_until,
-        signing_disabled_at=now - timedelta(minutes=30),
+        signing_disabled_at=now - timedelta(seconds=30),
     )
     # A signature issued before signing was disabled remains verifiable.
     verifier = Ed25519ApprovalVerifier({
