@@ -674,3 +674,89 @@ branche ; transaction globale absente/non démontrée ; fournisseur de sessions
 non sélectionné ; intégration et essais distribués **NOT_CONFIGURED / NOT_RUN**.
 G2-B reste **NO-GO / NOT_RUN**.
 
+### 21.6 Audit de la récupération et de la réconciliation
+
+#### Capacités déjà présentes — périmètre exact
+
+Le code actuel possède une récupération durable et testée au niveau de
+l'outbox d'ancrage :
+
+- le commit SQLite persiste ensemble la consommation des deux nonces
+  applicatifs, l'audit et l'entrée `pending` de l'outbox ;
+- une reprise exacte par `authorization_id` retrouve le checkpoint initial
+  sans consommer à nouveau les nonces ;
+- `recover_pending()` relit les checkpoints dans l'ordre et retente
+  l'append externe de façon idempotente ;
+- une réponse externe perdue ou un échec du marquage local laisse l'entrée
+  récupérable ;
+- les tests couvrent le redémarrage SQLite, les crashs avant/après commit,
+  les retries et le maintien de l'ordre des checkpoints.
+
+Ces garanties concernent **le registre nonce/audit/outbox et l'ancre externe
+uniquement**. Elles ne constituent pas une récupération de sessions OIDC.
+
+#### Lacune de récupération OIDC
+
+L'interface OIDC actuelle charge une session puis appelle immédiatement
+`consume_assertion_session(session_id, expected_nonce)`. Elle ne crée aucun
+identifiant d'opération durable commun aux deux approbations, aucun état
+`reserved`, aucun bail, aucune entrée de journal de saga et aucun mécanisme
+de réconciliation après redémarrage.
+
+Le moteur appelle ensuite les deux vérificateurs d'identité l'un après
+l'autre, puis seulement le commit nonce/audit/outbox. Si la première
+consommation OIDC réussit et que la seconde échoue, le code ne dispose pas
+d'une opération inverse ni d'un état durable permettant de reprendre cette
+paire. De même, une panne après consommation des deux sessions mais avant
+le commit du registre ne peut pas être réconciliée par `recover_pending()`,
+car aucune entrée d'outbox n'existe encore.
+
+Les tests OIDC existants prouvent le refus d'un rejeu unitaire, le refus d'un
+consommateur en échec et le non-appel du consommateur si le rôle courant est
+refusé. Ils utilisent des callbacks de test ; ils ne prouvent ni réservation
+de paire, ni reprise après crash entre les deux consommations, ni cohérence
+avec le registre SQLite.
+
+#### Machine d'états exigée avant toute intégration
+
+Toute implémentation fournisseur devra conserver un journal durable par
+`operation_id` stable et une liaison immuable à l'`authorization_id`,
+aux deux identifiants de session, aux deux sujets, aux nonces attendus et à
+l'empreinte de la demande. Les états minimaux sont :
+
+| État | Signification | Reprise autorisée |
+|---|---|---|
+| `initiated` | Opération durable créée, aucune réservation confirmée | Reprendre ou abandonner sans consommation |
+| `reserved` | Les deux sessions sont réservées avec un bail durable | Revalider puis engager, ou libérer |
+| `ledger_committed` | Nonces, audit et outbox engagés une seule fois | Finaliser les deux sessions avec le même operation_id |
+| `sessions_finalized` | Les deux sessions sont définitivement consommées | Reprendre uniquement l'ancrage outbox |
+| `completed` | Sessions finalisées et exigences d'ancrage satisfaites | Réponse idempotente, aucun nouvel effet |
+| `blocked` | Résultat ambigu, conflit ou dépendance indisponible | Réconciliation contrôlée ; jamais de succès optimiste |
+
+Les transitions doivent être conditionnelles et durables. Les réservations
+doivent être libérables ou récupérables après expiration, sans qu'un autre
+dossier puisse réutiliser une session déjà engagée. Chaque transition doit
+être idempotente et auditable. Un résultat ambigu doit être résolu par lecture
+de l'état faisant autorité à l'aide du même `operation_id`, jamais par une
+nouvelle consommation aveugle.
+
+L'ancrage externe demeure une étape distincte : si la politique exige son
+succès avant le résultat final, l'état reste non final tant que le reçu
+indépendamment vérifié n'est pas durablement enregistré. La reprise de
+l'ancrage ne doit jamais modifier ni reconsommer les sessions.
+
+#### Décision et couverture
+
+Les tests d'outbox déjà présents ne sont pas à réécrire : ils couvrent leur
+périmètre et doivent être conservés. Les tests OIDC unitaires existants ne
+couvrent pas la machine d'états décrite ci-dessus. Ajouter ultérieurement des
+tests d'intégration ciblés pour les crashs entre chaque transition, les baux
+expirés, les réponses perdues, les opérations concurrentes, les redémarrages
+et les états impossibles ou contradictoires.
+
+Aucune API de réservation/réconciliation OIDC ni journal de saga n'existe
+actuellement dans le dépôt. Ces scénarios sont **NOT_CONFIGURED / NOT_RUN**.
+Le fournisseur et le stockage doivent être choisis avant l'implémentation ;
+ne pas ajouter une machine d'états factice ou un adaptateur simulé présenté
+comme une preuve de production. G2-B reste **NO-GO / NOT_RUN**.
+
