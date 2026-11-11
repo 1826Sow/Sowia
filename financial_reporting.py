@@ -19,9 +19,74 @@ def _amount(value, field):
     return result
 
 
+
+def partition_financial_transactions(rows):
+    """Separate reportable ledger rows from malformed confirmed entries.
+
+    Non-final statuses remain outside both lists; callers can classify them
+    separately. Anomalies contain display-safe metadata only, never payment IDs.
+    """
+    if not isinstance(rows, (list, tuple)):
+        raise ValueError("Les transactions doivent être une liste.")
+    reportable = []
+    anomalies = []
+    for index, row in enumerate(rows, start=1):
+        if not isinstance(row, dict):
+            anomalies.append({
+                "record_number": index,
+                "provider": "inconnu",
+                "transaction_type": "inconnu",
+                "status": "inconnu",
+                "reasons": ["Format d'écriture invalide."],
+            })
+            continue
+        status = row.get("status")
+        if status not in {"confirmed", "refunded"}:
+            continue
+        provider = str(row.get("provider") or "").strip().lower()
+        currency = str(row.get("gross_currency") or "").strip().upper()
+        kind = row.get("transaction_type")
+        reasons = []
+        if not provider:
+            reasons.append("Prestataire manquant.")
+        if not currency:
+            reasons.append("Devise brute manquante.")
+        if kind not in {"payment", "refund"}:
+            reasons.append("Type de transaction invalide.")
+        try:
+            gross = _amount(row.get("gross_amount"), "Montant brut")
+            if gross is None:
+                reasons.append("Montant brut manquant.")
+        except ValueError:
+            reasons.append("Montant brut invalide.")
+        for field, label in (
+            ("reference_amount_eur", "Référence EUR"),
+            ("fee_amount", "Frais"),
+            ("net_amount", "Net"),
+        ):
+            try:
+                _amount(row.get(field), label)
+            except ValueError:
+                reasons.append(f"{label} invalide.")
+        if reasons:
+            anomalies.append({
+                "record_number": index,
+                "provider": provider or "inconnu",
+                "transaction_type": str(kind or "inconnu"),
+                "status": str(status),
+                "reasons": reasons,
+            })
+        else:
+            reportable.append(row)
+    return reportable, anomalies
+
+
 def summarize_financial_transactions(rows):
     if not isinstance(rows, (list, tuple)):
         raise ValueError('Les transactions doivent être une liste.')
+    rows, anomalies = partition_financial_transactions(rows)
+    if anomalies:
+        raise ValueError("Des écritures confirmées sont mal formées ; consultez le registre des anomalies.")
     totals = defaultdict(lambda: {
         'payments': Decimal('0'), 'refunds': Decimal('0'),
         'fees_reported': Decimal('0'), 'fees_known': True, 'fee_currencies': set(),
