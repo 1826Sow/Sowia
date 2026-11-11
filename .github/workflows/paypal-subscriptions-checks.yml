@@ -13,6 +13,8 @@ on:
       - "tests/test_paypal_subscriptions.py"
       - "tests/test_premium_admin_client_lazy.py"
       - "tests/test_premium_subscription_access.py"
+      - "requirements.txt"
+      - "requirements.lock"
       - ".github/workflows/paypal-subscriptions-checks.yml"
 
 permissions:
