@@ -10,7 +10,7 @@ SQL = (ROOT / "supabase_global_action_governance.sql").read_text(encoding="utf-8
 
 def test_action_transition_security_definer_uses_empty_search_path():
     match = re.search(
-        r"create or replace function public\\.sowia_action_transition\\([\\s\\S]*?as \\$\\$(.*?)\\$\\$;",
+        r"create or replace function public\.sowia_action_transition\([\s\S]*?as \$\$(.*?)\$\$;",
         SQL,
     )
     assert match, "Action transition function must exist"
