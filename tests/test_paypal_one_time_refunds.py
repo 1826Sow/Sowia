@@ -52,7 +52,8 @@ class Response:
 def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
     rows = [
         {"provider_payment_id": "CAPTURE001", "paypal_order_id": "ORDER001", "occurred_at": "2026-11-01T00:00:00Z"},
-        {"provider_payment_id": "CAPTURE002", "occurred_at": "2026-11-02T00:00:00Z"},
+        {"provider_payment_id": "CAPTURE002", "paypal_order_id": "ORDER002", "occurred_at": "2026-11-02T00:00:00Z"},
+        {"provider_payment_id": "CAPTURE003", "paypal_order_id": "ORDER003", "occurred_at": "2026-11-03T00:00:00Z"},
     ]
     admin = Admin(rows)
     monkeypatch.setattr(paypal_payments, "paypal_configuration", lambda: {
@@ -62,7 +63,7 @@ def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
     monkeypatch.setattr(paypal_payments, "_access_token", lambda _config: "token")
     details = {
         "CAPTURE001": {
-            "id": "CAPTURE001", "status": "PARTIALLY_REFUNDED",
+            "id": "CAPTURE001", "status": "REFUNDED",
             "amount": {"currency_code": "EUR", "value": "9.90"},
             "seller_payable_breakdown": {
                 "total_refunded_amount": {"currency_code": "EUR", "value": "2.50"}
@@ -70,6 +71,10 @@ def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
         },
         "CAPTURE002": {
             "id": "CAPTURE002", "status": "COMPLETED",
+            "amount": {"currency_code": "EUR", "value": "9.90"},
+        },
+        "CAPTURE003": {
+            "id": "CAPTURE003", "status": "PARTIALLY_REFUNDED",
             "amount": {"currency_code": "EUR", "value": "9.90"},
         },
     }
@@ -91,15 +96,15 @@ def test_syncs_only_current_users_paypal_payment_captures(monkeypatch):
 
     result = paypal_payments.sync_one_time_paypal_refunds(admin, "user-A")
     assert result == {
-        "captures_checked": 2,
-        "refunds_detected": 1,
-        "refunds_flagged_for_manual_review": 1,
+        "captures_checked": 3,
+        "refunds_detected": 2,
+        "refunds_flagged_for_manual_review": 2,
         "entitlements_revoked": 1,
         "captures_missing_order_link": 0,
         "limit_reached": False,
     }
-    assert requested == ["CAPTURE001", "CAPTURE002"]
-    assert flagged == [("user-A", "CAPTURE001")]
+    assert requested == ["CAPTURE001", "CAPTURE002", "CAPTURE003"]
+    assert flagged == [("user-A", "CAPTURE001"), ("user-A", "CAPTURE003")]
     assert ("user_id", "user-A") in admin.queries["sowia_financial_transactions"].filters
     assert ("provider", "paypal") in admin.queries["sowia_financial_transactions"].filters
     assert ("transaction_type", "payment") in admin.queries["sowia_financial_transactions"].filters
