@@ -327,7 +327,7 @@ def update_business_club_request(client, user, request_id, status):
         raise ValueError("Réponse à la demande invalide.")
     uid = _user_id(user)
     query = client.table("sowia_business_club_requests").update({
-        "status": status, "updated_at": datetime.now(timezone.utc).isoformat()
+        "status": status
     }).eq("id", int(request_id))
     if status == "Annulée":
         query = query.eq("sender_user_id", uid).eq("status", "En attente")
@@ -372,7 +372,7 @@ def update_business_club_meeting(client, user, meeting_id, status):
         raise ValueError("Statut de rendez-vous invalide.")
     uid = _user_id(user)
     query = client.table("sowia_business_club_meetings").update({
-        "status": status, "updated_at": datetime.now(timezone.utc).isoformat()
+        "status": status
     }).eq("id", int(meeting_id))
     if status == "Annulée":
         query = query.eq("organizer_user_id", uid).eq("status", "Proposée")
