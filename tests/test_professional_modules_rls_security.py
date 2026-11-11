@@ -16,6 +16,7 @@ def test_all_remaining_professional_modules_have_restrictive_premium_policies():
         "sowia_business_club_profiles",
         "sowia_business_club_requests",
         "sowia_business_club_meetings",
+        "sowia_business_club_notifications",
         "sowia_night_exchange_apps",
         "sowia_night_exchange_events",
     )
@@ -32,10 +33,10 @@ def test_personal_rows_remain_available_without_premium_where_supported():
 
 def test_business_club_and_night_exchange_remain_professional_only():
     normalized = " ".join(MIGRATION.split())
-    for table in ("sowia_business_club_profiles", "sowia_business_club_requests", "sowia_business_club_meetings", "sowia_night_exchange_apps", "sowia_night_exchange_events"):
+    for table in ("sowia_business_club_profiles", "sowia_business_club_requests", "sowia_business_club_meetings", "sowia_business_club_notifications", "sowia_night_exchange_apps", "sowia_night_exchange_events"):
         assert f"on public.{table} as restrictive for all to authenticated" in normalized
-    assert normalized.count("using (public.sowia_has_professional_access())") == 5
-    assert normalized.count("with check (public.sowia_has_professional_access())") == 5
+    assert normalized.count("using (public.sowia_has_professional_access())") == 6
+    assert normalized.count("with check (public.sowia_has_professional_access())") == 6
 
 
 def test_migration_preserves_existing_rows_and_base_policies():
