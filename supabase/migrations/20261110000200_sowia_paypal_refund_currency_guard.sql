@@ -34,6 +34,15 @@ begin
         raise exception 'PayPal parent capture not found for this account';
     end if;
 
+    -- SQL comparisons with NULL evaluate to NULL, not TRUE; reject missing
+    -- currencies explicitly before comparing normalized currency codes.
+    if new.gross_currency is null
+       or btrim(new.gross_currency) = ''
+       or v_capture_currency is null
+       or btrim(v_capture_currency) = '' then
+        raise exception 'PayPal refund and parent capture must both have a currency';
+    end if;
+
     if upper(btrim(new.gross_currency)) <> upper(btrim(v_capture_currency)) then
         raise exception 'PayPal refund currency does not match its parent capture';
     end if;
