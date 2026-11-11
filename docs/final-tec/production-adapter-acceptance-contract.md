@@ -73,3 +73,21 @@ Aucun raccordement réel ni passage à G2-B n'est accepté avant :
 - approbation formelle de la mise en service.
 
 Tant que ces critères ne sont pas tous satisfaits, le résultat reste **NO-GO / NOT_RUN**. Ce contrat ne confère aucun droit d'exécution et n'active aucun workload.
+
+## 7. Contrats d'interface avant intégration
+
+Le module `final_tec_provider_contracts.py` formalise les interfaces attendues,
+sans dépendance à un fournisseur : résolution JWKS, session d'approbation côté
+serveur, annuaire de rôles courant, signature distante, vérification de signature
+et registre partagé avec commit nonce/audit atomique et contrôle de santé.
+
+Le contrôle local `validate_production_adapter_bundle` vérifie uniquement la
+présence des six rôles d'adaptateur, leurs méthodes et une déclaration explicite
+`production_grade = True`. Cette déclaration est une assertion de configuration,
+pas une preuve de sécurité ni une certification. Le contrôle ne contacte aucun
+fournisseur et ne valide ni TLS, ni IAM, ni KMS/HSM, ni transaction distribuée.
+
+**Tests de contrat :** les fakes vérifient la structure et les refus en cas
+d'adaptateur absent/incomplet/non déclaré. Ils ne constituent pas des tests
+d'intégration fournisseur. L'adaptateur SQLite mono-hôte existant reste réservé
+au développement et aux tests et ne satisfait pas ce contrat de registre partagé.
