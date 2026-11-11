@@ -57,3 +57,17 @@ Aucun contact investisseur, partage externe, levée de fonds, paiement, collecte
 fonds ou déploiement n'est déclenché par ce module. Toute présentation financière
 ou opération de sollicitation devra faire l'objet des validations juridiques et
 réglementaires applicables.
+
+
+## Registre de preuves — règle de publication
+
+Le module `final_tec_evidence.py` définit quatre états distincts :
+
+- `verified` : source HTTPS, date ISO 8601, référence de preuve et responsable obligatoires ;
+- `projected` : hypothèses et horizon obligatoires ;
+- `synthetic` : étiquette explicite de démonstration obligatoire ;
+- `pending` : source non encore connectée, aucune valeur ne doit être interprétée comme un résultat.
+
+Le registre initial liste les indicateurs attendus sans leur attribuer de valeurs réelles.
+Un workflow GitHub Actions ciblé exécute les tests propres au tableau de bord, séparément
+des contrôles globaux actuellement bloqués par des défauts hérités de `main`.
