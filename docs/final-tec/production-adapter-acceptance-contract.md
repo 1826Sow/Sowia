@@ -988,3 +988,58 @@ demeurent **SKIPPED / NOT_RUN** dans le contexte PR. Les résultats CI du
 commit d'audit doivent être confirmés après son enregistrement. G2-B reste
 **NO-GO / NOT_RUN**.
 
+
+
+### 21.10 Vérification des corrections de reproductibilité CI
+
+Cette vérification complète la photographie historique de la section 21.9.
+Elle ne remplace pas les résultats d'exécution GitHub Actions.
+
+#### Changements de workflow présents au HEAD vérifié
+
+- Le workflow qualité installe désormais les dépendances de test dans un
+  environnement virtuel isolé depuis le verrou généré avec hashes, via
+  `pip install --require-hashes`. `compileall` et `pytest -q` sont
+  exécutés avec l'interpréteur de cet environnement.
+- Le workflow FINAL TEC Python 3.12 génère son verrou candidat depuis
+  `requirements.txt`, installe les dépendances avec
+  `--require-hashes` dans un environnement virtuel dédié, exécute
+  `pip check`, puis lance les neuf modules de tests FINAL TEC ciblés dans
+  cet environnement.
+- Les filtres de chemins des workflows financier et PayPal incluent
+  `requirements.txt` et `requirements.lock` pour les événements PR
+  examinés. Une modification de ces fichiers peut donc déclencher ces
+  contrôles spécialisés.
+
+#### Limites restantes
+
+- Le verrou hashé généré par le workflow qualité est comparé aux pins de
+  `requirements.lock`, mais il est généré à l'exécution et n'est pas un
+  fichier versionné distinct.
+- Le workflow qualité installe encore `pip-audit` avec
+  `--upgrade`, sans version exacte. Le verrouillage des dépendances
+  applicatives n'équivaut donc pas au verrouillage de tous les outils de
+  bootstrap et d'audit.
+- Les workflows financier et PayPal conservent leurs environnements
+  spécialisés. Leur présence dans la CI ne signifie pas que toutes leurs
+  dépendances sont installées depuis un verrou hashé.
+- Le job d'intégration Supabase à deux comptes ne s'exécute que sur un push
+  fiable vers `main`, avec les secrets du projet de test dédié et la
+  confirmation explicite. Une PR ne valide donc pas l'isolation RLS réelle.
+
+#### Résultats d'exécution
+
+Au moment de cette vérification, les cinq workflows PR associés au HEAD
+`9935da427302a1c6fdf57cd9da90139e1027151f` étaient tous en état
+`queued` : qualité générale, FINAL TEC, registre financier, PayPal et
+verrou candidat Python 3.12. Les jobs correspondants étaient également
+`queued`, sans étape exécutée ni conclusion. Ces statuts sont une
+photographie horodatée, pas une affirmation sur les exécutions ultérieures.
+
+La relecture du code confirme les changements de configuration décrits
+ci-dessus ; elle ne prouve ni la réussite des tests, ni l'absence de
+vulnérabilités, ni la conformité d'un fournisseur réel. Les intégrations
+OIDC, KMS/HSM, registre partagé multi-hôtes et ancre WORM restent
+`NOT_CONFIGURED / NOT_RUN`. La revue indépendante et les protections
+obligatoires de fusion restent à démontrer. G2-B demeure
+**NO-GO / NOT_RUN**.
