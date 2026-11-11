@@ -133,3 +133,13 @@ def test_business_club_storage_helpers_do_not_write_client_timestamps():
     meeting_body = source[meeting_start:source.index("def list_business_club_notifications(", meeting_start)]
     assert '"updated_at"' not in request_body
     assert '"updated_at"' not in meeting_body
+
+
+def test_business_club_notification_definer_triggers_use_empty_search_path():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    sql = (root / "supabase_business_club_notifications.sql").read_text(encoding="utf-8").lower()
+    assert sql.count("security definer") == 2
+    assert sql.count("set search_path = ''") == 2
+    assert "set search_path = public" not in sql
