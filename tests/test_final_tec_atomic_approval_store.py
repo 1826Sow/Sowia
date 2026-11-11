@@ -237,7 +237,10 @@ def test_missing_atomic_or_legacy_commit_callbacks_fail_closed():
             "expires_at": (now + timedelta(minutes=2)).isoformat(),
             "signature": "test-signature",
         })
-    with pytest.raises(DualApprovalError, match="Atomic pair/audit"):
+    with pytest.raises(
+        DualApprovalError,
+        match="Separate nonce and audit callbacks are prohibited",
+    ):
         validate_dual_approval(
             request, approvals,
             signature_verifier=lambda envelope, approval: True,
