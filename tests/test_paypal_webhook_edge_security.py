@@ -56,9 +56,10 @@ def test_subscription_refund_or_reversal_uses_atomic_database_reconciliation():
     recovery = source.index("const verifiedPaymentRecovery =")
     rpc = source.index('"/rest/v1/rpc/sowia_reconcile_paypal_subscription"', recovery)
     assert recovery < rpc
-    assert 'eventType === "PAYMENT.SALE.REFUNDED"' in source
-    assert 'eventType === "PAYMENT.SALE.REVERSED"' in source
-    assert 'eventType === "BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED"' in source
+    migration = (ROOT / "supabase/migrations/20261111000500_paypal_subscription_atomic_reconciliation.sql").read_text(encoding="utf-8")
+    assert "'PAYMENT.SALE.REFUNDED'" in migration
+    assert "'PAYMENT.SALE.REVERSED'" in migration
+    assert "'BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED'" in migration
     assert "p_recovery_verified: verifiedPaymentRecovery" in source
     assert "p_event_type: eventType" in source
     assert "p_event_time: eventTime" in source
