@@ -70,7 +70,7 @@ def valid_contract():
 
 def environment(contract=None):
     contract = contract or valid_contract()
-    return deepcopy(contract["environment"])
+    return deepcopy(contract.get("environment", valid_contract()["environment"]))
 
 
 def callbacks(*, signature=True, identity=True, nonce=True, calls=None):
