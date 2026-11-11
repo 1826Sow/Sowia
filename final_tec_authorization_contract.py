@@ -46,6 +46,12 @@ def _text(value: Any, field: str) -> str:
     return value
 
 
+def _description(value: Any, field: str) -> str:
+    if not isinstance(value, str) or not value.strip() or len(value) > 200 or any(ord(ch) < 32 for ch in value):
+        raise AuthorizationContractError(f"{field}: texte descriptif invalide.")
+    return value
+
+
 def _timestamp(value: Any, field: str) -> datetime:
     if not isinstance(value, str):
         raise AuthorizationContractError(f"{field}: horodatage obligatoire.")
@@ -160,7 +166,10 @@ def validate_authorization_contract(
     if not isinstance(environment, Mapping) or set(environment) != _ENVIRONMENT:
         raise AuthorizationContractError("Bloc environment incomplet ou contenant des champs inconnus.")
     for key, value in environment.items():
-        _text(value, f"environment.{key}")
+        if key in {"host_os", "kernel_version", "architecture", "runtime_name", "runtime_version"}:
+            _description(value, f"environment.{key}")
+        else:
+            _text(value, f"environment.{key}")
     for key in ("runtime_config_digest", "image_digest", "g2a_profile_digest", "workload_digest"):
         _digest(environment[key], f"environment.{key}")
     if not isinstance(expected_environment, Mapping) or set(expected_environment) != _ENVIRONMENT:
@@ -181,7 +190,7 @@ def validate_authorization_contract(
     cpu = constraints["cpu_limit"]
     if isinstance(cpu, bool) or not isinstance(cpu, (int, float)) or not math.isfinite(float(cpu)) or cpu <= 0 or cpu > 64:
         raise AuthorizationContractError("constraints.cpu_limit hors limites.")
-    if constraints["budget_limit"] != 0:
+    if isinstance(constraints["budget_limit"], bool) or constraints["budget_limit"] != 0:
         raise AuthorizationContractError("Le smoke test local initial doit avoir un budget nul.")
     if constraints["currency"] != "EUR":
         raise AuthorizationContractError("Devise de référence attendue : EUR.")
