@@ -230,3 +230,16 @@ Un test d'intégration relie maintenant le moteur réel de double approbation,
 le registre SQLite, le coordinateur et une ancre de test. Il vérifie que le
 moteur n'accepte le callback qu'après ancrage confirmé. Le fournisseur de test
 ne constitue pas une preuve d'intégration à un service externe réel.
+
+
+## 15. Preuve de reprise après réouverture SQLite
+
+Un test ferme le chemin de l'ancien processus (objets store et coordinateur détruits),
+réouvre le même fichier SQLite avec une nouvelle instance, vérifie que le checkpoint
+est toujours `pending`, puis lance `recover_pending()` avec une ancre disponible.
+Le test vérifie l'état final `anchored`, l'unicité de l'audit, l'intégrité de la
+chaîne et de l'outbox, ainsi que la réutilisation du checkpoint exact sans nouvelle
+consommation de nonces.
+
+Cette preuve est un test automatisé écrit dans le dépôt ; elle n'est pas encore
+une exécution CI confirmée sur le dernier commit.
