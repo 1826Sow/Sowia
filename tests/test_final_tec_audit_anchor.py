@@ -315,3 +315,72 @@ def test_combined_integrity_check_detects_audit_row_tampering(tmp_path):
         connection.close()
 
     assert ledger.verify_integrity() is False
+
+def test_combined_integrity_check_detects_outbox_checkpoint_tampering(tmp_path):
+    import sqlite3
+    from datetime import timedelta
+    from final_tec_atomic_approval_store import SQLiteAtomicApprovalStore
+
+    now = datetime.now(timezone.utc)
+    expiry = (now + timedelta(minutes=10)).isoformat()
+    records = (("a" * 48, expiry), ("b" * 48, expiry))
+    path = tmp_path / "integrity-outbox-tampered.sqlite3"
+    ledger = SQLiteAtomicApprovalStore(path)
+    assert ledger.register_pair("auth-outbox-tampered", records, now=now)
+    event = {
+        "event_type": "dual_approval_verified",
+        "authorization_id": "auth-outbox-tampered",
+    }
+    assert ledger.commit_pair_audit_and_outbox(
+        "auth-outbox-tampered", records, event, now=now
+    ) is not None
+    assert ledger.verify_integrity() is True
+
+    connection = sqlite3.connect(path)
+    try:
+        connection.execute("DROP TRIGGER anchor_outbox_immutable_fields")
+        connection.execute(
+            "UPDATE dual_approval_anchor_outbox SET event_hash = ? "
+            "WHERE authorization_id = ?",
+            ("f" * 64, "auth-outbox-tampered"),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    assert ledger.verify_integrity() is False
+
+
+def test_combined_integrity_check_detects_orphaned_checkpoint_foreign_key(tmp_path):
+    import sqlite3
+    from datetime import timedelta
+    from final_tec_atomic_approval_store import SQLiteAtomicApprovalStore
+
+    now = datetime.now(timezone.utc)
+    expiry = (now + timedelta(minutes=10)).isoformat()
+    records = (("c" * 48, expiry), ("d" * 48, expiry))
+    path = tmp_path / "integrity-orphaned-checkpoint.sqlite3"
+    ledger = SQLiteAtomicApprovalStore(path)
+    assert ledger.register_pair("auth-orphaned-checkpoint", records, now=now)
+    event = {
+        "event_type": "dual_approval_verified",
+        "authorization_id": "auth-orphaned-checkpoint",
+    }
+    assert ledger.commit_pair_audit_and_outbox(
+        "auth-orphaned-checkpoint", records, event, now=now
+    ) is not None
+    assert ledger.verify_integrity() is True
+
+    # A direct database writer with foreign-key enforcement disabled can
+    # create an orphan; the combined diagnostic must detect it.
+    connection = sqlite3.connect(path)
+    try:
+        connection.execute("DROP TRIGGER dual_approval_audit_no_delete")
+        connection.execute(
+            "DELETE FROM dual_approval_audit WHERE sequence = 1"
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    assert ledger.verify_integrity() is False
