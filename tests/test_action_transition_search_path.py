@@ -77,9 +77,10 @@ def test_action_tables_keep_rls_and_scoped_read_policies():
     assert "p.creator_id = auth.uid() or p.approver_id = auth.uid()" in SQL
 
 
+
 def test_action_transition_enforces_two_party_approval_and_audit_trail():
     match = re.search(
-        r"create or replace function public\\.sowia_action_transition\\([\\s\\S]*?as (\\$[a-z_]*\\$)([\\s\\S]*?)\\1;",
+        r"create or replace function public\.sowia_action_transition\([\s\S]*?as (\$[a-z_]*\$)([\s\S]*?)\1;",
         SQL,
     )
     assert match
