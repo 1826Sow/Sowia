@@ -42,6 +42,7 @@ for select to authenticated using (exists (
     and (p.creator_id = auth.uid() or p.approver_id = auth.uid())
 ));
 revoke all on public.sowia_global_action_plans, public.sowia_global_action_audit from anon, public, authenticated;
+revoke insert (id, creator_id, title, objective, country, owner_label, budget_cap, currency, due_date, success_metric, stop_condition, approver_id, status, approval_note, created_at, updated_at, approved_at) on public.sowia_global_action_plans from anon, public, authenticated;
 grant select on public.sowia_global_action_plans to authenticated;
 -- Clients may create draft content only; workflow metadata remains server-controlled.
 grant insert (
