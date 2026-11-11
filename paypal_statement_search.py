@@ -18,12 +18,6 @@ REPORTING_LAG_HOURS = 4
 WINDOW_DAYS = 30
 
 
-def _utc(value: datetime, field: str) -> datetime:
-    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError(f"{field} doit être une date avec fuseau horaire.")
-    return value.astimezone(timezone.utc).replace(microsecond=0)
-
-
 def _iso(value: datetime) -> str:
     return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
