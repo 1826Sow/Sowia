@@ -31,15 +31,16 @@ jobs:
 
   supabase-rls-integration:
     name: Supabase real-account RLS tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       SOWIA_TEST_SUPABASE_URL: ${{ secrets.SOWIA_TEST_SUPABASE_URL }}
       SOWIA_TEST_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_TEST_SUPABASE_ANON_KEY }}
-      SOWIA_TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SOWIA_TEST_SUPABASE_SERVICE_ROLE_KEY }}
       SOWIA_TEST_USER_A_EMAIL: ${{ secrets.SOWIA_TEST_USER_A_EMAIL }}
       SOWIA_TEST_USER_A_PASSWORD: ${{ secrets.SOWIA_TEST_USER_A_PASSWORD }}
       SOWIA_TEST_USER_B_EMAIL: ${{ secrets.SOWIA_TEST_USER_B_EMAIL }}
       SOWIA_TEST_USER_B_PASSWORD: ${{ secrets.SOWIA_TEST_USER_B_PASSWORD }}
+      SOWIA_TEST_PROJECT_CONFIRMATION: ${{ secrets.SOWIA_TEST_PROJECT_CONFIRMATION }}
     steps:
       - name: Check integration-test configuration
         id: credentials
@@ -47,11 +48,11 @@ jobs:
         run: |
           if [[ -n "$SOWIA_TEST_SUPABASE_URL" &&
                 -n "$SOWIA_TEST_SUPABASE_ANON_KEY" &&
-                -n "$SOWIA_TEST_SUPABASE_SERVICE_ROLE_KEY" &&
                 -n "$SOWIA_TEST_USER_A_EMAIL" &&
                 -n "$SOWIA_TEST_USER_A_PASSWORD" &&
                 -n "$SOWIA_TEST_USER_B_EMAIL" &&
-                -n "$SOWIA_TEST_USER_B_PASSWORD" ]]; then
+                -n "$SOWIA_TEST_USER_B_PASSWORD" &&
+                "$SOWIA_TEST_PROJECT_CONFIRMATION" == "I_CONFIRM_THIS_IS_A_DEDICATED_SOWIA_TEST_PROJECT" ]]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
