@@ -205,4 +205,4 @@ def test_paypal_recovery_requires_complete_latest_payment_proof():
     reject = source.index('PayPal recovery payment proof is incomplete', payment_time)
     rpc = source.index('"/rest/v1/rpc/sowia_reconcile_paypal_subscription"', reject)
     assert recovery < proof < amount < currency < payment_time < reject < rpc
-    assert "const lastPaymentTime = String(lastPayment.time || "").trim();" in source
+    assert 'const lastPaymentTime = String(lastPayment.time || "").trim();' in source
