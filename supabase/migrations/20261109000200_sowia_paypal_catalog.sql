@@ -11,4 +11,7 @@ create table if not exists public.sowia_paypal_catalog (
 
 alter table public.sowia_paypal_catalog enable row level security;
 
+-- Explicitly remove table privileges from browser roles; service_role remains server-only.
+revoke all on public.sowia_paypal_catalog from anon, authenticated;
+
 -- Intentionally no authenticated policies: only trusted server/service-role code may read or write.
