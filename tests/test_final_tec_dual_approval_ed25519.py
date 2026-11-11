@@ -82,11 +82,12 @@ def run_validation(now, request, approvals, verifier):
         # Test-only identity stub. This is NOT an external identity provider.
         return identity_map.get(subject) == role
 
-    def consume_pair(auth_id, records):
+    def atomic_pair_audit_commit(auth_id, records, event):
+        # One callback models a single transactional commit of both nonces
+        # and the audit row; no partial state is recorded on failure.
+        if len(records) != 2 or records[0][0] == records[1][0]:
+            return False
         consumed.append((auth_id, records))
-        return len(records) == 2
-
-    def append_audit(event):
         audit.append(event)
         return True
 
@@ -94,8 +95,7 @@ def run_validation(now, request, approvals, verifier):
         request, approvals,
         signature_verifier=verifier,
         identity_verifier=identity,
-        nonce_pair_consumer=consume_pair,
-        audit_append=append_audit,
+        atomic_pair_audit_commit=atomic_pair_audit_commit,
         now=now,
     )
     return result, consumed, audit
