@@ -6,6 +6,17 @@ alter table public.sowia_subscriptions
     add column if not exists payment_review_at timestamptz,
     add column if not exists last_webhook_event_time timestamptz;
 
+create table if not exists public.sowia_paypal_webhook_events (
+    event_id text primary key check (pg_catalog.length(event_id) between 1 and 128),
+    paypal_subscription_id text not null,
+    event_type text not null,
+    event_time timestamptz not null,
+    received_at timestamptz not null default pg_catalog.now()
+);
+
+alter table public.sowia_paypal_webhook_events enable row level security;
+revoke all on public.sowia_paypal_webhook_events from public, anon, authenticated;
+
 -- Replace the prior RPC signature so exact duplicate event IDs can be ignored.
 drop function if exists public.sowia_reconcile_paypal_subscription(
     uuid, text, text, text, text, text, numeric, timestamptz, timestamptz, timestamptz, boolean
