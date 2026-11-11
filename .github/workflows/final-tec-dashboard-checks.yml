@@ -101,7 +101,7 @@ jobs:
           tests/test_final_tec_evidence_review.py
           tests/test_final_tec_audit_trail.py
           tests/test_final_tec_audit_service.py
-          tests/test_final_tec_audit_vault_sql.py
+          tests/test_final_tec_audit_vault_sql.py\n          tests/integration/test_final_tec_audit_vault_postgres.py
       - name: Compile guarded application modules
         run: >-
           python -m py_compile
