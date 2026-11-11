@@ -246,3 +246,32 @@ def test_extreme_or_non_ascii_max_age_forces_fetch_on_each_call(cache_control):
     assert resolver("key-1") is not None
     assert resolver("key-1") is not None
     assert len(opener.calls) == 2
+
+
+@pytest.mark.parametrize("network_error", [
+    TimeoutError("sensitive timeout detail"),
+    OSError("sensitive socket detail"),
+])
+def test_network_failures_are_normalized_without_stale_key_fallback(network_error):
+    now = [100.0]
+    opener = FakeOpener([
+        Response({"keys": [jwk("key-1")]}),
+        network_error,
+    ])
+    resolver = make_resolver(opener, cache_ttl_seconds=1, max_cache_ttl_seconds=2,
+                             clock=lambda: now[0])
+    assert resolver("key-1") is not None
+    now[0] = 102.0
+    with pytest.raises(JWKSConfigurationError, match="could not be reached safely") as error:
+        resolver("key-1")
+    assert "sensitive" not in str(error.value)
+    assert len(opener.calls) == 2
+
+
+def test_url_error_is_normalized():
+    from urllib.error import URLError
+
+    opener = FakeOpener([URLError("sensitive provider detail")])
+    with pytest.raises(JWKSConfigurationError, match="could not be reached safely") as error:
+        make_resolver(opener)("key-1")
+    assert "sensitive" not in str(error.value)
