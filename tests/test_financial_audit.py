@@ -64,10 +64,14 @@ def test_presentation_omits_full_snapshots_and_user_identifiers():
         "operation": "UPDATE",
         "changed_at": "2026-11-10T10:00:00Z",
         "ledger_row_id": "ledger-1",
-        "before_data": {"status": "confirmed", "gross_amount": "10.00", "gross_currency": "EUR"},
-        "after_data": {"status": "manual_review", "gross_amount": "10.00", "gross_currency": "EUR"},
+        "before_data": {"status": "confirmed", "gross_amount": "10.00", "gross_currency": "EUR", "reference_amount_eur": "10.00", "tax_amount_eur": "0.80"},
+        "after_data": {"status": "manual_review", "gross_amount": "10.00", "gross_currency": "EUR", "reference_amount_eur": "11.00", "tax_amount_eur": "0.90"},
     }])
     assert presented[0]["Statut avant"] == "confirmed"
     assert presented[0]["Statut après"] == "manual_review"
+    assert presented[0]["Référence EUR avant"] == "10.00"
+    assert presented[0]["Référence EUR après"] == "11.00"
+    assert presented[0]["Taxe EUR avant"] == "0.80"
+    assert presented[0]["Taxe EUR après"] == "0.90"
     assert "private-user-id" not in str(presented)
     assert "actor-id" not in str(presented)
