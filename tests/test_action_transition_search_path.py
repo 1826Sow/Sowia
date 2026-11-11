@@ -63,3 +63,30 @@ def test_action_tables_revoke_old_authenticated_grants_before_allowlisting():
     assert "grant update on public.sowia_global_action_plans to authenticated" not in SQL
     assert "grant delete on public.sowia_global_action_plans to authenticated" not in SQL
     assert "grant insert on public.sowia_global_action_audit to authenticated" not in SQL
+
+
+def test_action_tables_keep_rls_and_scoped_read_policies():
+    assert "alter table public.sowia_global_action_plans enable row level security" in SQL
+    assert "alter table public.sowia_global_action_audit enable row level security" in SQL
+    assert (
+        "for select to authenticated using (creator_id = auth.uid() or approver_id = auth.uid())"
+    ) in SQL
+    assert (
+        "for insert to authenticated with check (creator_id = auth.uid() and status = 'draft' and approver_id <> creator_id)"
+    ) in SQL
+    assert "p.creator_id = auth.uid() or p.approver_id = auth.uid()" in SQL
+
+
+def test_action_transition_enforces_two_party_approval_and_audit_trail():
+    match = re.search(
+        r"create or replace function public\\.sowia_action_transition\\([\\s\\S]*?as (\\$[a-z_]*\\$)([\\s\\S]*?)\\1;",
+        SQL,
+    )
+    assert match
+    body = match.group(2)
+    assert "for update" in body
+    assert "p.creator_id = actor" in body
+    assert "p.approver_id = actor and p.creator_id <> actor" in body
+    assert "p_next_status in ('approved','rejected')" in body
+    assert "insert into public.sowia_global_action_audit" in body
+    assert "values(p.id,actor,p.status,p_next_status,coalesce(p_note,''))" in body
