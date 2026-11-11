@@ -115,7 +115,7 @@ def test_two_real_ed25519_signatures_validate_same_request():
 def test_modified_request_invalidates_both_real_signatures():
     now, request, approvals, trusted = fixture()
     request["constraints_digest"] = "d" * 64
-    with pytest.raises(DualApprovalError, match="identity"):
+    with pytest.raises(DualApprovalError, match="signature"):
         run_validation(now, request, approvals, DualApprovalEd25519Verifier(trusted))
 
 
@@ -168,5 +168,5 @@ def test_invalid_signature_encoding_is_rejected():
 def test_external_identity_check_rejects_subject_mismatch_before_signature():
     now, request, approvals, trusted = fixture()
     approvals[0]["subject_id"] = "different-person"
-    with pytest.raises(DualApprovalError, match="signature"):
+    with pytest.raises(DualApprovalError, match="identity"):
         run_validation(now, request, approvals, DualApprovalEd25519Verifier(trusted))
