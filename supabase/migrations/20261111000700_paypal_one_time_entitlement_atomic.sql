@@ -3,6 +3,18 @@
 -- resurrect an old order over a newer entitlement or after a refund.
 begin;
 
+-- Make the RPC self-contained on installations that applied the base
+-- entitlement schema but have not yet run the legacy additive SQL script.
+alter table public.sowia_entitlements
+    add column if not exists provider text;
+
+alter table public.sowia_entitlements
+    add column if not exists paypal_order_id text;
+
+create unique index if not exists sowia_entitlements_paypal_order_id_uidx
+    on public.sowia_entitlements (paypal_order_id)
+    where paypal_order_id is not null;
+
 create or replace function public.sowia_grant_paypal_one_time_entitlement(
     p_user_id uuid,
     p_order_id text,
