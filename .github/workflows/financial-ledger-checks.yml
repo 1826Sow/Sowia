@@ -12,6 +12,8 @@ on:
       - "tests/test_financial_ledger.py"
       - "tests/test_financial_reporting.py"
       - "tests/test_paypal_payments.py"
+      - "requirements.txt"
+      - "requirements.lock"
       - ".github/workflows/financial-ledger-checks.yml"
   pull_request:
     branches: [main]
