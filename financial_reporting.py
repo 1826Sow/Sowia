@@ -185,4 +185,4 @@ def summarize_subscription_statuses(rows):
         else:
             counts["other"] += 1
     return counts
-\n
+
