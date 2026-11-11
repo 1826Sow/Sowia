@@ -46,3 +46,16 @@ def test_paypal_refund_trigger_uses_empty_search_path_and_is_not_definer():
     assert "from public.sowia_financial_transactions" in function_sql
     assert "update on public.sowia_financial_transactions to authenticated" not in sql
     assert "insert on public.sowia_financial_transactions to authenticated" not in sql
+
+def test_paypal_refund_trigger_enforces_manual_review_positive_amount_and_currency():
+    sql = LEDGER_MIGRATION.read_text(encoding="utf-8").lower()
+    function_start = sql.index(
+        "create or replace function public.sowia_enforce_paypal_refund_capture_limit()"
+    )
+    function_end = sql.index("$$;", sql.index("as $$", function_start)) + 3
+    function_sql = sql[function_start:function_end]
+
+    assert "new.status <> 'manual_review'" in function_sql
+    assert "new.gross_amount <= 0" in function_sql
+    assert "select gross_amount, gross_currency" in function_sql
+    assert "new.gross_currency <> v_capture_currency" in function_sql
