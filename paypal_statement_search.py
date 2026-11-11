@@ -43,7 +43,6 @@ def _safe_transaction_info(info: dict):
         "fee_amount",
         "sales_tax_amount",
         "transaction_status",
-        "invoice_id",
         "ending_balance",
     }
     return {key: value for key, value in info.items() if key in allowed}
@@ -105,7 +104,7 @@ def _fetch_window(config, headers, start, end):
             total_pages = int(raw_total_pages)
         except (TypeError, ValueError, OverflowError):
             raise RuntimeError("Pagination PayPal invalide : total_pages absent ou incorrect.") from None
-        if str(raw_total_pages).strip() != str(total_pages) or total_pages < 1:
+        if str(raw_total_pages).strip() != str(total_pages) or total_pages < 0:
             raise RuntimeError("Pagination PayPal invalide : total_pages absent ou incorrect.")
         if total_pages > MAX_PAGES_PER_WINDOW:
             raise RuntimeError(
@@ -115,6 +114,12 @@ def _fetch_window(config, headers, start, end):
         page_events = payload.get("transaction_details")
         if not isinstance(page_events, list) or len(page_events) > PAGE_SIZE:
             raise RuntimeError("Liste des transactions PayPal invalide.")
+        # PayPal's schema allows total_pages=0 when the requested period has
+        # no transactions. Accept only the coherent empty-page representation.
+        if total_pages == 0:
+            if page_events:
+                raise RuntimeError("Pagination PayPal incohérente : zéro page avec des transactions.")
+            break
         if page > total_pages:
             raise RuntimeError("Pagination PayPal incohérente : page au-delà du total annoncé.")
         for item in page_events:
