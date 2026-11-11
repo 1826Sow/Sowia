@@ -61,7 +61,7 @@ class SQLiteAtomicApprovalStore:
     """
 
     def __init__(self, database_path: str | Path, *, timeout_seconds: float = 15.0):
-        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
+        if isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float)) or not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
             raise AtomicApprovalStoreError("timeout_seconds must be positive and finite")
         self.database_path = str(database_path)
         self.timeout_seconds = timeout_seconds
