@@ -113,3 +113,39 @@ def test_fee_and_net_are_unknown_when_currency_is_missing_or_mixed():
     result = summarize_financial_transactions(rows)[0]
     assert result['fees_reported'] is None and result['fees_currency'] is None
     assert result['net_reported'] is None and result['net_currency'] is None
+
+def test_manual_review_rows_never_enter_recognized_totals():
+    rows = [
+        {
+            "provider": "paypal", "gross_currency": "EUR", "gross_amount": "9.90",
+            "transaction_type": "payment", "status": "confirmed",
+            "fee_amount": "0.50", "fee_currency": "EUR",
+            "net_amount": "9.40", "net_currency": "EUR",
+        },
+        {
+            "provider": "paypal", "gross_currency": "EUR", "gross_amount": "4.00",
+            "transaction_type": "refund", "status": "manual_review",
+        },
+        {
+            "provider": "paypal", "gross_currency": "EUR", "gross_amount": "1.00",
+            "transaction_type": "refund", "status": "refunded",
+            "fee_amount": None, "net_amount": None,
+        },
+        {
+            "provider": "paypal", "gross_currency": "EUR", "gross_amount": "20.00",
+            "transaction_type": "payment", "status": "reversed",
+        },
+    ]
+    result = summarize_financial_transactions(rows)[0]
+    assert result["payments_gross"] == "9.90"
+    assert result["refunds_gross"] == "1.00"
+    assert result["gross_after_refunds"] == "8.90"
+    assert result["payment_count"] == 1
+    assert result["refund_count"] == 1
+    assert result["fees_reported"] is None
+    assert result["net_reported"] is None
+
+
+def test_empty_financial_ledger_returns_no_currency_groups():
+    assert summarize_financial_transactions([]) == []
+
