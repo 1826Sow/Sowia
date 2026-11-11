@@ -444,6 +444,16 @@ class SQLiteAtomicApprovalStore:
             return False
         if not isinstance(event_hash, str) or len(event_hash) != 64:
             return False
+        if (
+            not isinstance(receipt, Mapping)
+            or not receipt
+            or any(
+                not isinstance(key, str) or not key.strip()
+                or not isinstance(value, str) or not value.strip()
+                for key, value in receipt.items()
+            )
+        ):
+            return False
         try:
             receipt_text = _canonical_json(receipt).decode("utf-8")
         except (AtomicApprovalStoreError, UnicodeDecodeError):
