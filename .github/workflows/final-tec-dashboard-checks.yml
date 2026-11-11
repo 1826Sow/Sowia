@@ -1,0 +1,35 @@
+name: FINAL TEC investor dashboard checks
+
+on:
+  pull_request:
+    paths:
+      - "final_tec_investor_dashboard.py"
+      - "final_tec_evidence.py"
+      - "tests/test_final_tec_investor_dashboard.py"
+      - "tests/test_final_tec_evidence.py"
+      - ".github/workflows/final-tec-dashboard-checks.yml"
+  push:
+    branches:
+      - "feature/final-tec-investor-live-dashboard"
+    paths:
+      - "final_tec_investor_dashboard.py"
+      - "final_tec_evidence.py"
+      - "tests/test_final_tec_investor_dashboard.py"
+      - "tests/test_final_tec_evidence.py"
+      - ".github/workflows/final-tec-dashboard-checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  dashboard-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test runner
+        run: python -m pip install --upgrade pytest
+      - name: Run focused FINAL TEC dashboard tests
+        run: python -m pytest -q tests/test_final_tec_investor_dashboard.py tests/test_final_tec_evidence.py

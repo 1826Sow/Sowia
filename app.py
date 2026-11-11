@@ -44,6 +44,7 @@ import sowia_global_connect
 import sowia_global_messenger
 import sowia_global_alerts
 import sowia_business_card
+import final_tec_investor_dashboard
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -391,6 +392,9 @@ NAV_GROUPS = {
     ],
     "💳 Abonnements & compte": [
         "Abonnement",
+    ],
+    "🚀 FINAL TEC — investisseurs": [
+        "FINAL TEC LIVE — investisseurs",
     ],
     "🛡️ Administration & assistance": [
         "Centre de notifications", "SOWIA CONTROL CENTER", "Paramètres", "Aide",
@@ -6909,6 +6913,11 @@ elif page == "SOWIA CONTROL CENTER":
         st.link_button("Consulter les tests GitHub Actions", "https://github.com/1826Sow/Sowia/actions", use_container_width=True)
         st.link_button("Ouvrir le dépôt SOWIA", "https://github.com/1826Sow/Sowia", use_container_width=True)
 
+
+
+elif page == "FINAL TEC LIVE — investisseurs":
+    final_tec_investor_dashboard.render_dashboard(st)
+    st.caption("Documentation technique : docs/FINAL_TEC_LIVE_INVESTOR_DASHBOARD.md")
 
 elif page == "Paramètres":
     st.subheader(translate_ui("⚙️ Paramètres", language))
