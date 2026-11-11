@@ -142,3 +142,19 @@ def test_cancellation_and_expiration_override_payment_review_hold():
     refund = migration.index("p_event_type in ('PAYMENT.SALE.REFUNDED', 'PAYMENT.SALE.REVERSED')", suspend)
     review_hold = migration.index("v_existing_status = 'payment_review'", refund)
     assert cancel < expire < suspend < refund < review_hold
+
+
+def test_one_time_refund_is_recorded_once_in_financial_ledger_before_entitlement_revocation():
+    source = WEBHOOK
+    handler = source.index('if (eventType === "PAYMENT.CAPTURE.REFUNDED")')
+    ledger_write = source.index('"/rest/v1/sowia_financial_transactions?on_conflict=provider,provider_payment_id,transaction_type"', handler)
+    conflict_ignore = source.index('resolution=ignore-duplicates,return=minimal', ledger_write)
+    confirm = source.index("const confirmRefundResponse = await fetch(refundLedgerUrl", conflict_ignore)
+    revoke = source.index('"/rest/v1/sowia_entitlements?user_id=eq."', confirm)
+    assert handler < ledger_write < conflict_ignore < confirm < revoke
+    assert 'transaction_type: "refund"' in source
+    assert 'status: "manual_review"' in source
+    assert 'parent_capture_id: captureId' in source
+    assert 'provider_payment_id: refundId' in source
+    assert 'Number(row.gross_amount) === Number(refundAmount.value)' in source
+    assert 'String(row.parent_capture_id || "") === captureId' in source
