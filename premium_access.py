@@ -44,9 +44,14 @@ def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
     if not normalized_user_id or not normalized_order_id or amount is None:
         raise ValueError("Informations de paiement Premium incomplètes.")
     try:
-        normalized_amount = Decimal(str(amount)).quantize(Decimal("0.01"))
+        raw_amount = Decimal(str(amount))
+        if not raw_amount.is_finite():
+            raise ValueError
+        normalized_amount = raw_amount.quantize(Decimal("0.01"))
     except (InvalidOperation, ValueError, TypeError):
-        raise ValueError("Le montant Premium doit être un montant en euros valide.")
+        raise ValueError("Le montant Premium doit être un montant en euros valide.") from None
+    if raw_amount != normalized_amount:
+        raise ValueError("Le montant Premium ne peut pas comporter plus de deux décimales.")
     if (
         not normalized_amount.is_finite()
         or normalized_amount <= 0
