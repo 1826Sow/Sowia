@@ -71,7 +71,7 @@ class RawResponse(Response):
 
 
 @pytest.mark.parametrize("body", [
-    b'{"keys":[' + b'[' * 1200 + b'0' + b']' * 1200 + b']}',
+    b'{"keys":[],"nested":' + b'[' * 1200 + b'0' + b']' * 1200 + b'}',
     b'{"keys":[],"extra":' + b'9' * 5000 + b'}',
 ])
 def test_pathological_json_parser_errors_are_normalized(body):
