@@ -61,6 +61,8 @@ def test_subscription_refund_or_reversal_uses_atomic_database_reconciliation():
     assert 'eventType === "BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED"' in source
     assert "p_recovery_verified: verifiedPaymentRecovery" in source
     assert "p_event_type: eventType" in source
+    assert "p_event_time: eventTime" in source
+    assert "Date.parse(eventTime)" in source
 
 
 def test_subscription_reconciliation_rpc_serializes_concurrent_events():
@@ -68,6 +70,10 @@ def test_subscription_reconciliation_rpc_serializes_concurrent_events():
     assert "security definer" in migration.lower()
     assert "set search_path = ''" in migration
     assert "pg_advisory_xact_lock" in migration
+    assert "last_webhook_event_time" in migration
+    assert "payment_review_at" in migration
+    assert "p_event_time < v_existing_event_time" in migration
+    assert "p_event_time > v_review_at" in migration
     assert "for update" in migration.lower()
     assert "PAYMENT.SALE.REFUNDED" in migration
     assert "PAYMENT.SALE.REVERSED" in migration
