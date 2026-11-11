@@ -80,6 +80,17 @@ def test_pathological_json_parser_errors_are_normalized(body):
         make_resolver(opener)("key-1")
 
 
+@pytest.mark.parametrize("body", [
+    b'{"keys":[],"keys":[]}',
+    b'{"keys":[{"kty":"RSA","kid":"first","kid":"second"}]}',
+    b'{"keys":[{"kty":"RSA","kid":"same","nested":{"alg":"RS256","alg":"none"}}]}',
+])
+def test_duplicate_json_members_are_rejected_at_every_depth(body):
+    opener = FakeOpener([RawResponse(body)])
+    with pytest.raises(JWKSConfigurationError, match="invalid JSON"):
+        make_resolver(opener)("key-1")
+
+
 def test_rejects_non_https_and_ambiguous_urls():
     for url in (
         "http://login.example.test/jwks",
