@@ -168,6 +168,25 @@ def test_invalid_configuration_is_rejected():
         )
 
 
+@pytest.mark.parametrize("issuer", [
+    "http://identity.example.test/",
+    "https:///missing-host",
+    "https://user:password@identity.example.test/",
+    "https://identity.example.test/?tenant=unexpected",
+    "https://identity.example.test/#fragment",
+])
+def test_insecure_or_ambiguous_issuer_configuration_is_rejected(issuer):
+    with pytest.raises(OIDCIdentityError):
+        OIDCApprovalIdentityVerifier(
+            issuer=issuer,
+            audience=AUDIENCE,
+            signing_key_resolver=lambda kid: None,
+            assertion_resolver=lambda context: {},
+            role_resolver=lambda subject, role: False,
+            required_acr="acr",
+        )
+
+
 def test_boolean_auth_age_configuration_is_rejected():
     with pytest.raises(OIDCIdentityError):
         OIDCApprovalIdentityVerifier(
