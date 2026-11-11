@@ -121,6 +121,12 @@ def test_wrong_acr_is_rejected(signing_material):
     assert verifier(SUBJECT, "security-approver", {}) is False
 
 
+def test_oauth_only_amr_is_rejected_for_final_tec_approval(signing_material):
+    private, public = signing_material
+    verifier = build_verifier(make_token(private, amr=["oauth"]), public)
+    assert verifier(SUBJECT, "security-approver", {}) is False
+
+
 def test_unknown_jwks_key_is_rejected(signing_material):
     private, public = signing_material
     verifier = build_verifier(make_token(private), public, key_resolver=lambda kid: None)
