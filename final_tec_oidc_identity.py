@@ -24,8 +24,15 @@ class OIDCApprovalIdentityVerifier:
     """Callable identity_verifier for validate_dual_approval.
 
     assertion_resolver(context) must retrieve a server-side approval session
-    and return {"id_token": str, "expected_nonce": str}. It must not accept
-    tokens or expected nonces supplied by the approval manifest.
+    and return {"id_token": str, "expected_nonce": str, "session_id": str}.
+    It must not accept tokens, expected nonces, or session IDs supplied by the
+    approval manifest.
+
+    consume_assertion_session(session_id, expected_nonce) must atomically
+    consume that server-side session exactly once. It must return True only
+    for the first successful consumption; retries and concurrent replays
+    must return False. This callback is mandatory and must use a shared,
+    durable session store in production.
 
     signing_key_resolver(kid) must resolve a key from the configured issuer's
     authenticated JWKS source. role_resolver(subject, role) must query current
@@ -39,6 +46,7 @@ class OIDCApprovalIdentityVerifier:
         audience: str,
         signing_key_resolver: Callable[[str], Any],
         assertion_resolver: Callable[[Mapping[str, Any]], Mapping[str, str]],
+        consume_assertion_session: Callable[[str, str], bool],
         role_resolver: Callable[[str, str], bool],
         required_acr: str,
         required_amr: str = "webauthn",
@@ -62,7 +70,10 @@ class OIDCApprovalIdentityVerifier:
         self.issuer = issuer
         self.audience = audience
         self.signing_key_resolver = signing_key_resolver
+        if not callable(consume_assertion_session):
+            raise OIDCIdentityError("one-time assertion-session consumer is required")
         self.assertion_resolver = assertion_resolver
+        self.consume_assertion_session = consume_assertion_session
         self.role_resolver = role_resolver
         self.required_acr = required_acr
         self.required_amr = required_amr
@@ -80,7 +91,12 @@ class OIDCApprovalIdentityVerifier:
                 return False
             token = session.get("id_token")
             expected_nonce = session.get("expected_nonce")
-            if not isinstance(token, str) or not token or not isinstance(expected_nonce, str) or not expected_nonce:
+            session_id = session.get("session_id")
+            if (
+                not isinstance(token, str) or not token
+                or not isinstance(expected_nonce, str) or not expected_nonce
+                or not isinstance(session_id, str) or not session_id.strip()
+            ):
                 return False
 
             header = jwt.get_unverified_header(token)
@@ -126,8 +142,11 @@ class OIDCApprovalIdentityVerifier:
             if not isinstance(amr, list) or self.required_amr not in amr:
                 return False
 
-            # Re-check current role membership after cryptographic token checks.
-            return self.role_resolver(subject_id, role) is True
+            # Re-check current role membership, then atomically consume the
+            # server-side session. A valid ID token is not reusable evidence.
+            if self.role_resolver(subject_id, role) is not True:
+                return False
+            return self.consume_assertion_session(session_id, expected_nonce) is True
         except (InvalidTokenError, OIDCIdentityError, KeyError, TypeError, ValueError):
             return False
         except Exception:
