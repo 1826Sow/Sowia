@@ -111,3 +111,24 @@ def test_one_time_capture_refund_is_verified_and_revokes_only_linked_entitlement
     assert 'JSON.stringify({ status: "inactive" })' in source
     assert '"return=representation"' in source
     assert "PAYMENT.CAPTURE.REVERSED" not in source
+
+
+def test_terminal_paypal_events_override_a_stale_active_api_snapshot():
+    source = WEBHOOK
+    status_block = source.index("let effectiveStatus = normalizedStatus")
+    cancel = source.index('eventType === "BILLING.SUBSCRIPTION.CANCELLED"', status_block)
+    expire = source.index('eventType === "BILLING.SUBSCRIPTION.EXPIRED"', cancel)
+    suspend = source.index('eventType === "BILLING.SUBSCRIPTION.SUSPENDED"', expire)
+    rpc = source.index('"\/rest\/v1\/rpc\/sowia_reconcile_paypal_subscription"', suspend)
+    assert status_block < cancel < expire < suspend < rpc
+    assert 'effectiveStatus = "cancelled"' in source
+    assert 'effectiveStatus = "expired"' in source
+    assert 'effectiveStatus = "suspended"' in source
+
+
+def test_cancelled_and_expired_subscriptions_are_terminal_in_atomic_rpc():
+    migration = (ROOT / "supabase/migrations/20261111000500_paypal_subscription_atomic_reconciliation.sql").read_text(encoding="utf-8")
+    terminal = migration.index("if v_existing_status in ('cancelled', 'expired') then")
+    write = migration.index("insert into public.sowia_subscriptions", terminal)
+    assert terminal < write
+    assert "return v_existing_status;" in migration[terminal:write]
