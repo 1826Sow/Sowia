@@ -32,13 +32,14 @@ create table if not exists final_tec_private.audit_events (
             'evidence_published',
             'evidence_unpublished',
             'access_granted',
-            'access_revoked'
+            'access_revoked',
+            'investor_dashboard_viewed'
         )
     ),
     resource_type text not null check (length(resource_type) between 1 and 160),
     resource_id text not null check (length(resource_id) between 1 and 160),
     outcome text not null check (
-        outcome in ('accepted', 'denied', 'pending', 'completed', 'failed')
+        outcome in ('allowed', 'accepted', 'denied', 'pending', 'completed', 'failed')
     ),
     reason_code text not null check (length(reason_code) between 1 and 160),
     occurred_at timestamptz not null default clock_timestamp(),
@@ -147,3 +148,58 @@ revoke all on function final_tec_private.reject_audit_mutation() from public, an
 -- 5. Test denied anon/authenticated reads and writes with two distinct accounts.
 -- 6. Review extension schema, function ownership, grants and trigger behavior in a
 --    disposable Supabase project before any production approval.
+
+
+create or replace function public.final_tec_append_audit_event(
+    p_actor_id uuid, p_actor_role text, p_action text,
+    p_resource_type text, p_resource_id text, p_outcome text, p_reason_code text
+)
+returns table (sequence_id bigint, event_id uuid, occurred_at timestamptz, event_hash text)
+language plpgsql security definer
+set search_path = pg_catalog, public, final_tec_private, auth
+as $function$
+declare
+    allowed_assignment boolean;
+    inserted final_tec_private.audit_events%rowtype;
+begin
+    if coalesce(auth.role(), '') <> 'service_role' then
+        raise exception 'service_role_required';
+    end if;
+    if p_actor_id is null
+       or p_actor_role not in ('final_tec_admin', 'final_tec_analyst', 'final_tec_investor_viewer')
+       or p_action not in ('evidence_submitted','evidence_reviewed','evidence_changes_requested',
+           'evidence_rejected','evidence_publication_requested','evidence_published',
+           'evidence_unpublished','access_granted','access_revoked','investor_dashboard_viewed')
+       or p_outcome not in ('allowed','accepted','denied','pending','completed','failed')
+       or p_resource_type is null or length(trim(p_resource_type)) not between 1 and 160
+       or p_resource_id is null or length(trim(p_resource_id)) not between 1 and 160
+       or p_reason_code is null or p_reason_code !~ '^[a-z0-9_.-]{3,80}$' then
+        raise exception 'invalid_audit_event';
+    end if;
+    select exists (
+        select 1 from public.final_tec_investor_access a
+        where a.user_id=p_actor_id and a.project_key='final-tec'
+          and a.role=p_actor_role and a.status='active' and a.starts_at<=now()
+          and (a.expires_at is null or a.expires_at>now())
+    ) into allowed_assignment;
+    if not allowed_assignment then raise exception 'active_final_tec_assignment_required'; end if;
+    if (p_actor_role='final_tec_investor_viewer' and p_action<>'investor_dashboard_viewed')
+       or (p_actor_role='final_tec_analyst' and p_action not in
+          ('evidence_submitted','evidence_reviewed','evidence_changes_requested','evidence_rejected'))
+       or (p_actor_role='final_tec_admin' and p_action='investor_dashboard_viewed') then
+        raise exception 'action_not_permitted_for_role';
+    end if;
+    insert into final_tec_private.audit_events (
+        actor_id,actor_role,action,resource_type,resource_id,outcome,reason_code,previous_hash,event_hash
+    ) values (
+        p_actor_id,p_actor_role,p_action,p_resource_type,p_resource_id,p_outcome,p_reason_code,
+        repeat('0',64),repeat('0',64)
+    ) returning * into inserted;
+    return query select inserted.sequence_id,inserted.event_id,inserted.occurred_at,inserted.event_hash;
+end;
+$function$;
+
+revoke all on function public.final_tec_append_audit_event(uuid,text,text,text,text,text,text)
+    from public, anon, authenticated;
+grant execute on function public.final_tec_append_audit_event(uuid,text,text,text,text,text,text)
+    to service_role;
