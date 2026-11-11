@@ -175,13 +175,11 @@ def test_oidc_verifier_integrates_with_dual_approval_engine(signing_material):
     now_dt = datetime.now(timezone.utc)
     now = int(now_dt.timestamp())
     private_a, public_a = signing_material
-    private_b = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    public_b = private_b.public_key()
     tokens = {
         "key-a": make_token(private_a, sub="approver-a", nonce="nonce-a"),
-        "key-b": make_token(private_b, sub="approver-b", nonce="nonce-b"),
+        "key-b": make_token(private_a, sub="approver-b", nonce="nonce-b"),
     }
-    keys = {"key-a": public_a, "key-b": public_b}
+    keys = {"issuer-key-1": public_a}
     nonces = {"key-a": "nonce-a", "key-b": "nonce-b"}
     verifier = OIDCApprovalIdentityVerifier(
         issuer=ISSUER,
