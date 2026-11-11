@@ -36,9 +36,20 @@ def test_business_club_and_night_exchange_remain_professional_only():
     normalized = " ".join(MIGRATION.split())
     for table in ("sowia_business_club_profiles", "sowia_business_club_requests", "sowia_business_club_meetings", "sowia_business_club_notifications", "sowia_night_exchange_apps", "sowia_night_exchange_events"):
         assert f"on public.{table} as restrictive for all to authenticated" in normalized
-    assert normalized.count("using (public.sowia_has_professional_access())") == 6
+    assert normalized.count("using (public.sowia_has_professional_access())") == 5
     assert normalized.count("with check (public.sowia_has_professional_access())") == 6
 
+
+
+def test_trusted_admins_can_read_night_exchange_moderation_queue_without_customer_premium():
+    normalized = " ".join(MIGRATION.split())
+    start = normalized.index('create policy "require premium for night exchange apps"')
+    end = normalized.index('drop policy if exists "require premium for night exchange events"', start)
+    policy = normalized[start:end]
+    assert "auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin'" in policy
+    assert "auth.jwt() -> 'app_metadata' ->> 'sowia_admin', '') = 'true'" in policy
+    assert "with check (public.sowia_has_professional_access())" in policy
+    assert "user_metadata" not in policy
 
 def test_migration_preserves_existing_rows_and_base_policies():
     assert "delete from " not in MIGRATION
