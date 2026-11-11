@@ -5,7 +5,7 @@ pypdfium2>=4.30
 pytesseract>=0.3.13
 python-dotenv>=1.0
 requests>=2.32
-stripe>=11.0
+stripe==16.1.0
 pytest>=8.0
 supabase>=2.20,<3
 reportlab>=4.2
