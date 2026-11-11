@@ -17,8 +17,12 @@ _REQUIRED = (
     "SOWIA_TEST_USER_A_PASSWORD",
     "SOWIA_TEST_USER_B_EMAIL",
     "SOWIA_TEST_USER_B_PASSWORD",
+    "SOWIA_TEST_PROJECT_CONFIRMATION",
 )
 _MISSING = [name for name in _REQUIRED if not os.getenv(name)]
+_CONFIRMATION = "I_CONFIRM_THIS_IS_A_DEDICATED_SOWIA_TEST_PROJECT"
+if not _MISSING and os.environ["SOWIA_TEST_PROJECT_CONFIRMATION"] != _CONFIRMATION:
+    raise RuntimeError("Refusing live tests: explicit dedicated-test-project confirmation is missing")
 pytestmark = pytest.mark.skipif(
     bool(_MISSING),
     reason="Dedicated live Supabase test credentials are not configured",
