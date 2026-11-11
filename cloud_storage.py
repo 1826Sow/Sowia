@@ -1280,10 +1280,13 @@ def list_global_profiles_for_admin(client, user, limit=200):
 def create_global_action_plan(client, user, plan):
     from sowia_global_action_governance import validate_action_plan
     clean = validate_action_plan(**plan)
+    creator_id = _user_id(user)
+    if clean["approver_id"] == creator_id:
+        raise ValueError("Le compte approbateur doit être différent du créateur.")
     # Status and approval timestamps are database-owned defaults/workflow fields.
     # Column-level INSERT grants reject any client attempt to set them directly.
     return client.table("sowia_global_action_plans").insert(
-        {"creator_id": _user_id(user), **clean}
+        {"creator_id": creator_id, **clean}
     ).execute().data
 
 
