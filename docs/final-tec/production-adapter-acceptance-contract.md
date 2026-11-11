@@ -840,3 +840,65 @@ mono-hôte restent limitées à leur périmètre. Intégrations et essais de
 concurrence OIDC réels : **NOT_CONFIGURED / NOT_RUN** ; G2-B :
 **NO-GO / NOT_RUN**.
 
+### 21.8 Audit de la gouvernance GitHub et des contrôles de fusion
+
+#### Éléments vérifiés sur le dépôt
+
+L'API GitHub expose un ruleset actif nommé `PROTECTION SOWIA MAIN`, ciblant
+uniquement `refs/heads/main`. Son contenu vérifié contient deux règles :
+interdiction de suppression de branche et interdiction de mise à jour
+non-fast-forward. Aucun acteur de contournement n'est déclaré et
+`current_user_can_bypass` vaut `never`.
+
+Ce ruleset ne contient pas de règle exigeant une pull request, un nombre
+minimal d'approbations, l'approbation d'un Code Owner, la résolution des
+conversations, ni des contrôles CI obligatoires. Il protège donc certains
+mouvements de référence, mais ne démontre pas à lui seul une séparation des
+fonctions ou une validation indépendante avant fusion.
+
+Aucun fichier `CODEOWNERS` n'a été trouvé aux deux emplacements conventionnels
+vérifiés (`CODEOWNERS` à la racine et `.github/CODEOWNERS`). La liste des
+revues de la PR #263 est vide et aucun reviewer individuel ou d'équipe n'est
+actuellement demandé. La PR demeure ouverte et en brouillon.
+
+#### Limites de visibilité
+
+La lecture de l'endpoint de protection de branche `main` a été refusée par
+GitHub avec HTTP 403 (« Resource not accessible by integration »). Il n'est
+donc pas possible de conclure que les règles de protection de branche
+classiques sont absentes, ni de vérifier les paramètres qui pourraient
+compléter le ruleset. Les paramètres de sécurité du compte, les équipes,
+l'identité des administrateurs et les droits effectifs de chaque acteur ne
+sont pas démontrés par cet audit.
+
+#### Contrôles requis avant toute fusion de production
+
+- Exiger une pull request pour toute modification de `main`.
+- Exiger au moins une approbation indépendante, provenant d'une personne
+  autre que l'auteur du changement ; imposer une équipe de revue compétente
+  lorsque disponible.
+- Activer CODEOWNERS pour les modules FINAL TEC, les workflows CI et les
+  scripts d'infrastructure, puis exiger leur approbation.
+- Exiger le succès des contrôles CI pertinents sur le dernier SHA proposé ;
+  invalider les approbations obsolètes après nouveaux commits.
+- Exiger la résolution des conversations et interdire les contournements
+  non justifiés ; documenter séparément tout rôle d'administrateur pouvant
+  bypasser ces règles.
+- Vérifier les paramètres de protection de branche classiques et les
+  permissions effectives des acteurs avec un compte disposant des droits
+  d'administration du dépôt.
+
+Ces exigences sont des recommandations de configuration, pas des réglages
+appliqués par cet audit. Aucune modification de règles GitHub n'a été faite.
+
+#### Décision
+
+La protection actuelle de `main` contre suppression et force-push est
+confirmée. La revue indépendante obligatoire, CODEOWNERS, les checks requis
+et la protection complète de fusion ne sont pas démontrés par le ruleset
+consulté. L'endpoint de protection classique reste non vérifié faute de
+permission. La gouvernance de fusion de production est donc
+**NOT_FULLY_VERIFIED**. La PR #263 reste ouverte, en brouillon et non
+fusionnée ; aucune fusion, aucun déploiement et aucun workload n'ont été
+effectués. G2-B reste **NO-GO / NOT_RUN**.
+
