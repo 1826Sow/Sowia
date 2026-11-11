@@ -29,7 +29,7 @@ Ne pas confondre ce socle avec l’installation de tous les modules du dépôt :
 - `supabase_business_club.sql` — base du Club Business.
 - `supabase_business_club_notifications.sql` — après `supabase_business_club.sql`.
 
-**Contrôle Premium RLS des modules :** après avoir créé toutes les tables concernées (`supabase_growth_crm.sql`, `supabase_relationship_calendar.sql`, `supabase_business_club.sql`, `supabase_night_exchange_registry.sql` et `supabase_night_exchange_events.sql`), exécuter `supabase/migrations/20261111000300_sowia_professional_modules_rls.sql`. Cette migration référence directement les sept tables : elle échoue si l’une d’elles n’existe pas encore. Si un module est installé plus tard, réexécuter la migration après création de ses tables.
+**Contrôle Premium RLS des modules :** après avoir créé toutes les tables concernées (`supabase_growth_crm.sql`, `supabase_relationship_calendar.sql`, `supabase_business_club.sql`, `supabase_business_club_notifications.sql`, `supabase_night_exchange_registry.sql` et `supabase_night_exchange_events.sql`), exécuter `supabase/migrations/20261111000300_sowia_professional_modules_rls.sql`. Cette migration référence directement les huit tables : elle échoue si l’une d’elles n’existe pas encore. Si un module est installé plus tard, réexécuter la migration après création de ses tables.
 
 ### Réseau d’impression et cartes VIP
 
