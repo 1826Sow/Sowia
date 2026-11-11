@@ -13,7 +13,8 @@ on:
       - "final_tec_evidence_monitor_ui.py"
       - "final_tec_investor_dashboard.py"
       - "final_tec_evidence.py"
-      - "final_tec_evidence_review.py"
+      - "final_tec_evidence_review.py final_tec_audit_trail.py"
+      - "final_tec_audit_trail.py"
       - "tests/test_final_tec_access.py"
       - "tests/test_final_tec_published_metrics.py"
       - "tests/test_final_tec_evidence_intake.py"
@@ -23,7 +24,8 @@ on:
       - "tests/test_final_tec_evidence_monitor.py"
       - "tests/test_final_tec_investor_dashboard.py"
       - "tests/test_final_tec_evidence.py"
-      - "tests/test_final_tec_evidence_review.py"
+      - "tests/test_final_tec_evidence_review.py tests/test_final_tec_audit_trail.py"
+      - "tests/test_final_tec_audit_trail.py"
       - ".github/workflows/final-tec-dashboard-checks.yml"
   push:
     branches:
@@ -35,6 +37,7 @@ on:
       - "feature/final-tec-edge-engine"
       - "feature/final-tec-evidence-monitoring"
       - "feature/final-tec-evidence-review-engine"
+      - "security/final-tec-audit-trail"
     paths:
       - "app.py"
       - "final_tec_access.py"
