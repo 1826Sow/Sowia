@@ -39,7 +39,9 @@ pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integratio
 
 Dans GitHub, ouvrir **Settings → Secrets and variables → Actions**, puis créer les sept secrets portant exactement les noms listés plus haut. Leurs valeurs doivent provenir exclusivement du projet Supabase de test et de ses deux comptes dédiés.
 
-L'action GitHub lance alors les tests réels entre les deux comptes à chaque push/PR. Si l'un des six identifiants ou la confirmation dédiée manque ou est incorrect, le job indique explicitement que les tests réels sont ignorés ; il ne prétend jamais avoir validé la RLS. Ne jamais renseigner les identifiants d'un compte réel ni ceux du projet de production.
+**Protection des secrets :** le job des tests RLS réels est conditionné aux seuls événements `push` sur la branche `main`. Il ne reçoit donc aucun secret pendant les événements `pull_request`, où le code proposé peut être non fiable. Les tests automatisés ordinaires continuent de s'exécuter sur les PR sans secrets. En conséquence, une PR ne valide pas l'isolation Supabase réelle ; celle-ci ne sera testée qu'après un push fiable sur `main`, si les sept secrets sont configurés.
+
+Si l'un des six identifiants ou la confirmation dédiée manque ou est incorrect, le job indique explicitement que les tests réels sont ignorés ; il ne prétend jamais avoir validé la RLS. Ne jamais renseigner les identifiants d'un compte réel ni ceux du projet de production.
 
 Avec les sept variables, deux sessions authentifiées vérifient pour chaque table que le compte A peut lire ses propres lignes, que le compte B ne peut pas les lire, qu'il ne peut pas insérer une ligne au nom de A et qu'il ne peut pas supprimer la ligne de A. Les lignes témoins créées sont supprimées par le compte A dans un bloc `finally`.
 
