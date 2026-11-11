@@ -242,5 +242,9 @@ def test_missing_atomic_or_legacy_commit_callbacks_fail_closed():
             request, approvals,
             signature_verifier=lambda envelope, approval: True,
             identity_verifier=lambda subject, role, context: True,
+            # Legacy split callbacks are deliberately insufficient: they
+            # cannot prove nonce consumption and audit append are atomic.
+            nonce_pair_consumer=lambda auth_id, records: True,
+            audit_append=lambda event: True,
             now=now,
         )
