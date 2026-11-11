@@ -7,6 +7,8 @@ nonce storage, host attestation, or workload execution. Test callbacks are fakes
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import base64
+import binascii
 import math
 import re
 from typing import Any, Callable, Mapping
@@ -145,8 +147,14 @@ def validate_authorization_contract(
     if approval["algorithm"] != "Ed25519":
         raise AuthorizationContractError("Algorithme de signature non autorisé.")
     signature = approval["signature"]
-    if not isinstance(signature, str) or len(signature) < 80 or len(signature) > 256:
+    if not isinstance(signature, str) or len(signature) > 256:
         raise AuthorizationContractError("Signature encodée absente ou de longueur invalide.")
+    try:
+        decoded_signature = base64.b64decode(signature, validate=True)
+    except (ValueError, binascii.Error) as exc:
+        raise AuthorizationContractError("Signature : encodage Base64 invalide.") from exc
+    if len(decoded_signature) != 64:
+        raise AuthorizationContractError("Signature Ed25519 : 64 octets attendus.")
 
     environment = contract["environment"]
     if not isinstance(environment, Mapping) or set(environment) != _ENVIRONMENT:
@@ -183,7 +191,9 @@ def validate_authorization_contract(
     # Verify trusted identities and signature before consuming the one-time nonce.
     if identity_verifier(actors["approver_id"], approver_role) is not True:
         raise AuthorizationContractError("Identité ou rôle de l'approbateur non vérifié.")
+    signed_approval = {key: value for key, value in approval.items() if key != "signature"}
     payload = {key: value for key, value in contract.items() if key != "approval"}
+    payload["approval"] = signed_approval
     if signature_verifier(payload, approval) is not True:
         raise AuthorizationContractError("Signature invalide ou clé non approuvée.")
     if nonce_consumer(nonce, authorization_id) is not True:
