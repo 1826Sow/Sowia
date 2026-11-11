@@ -714,6 +714,70 @@ def test_anchor_recovery_handles_lost_append_response_idempotently(tmp_path):
     assert store.verify_anchor_outbox() is True
 
 
+def test_anchor_recovery_retries_when_local_receipt_mark_fails(tmp_path):
+    """A verified remote receipt must remain recoverable if local marking fails."""
+    from final_tec_audit_anchor import ExternalAuditAnchorCoordinator
+
+    class FailFirstLocalMarkStore(SQLiteAtomicApprovalStore):
+        def __init__(self, path):
+            super().__init__(path, timeout_seconds=30)
+            self.mark_calls = 0
+
+        def mark_checkpoint_anchored(self, authorization_id, event_hash, receipt):
+            self.mark_calls += 1
+            if self.mark_calls == 1:
+                return False
+            return super().mark_checkpoint_anchored(
+                authorization_id, event_hash, receipt
+            )
+
+    class IdempotentAnchor:
+        def __init__(self):
+            self.receipts = {}
+            self.append_calls = 0
+
+        def append_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc):
+            self.append_calls += 1
+            key = (sequence, previous_hash, event_hash, created_at_utc)
+            return self.receipts.setdefault(
+                key, {"receipt_id": f"durable-{sequence}", "event_hash": event_hash}
+            )
+
+        def verify_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc, receipt):
+            key = (sequence, previous_hash, event_hash, created_at_utc)
+            return self.receipts.get(key) == receipt
+
+    now = datetime.now(timezone.utc)
+    path = tmp_path / "outbox-local-mark-failure.sqlite3"
+    store = FailFirstLocalMarkStore(path)
+    records = _records(now)
+    authorization_id = "auth-anchor-local-mark-failure"
+    event = {
+        "event_type": "anchor-local-mark-recovery",
+        "authorization_id": authorization_id,
+    }
+    assert store.register_pair(authorization_id, records, now=now)
+    anchor = IdempotentAnchor()
+    coordinator = ExternalAuditAnchorCoordinator(store, anchor)
+
+    # Remote receipt is durable and verified, but local status update fails.
+    assert coordinator.commit_and_anchor(authorization_id, records, event) is False
+    assert anchor.append_calls == 1
+    assert store.anchor_outbox_status(authorization_id) == "pending"
+    assert len(store.pending_anchor_checkpoints()) == 1
+
+    # Recovery repeats the idempotent append and completes the local transition.
+    assert coordinator.recover_pending() == 1
+    assert anchor.append_calls == 2
+    assert len(anchor.receipts) == 1
+    assert store.mark_calls == 2
+    assert store.anchor_outbox_status(authorization_id) == "anchored"
+    assert store.pending_anchor_checkpoints() == []
+    assert len(store.audit_events()) == 1
+    assert store.verify_audit_chain() is True
+    assert store.verify_anchor_outbox() is True
+
+
 def test_outbox_rejects_audit_event_with_missing_or_mismatched_authorization_id(tmp_path):
     now = datetime.now(timezone.utc)
     store = _store(tmp_path, "outbox-authorization-binding.sqlite3")
