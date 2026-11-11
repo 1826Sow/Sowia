@@ -39,9 +39,10 @@ jobs:
           def pins(path):
               found = set()
               for line in Path(path).read_text().splitlines():
-                  match = re.match(r"^([A-Za-z0-9_.-]+)==([^\\\\\\s]+)", line)
-                  if match:
-                      found.add((match.group(1).lower().replace("_", "-"), match.group(2)))
+                  parts = line.split("==", 1)
+                  if len(parts) == 2:
+                      version = parts[1].strip().split()[0].rstrip(chr(92))
+                      found.add((parts[0].lower().replace("_", "-"), version))
               return found
 
           committed = pins("requirements.lock")
