@@ -42,7 +42,12 @@ for select to authenticated using (exists (
     and (p.creator_id = auth.uid() or p.approver_id = auth.uid())
 ));
 revoke all on public.sowia_global_action_plans, public.sowia_global_action_audit from anon, public, authenticated;
-grant select, insert on public.sowia_global_action_plans to authenticated;
+grant select on public.sowia_global_action_plans to authenticated;
+-- Clients may create draft content only; workflow metadata remains server-controlled.
+grant insert (
+    creator_id, title, objective, country, owner_label, budget_cap, currency,
+    due_date, success_metric, stop_condition, approver_id
+) on public.sowia_global_action_plans to authenticated;
 grant select on public.sowia_global_action_audit to authenticated;
 drop policy if exists sowia_action_plan_insert on public.sowia_global_action_plans;
 create policy sowia_action_plan_insert on public.sowia_global_action_plans
