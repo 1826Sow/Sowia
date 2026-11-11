@@ -8,7 +8,7 @@ checkpoint anchored. Provider implementations are injected.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Mapping, Protocol, Sequence
 
 
@@ -65,7 +65,12 @@ class ExternalCheckpointAnchor(Protocol):
 def _valid_checkpoint(checkpoint: Any, authorization_id: str) -> bool:
     if not isinstance(checkpoint, AuditCheckpoint):
         return False
-    if checkpoint.authorization_id != authorization_id:
+    if (
+        not isinstance(authorization_id, str)
+        or not authorization_id.strip()
+        or not isinstance(checkpoint.authorization_id, str)
+        or checkpoint.authorization_id != authorization_id
+    ):
         return False
     if not isinstance(checkpoint.sequence, int) or isinstance(checkpoint.sequence, bool) or checkpoint.sequence < 1:
         return False
@@ -82,7 +87,12 @@ def _valid_checkpoint(checkpoint: Any, authorization_id: str) -> bool:
         parsed = datetime.fromisoformat(checkpoint.created_at_utc.replace("Z", "+00:00"))
     except ValueError:
         return False
-    return parsed.tzinfo is not None and parsed.utcoffset() is not None
+    # The field is explicitly UTC: reject naive timestamps and non-zero offsets.
+    return (
+        parsed.tzinfo is not None
+        and parsed.utcoffset() is not None
+        and parsed.utcoffset() == timezone.utc.utcoffset(parsed)
+    )
 
 
 class ExternalAuditAnchorCoordinator:
@@ -93,6 +103,8 @@ class ExternalAuditAnchorCoordinator:
         self.anchor = anchor
 
     def _anchor_checkpoint(self, checkpoint: AuditCheckpoint) -> bool:
+        if not isinstance(checkpoint, AuditCheckpoint):
+            return False
         if not _valid_checkpoint(checkpoint, checkpoint.authorization_id):
             return False
         try:
@@ -148,6 +160,8 @@ class ExternalAuditAnchorCoordinator:
         try:
             pending = self.ledger.pending_anchor_checkpoints()
         except Exception:
+            return 0
+        if not isinstance(pending, Sequence) or isinstance(pending, (str, bytes)):
             return 0
         recovered = 0
         for checkpoint in pending:
