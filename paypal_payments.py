@@ -292,21 +292,22 @@ def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
             capture_status = str(capture.get("status") or "").upper()
             # A partial refund is not a full loss of the purchase. Keep the
             # entitlement active while the exact refund is under review.
-            if order_id and capture_status == "REFUNDED":
-                revoked = (
-                    admin_client.table("sowia_entitlements")
-                    .update({"status": "inactive"})
-                    .eq("user_id", normalized_user_id)
-                    .eq("paypal_order_id", order_id)
-                    .eq("status", "active")
-                    .execute()
-                )
-                if getattr(revoked, "data", None):
-                    entitlements_revoked += len(revoked.data)
-            else:
-                # Older ledger rows may predate the order-link migration.
-                # Never guess which entitlement belongs to a capture.
-                missing_order_links += 1
+            if capture_status == "REFUNDED":
+                if order_id:
+                    revoked = (
+                        admin_client.table("sowia_entitlements")
+                        .update({"status": "inactive"})
+                        .eq("user_id", normalized_user_id)
+                        .eq("paypal_order_id", order_id)
+                        .eq("status", "active")
+                        .execute()
+                    )
+                    if getattr(revoked, "data", None):
+                        entitlements_revoked += len(revoked.data)
+                else:
+                    # Older ledger rows may predate the order-link migration.
+                    # Never guess which entitlement belongs to a capture.
+                    missing_order_links += 1
     return {
         "captures_checked": checked,
         "refunds_detected": detected,
