@@ -2,6 +2,35 @@
 -- Additive and safe to re-run. Existing rows and Personal access are preserved.
 begin;
 
+-- Make the migration independent of the legacy manual workspace upgrade file.
+alter table public.sowia_memory_items
+    add column if not exists workspace_id text not null default 'personal';
+alter table public.sowia_messages
+    add column if not exists workspace_id text not null default 'personal';
+
+do $constraints$
+begin
+    if not exists (
+        select 1 from pg_constraint
+        where conrelid = 'public.sowia_memory_items'::regclass
+          and conname = 'sowia_memory_items_workspace_id_check'
+    ) then
+        alter table public.sowia_memory_items
+            add constraint sowia_memory_items_workspace_id_check
+            check (workspace_id in ('personal', 'professional'));
+    end if;
+    if not exists (
+        select 1 from pg_constraint
+        where conrelid = 'public.sowia_messages'::regclass
+          and conname = 'sowia_messages_workspace_id_check'
+    ) then
+        alter table public.sowia_messages
+            add constraint sowia_messages_workspace_id_check
+            check (workspace_id in ('personal', 'professional'));
+    end if;
+end
+$constraints$;
+
 create or replace function public.sowia_has_professional_access()
 returns boolean
 language sql
