@@ -52,7 +52,7 @@ def evaluate_offline_fixture(
     local, network-disabled, zero-cost and tightly bounded. Unknown fixture IDs
     fail closed.
     """
-    if fixture_id not in _FIXTURES:
+    if not isinstance(fixture_id, str) or fixture_id not in _FIXTURES:
         raise RunPolicyError("Fixture G1 inconnu ou non autorisé.")
 
     policy = validate_run_manifest(manifest, now=now)
