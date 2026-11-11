@@ -285,30 +285,19 @@ if cloud_mode and current_user is not None:
             completed_order = paypal_payments.capture_premium_order(
                 normalized_order_id, str(current_user.id)
             )
-            premium_access.grant_paypal_entitlement(
-                admin_client, str(current_user.id), normalized_order_id,
-                payment_config["amount"], payment_config["currency"],
+            capture_details = (
+                completed_order["purchase_units"][0]["payments"]["captures"][0]
             )
-            # Financial reporting is secondary to the verified entitlement:
-            # a ledger write failure must not misreport a successful payment
-            # as failed or revoke access already granted.
-            try:
-                capture_details = (
-                    completed_order["purchase_units"][0]["payments"]["captures"][0]
-                )
-                financial_ledger.record_paypal_capture(
-                    admin_client,
-                    user_id=str(current_user.id),
-                    order_id=normalized_order_id,
-                    capture=capture_details,
-                    amount=payment_config["amount"],
-                    currency=payment_config["currency"],
-                )
-            except Exception:
-                st.warning(
-                    "Votre accès Premium est actif. L'écriture du registre financier "
-                    "n'a pas pu être finalisée ; elle devra être rapprochée."
-                )
+            # The ledger entry and Premium entitlement are committed together
+            # by a service-role SQL RPC; failure leaves neither partially written.
+            financial_ledger.grant_paypal_one_time_entitlement(
+                admin_client,
+                user_id=str(current_user.id),
+                order_id=normalized_order_id,
+                capture=capture_details,
+                amount=payment_config["amount"],
+                currency=payment_config["currency"],
+            )
             st.query_params.clear()
             st.session_state["paypal_purchase_confirmed"] = True
             st.rerun()
