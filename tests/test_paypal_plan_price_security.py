@@ -88,7 +88,7 @@ def test_browser_return_cannot_grant_premium_during_paypal_payment_retry():
     section = source.split("def reconcile_returned_subscription", 1)[1].split(
         "def create_premium_subscription", 1
     )[0]
-    failure_check = section.index('if failed_payments_count > 0:')
-    premium_write = section.index('admin_client.table("sowia_subscriptions").upsert(')
-    assert failure_check < premium_write
-    assert "failed_payments_count" in section
+    assert 'if failed_payments_count > 0:' in section
+    assert 'admin_client.table("sowia_subscriptions").upsert(' not in section
+    assert '"status": "pending_webhook"' in section
+    assert "signed PayPal webhook" in section
