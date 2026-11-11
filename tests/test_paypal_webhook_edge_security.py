@@ -29,3 +29,12 @@ def test_paypal_webhook_endpoint_disables_supabase_jwt_only_for_signed_paypal_ev
     assert "verify_jwt = false" in CONFIG
     assert "paypal-transmission-sig" in WEBHOOK
     assert "verify-webhook-signature" in WEBHOOK
+
+def test_paypal_webhook_rejects_unknown_subscription_status_before_persistence():
+    status_check = WEBHOOK.index("const allowedStatuses = new Set([")
+    reject = WEBHOOK.index('if (!allowedStatuses.has(normalizedStatus))', status_check)
+    write = WEBHOOK.index('"/rest/v1/sowia_subscriptions?on_conflict=paypal_subscription_id"', reject)
+    assert status_check < reject < write
+    for status in ("APPROVAL_PENDING", "APPROVED", "ACTIVE", "SUSPENDED", "CANCELLED", "EXPIRED"):
+        assert f'"{status}"' in WEBHOOK
+    assert 'status: normalizedStatus.toLowerCase()' in WEBHOOK
