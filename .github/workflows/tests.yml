@@ -35,6 +35,7 @@ jobs:
     env:
       SOWIA_TEST_SUPABASE_URL: ${{ secrets.SOWIA_TEST_SUPABASE_URL }}
       SOWIA_TEST_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_TEST_SUPABASE_ANON_KEY }}
+      SOWIA_TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SOWIA_TEST_SUPABASE_SERVICE_ROLE_KEY }}
       SOWIA_TEST_USER_A_EMAIL: ${{ secrets.SOWIA_TEST_USER_A_EMAIL }}
       SOWIA_TEST_USER_A_PASSWORD: ${{ secrets.SOWIA_TEST_USER_A_PASSWORD }}
       SOWIA_TEST_USER_B_EMAIL: ${{ secrets.SOWIA_TEST_USER_B_EMAIL }}
@@ -46,6 +47,7 @@ jobs:
         run: |
           if [[ -n "$SOWIA_TEST_SUPABASE_URL" &&
                 -n "$SOWIA_TEST_SUPABASE_ANON_KEY" &&
+                -n "$SOWIA_TEST_SUPABASE_SERVICE_ROLE_KEY" &&
                 -n "$SOWIA_TEST_USER_A_EMAIL" &&
                 -n "$SOWIA_TEST_USER_A_PASSWORD" &&
                 -n "$SOWIA_TEST_USER_B_EMAIL" &&
@@ -57,7 +59,7 @@ jobs:
       - name: Report safely that live RLS tests are not configured
         if: steps.credentials.outputs.configured != 'true'
         run: |
-          echo "Live Supabase RLS tests skipped: configure the six dedicated test-project secrets described in tests/integration/README.md."
+          echo "Live Supabase RLS tests skipped: configure the seven dedicated test-project secrets described in tests/integration/README.md."
       - name: Check out repository
         if: steps.credentials.outputs.configured == 'true'
         uses: actions/checkout@v4
@@ -72,4 +74,7 @@ jobs:
       - name: Verify real two-user RLS isolation
         if: steps.credentials.outputs.configured == 'true'
         run: >-
-          pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py
+          pytest -q
+          tests/integration/test_supabase_two_user_isolation.py
+          tests/integration/test_supabase_storage_two_user_isolation.py
+          tests/integration/test_supabase_financial_two_user_isolation.py
