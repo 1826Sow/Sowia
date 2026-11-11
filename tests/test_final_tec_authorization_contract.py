@@ -1,4 +1,5 @@
 from copy import deepcopy
+import base64
 from datetime import datetime, timezone
 
 import pytest
@@ -35,7 +36,7 @@ def valid_contract():
             "approval_policy_id": "policy-v1",
             "algorithm": "Ed25519",
             "key_id": "test-key-1",
-            "signature": "S" * 88,
+            "signature": base64.b64encode(b"x" * 64).decode("ascii"),
         },
         "environment": {
             "host_id": "host-disposable-1",
