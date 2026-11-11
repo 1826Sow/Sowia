@@ -116,22 +116,27 @@ class HTTPSJWKSResolver:
         )
         try:
             response = self._opener.open(request, timeout=self.timeout_seconds)
+            with response:
+                if response.getcode() != 200:
+                    raise JWKSConfigurationError("JWKS endpoint did not return HTTP 200")
+                content_type = response.headers.get("Content-Type", "")
+                media_type = content_type.split(";", 1)[0].strip().lower()
+                subtype = media_type.partition("/")[2]
+                if not (
+                    media_type == "application/json"
+                    or (media_type.startswith("application/") and subtype.endswith("+json"))
+                ):
+                    raise JWKSConfigurationError("JWKS response is not an accepted JSON media type")
+                raw = response.read(self.max_response_bytes + 1)
+                if len(raw) > self.max_response_bytes:
+                    raise JWKSConfigurationError("JWKS response exceeds configured size limit")
+                cache_ttl = self._response_ttl(response.headers)
         except HTTPError as exc:
             raise JWKSConfigurationError("JWKS endpoint returned an HTTP error or redirect") from exc
         except (URLError, TimeoutError, OSError) as exc:
-            # Never fall back to expired keys after a transport failure. Keep
-            # provider/network details out of the public error message.
+            # Includes failures during body reads. Never fall back to expired
+            # keys and never expose provider/network details to callers.
             raise JWKSConfigurationError("JWKS endpoint could not be reached safely") from exc
-        with response:
-            if response.getcode() != 200:
-                raise JWKSConfigurationError("JWKS endpoint did not return HTTP 200")
-            content_type = response.headers.get("Content-Type", "")
-            if "json" not in content_type.lower():
-                raise JWKSConfigurationError("JWKS response is not JSON")
-            raw = response.read(self.max_response_bytes + 1)
-            if len(raw) > self.max_response_bytes:
-                raise JWKSConfigurationError("JWKS response exceeds configured size limit")
-            cache_ttl = self._response_ttl(response.headers)
         try:
             document = json.loads(raw)
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
