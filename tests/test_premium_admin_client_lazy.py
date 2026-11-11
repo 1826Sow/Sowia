@@ -25,8 +25,8 @@ def test_premium_admin_client_is_created_only_inside_authenticated_paypal_flows(
     ]
     # One call validates a returned checkout; two are explicit user-triggered
     # synchronization actions; one is the admin-only control center; one serves
-    # the authenticated user's read-only financial audit view.
-    assert len(admin_calls) == 5
+    # the authenticated user's read-only financial audit view and the additional guarded admin operation.
+    assert len(admin_calls) == 6
 
     for call in admin_calls:
         ancestor = parents.get(call)
