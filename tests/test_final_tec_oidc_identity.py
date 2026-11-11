@@ -166,3 +166,73 @@ def test_invalid_configuration_is_rejected():
             role_resolver=lambda subject, role: False,
             required_acr="acr",
         )
+
+
+def test_oidc_verifier_integrates_with_dual_approval_engine(signing_material):
+    from datetime import timedelta
+    from final_tec_dual_approval import validate_dual_approval
+
+    now_dt = datetime.now(timezone.utc)
+    now = int(now_dt.timestamp())
+    private_a, public_a = signing_material
+    private_b = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_b = private_b.public_key()
+    tokens = {
+        "key-a": make_token(private_a, sub="approver-a", nonce="nonce-a"),
+        "key-b": make_token(private_b, sub="approver-b", nonce="nonce-b"),
+    }
+    keys = {"key-a": public_a, "key-b": public_b}
+    nonces = {"key-a": "nonce-a", "key-b": "nonce-b"}
+    verifier = OIDCApprovalIdentityVerifier(
+        issuer=ISSUER,
+        audience=AUDIENCE,
+        signing_key_resolver=lambda kid: keys.get(kid),
+        assertion_resolver=lambda context: {
+            "id_token": tokens[context["approval"]["key_id"]],
+            "expected_nonce": nonces[context["approval"]["key_id"]],
+        },
+        role_resolver=lambda subject, role: (
+            subject in {"approver-a", "approver-b"} and role == "security-approver"
+        ),
+        required_acr="urn:example:loa:phishing-resistant",
+        required_amr="webauthn",
+    )
+    request = {
+        "authorization_id": "oidc-engine-auth",
+        "request_version": "v1",
+        "requester_id": "requester",
+        "operator_id": "operator",
+        "reviewer_id": "reviewer",
+        "policy_version": "policy-v1",
+        "expires_at": (now_dt + timedelta(minutes=5)).isoformat(),
+        "environment_digest": "a" * 64,
+        "constraints_digest": "b" * 64,
+        "action_digest": "c" * 64,
+    }
+    approvals = []
+    for index, subject in enumerate(("approver-a", "approver-b")):
+        key_id = "key-a" if index == 0 else "key-b"
+        nonce = nonces[key_id]
+        approvals.append({
+            "subject_id": subject,
+            "role": "security-approver",
+            "key_id": key_id,
+            "algorithm": "Ed25519",
+            "approval_policy_id": "dual-v1",
+            "policy_version": "policy-v1",
+            "nonce": nonce + ("x" * 40),
+            "issued_at": (now_dt - timedelta(seconds=1)).isoformat(),
+            "expires_at": (now_dt + timedelta(minutes=2)).isoformat(),
+            "signature": "signature-placeholder",
+        })
+    result = validate_dual_approval(
+        request,
+        approvals,
+        signature_verifier=lambda envelope, approval: True,
+        identity_verifier=verifier,
+        atomic_pair_audit_commit=lambda authorization_id, records, event: True,
+        now=now_dt,
+    )
+    assert result["identities_verified_by_injected_authority"] is True
+    assert result["execution_authorized"] is False
+    assert result["workload_executed"] is False
