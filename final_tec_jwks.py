@@ -140,7 +140,9 @@ class HTTPSJWKSResolver:
             raise JWKSConfigurationError("JWKS endpoint could not be reached safely") from exc
         try:
             document = json.loads(raw)
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        except (UnicodeDecodeError, ValueError, RecursionError) as exc:
+            # JSON parsing must fail closed for malformed, excessively nested,
+            # or oversized numeric tokens without leaking parser exceptions.
             raise JWKSConfigurationError("JWKS response is invalid JSON") from exc
         if not isinstance(document, dict) or not isinstance(document.get("keys"), list):
             raise JWKSConfigurationError("JWKS document must contain a keys array")
