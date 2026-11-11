@@ -353,6 +353,29 @@ def test_create_global_action_plan_uses_database_owned_draft_status():
     assert "updated_at" not in payload
 
 
+def test_create_global_action_plan_rejects_self_approver_before_database_write():
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for self-approval")
+
+    creator_id = "123e4567-e89b-12d3-a456-426614174000"
+    plan = {
+        "title": "Pilote",
+        "objective": "Tester un périmètre restreint.",
+        "country": "France",
+        "owner_label": "Équipe SOWIA",
+        "approver_id": creator_id,
+        "budget_cap": 250,
+        "currency": "EUR",
+        "due_date": "2027-03-31",
+        "success_metric": "10 utilisateurs actifs",
+        "stop_condition": "Arrêt si le plafond est atteint.",
+    }
+
+    with pytest.raises(ValueError, match="différent du créateur"):
+        cloud_storage.create_global_action_plan(Client(), {"id": creator_id}, plan)
+
+
 def test_create_global_action_plan_rejects_unexpected_workflow_fields_before_write():
     class Client:
         def table(self, _name):
