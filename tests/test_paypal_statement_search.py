@@ -28,6 +28,7 @@ def _event(transaction_id="TXN123456789012345"):
             "transaction_updated_date": "2026-11-10T10:01:00Z",
             "transaction_amount": {"currency_code": "EUR", "value": "12.00"},
             "fee_amount": {"currency_code": "EUR", "value": "-0.50"},
+            "transaction_subject": "sensitive free text must be dropped",
         },
         "payer_info": {"email_address": "must-not-be-imported@example.com"},
     }
