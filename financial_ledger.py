@@ -145,13 +145,7 @@ def record_paypal_billing_transaction(
 
 
 def _validated_optional_amount(value, field):
-    try:
-        amount = Decimal(str(value))
-    except (InvalidOperation, TypeError, ValueError):
-        raise ValueError(f"{field} PayPal invalide.") from None
-    if not amount.is_finite() or amount < 0 or amount > Decimal("9999.99"):
-        raise ValueError(f"{field} PayPal hors limites.")
-    return amount
+    return _currency_amount(value, f"{field} PayPal", allow_zero=True)
 
 def flag_paypal_refund_for_review(admin_client, *, user_id, transaction):
     """Exclude a refunded capture from recognized income until exact refund rows are reconciled.
