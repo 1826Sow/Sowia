@@ -602,7 +602,13 @@ class SQLiteAtomicApprovalStore:
 
     def atomic_commit_callback(self, authorization_id: str, records: Sequence[tuple[str, str]],
                                audit_event: Mapping[str, Any]) -> bool:
-        """Callback adapter for validate_dual_approval."""
+        """Local-only legacy callback; does NOT prove external anchoring.
+
+        For the externally anchored approval path, inject
+        ExternalAuditAnchorCoordinator(...).callback() instead. This method is
+        retained only for offline/local audit use and must not be used to
+        represent production-grade G2-B approval.
+        """
         return self.commit_pair_and_audit(authorization_id, records, audit_event)
 
     def audit_events(self) -> list[dict[str, Any]]:
