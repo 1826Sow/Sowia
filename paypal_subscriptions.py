@@ -332,6 +332,14 @@ def reconcile_returned_subscription(subscription_id: str, user_id: str):
     token = _access_token(config)
     _validate_paypal_plan_price(config, token, expected_plan_id)
     billing = details.get("billing_info") or {}
+    try:
+        failed_payments_count = int(billing.get("failed_payments_count", 0))
+    except (TypeError, ValueError):
+        raise PermissionError("Le compteur d'échecs PayPal est invalide.") from None
+    if failed_payments_count < 0:
+        raise PermissionError("Le compteur d'échecs PayPal est invalide.")
+    if failed_payments_count > 0:
+        raise PermissionError("Un paiement PayPal est en échec ou en nouvelle tentative.")
     last_payment = billing.get("last_payment") or {}
     amount = last_payment.get("amount") or {}
     # If PayPal reports a payment, it must match the configured recurring price.
