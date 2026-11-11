@@ -255,3 +255,32 @@ def test_suspended_subscription_requires_explicit_verified_activation_to_resume(
         preserve = migration.index("v_effective_status := 'suspended';", active_guard)
         assert "BILLING.SUBSCRIPTION.ACTIVATED' or p_status <> 'active'" in migration[activation_guard:preserve]
         assert suspended_guard < activation_guard < active_guard < preserve
+
+
+def test_paypal_refund_trigger_serializes_cumulative_refunds_and_preserves_ledger_identity():
+    migration = (ROOT / "supabase/migrations/20261110000100_sowia_financial_ledger.sql").read_text(encoding="utf-8")
+    trigger = migration.index("create or replace function public.sowia_enforce_paypal_refund_capture_limit()")
+    lock = migration.index("for update", trigger)
+    prior_sum = migration.index("select coalesce(sum(gross_amount), 0)", lock)
+    cap_check = migration.index("v_prior_refunds + new.gross_amount > v_capture_gross", prior_sum)
+    trigger_create = migration.index("create trigger sowia_paypal_refund_capture_limit", cap_check)
+    assert trigger < lock < prior_sum < cap_check < trigger_create
+    assert "Cumulative PayPal refunds exceed the parent capture amount" in migration[cap_check:trigger_create]
+    assert "provider_payment_id <> new.provider_payment_id" in migration[prior_sum:cap_check]
+    assert "PayPal refund amount, currency and parent capture are immutable" in migration
+    assert "PayPal ledger identity fields are immutable" in migration
+    assert "PayPal financial ledger entries cannot be deleted" in migration
+
+
+def test_paypal_refund_webhook_rechecks_duplicate_identity_before_revocation():
+    source = WEBHOOK
+    handler = source.index('if (eventType === "PAYMENT.CAPTURE.REFUNDED")')
+    existing = source.index("const existingRefundResponse = await fetch(refundLedgerUrl", handler)
+    conflict = source.index("if (existingRefund && !refundLedgerMatches(existingRefund))", existing)
+    insert = source.index("const insertRefundResponse = await fetch(", conflict)
+    confirm = source.index("const confirmRefundResponse = await fetch(refundLedgerUrl", insert)
+    revoke = source.index('"/rest/v1/sowia_entitlements?user_id=eq."', confirm)
+    assert handler < existing < conflict < insert < confirm < revoke
+    assert "resolution=ignore-duplicates,return=minimal" in source[insert:confirm]
+    assert "Number(row.gross_amount) === Number(refundAmount.value)" in source
+    assert 'String(row.parent_capture_id || "") === captureId' in source
