@@ -41,7 +41,7 @@ for select to authenticated using (exists (
     select 1 from public.sowia_global_action_plans p where p.id = plan_id
     and (p.creator_id = auth.uid() or p.approver_id = auth.uid())
 ));
-revoke all on public.sowia_global_action_plans, public.sowia_global_action_audit from anon, public;
+revoke all on public.sowia_global_action_plans, public.sowia_global_action_audit from anon, public, authenticated;
 grant select, insert on public.sowia_global_action_plans to authenticated;
 grant select on public.sowia_global_action_audit to authenticated;
 drop policy if exists sowia_action_plan_insert on public.sowia_global_action_plans;
