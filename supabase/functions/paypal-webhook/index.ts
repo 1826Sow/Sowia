@@ -205,9 +205,48 @@ Deno.serve(async (request: Request) => {
       );
     }
 
+    // Confirm the plan's server-side recurring price; never trust the plan ID alone.
+    const planResponse = await fetch(
+      baseUrl + "/v1/billing/plans/" + encodeURIComponent(planId),
+      {
+        headers: {
+          Authorization: "Bearer " + token,
+          Accept: "application/json",
+        },
+      },
+    );
+    if (!planResponse.ok) {
+      throw new Error("Unable to verify PayPal plan pricing");
+    }
+    const plan = await planResponse.json();
+    const regularCycles = Array.isArray(plan.billing_cycles)
+      ? plan.billing_cycles.filter((cycle: Record<string, unknown>) =>
+          String(cycle.tenure_type || "").toUpperCase() === "REGULAR")
+      : [];
+    const validPrice = plan.id === planId &&
+      String(plan.status || "").toUpperCase() === "ACTIVE" &&
+      regularCycles.length > 0 &&
+      regularCycles.every((cycle: Record<string, unknown>) => {
+        const frequency = (cycle.frequency || {}) as Record<string, unknown>;
+        const scheme = (cycle.pricing_scheme || {}) as Record<string, unknown>;
+        const fixedPrice = (scheme.fixed_price || {}) as Record<string, unknown>;
+        return String(frequency.interval_unit || "").toUpperCase() === "MONTH" &&
+          Number(frequency.interval_count) === 1 &&
+          Number(fixedPrice.value) === 9.90 &&
+          String(fixedPrice.currency_code || "").toUpperCase() === "EUR";
+      });
+    if (!validPrice) {
+      return json({ error: "PayPal Premium plan price validation failed" }, 403);
+    }
+
     const billing = subscription.billing_info || {};
     const lastPayment = billing.last_payment || {};
     const paymentAmount = lastPayment.amount || {};
+    if (paymentAmount.value !== undefined &&
+        (Number(paymentAmount.value) !== 9.90 ||
+         String(paymentAmount.currency_code || "").toUpperCase() !== "EUR")) {
+      return json({ error: "PayPal last payment amount mismatch" }, 403);
+    }
     const payload = {
       user_id: userId,
       provider: "paypal",
