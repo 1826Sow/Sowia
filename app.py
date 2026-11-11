@@ -386,7 +386,7 @@ NAV_GROUPS = {
         "SOWIA GLOBAL PERFORMANCE & IMPACT", "SOWIA GLOBAL PORTFOLIO CONTROL",
         "SOWIA GLOBAL EXECUTIVE REPORTS",
     ],
-    "💶 Pilotage financier": [
+    "💶 SOWIA FINANCIAL HUB": [
         "Finance & investissements", "Revenus & paiements",
     ],
     "💳 Abonnements & compte": [
@@ -776,7 +776,7 @@ if page == "Accueil":
             ("SOWIA GLOBAL PORTFOLIO CONTROL", "Contrôle du portefeuille"),
             ("SOWIA GLOBAL EXECUTIVE REPORTS", "Rapports de direction"),
         ]),
-        ("💳 05 · Finances & investissements", [
+        ("💶 05 · SOWIA FINANCIAL HUB", [
             ("Finance & investissements", "Analyses et investissements"),
             ("Revenus & paiements", "Paiements, remboursements et rapprochements"),
         ]),
