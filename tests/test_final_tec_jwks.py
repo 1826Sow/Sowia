@@ -265,6 +265,18 @@ def test_non_reusable_cache_control_forces_fetch_on_each_call(cache_control):
     assert len(opener.calls) == 2
 
 
+def test_unknown_kid_with_no_store_fetches_only_once_per_lookup():
+    opener = FakeOpener([
+        Response({"keys": [jwk("known")]}, cache_control="no-store"),
+        Response({"keys": [jwk("known")]}, cache_control="no-store"),
+    ])
+    resolver = make_resolver(opener)
+    assert resolver("missing") is None
+    assert len(opener.calls) == 1
+    assert resolver("missing") is None
+    assert len(opener.calls) == 2
+
+
 def test_quoted_max_age_is_respected():
     opener = FakeOpener([
         Response({"keys": [jwk("key-1")]}, cache_control='public, max-age="60"')
