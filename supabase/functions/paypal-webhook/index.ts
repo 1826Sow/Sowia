@@ -218,6 +218,90 @@ Deno.serve(async (request: Request) => {
           String(ledger.gross_currency || "").toUpperCase() !== "EUR") {
         return json({ error: "PayPal capture ownership or order validation failed" }, 403);
       }
+      const refundEventTime = String(event.create_time || "").trim();
+      if (!refundEventTime || !Number.isFinite(Date.parse(refundEventTime))) {
+        return json({ error: "PayPal refund event timestamp is invalid" }, 422);
+      }
+
+      // Persist the verified refund in the immutable financial ledger.
+      // The capture-row lock in the database trigger serializes concurrent
+      // refunds and prevents cumulative refunds from exceeding the capture.
+      const refundLedgerUrl = supabaseUrl +
+        "/rest/v1/sowia_financial_transactions?provider=eq.paypal" +
+        "&transaction_type=eq.refund&provider_payment_id=eq." +
+        encodeURIComponent(refundId) +
+        "&select=user_id,parent_capture_id,gross_amount,gross_currency,status&limit=1";
+      const refundLedgerHeaders = {
+        apikey: serviceRoleKey,
+        Authorization: "Bearer " + serviceRoleKey,
+        Accept: "application/json",
+      };
+      const existingRefundResponse = await fetch(refundLedgerUrl, {
+        headers: refundLedgerHeaders,
+      });
+      if (!existingRefundResponse.ok) {
+        throw new Error("Unable to check PayPal refund ledger idempotency");
+      }
+      const existingRefundRows = await existingRefundResponse.json();
+      const existingRefund = Array.isArray(existingRefundRows) &&
+          existingRefundRows.length === 1
+        ? existingRefundRows[0]
+        : null;
+      const refundLedgerMatches = (row: Record<string, unknown>) =>
+        String(row.user_id || "") === String(ledger.user_id) &&
+        String(row.parent_capture_id || "") === captureId &&
+        Number(row.gross_amount) === Number(refundAmount.value) &&
+        String(row.gross_currency || "").toUpperCase() === "EUR" &&
+        String(row.status || "") === "manual_review";
+      if (existingRefund && !refundLedgerMatches(existingRefund)) {
+        return json({ error: "Existing PayPal refund ledger entry conflicts with verified refund" }, 409);
+      }
+      if (!existingRefund) {
+        const insertRefundResponse = await fetch(
+          supabaseUrl + "/rest/v1/sowia_financial_transactions?on_conflict=provider,provider_payment_id,transaction_type",
+          {
+            method: "POST",
+            headers: {
+              ...refundLedgerHeaders,
+              "Content-Type": "application/json",
+              Prefer: "resolution=ignore-duplicates,return=minimal",
+            },
+            body: JSON.stringify({
+              user_id: String(ledger.user_id),
+              provider: "paypal",
+              provider_payment_id: refundId,
+              parent_capture_id: captureId,
+              transaction_type: "refund",
+              status: "manual_review",
+              gross_amount: Number(refundAmount.value),
+              gross_currency: "EUR",
+              occurred_at: refundEventTime,
+            }),
+          },
+        );
+        if (!insertRefundResponse.ok) {
+          console.error("PayPal refund ledger insert failed", await insertRefundResponse.text());
+          throw new Error("Unable to persist verified PayPal refund");
+        }
+        // A concurrent duplicate may win the unique constraint first. Re-read
+        // the row and require exact identity rather than assuming the conflict
+        // was harmless.
+        const confirmRefundResponse = await fetch(refundLedgerUrl, {
+          headers: refundLedgerHeaders,
+        });
+        if (!confirmRefundResponse.ok) {
+          throw new Error("Unable to confirm PayPal refund ledger entry");
+        }
+        const confirmedRefundRows = await confirmRefundResponse.json();
+        const confirmedRefund = Array.isArray(confirmedRefundRows) &&
+            confirmedRefundRows.length === 1
+          ? confirmedRefundRows[0]
+          : null;
+        if (!confirmedRefund || !refundLedgerMatches(confirmedRefund)) {
+          return json({ error: "PayPal refund ledger confirmation failed" }, 409);
+        }
+      }
+
       const revokeResponse = await fetch(
         supabaseUrl + "/rest/v1/sowia_entitlements?user_id=eq." +
           encodeURIComponent(String(ledger.user_id)) + "&paypal_order_id=eq." +
