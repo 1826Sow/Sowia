@@ -63,6 +63,23 @@ def make_resolver(opener, **kwargs):
     )
 
 
+class RawResponse(Response):
+    def __init__(self, body, *, content_type="application/json"):
+        super().__init__({})
+        self.body = body
+        self.headers["Content-Type"] = content_type
+
+
+@pytest.mark.parametrize("body", [
+    b'{"keys":[' + b'[' * 1200 + b'0' + b']' * 1200 + b']}',
+    b'{"keys":[],"extra":' + b'9' * 5000 + b'}',
+])
+def test_pathological_json_parser_errors_are_normalized(body):
+    opener = FakeOpener([RawResponse(body)])
+    with pytest.raises(JWKSConfigurationError, match="invalid JSON"):
+        make_resolver(opener)("key-1")
+
+
 def test_rejects_non_https_and_ambiguous_urls():
     for url in (
         "http://login.example.test/jwks",
