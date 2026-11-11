@@ -59,3 +59,29 @@ def test_paypal_refund_trigger_enforces_manual_review_positive_amount_and_curren
     assert "new.gross_amount <= 0" in function_sql
     assert "select gross_amount, gross_currency" in function_sql
     assert "new.gross_currency <> v_capture_currency" in function_sql
+
+def test_paypal_ledger_blocks_deletion_and_identity_rewrites():
+    sql = LEDGER_MIGRATION.read_text(encoding="utf-8").lower()
+    function_start = sql.index(
+        "create or replace function public.sowia_enforce_paypal_refund_capture_limit()"
+    )
+    function_end = sql.index("$$;", sql.index("as $$", function_start)) + 3
+    function_sql = sql[function_start:function_end]
+
+    assert "if tg_op = 'delete' then" in function_sql
+    assert "paypal financial ledger entries cannot be deleted" in function_sql
+    assert "paypal ledger identity fields are immutable" in function_sql
+    assert "paypal refund amount, currency and parent capture are immutable" in function_sql
+    assert "before insert or update or delete on public.sowia_financial_transactions" in sql
+
+
+def test_paypal_capture_cannot_be_reduced_below_existing_refunds():
+    sql = LEDGER_MIGRATION.read_text(encoding="utf-8").lower()
+    function_start = sql.index(
+        "create or replace function public.sowia_enforce_paypal_refund_capture_limit()"
+    )
+    function_end = sql.index("$$;", sql.index("as $$", function_start)) + 3
+    function_sql = sql[function_start:function_end]
+
+    assert "updated paypal capture would be lower than recorded refunds" in function_sql
+    assert "updated paypal capture currency conflicts with recorded refunds" in function_sql
