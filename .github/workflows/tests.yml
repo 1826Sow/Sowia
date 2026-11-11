@@ -31,6 +31,9 @@ jobs:
 
   supabase-rls-integration:
     name: Supabase real-account RLS tests
+    # Never expose Supabase test credentials to code from a pull request.
+    # Live two-account tests run only after trusted code is pushed to main.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       SOWIA_TEST_SUPABASE_URL: ${{ secrets.SOWIA_TEST_SUPABASE_URL }}
