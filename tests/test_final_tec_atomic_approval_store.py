@@ -295,6 +295,10 @@ def test_outbox_exact_retry_reuses_checkpoint_without_reconsuming_nonces(tmp_pat
     assert store.commit_pair_audit_and_outbox(
         "auth-outbox-02", changed_records, event, now=now
     ) is None
+    altered_expiry = (records[0][0], (now + timedelta(minutes=20)).isoformat())
+    assert store.commit_pair_audit_and_outbox(
+        "auth-outbox-02", (altered_expiry, records[1]), event, now=now
+    ) is None
     assert len(store.audit_events()) == 1
 
 
