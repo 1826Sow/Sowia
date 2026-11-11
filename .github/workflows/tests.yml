@@ -28,16 +28,43 @@ jobs:
         run: |
           python -m pip install --upgrade pip-audit
           pip-audit -r requirements.txt
-      - name: Generate verified Python dependency lock
+      - name: Regenerate and verify hashed dependency lock
         run: |
           python -m pip install --upgrade pip-tools
-          pip-compile --resolver=backtracking --generate-hashes --output-file=requirements.lock requirements.txt
+          pip-compile --resolver=backtracking --generate-hashes --output-file=requirements-hashes.lock requirements.txt
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          def pins(path):
+              found = set()
+              for line in Path(path).read_text().splitlines():
+                  match = re.match(r"^([A-Za-z0-9_.-]+)==([^\\\\\\s]+)", line)
+                  if match:
+                      found.add((match.group(1).lower().replace("_", "-"), match.group(2)))
+              return found
+
+          committed = pins("requirements.lock")
+          resolved = pins("requirements-hashes.lock")
+          if not committed:
+              raise SystemExit("requirements.lock contains no exact pins")
+          if committed != resolved:
+              missing = sorted(resolved - committed)
+              stale = sorted(committed - resolved)
+              raise SystemExit(f"Lock mismatch; missing={missing}; stale_or_extra={stale}")
+          print(f"Verified {len(committed)} exact dependency pins against pip-compile output")
+          PY
           pip-audit -r requirements.lock
-      - name: Upload generated dependency lock for review
+          pip-audit -r requirements-hashes.lock
+      - name: Verify clean install from committed lock
+        run: |
+          python -m pip install --requirement requirements.lock
+          python -m pip check
+      - name: Upload generated hash-verified dependency lock
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: sowia-python-dependency-lock
-          path: requirements.lock
+          name: sowia-python-hashed-dependency-lock
+          path: requirements-hashes.lock
           if-no-files-found: error
           retention-days: 7
       - name: Check Python syntax
