@@ -238,7 +238,9 @@ def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
         .eq("user_id", normalized_user_id)
         .eq("provider", "paypal")
         .eq("transaction_type", "payment")
-        .eq("status", "confirmed")
+        # Include manual_review rows: a partial refund can later become full.
+        # PayPal's current capture status, not the local ledger status, decides
+        # whether the entitlement must be revoked.
         .gte("occurred_at", since)
         .order("occurred_at", desc=True)
         .limit(limit)
