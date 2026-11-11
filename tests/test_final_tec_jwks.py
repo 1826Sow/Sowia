@@ -154,10 +154,6 @@ class ReadFailureResponse(Response):
         raise OSError("sensitive body read detail")
 
 
-class IncompleteHTTPResponse(Exception):
-    pass
-
-
 def test_incomplete_http_response_is_normalized():
     from http.client import IncompleteRead
 
