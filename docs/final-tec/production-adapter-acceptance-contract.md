@@ -165,3 +165,33 @@ SQLite et le fournisseur. Le statut d'approbation reste en attente/échec fermé
 jusqu'à confirmation externe durable. Les fakes de test vérifient seulement le
 contrat du coordinateur ; aucun adaptateur SQLite outbox ni fournisseur réel
 n'est encore implémenté ou raccordé. G2-B reste **NO-GO / NOT_RUN**.
+
+
+## 12. Implémentation SQLite de l'outbox et reprise
+
+Le registre `SQLiteAtomicApprovalStore` expose désormais
+`commit_pair_audit_and_outbox`. La consommation des deux nonces, l'insertion
+de l'événement d'audit et la création de la ligne `pending` dans
+`dual_approval_anchor_outbox` sont exécutées sous le même
+`BEGIN IMMEDIATE` et validées par un seul commit SQLite. Une erreur à
+l'insertion de l'outbox annule donc aussi les consommations et l'audit.
+
+L'identifiant d'autorisation est unique dans l'outbox. Une reprise avec les
+mêmes empreintes de nonces et le même événement canonique retourne le
+checkpoint existant sans reconsommer les nonces. Toute tentative de réutiliser
+cet identifiant avec un événement ou une paire de nonces différente échoue.
+Le reçu est enregistré par une transition à sens unique `pending -> anchored`,
+et les champs d'identité du checkpoint ne peuvent pas être modifiés via les
+opérations normales SQLite.
+
+Le coordinateur expose `recover_pending()` : après redémarrage, il lit les
+checkpoints en attente, répète l'append idempotent auprès de l'ancre, vérifie
+le reçu puis marque le checkpoint comme ancré. Si le fournisseur reste
+indisponible ou si la vérification échoue, le checkpoint reste en attente et
+la fonction ne signale aucune récupération réussie.
+
+Les tests ajoutés couvrent l'atomicité de l'insertion outbox, la reprise
+exacte, les réutilisations conflictuelles, la transition du reçu, et la
+récupération après redémarrage avec le registre SQLite réel. Ils ne remplacent
+pas les tests d'intégration du fournisseur externe, ni une revue de la
+résistance aux administrateurs privilégiés.
