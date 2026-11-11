@@ -11,7 +11,7 @@ Les tests d'intégration vérifient les politiques RLS réellement appliquées a
    - `supabase_workspaces.sql` (ajout des espaces Personnel et Professionnel).
    - `supabase_storage_policies.sql` (création du bucket privé `sowia-files` et règles d'accès PDF).
 4. Dans les paramètres API du projet de test, récupérer l'URL du projet et la clé publique **anon/publishable**. Ne pas utiliser la clé `service_role` ou une clé secrète.
-5. Fournir les six variables ci-dessous uniquement dans l'environnement d'exécution sécurisé :
+5. Fournir les sept variables ci-dessous uniquement dans l'environnement d'exécution sécurisé :
 
 ```text
 SOWIA_TEST_SUPABASE_URL
@@ -41,9 +41,9 @@ Dans GitHub, ouvrir **Settings → Secrets and variables → Actions**, puis cr�
 
 L'action GitHub lance alors les tests réels entre les deux comptes à chaque push/PR. Si l'un des six identifiants ou la confirmation dédiée manque ou est incorrect, le job indique explicitement que les tests réels sont ignorés ; il ne prétend jamais avoir validé la RLS. Ne jamais renseigner les identifiants d'un compte réel ni ceux du projet de production.
 
-Avec les six variables, deux sessions authentifiées vérifient pour chaque table que le compte A peut lire ses propres lignes, que le compte B ne peut pas les lire, qu'il ne peut pas insérer une ligne au nom de A et qu'il ne peut pas supprimer la ligne de A. Les lignes témoins créées sont supprimées par le compte A dans un bloc `finally`.
+Avec les sept variables, deux sessions authentifiées vérifient pour chaque table que le compte A peut lire ses propres lignes, que le compte B ne peut pas les lire, qu'il ne peut pas insérer une ligne au nom de A et qu'il ne peut pas supprimer la ligne de A. Les lignes témoins créées sont supprimées par le compte A dans un bloc `finally`.
 
-Le test Storage utilise les mêmes six secrets, vérifie que le compte A peut déposer et télécharger son PDF, que B ne peut ni le télécharger, ni déposer un fichier dans le dossier de A, ni supprimer le PDF de A. Le propriétaire supprime le fichier temporaire dans un bloc `finally`. Il cible le bucket `sowia-files` et les chemins `<user_id>/personal/<fichier>`.
+Le test Storage utilise les mêmes sept secrets, vérifie que le compte A peut déposer et télécharger son PDF, que B ne peut ni le télécharger, ni déposer un fichier dans le dossier de A, ni supprimer le PDF de A. Le propriétaire supprime le fichier temporaire dans un bloc `finally`. Il cible le bucket `sowia-files` et les chemins `<user_id>/personal/<fichier>`.
 
 Un test ignoré ne constitue pas une validation RLS réelle. La validation exige un projet de test configuré et un résultat d'exécution réussi.
 
