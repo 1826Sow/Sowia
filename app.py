@@ -6529,6 +6529,45 @@ elif page == "Revenus & paiements":
                     "règlement en euros. Les échéances PayPal importées sont rattachées à leur "
                     "abonnement ; les anciens paiements non importés restent hors de cette vue."
                 )
+
+                st.divider()
+                st.markdown("#### 🔐 Journal d'audit financier")
+                st.caption(
+                    "Historique technique en lecture seule des créations, modifications et "
+                    "suppressions d'écritures du registre. Les instantanés complets ne sont pas "
+                    "exposés dans cette vue."
+                )
+                try:
+                    admin_client = premium_access.create_admin_client()
+                    if admin_client is None:
+                        st.info("Journal d'audit indisponible : accès serveur Supabase non configuré.")
+                    else:
+                        import financial_audit
+                        audit_rows = financial_audit.load_user_financial_audit_events(
+                            admin_client, str(current_user.id), limit=200
+                        )
+                        if audit_rows:
+                            st.metric("Événements d'audit consultés", len(audit_rows))
+                            st.dataframe(
+                                financial_audit.present_audit_events(audit_rows),
+                                use_container_width=True,
+                                hide_index=True,
+                            )
+                            st.caption(
+                                "Affichage limité aux 200 événements les plus récents de votre compte. "
+                                "Le journal reste réservé au serveur ; cette page ne permet aucune modification."
+                            )
+                        else:
+                            st.info(
+                                "Aucun événement d'audit disponible. Vérifiez que la migration "
+                                "sowia_financial_audit_log a été appliquée."
+                            )
+                except Exception as audit_error:
+                    st.warning(
+                        "Le journal d'audit n'est pas encore accessible. "
+                        "Vérifiez l'application de la migration dédiée. "
+                        f"Diagnostic : {type(audit_error).__name__}."
+                    )
         except Exception:
             st.error(
                 "Le registre financier n'est pas accessible. Vérifiez que la migration "
@@ -6771,6 +6810,7 @@ elif page == "SOWIA CONTROL CENTER":
         if admin_client is not None:
             for table_name, label in (
                 ("sowia_financial_transactions", "Registre financier"),
+                ("sowia_financial_audit_log", "Journal d’audit financier"),
                 ("sowia_subscriptions", "Abonnements"),
                 ("sowia_paypal_catalog", "Catalogue PayPal"),
             ):
