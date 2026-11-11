@@ -132,3 +132,13 @@ def test_cancelled_and_expired_subscriptions_are_terminal_in_atomic_rpc():
     write = migration.index("insert into public.sowia_subscriptions", terminal)
     assert terminal < write
     assert "return v_existing_status;" in migration[terminal:write]
+
+
+def test_cancellation_and_expiration_override_payment_review_hold():
+    migration = (ROOT / "supabase/migrations/20261111000500_paypal_subscription_atomic_reconciliation.sql").read_text(encoding="utf-8")
+    cancel = migration.index("p_event_type = 'BILLING.SUBSCRIPTION.CANCELLED'")
+    expire = migration.index("p_event_type = 'BILLING.SUBSCRIPTION.EXPIRED'", cancel)
+    suspend = migration.index("p_event_type = 'BILLING.SUBSCRIPTION.SUSPENDED'", expire)
+    refund = migration.index("p_event_type in ('PAYMENT.SALE.REFUNDED', 'PAYMENT.SALE.REVERSED')", suspend)
+    review_hold = migration.index("v_existing_status = 'payment_review'", refund)
+    assert cancel < expire < suspend < refund < review_hold
