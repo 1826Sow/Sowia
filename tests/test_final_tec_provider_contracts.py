@@ -4,6 +4,7 @@ from final_tec_provider_contracts import (
     ProductionAdapterBundle,
     ProductionAdapterContractError,
     validate_production_adapter_bundle,
+    validate_external_audit_anchor,
 )
 
 
@@ -109,4 +110,46 @@ def test_preflight_does_not_execute_adapter_properties_or_descriptors():
     with pytest.raises(ProductionAdapterContractError, match="oidc_keys|ledger"):
         validate_production_adapter_bundle(bundle)
 
+    assert calls == []
+
+
+class AuditAnchor:
+    production_grade = True
+
+    def append_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc):
+        raise AssertionError("Structural validation must not call the anchor")
+
+    def verify_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc, receipt):
+        raise AssertionError("Structural validation must not call the anchor")
+
+
+def test_external_audit_anchor_contract_passes_static_preflight():
+    assert validate_external_audit_anchor(AuditAnchor()) is None
+
+
+def test_external_audit_anchor_missing_or_incomplete_fails_closed():
+    with pytest.raises(ProductionAdapterContractError):
+        validate_external_audit_anchor(None)
+
+    class IncompleteAnchor:
+        production_grade = True
+
+        def append_checkpoint(self, *args):
+            return {}
+
+    with pytest.raises(ProductionAdapterContractError, match="verify_checkpoint"):
+        validate_external_audit_anchor(IncompleteAnchor())
+
+
+def test_external_audit_anchor_preflight_does_not_execute_properties():
+    calls = []
+
+    class HostileAnchor(AuditAnchor):
+        @property
+        def production_grade(self):
+            calls.append("production_grade")
+            raise RuntimeError("must not execute")
+
+    with pytest.raises(ProductionAdapterContractError):
+        validate_external_audit_anchor(HostileAnchor())
     assert calls == []
