@@ -26,7 +26,8 @@ def test_professional_access_function_is_fail_closed_and_search_path_is_empty():
     normalized = " ".join(MIGRATION.split())
     assert "security definer" in normalized
     assert "set search_path = ''" in normalized
-    assert "(select auth.uid()) is not null" in normalized
+    assert "current_user_id := (select auth.uid())" in normalized
+    assert "if current_user_id is null then" in normalized
     assert "revoke all on function public.sowia_has_professional_access() from public, anon" in normalized
     assert "grant execute on function public.sowia_has_professional_access() to authenticated" in normalized
 
@@ -36,6 +37,7 @@ def test_professional_access_accepts_one_time_and_recurring_active_paypal_entitl
     assert "from public.sowia_entitlements as entitlement" in normalized
     assert "entitlement.status = 'active'" in normalized
     assert "entitlement.provider = 'paypal'" in normalized
+    assert "to_regclass('public.sowia_subscriptions') is not null" in normalized
     assert "from public.sowia_subscriptions as subscription" in normalized
     assert "subscription.status = 'active'" in normalized
     assert "subscription.provider = 'paypal'" in normalized
