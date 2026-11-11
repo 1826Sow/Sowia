@@ -80,3 +80,15 @@ def test_subscription_return_does_not_fabricate_missing_last_payment():
     assert '"amount": PREMIUM_PRICE' in section
     assert '"currency": PREMIUM_CURRENCY' in section
     assert 'or PREMIUM_PRICE' not in section
+
+def test_browser_return_cannot_grant_premium_during_paypal_payment_retry():
+    from pathlib import Path
+
+    source = Path("paypal_subscriptions.py").read_text(encoding="utf-8")
+    section = source.split("def reconcile_returned_subscription", 1)[1].split(
+        "def create_premium_subscription", 1
+    )[0]
+    failure_check = section.index('if failed_payments_count > 0:')
+    premium_write = section.index('admin_client.table("sowia_subscriptions").upsert(')
+    assert failure_check < premium_write
+    assert "failed_payments_count" in section
