@@ -72,6 +72,23 @@ def test_invalid_profile_and_weights_rejected():
         select_edge_resources(PROFILE, [], now=NOW, weights={"latency": 0, "availability": 0, "cost": 0})
 
 
+
+def test_demo_evidence_requires_explicit_opt_in():
+    demo_candidate = candidate(benchmark={
+        "evidence_status": "demo_only",
+        "publication_state": "demo_only",
+    })
+    default_result = select_edge_resources(PROFILE, [demo_candidate], now=NOW)
+    assert default_result["decision"] == "no_eligible_resource"
+    assert "benchmark_not_verified_and_published" in default_result["excluded"][0]["exclusion_reasons"]
+
+    demo_result = select_edge_resources(
+        PROFILE, [demo_candidate], now=NOW, allow_demo_evidence=True
+    )
+    assert demo_result["decision"] == "recommendation"
+    assert demo_result["mode"] == "offline_demo_simulation"
+
+
 def test_no_provider_or_execution_side_effects():
     result = select_edge_resources(PROFILE, [candidate()], now=NOW)
     assert all(value is False for value in result["side_effects"].values())
