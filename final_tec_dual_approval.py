@@ -142,6 +142,7 @@ def validate_dual_approval(
     key_ids: set[str] = set()
     nonces: set[str] = set()
     nonce_records: list[tuple[str, str]] = []
+    identity_contexts: list[tuple[str, str, Mapping[str, Any], str]] = []
 
     for index, approval in enumerate(approvals):
         prefix = f"approvals[{index}]"
@@ -178,13 +179,11 @@ def validate_dual_approval(
 
         signed = _signed_envelope(request, digest, approval)
         identity_context = {"approval": dict(approval), "request_digest": digest}
-        # Verify the approval's Ed25519 signature before consuming the
-        # one-time OIDC approval session. Otherwise an invalid signature could
-        # burn a valid session and prevent a legitimate retry.
+        # Defer identity/session verification until both signatures have
+        # passed. Otherwise a valid first approval could consume its one-time
+        # OIDC session before an invalid second signature is rejected.
         if signature_verifier(signed, approval) is not True:
             raise DualApprovalError(f"{prefix}: signature or trusted key invalid")
-        if identity_verifier(subject, role, identity_context) is not True:
-            raise DualApprovalError(f"{prefix}: identity or role not independently verified")
 
         subjects.add(subject)
         key_ids.add(key_id)
@@ -195,6 +194,13 @@ def validate_dual_approval(
             "request_digest": digest, "issued_at": issued.isoformat(),
             "expires_at": expires.isoformat(),
         })
+        identity_contexts.append((subject, role, identity_context, prefix))
+
+    # Both signatures are now verified. Only now may identity verification
+    # consume one-time OIDC sessions.
+    for subject, role, identity_context, prefix in identity_contexts:
+        if identity_verifier(subject, role, identity_context) is not True:
+            raise DualApprovalError(f"{prefix}: identity or role not independently verified")
 
     audit_event = {
         "event_type": "dual_approval_verified",
