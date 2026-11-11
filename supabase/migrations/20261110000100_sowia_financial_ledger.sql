@@ -56,7 +56,7 @@ grant select on public.sowia_financial_transactions to authenticated;
 create or replace function public.sowia_enforce_paypal_refund_capture_limit()
 returns trigger
 language plpgsql
-set search_path = public, pg_temp
+set search_path = ''
 as $$
 declare
     v_capture_gross numeric(30,12);
