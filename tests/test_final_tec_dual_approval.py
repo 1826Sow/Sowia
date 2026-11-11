@@ -203,3 +203,12 @@ def test_request_digest_fields_must_be_sha256_hex(field, value):
     with pytest.raises(DualApprovalError, match="SHA-256"):
         validate(now, request, approvals, cb)
     assert cb[-2] == []
+
+
+def test_request_digest_rejects_non_hex_character_even_at_sha256_length():
+    now, request, approvals = fixture()
+    request["action_digest"] = "+" + ("a" * 63)
+    cb = callbacks(approvals)
+    with pytest.raises(DualApprovalError, match="SHA-256"):
+        validate(now, request, approvals, cb)
+    assert cb[-2] == []
