@@ -39,9 +39,14 @@ def paypal_configuration():
     if currency != "EUR":
         raise ValueError("La devise SOW IA doit être EUR pour ce parcours.")
     try:
-        amount = Decimal(price).quantize(Decimal("0.01"))
-    except (InvalidOperation, ValueError):
-        raise ValueError("PAYPAL_PREMIUM_PRICE doit être un montant en euros valide.")
+        raw_amount = Decimal(price)
+        if not raw_amount.is_finite():
+            raise ValueError
+        amount = raw_amount.quantize(Decimal("0.01"))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError("PAYPAL_PREMIUM_PRICE doit être un montant en euros valide.") from None
+    if raw_amount != amount:
+        raise ValueError("PAYPAL_PREMIUM_PRICE ne peut pas comporter plus de deux décimales.")
     if amount <= 0 or amount > Decimal("9999.99"):
         raise ValueError("Le prix Premium doit être compris entre 0,01 € et 9 999,99 €.")
     if not return_url.startswith("https://") or not cancel_url.startswith("https://"):
@@ -229,11 +234,13 @@ def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     result = (
         admin_client.table("sowia_financial_transactions")
-        .select("provider_payment_id, occurred_at")
+        .select("provider_payment_id, paypal_order_id, occurred_at")
         .eq("user_id", normalized_user_id)
         .eq("provider", "paypal")
         .eq("transaction_type", "payment")
-        .eq("status", "confirmed")
+        # Include manual_review rows: a partial refund can later become full.
+        # PayPal's current capture status, not the local ledger status, decides
+        # whether the entitlement must be revoked.
         .gte("occurred_at", since)
         .order("occurred_at", desc=True)
         .limit(limit)
@@ -249,6 +256,8 @@ def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
     checked = 0
     detected = 0
     flagged = 0
+    entitlements_revoked = 0
+    missing_order_links = 0
     for row in rows:
         capture_id = str((row or {}).get("provider_payment_id") or "").strip()
         if not re.fullmatch(r"[A-Z0-9_-]{5,100}", capture_id):
@@ -281,10 +290,32 @@ def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
                 },
             )
             flagged += 1
+            order_id = str((row or {}).get("paypal_order_id") or "").strip()
+            capture_status = str(capture.get("status") or "").upper()
+            # A partial refund is not a full loss of the purchase. Keep the
+            # entitlement active while the exact refund is under review.
+            if capture_status == "REFUNDED":
+                if order_id:
+                    revoked = (
+                        admin_client.table("sowia_entitlements")
+                        .update({"status": "inactive"})
+                        .eq("user_id", normalized_user_id)
+                        .eq("paypal_order_id", order_id)
+                        .eq("status", "active")
+                        .execute()
+                    )
+                    if getattr(revoked, "data", None):
+                        entitlements_revoked += len(revoked.data)
+                else:
+                    # Older ledger rows may predate the order-link migration.
+                    # Never guess which entitlement belongs to a capture.
+                    missing_order_links += 1
     return {
         "captures_checked": checked,
         "refunds_detected": detected,
         "refunds_flagged_for_manual_review": flagged,
+        "entitlements_revoked": entitlements_revoked,
+        "captures_missing_order_link": missing_order_links,
         "limit_reached": len(rows) >= limit,
     }
 

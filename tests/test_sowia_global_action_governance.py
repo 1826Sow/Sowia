@@ -18,6 +18,12 @@ class ActionGovernanceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.plan(budget_cap=-1)
 
+    def test_non_finite_budgets_rejected(self):
+        for budget in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(budget=budget):
+                with self.assertRaises(ValueError):
+                    self.plan(budget_cap=budget)
+
     def test_unknown_currency_rejected(self):
         with self.assertRaises(ValueError):
             self.plan(currency="XXX")

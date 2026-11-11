@@ -85,7 +85,17 @@ create trigger sowia_nex_guard_app_listing
 before insert or update on public.sowia_night_exchange_apps
 for each row execute function public.sowia_nex_guard_app_listing();
 
-grant select, insert, update, delete on public.sowia_night_exchange_apps to authenticated;
+-- Keep clients away from moderation/system columns even before trigger enforcement.
+revoke insert, update on public.sowia_night_exchange_apps from authenticated;
+grant select, delete on public.sowia_night_exchange_apps to authenticated;
+grant insert (
+    user_id, workspace_id, app_name, country, timezone, categories,
+    services_offered, services_wanted, night_start, night_end
+) on public.sowia_night_exchange_apps to authenticated;
+grant update (
+    app_name, country, timezone, categories,
+    services_offered, services_wanted, night_start, night_end
+) on public.sowia_night_exchange_apps to authenticated;
 revoke all on public.sowia_night_exchange_apps from anon;
 
 comment on table public.sowia_night_exchange_apps is

@@ -1,6 +1,5 @@
 """Unit tests for the isolated PayPal recurring-subscription helpers."""
 import pytest
-
 import paypal_subscriptions as paypal
 
 
@@ -153,3 +152,56 @@ def test_paypal_pagination_url_requires_exact_https_authority(url, expected):
         url, "https://api-m.sandbox.paypal.com"
     ) is expected
 
+
+
+def test_browser_return_never_persists_or_grants_active_subscription(monkeypatch):
+    """Only the signed webhook may activate a recurring Premium entitlement."""
+    from types import SimpleNamespace
+    import premium_access
+
+    class CatalogQuery:
+        def select(self, *_args, **_kwargs):
+            return self
+
+        def eq(self, *_args, **_kwargs):
+            return self
+
+        def maybe_single(self):
+            return self
+
+        def execute(self):
+            return SimpleNamespace(data={"paypal_plan_id": "P-PLAN123"})
+
+    class ReadOnlyAdminClient:
+        def table(self, name):
+            assert name == "sowia_paypal_catalog"
+            return CatalogQuery()
+
+    monkeypatch.setattr(paypal, "paypal_subscription_configuration", lambda: {
+        "mode": "sandbox",
+        "base_url": "https://api-m.sandbox.paypal.com",
+    })
+    monkeypatch.setattr(premium_access, "create_admin_client", lambda: ReadOnlyAdminClient())
+    monkeypatch.setattr(paypal, "get_premium_subscription", lambda _subscription_id: {
+        "id": "I-ABC12345",
+        "custom_id": "user-123",
+        "plan_id": "P-PLAN123",
+        "status": "ACTIVE",
+        "billing_info": {"failed_payments_count": 0},
+    })
+    monkeypatch.setattr(paypal, "_access_token", lambda _config: "token")
+    monkeypatch.setattr(paypal, "_validate_paypal_plan_price", lambda *_args: {"id": "P-PLAN123"})
+
+    result = paypal.reconcile_returned_subscription("I-ABC12345", "user-123")
+
+    assert result["status"] == "pending_webhook"
+    assert result["paypal_subscription_id"] == "I-ABC12345"
+
+
+def test_app_never_marks_browser_subscription_return_as_confirmed():
+    from pathlib import Path
+
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert 'st.session_state["paypal_subscription_returned"] = "pending_webhook"' in source
+    assert 'st.session_state["paypal_subscription_returned"] = "confirmed"' not in source
+    assert "Le retour navigateur ne donne aucun accès Premium." in source

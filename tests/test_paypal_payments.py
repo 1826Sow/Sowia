@@ -415,3 +415,10 @@ def test_completed_order_requires_matching_completed_capture(monkeypatch, captur
 
     with pytest.raises(PermissionError, match="capture PayPal existante"):
         paypal.capture_premium_order("ORDER1", "current-user")
+
+
+@pytest.mark.parametrize("price", ["12.901", "0.001", "NaN", "Infinity", "-Infinity"])
+def test_configuration_rejects_invalid_or_fractional_cent_prices(monkeypatch, price):
+    _settings(monkeypatch, PAYPAL_PREMIUM_PRICE=price)
+    with pytest.raises(ValueError):
+        paypal.paypal_configuration()

@@ -56,12 +56,69 @@ grant select on public.sowia_financial_transactions to authenticated;
 create or replace function public.sowia_enforce_paypal_refund_capture_limit()
 returns trigger
 language plpgsql
-set search_path = public, pg_temp
+set search_path = ''
 as $$
 declare
     v_capture_gross numeric(30,12);
+    v_capture_currency text;
     v_prior_refunds numeric(30,12);
 begin
+    if tg_op <> 'DELETE' and new.provider = 'paypal' then
+        if new.gross_amount <> round(new.gross_amount, 2)
+           or (new.fee_amount is not null and new.fee_amount <> round(new.fee_amount, 2))
+           or (new.net_amount is not null and new.net_amount <> round(new.net_amount, 2)) then
+            raise exception 'PayPal ledger amounts must use currency cent precision';
+        end if;
+    end if;
+
+    -- Preserve the audit trail: PayPal ledger entries cannot be deleted or
+    -- repurposed as another provider/transaction type after insertion.
+    if tg_op = 'DELETE' then
+        if old.provider = 'paypal' then
+            raise exception 'PayPal financial ledger entries cannot be deleted';
+        end if;
+        return old;
+    end if;
+
+    if tg_op = 'UPDATE' and old.provider = 'paypal' then
+        if new.provider <> old.provider
+           or new.transaction_type <> old.transaction_type
+           or new.user_id <> old.user_id
+           or new.provider_payment_id <> old.provider_payment_id then
+            raise exception 'PayPal ledger identity fields are immutable';
+        end if;
+
+        if old.transaction_type = 'payment' then
+            select coalesce(sum(gross_amount), 0)
+              into v_prior_refunds
+              from public.sowia_financial_transactions
+             where user_id = old.user_id
+               and provider = 'paypal'
+               and parent_capture_id = old.provider_payment_id
+               and transaction_type = 'refund';
+            if new.gross_amount < v_prior_refunds then
+                raise exception 'Updated PayPal capture would be lower than recorded refunds';
+            end if;
+            if exists (
+                select 1
+                  from public.sowia_financial_transactions
+                 where user_id = old.user_id
+                   and provider = 'paypal'
+                   and parent_capture_id = old.provider_payment_id
+                   and transaction_type = 'refund'
+                   and gross_currency <> new.gross_currency
+            ) then
+                raise exception 'Updated PayPal capture currency conflicts with recorded refunds';
+            end if;
+        elsif old.transaction_type = 'refund' then
+            if new.parent_capture_id is distinct from old.parent_capture_id
+               or new.gross_amount is distinct from old.gross_amount
+               or new.gross_currency is distinct from old.gross_currency then
+                raise exception 'PayPal refund amount, currency and parent capture are immutable';
+            end if;
+        end if;
+    end if;
+
     if new.provider <> 'paypal' or new.transaction_type <> 'refund' then
         return new;
     end if;
@@ -70,8 +127,12 @@ begin
         raise exception 'PayPal refund must reference its parent capture';
     end if;
 
-    select gross_amount
-      into v_capture_gross
+    if new.status <> 'manual_review' or new.gross_amount <= 0 then
+        raise exception 'PayPal refunds must remain positive and in manual review';
+    end if;
+
+    select gross_amount, gross_currency
+      into v_capture_gross, v_capture_currency
       from public.sowia_financial_transactions
      where user_id = new.user_id
        and provider = 'paypal'
@@ -81,6 +142,9 @@ begin
 
     if not found then
         raise exception 'PayPal parent capture not found for this account';
+    end if;
+    if new.gross_currency <> v_capture_currency then
+        raise exception 'PayPal refund currency does not match its parent capture';
     end if;
 
     select coalesce(sum(gross_amount), 0)
@@ -104,7 +168,7 @@ drop trigger if exists sowia_paypal_refund_capture_limit
     on public.sowia_financial_transactions;
 
 create trigger sowia_paypal_refund_capture_limit
-    before insert or update on public.sowia_financial_transactions
+    before insert or update or delete on public.sowia_financial_transactions
     for each row execute function public.sowia_enforce_paypal_refund_capture_limit();
 
 commit;

@@ -1,5 +1,5 @@
 -- SOWIA GLOBAL ACTION GOVERNANCE
--- Append-only audit log. A second authenticated account must approve a submitted plan.
+-- Authenticated users receive scoped read access; transitions write audit rows through the privileged RPC. A second account must approve a submitted plan.
 begin;
 create table if not exists public.sowia_global_action_plans (
     id uuid primary key default gen_random_uuid(),
@@ -41,16 +41,23 @@ for select to authenticated using (exists (
     select 1 from public.sowia_global_action_plans p where p.id = plan_id
     and (p.creator_id = auth.uid() or p.approver_id = auth.uid())
 ));
-revoke all on public.sowia_global_action_plans, public.sowia_global_action_audit from anon, public;
-grant select, insert on public.sowia_global_action_plans to authenticated;
+revoke all on public.sowia_global_action_plans, public.sowia_global_action_audit from anon, public, authenticated;
+revoke insert (id, creator_id, title, objective, country, owner_label, budget_cap, currency, due_date, success_metric, stop_condition, approver_id, status, approval_note, created_at, updated_at, approved_at) on public.sowia_global_action_plans from anon, public, authenticated;
+grant select on public.sowia_global_action_plans to authenticated;
+-- Clients may create draft content only; workflow metadata remains server-controlled.
+grant insert (
+    creator_id, title, objective, country, owner_label, budget_cap, currency,
+    due_date, success_metric, stop_condition, approver_id
+) on public.sowia_global_action_plans to authenticated;
 grant select on public.sowia_global_action_audit to authenticated;
 drop policy if exists sowia_action_plan_insert on public.sowia_global_action_plans;
 create policy sowia_action_plan_insert on public.sowia_global_action_plans
 for insert to authenticated with check (creator_id = auth.uid() and status = 'draft' and approver_id <> creator_id);
 create or replace function public.sowia_action_transition(p_plan_id uuid, p_next_status text, p_note text default '')
-returns void language plpgsql security definer set search_path = public, auth as $$
-declare p public.sowia_global_action_plans%rowtype;
-declare actor uuid := auth.uid();
+returns void language plpgsql security definer set search_path = '' as $sowia_action$
+declare
+ p public.sowia_global_action_plans%rowtype;
+ actor uuid := auth.uid();
 begin
  if actor is null then raise exception 'Authentication required'; end if;
  select * into p from public.sowia_global_action_plans where id = p_plan_id for update;
@@ -69,7 +76,7 @@ begin
  else raise exception 'Transition not permitted'; end if;
  insert into public.sowia_global_action_audit(plan_id,actor_id,from_status,to_status,note)
  values(p.id,actor,p.status,p_next_status,coalesce(p_note,''));
-end; $$;
+end; $sowia_action$;
 revoke all on function public.sowia_action_transition(uuid,text,text) from public, anon;
 grant execute on function public.sowia_action_transition(uuid,text,text) to authenticated;
 create index if not exists sowia_action_plans_creator_status_idx on public.sowia_global_action_plans(creator_id,status,created_at desc);

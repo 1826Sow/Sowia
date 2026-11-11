@@ -24,10 +24,13 @@ Consulter le [guide de l’espace Professionnel](docs/GUIDE_ESPACE_PROFESSIONNEL
 3. Dans Supabase > SQL Editor, exécuter les scripts du dépôt dans cet ordre :
    - `supabase/schema.sql`
    - `supabase_workspaces.sql`
-   - `supabase_storage_policies.sql`
+   - `supabase/migrations/20261111000200_sowia_professional_workspace_rls.sql` (contrôle Premium RLS pour mémoire/messages)
+   - `supabase_storage_policies.sql` (utilise la fonction de contrôle Premium créée à l'étape précédente)
    - `supabase_growth_crm.sql` (carnet de partenaires international)
    - `supabase_language_preferences.sql` (préférence de langue par compte)
    - `supabase_business_opportunities.sql` (pipeline d’opportunités et prévisions commerciales)
+
+   Après création de toutes les tables CRM, calendrier relationnel, Business Club (y compris ses notifications) et NIGHT EXCHANGE, exécuter `supabase/migrations/20261111000300_sowia_professional_modules_rls.sql`. Cette migration nécessite que ses neuf tables existent ; si un module est installé ultérieurement, la réexécuter après création de ses tables.
 
    Pour les modules facultatifs et leurs prérequis (Club Business, VIP, Night Exchange, GLOBAL, finances), suivre le [guide complet d’ordre d’installation Supabase](docs/SUPABASE_INSTALLATION_ORDER.md). Ne pas exécuter tous les scripts du dépôt en bloc : certains sont optionnels, historiques ou liés aux paiements.
 4. Vérifier que les tables `sowia_memory_items`, `sowia_messages`, `sowia_growth_leads`, `sowia_user_preferences` et `sowia_business_opportunities` existent et que le bucket `sowia-files` est privé.
