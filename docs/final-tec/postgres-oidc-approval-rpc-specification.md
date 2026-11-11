@@ -344,3 +344,19 @@ The PKCE browser scope is a locator, not an authentication credential; it is has
 **Required control before production FINAL TEC:** document and test a break-glass/admin-claim lifecycle owned outside the end-user application: named authorized operators, MFA, dual control for grant/revoke, immutable issuance/revocation log, reason/ticket, bounded JWT lifetime, forced session refresh/revocation strategy, and independent verification of effective claims. Do not implement a self-service admin-claim endpoint in Streamlit. The FINAL TEC role authority must be separate from general SOW IA UI admin claims and must have its own version/revocation semantics.
 
 **Current result:** no in-app admin-claim minting path was found in the reviewed authentication helper and application call sites. Actual claim issuer and live Supabase Auth controls remain **NOT_VERIFIED**.
+
+### 7.5 Repository governance and independent-review boundary (live GitHub API inspection)
+
+The active repository ruleset `PROTECTION SOWIA MAIN` (ID `26802058`) targets only `refs/heads/main` and currently enforces exactly two rules: prevent branch deletion and prevent non-fast-forward updates. Its `bypass_actors` list is empty and GitHub reports `current_user_can_bypass: never`.
+
+This ruleset does **not** require pull requests, approving reviews, code-owner review, status checks, signed commits, or deployment-environment approval. The legacy branch-protection endpoint returned HTTP 403 to the available GitHub integration, so any additional classic protection is **NOT_VERIFIED** rather than assumed absent.
+
+PR #263 is open, draft, and unmerged. The live PR review endpoint returned an empty array: no independent review is recorded. The 30 commits returned for the PR all report GitHub commit verification `verified=false`, reason `unsigned`. This does not prove malicious authorship or code tampering; it means cryptographic commit-signature verification is not available as provenance evidence for this series.
+
+The PR branch currently points to `7269c2e2102a32a9e835e16f04d4f51df0db57da`; `main` points to `c0e013e97cc852983f69da282bcc8b90b8f82418`. No branch movement or merge was performed during this inspection.
+
+**Required governance controls before production acceptance:** enforce PR-only changes to main; require at least one independent approval (preferably two for privileged/security-sensitive changes); dismiss stale approvals after new commits; require CODEOWNERS/security-owner review for FINAL TEC, Supabase migrations, auth, billing and workflow files; require the relevant CI checks; restrict bypass actors and document emergency bypass; protect production deployment environments with required reviewers; and establish a signed-commit or independently attested build-provenance policy. If the repository owner intentionally retains sole-owner control, that is a single-person trust boundary and must be explicitly accepted as residual risk, not described as independent review.
+
+**CI snapshot for HEAD 7269c2e:** PayPal safety checks and financial-ledger checks completed SUCCESS. Python 3.12 dependency-lock, general quality tests, and FINAL TEC integrated checks were still IN_PROGRESS at inspection time. The Supabase real-account RLS job was SKIPPED. No success is inferred for the in-progress jobs.
+
+**Decision:** repository governance does not currently demonstrate independent approval or mandatory CI gating for main. Keep PR #263 in draft; do not merge or deploy FINAL TEC until governance controls and an independent security review are evidenced.
