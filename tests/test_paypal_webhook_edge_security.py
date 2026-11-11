@@ -241,3 +241,17 @@ def test_one_time_capture_reversal_resolves_verified_refund_parent_and_revokes_e
     assert 'status: "manual_review"' in source[reversal_ledger:entitlement_revoke]
     assert 'resolution=ignore-duplicates,return=minimal' in source[reversal_ledger:entitlement_revoke]
     assert 'capture_reversed: true' in source[entitlement_revoke:]
+
+
+def test_suspended_subscription_requires_explicit_verified_activation_to_resume():
+    for migration_name in (
+        "20261111000500_paypal_subscription_atomic_reconciliation.sql",
+        "20261111000600_paypal_webhook_event_deduplication.sql",
+    ):
+        migration = (ROOT / "supabase/migrations" / migration_name).read_text(encoding="utf-8")
+        suspended_guard = migration.index("v_existing_status = 'suspended'")
+        activation_guard = migration.index("p_event_type <> 'BILLING.SUBSCRIPTION.ACTIVATED'", suspended_guard)
+        active_guard = migration.index("p_status <> 'active'", activation_guard)
+        preserve = migration.index("v_effective_status := 'suspended';", active_guard)
+        activation_branch = migration.index("p_event_type = 'BILLING.SUBSCRIPTION.ACTIVATED'", preserve)
+        assert suspended_guard < activation_guard < active_guard < preserve < activation_branch
