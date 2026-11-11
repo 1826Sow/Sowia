@@ -284,3 +284,16 @@ def test_paypal_refund_webhook_rechecks_duplicate_identity_before_revocation():
     assert "resolution=ignore-duplicates,return=minimal" in source[insert:confirm]
     assert "Number(row.gross_amount) === Number(refundAmount.value)" in source
     assert 'String(row.parent_capture_id || "") === captureId' in source
+
+
+
+def test_one_time_partial_refund_keeps_entitlement_active_until_capture_is_fully_refunded():
+    source = WEBHOOK
+    handler = source.index('if (eventType === "PAYMENT.CAPTURE.REFUNDED")')
+    capture_status = source.index('const captureStatus = String(capture.status || "").toUpperCase();', handler)
+    revoke_guard = source.index('if (captureStatus === "REFUNDED")', capture_status)
+    revoke = source.index('"/rest/v1/sowia_entitlements?user_id=eq."', revoke_guard)
+    response = source.index('refund_status: captureStatus', revoke)
+    assert capture_status < revoke_guard < revoke < response
+    assert 'new Set(["PARTIALLY_REFUNDED", "REFUNDED"]).has(captureStatus)' in source[handler:revoke_guard]
+    assert "entitlement_revoked: revokedRows.length > 0" in source[response:response + 300]
