@@ -80,7 +80,7 @@ def test_audit_insert_failure_rolls_back_both_nonce_consumptions(tmp_path):
             END
         """)
     assert store.commit_pair_and_audit(
-        "auth-04", records, {"event_type": "must_rollback"}, now=now
+        "auth-04", records, {"event_type": "must_rollback", "authorization_id": "auth-outbox-03"}, now=now
     ) is False
     assert store.audit_events() == []
     with sqlite3.connect(path) as connection:
@@ -324,7 +324,7 @@ def test_outbox_insert_failure_rolls_back_nonces_and_audit(tmp_path):
     with sqlite3.connect(path) as connection:
         connection.execute("DROP TRIGGER reject_outbox_insert")
     checkpoint = store.commit_pair_audit_and_outbox(
-        "auth-outbox-03", records, {"event_type": "retry_after_outbox_recovery"}, now=now
+        "auth-outbox-03", records, {"event_type": "retry_after_outbox_recovery", "authorization_id": "auth-outbox-03"}, now=now
     )
     assert checkpoint is not None
     assert len(store.audit_events()) == 1
@@ -336,7 +336,7 @@ def test_outbox_receipt_transition_is_one_way_and_idempotent(tmp_path):
     records = _records(now)
     assert store.register_pair("auth-outbox-04", records, now=now)
     checkpoint = store.commit_pair_audit_and_outbox(
-        "auth-outbox-04", records, {"event_type": "approved"}, now=now
+        "auth-outbox-04", records, {"event_type": "approved", "authorization_id": "auth-outbox-04"}, now=now
     )
     receipt = {"receipt_id": "external-123"}
     assert checkpoint is not None
@@ -379,7 +379,7 @@ def test_outbox_integrity_verifier_detects_database_tampering(tmp_path):
     records = _records(now)
     assert store.register_pair("auth-integrity-02", records, now=now)
     checkpoint = store.commit_pair_audit_and_outbox(
-        "auth-integrity-02", records, {"event_type": "verified"}, now=now
+        "auth-integrity-02", records, {"event_type": "verified", "authorization_id": "auth-integrity-02"}, now=now
     )
     assert checkpoint is not None
     assert store.verify_anchor_outbox() is True
@@ -480,3 +480,32 @@ def test_dual_approval_engine_can_use_only_verified_external_anchor_callback(tmp
     assert store.pending_anchor_checkpoints() == []
     assert store.verify_audit_chain() is True
     assert store.verify_anchor_outbox() is True
+
+
+
+def test_outbox_rejects_audit_event_with_missing_or_mismatched_authorization_id(tmp_path):
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path, "outbox-authorization-binding.sqlite3")
+    records = _records(now)
+    assert store.register_pair("auth-bound-01", records, now=now)
+
+    assert store.commit_pair_audit_and_outbox(
+        "auth-bound-01", records, {"event_type": "missing-id"}, now=now
+    ) is None
+    assert store.commit_pair_audit_and_outbox(
+        "auth-bound-01", records,
+        {"event_type": "wrong-id", "authorization_id": "another-authorization"},
+        now=now,
+    ) is None
+    assert store.audit_events() == []
+    assert store.pending_anchor_checkpoints() == []
+
+    # Rejection must leave both registered nonces available for the correctly
+    # bound event, proving the check happens before any transactional consume.
+    checkpoint = store.commit_pair_audit_and_outbox(
+        "auth-bound-01", records,
+        {"event_type": "correct", "authorization_id": "auth-bound-01"},
+        now=now,
+    )
+    assert checkpoint is not None
+    assert len(store.audit_events()) == 1
