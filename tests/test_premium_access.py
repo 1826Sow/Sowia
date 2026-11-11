@@ -128,3 +128,13 @@ def test_premium_guard_returns_active_entitlement():
 def test_premium_guard_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         premium_access.require_active_entitlement(Client(), None)
+
+
+@pytest.mark.parametrize("amount", ["12.901", "0.001", "NaN", "Infinity", "-Infinity"])
+def test_entitlement_grant_rejects_fractional_cents_and_non_finite_amounts(amount):
+    client = Client([])
+    with pytest.raises(ValueError):
+        premium_access.grant_paypal_entitlement(
+            client, "user-123", "ORDER-1", amount, "EUR"
+        )
+    assert client.query.payload is None
