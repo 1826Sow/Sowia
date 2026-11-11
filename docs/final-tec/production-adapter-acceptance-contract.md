@@ -82,7 +82,7 @@ serveur, annuaire de rôles courant, signature distante, vérification de signat
 et registre partagé avec commit nonce/audit atomique et contrôle de santé.
 
 Le contrôle local `validate_production_adapter_bundle` vérifie uniquement la
-présence des six rôles d'adaptateur, leurs méthodes et une déclaration explicite
+présence des sept rôles d'adaptateur, leurs méthodes et une déclaration explicite
 `production_grade = True`. Cette déclaration est une assertion de configuration,
 pas une preuve de sécurité ni une certification. Le contrôle ne contacte aucun
 fournisseur et ne valide ni TLS, ni IAM, ni KMS/HSM, ni transaction distribuée.
@@ -139,7 +139,7 @@ Le contrôle local validate_external_audit_anchor vérifie uniquement les deux m
 
 Critères d'acceptation d'un fournisseur réel : identité et contrôle d'accès distincts de l'administration SQLite ; rétention verrouillée WORM ou équivalent ; reçu externe authentifiable lié au checkpoint ; refus fermé si écriture, vérification ou reçu échoue ; tests de suppression, réécriture, troncature, rejeu, panne, reprise et restauration ; preuves expurgées et revue indépendante.
 
-Limite actuelle : aucun appel d'ancrage n'est intégré au commit SQLite, aucun fournisseur n'est sélectionné et aucun reçu externe n'est émis. Le hash-chain SQLite ne protège pas contre un administrateur privilégié capable de réécrire ou tronquer toute la base. L'ancrage externe reste NOT_RUN et G2-B reste NO-GO / NOT_RUN.
+Limite actuelle : le coordinateur et l'outbox SQLite sont implémentés dans le dépôt, mais aucun fournisseur externe réel n'est sélectionné, raccordé ou appelé ; aucun reçu externe réel n'est donc émis. Le hash-chain SQLite ne protège pas contre un administrateur privilégié capable de réécrire ou tronquer toute la base. L'ancrage externe reste NOT_RUN et G2-B reste NO-GO / NOT_RUN.
 
 
 ## 11. Coordination fail-closed avec outbox transactionnel
