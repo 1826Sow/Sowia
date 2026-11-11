@@ -16,12 +16,16 @@ class Adapter:
     def has_current_role(self, subject_id, role): return True
     def sign(self, key_id, canonical_payload): return b"signature"
     def verify(self, key_id, canonical_payload, signature): return True
-    def commit_pair_and_audit(self, authorization_id, nonce_records, audit_event): return True
+    def commit_pair_audit_and_outbox(self, authorization_id, nonce_records, audit_event): return object()
+    def mark_checkpoint_anchored(self, authorization_id, event_hash, receipt): return True
+    def pending_anchor_checkpoints(self): return []
     def healthcheck(self): return True
+    def append_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc): return {"receipt_id": "test"}
+    def verify_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc, receipt): return True
 
 
 def valid_bundle():
-    adapters = [Adapter() for _ in range(6)]
+    adapters = [Adapter() for _ in range(7)]
     return ProductionAdapterBundle(*adapters)
 
 
@@ -45,6 +49,7 @@ def test_preflight_rejects_bundle_subclasses_without_running_overrides():
     object.__setattr__(hostile, "signer", valid.signer)
     object.__setattr__(hostile, "signature_verifier", valid.signature_verifier)
     object.__setattr__(hostile, "ledger", valid.ledger)
+    object.__setattr__(hostile, "audit_anchor", valid.audit_anchor)
 
     with pytest.raises(ProductionAdapterContractError, match="complete adapter bundle"):
         validate_production_adapter_bundle(hostile)
@@ -64,23 +69,26 @@ def test_adapter_without_production_declaration_fails_closed():
         validate_production_adapter_bundle(bundle)
 
 
-def test_missing_atomic_ledger_healthcheck_fails_closed():
+def test_missing_atomic_outbox_ledger_contract_fails_closed():
     bundle = valid_bundle()
 
     class IncompleteLedger:
         production_grade = True
 
-        def commit_pair_and_audit(self, authorization_id, nonce_records, audit_event):
+        def commit_pair_audit_and_outbox(self, authorization_id, nonce_records, audit_event):
+            return object()
+
+        def healthcheck(self):
             return True
 
     object.__setattr__(bundle, "ledger", IncompleteLedger())
-    with pytest.raises(ProductionAdapterContractError, match="healthcheck"):
+    with pytest.raises(ProductionAdapterContractError, match="mark_checkpoint_anchored|pending_anchor_checkpoints"):
         validate_production_adapter_bundle(bundle)
 
 
-def test_bundle_requires_all_six_adapter_roles():
+def test_bundle_requires_all_seven_adapter_roles():
     with pytest.raises(TypeError):
-        ProductionAdapterBundle(None, None, None, None, None)
+        ProductionAdapterBundle(None, None, None, None, None, None)
 
 
 def test_structural_preflight_never_calls_adapters_or_returns_authorization():
@@ -99,10 +107,14 @@ def test_structural_preflight_never_calls_adapters_or_returns_authorization():
         def has_current_role(self, *args): return self._called("has_current_role")
         def sign(self, *args): return self._called("sign")
         def verify(self, *args): return self._called("verify")
-        def commit_pair_and_audit(self, *args): return self._called("commit_pair_and_audit")
+        def commit_pair_audit_and_outbox(self, *args): return self._called("commit_pair_audit_and_outbox")
+        def mark_checkpoint_anchored(self, *args): return self._called("mark_checkpoint_anchored")
+        def pending_anchor_checkpoints(self, *args): return self._called("pending_anchor_checkpoints")
         def healthcheck(self, *args): return self._called("healthcheck")
+        def append_checkpoint(self, *args): return self._called("append_checkpoint")
+        def verify_checkpoint(self, *args): return self._called("verify_checkpoint")
 
-    adapters = [NoCallAdapter() for _ in range(6)]
+    adapters = [NoCallAdapter() for _ in range(7)]
     bundle = ProductionAdapterBundle(*adapters)
 
     result = validate_production_adapter_bundle(bundle)
@@ -127,7 +139,7 @@ def test_preflight_does_not_execute_adapter_properties_or_descriptors():
             calls.append("healthcheck")
             raise RuntimeError("must not execute")
 
-    adapters = [HostileAdapter(), *[Adapter() for _ in range(5)]]
+    adapters = [HostileAdapter(), *[Adapter() for _ in range(6)]]
     bundle = ProductionAdapterBundle(*adapters)
 
     with pytest.raises(ProductionAdapterContractError, match="oidc_keys|ledger"):
