@@ -178,10 +178,13 @@ def validate_dual_approval(
 
         signed = _signed_envelope(request, digest, approval)
         identity_context = {"approval": dict(approval), "request_digest": digest}
-        if identity_verifier(subject, role, identity_context) is not True:
-            raise DualApprovalError(f"{prefix}: identity or role not independently verified")
+        # Verify the approval's Ed25519 signature before consuming the
+        # one-time OIDC approval session. Otherwise an invalid signature could
+        # burn a valid session and prevent a legitimate retry.
         if signature_verifier(signed, approval) is not True:
             raise DualApprovalError(f"{prefix}: signature or trusted key invalid")
+        if identity_verifier(subject, role, identity_context) is not True:
+            raise DualApprovalError(f"{prefix}: identity or role not independently verified")
 
         subjects.add(subject)
         key_ids.add(key_id)
