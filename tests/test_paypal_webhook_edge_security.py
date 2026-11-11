@@ -169,10 +169,12 @@ def test_subscription_webhook_deduplicates_exact_paypal_event_ids():
     assert 'eventId.length > 128' in source
 
     migration = (ROOT / "supabase/migrations/20261111000600_paypal_webhook_event_deduplication.sql").read_text(encoding="utf-8")
-    assert "add column if not exists last_webhook_event_id text" in migration
-    assert "v_existing_event_id = p_event_id" in migration
+    assert "create table if not exists public.sowia_paypal_webhook_events" in migration
+    assert "event_id text primary key" in migration
+    assert "on conflict (event_id) do nothing" in migration
+    assert "v_claimed_event_id is null" in migration
+    assert "PayPal webhook event ID conflicts with another event" in migration
     assert "return v_existing_status;" in migration
-    assert "last_webhook_event_id = excluded.last_webhook_event_id" in migration
     assert "drop function if exists public.sowia_reconcile_paypal_subscription(" in migration
     assert "p_event_id text" in migration
     assert "to service_role" in migration
