@@ -11,7 +11,7 @@ import threading
 import time
 from email.message import Message
 from typing import Any, Callable, Iterable
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPSHandler, HTTPRedirectHandler, Request, build_opener
 
@@ -118,6 +118,10 @@ class HTTPSJWKSResolver:
             response = self._opener.open(request, timeout=self.timeout_seconds)
         except HTTPError as exc:
             raise JWKSConfigurationError("JWKS endpoint returned an HTTP error or redirect") from exc
+        except (URLError, TimeoutError, OSError) as exc:
+            # Never fall back to expired keys after a transport failure. Keep
+            # provider/network details out of the public error message.
+            raise JWKSConfigurationError("JWKS endpoint could not be reached safely") from exc
         with response:
             if response.getcode() != 200:
                 raise JWKSConfigurationError("JWKS endpoint did not return HTTP 200")
