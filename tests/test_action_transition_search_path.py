@@ -1,0 +1,24 @@
+"""Regression guard for SECURITY DEFINER search_path hardening."""
+
+from pathlib import Path
+import re
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SQL = (ROOT / "supabase_global_action_governance.sql").read_text(encoding="utf-8").lower()
+
+
+def test_action_transition_security_definer_uses_empty_search_path():
+    match = re.search(
+        r"create or replace function public\\.sowia_action_transition\\([\\s\\S]*?as \\$\\$(.*?)\\$\\$;",
+        SQL,
+    )
+    assert match, "Action transition function must exist"
+    declaration = SQL[match.start():match.start(500)]
+    body = match.group(1)
+    assert "security definer" in declaration
+    assert "set search_path = ''" in declaration
+    assert "auth.uid()" in body
+    assert "public.sowia_global_action_plans" in body
+    assert "public.sowia_global_action_audit" in body
+    assert "set search_path = public" not in declaration
