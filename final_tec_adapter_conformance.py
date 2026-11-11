@@ -45,11 +45,13 @@ def run_adapter_conformance(
     Exception messages are deliberately not copied into the report because
     provider SDK exceptions can contain sensitive request or response data.
     """
+    if not isinstance(probes, Sequence) or isinstance(probes, (str, bytes)):
+        raise ConformanceConfigurationError(
+            "The conformance suite must be a finite sequence"
+        )
     if not probes:
         raise ConformanceConfigurationError("At least one conformance probe is required")
-    if isinstance(probes, (str, bytes)) or any(
-        not isinstance(probe, ConformanceProbe) for probe in probes
-    ):
+    if any(not isinstance(probe, ConformanceProbe) for probe in probes):
         raise ConformanceConfigurationError(
             "Every suite entry must be a ConformanceProbe"
         )
