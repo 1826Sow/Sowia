@@ -665,7 +665,8 @@ Deno.serve(async (request: Request) => {
     // This prevents simultaneous refund and recovery notifications from
     // overwriting payment_review based on stale reads.
     const verifiedPaymentRecovery =
-      eventType === "BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED" &&
+      (eventType === "PAYMENT.SALE.COMPLETED" ||
+        eventType === "BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED") &&
       normalizedStatus === "ACTIVE" && failedPaymentsCount === 0;
     const lastPayment = billing.last_payment || {};
     const paymentAmount = lastPayment.amount || {};
