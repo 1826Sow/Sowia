@@ -323,3 +323,38 @@ def test_oidc_verifier_integrates_with_dual_approval_engine(signing_material):
     assert result["identities_verified_by_injected_authority"] is True
     assert result["execution_authorized"] is False
     assert result["workload_executed"] is False
+
+
+def test_session_consumer_rejection_fails_closed(signing_material):
+    private, public = signing_material
+    verifier = build_verifier(
+        make_token(private), public,
+        consume_assertion_session=lambda session_id, nonce: False,
+    )
+    assert verifier(SUBJECT, "security-approver", {}) is False
+
+
+def test_session_consumer_exception_fails_closed(signing_material):
+    private, public = signing_material
+
+    def unavailable(session_id, nonce):
+        raise RuntimeError("shared session store unavailable")
+
+    verifier = build_verifier(
+        make_token(private), public,
+        consume_assertion_session=unavailable,
+    )
+    assert verifier(SUBJECT, "security-approver", {}) is False
+
+
+def test_session_is_not_consumed_when_current_role_check_fails(signing_material):
+    private, public = signing_material
+    calls = []
+
+    verifier = build_verifier(
+        make_token(private), public,
+        role_ok=False,
+        consume_assertion_session=lambda session_id, nonce: calls.append(session_id) or True,
+    )
+    assert verifier(SUBJECT, "security-approver", {}) is False
+    assert calls == []
