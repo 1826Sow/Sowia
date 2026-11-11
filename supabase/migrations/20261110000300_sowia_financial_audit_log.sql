@@ -60,6 +60,10 @@ begin
         v_old := jsonb_build_object(
             'id', old.id,
             'user_id', old.user_id,
+            'order_id', old.order_id,
+            'reference_amount_eur', old.reference_amount_eur,
+            'tax_amount_eur', old.tax_amount_eur,
+            'created_at', old.created_at,
             'provider', old.provider,
             'provider_payment_id', old.provider_payment_id,
             'parent_capture_id', old.parent_capture_id,
@@ -79,6 +83,10 @@ begin
         v_new := jsonb_build_object(
             'id', new.id,
             'user_id', new.user_id,
+            'order_id', new.order_id,
+            'reference_amount_eur', new.reference_amount_eur,
+            'tax_amount_eur', new.tax_amount_eur,
+            'created_at', new.created_at,
             'provider', new.provider,
             'provider_payment_id', new.provider_payment_id,
             'parent_capture_id', new.parent_capture_id,
