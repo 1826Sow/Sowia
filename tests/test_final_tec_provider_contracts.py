@@ -29,6 +29,29 @@ def test_complete_declared_bundle_passes_structural_preflight():
     validate_production_adapter_bundle(valid_bundle())
 
 
+def test_preflight_rejects_bundle_subclasses_without_running_overrides():
+    calls = []
+
+    class HostileBundle(ProductionAdapterBundle):
+        @property
+        def oidc_keys(self):
+            calls.append("oidc_keys")
+            raise RuntimeError("must not execute")
+
+    valid = valid_bundle()
+    hostile = object.__new__(HostileBundle)
+    object.__setattr__(hostile, "sessions", valid.sessions)
+    object.__setattr__(hostile, "roles", valid.roles)
+    object.__setattr__(hostile, "signer", valid.signer)
+    object.__setattr__(hostile, "signature_verifier", valid.signature_verifier)
+    object.__setattr__(hostile, "ledger", valid.ledger)
+
+    with pytest.raises(ProductionAdapterContractError, match="complete adapter bundle"):
+        validate_production_adapter_bundle(hostile)
+
+    assert calls == []
+
+
 def test_missing_bundle_fails_closed():
     with pytest.raises(ProductionAdapterContractError):
         validate_production_adapter_bundle(None)
