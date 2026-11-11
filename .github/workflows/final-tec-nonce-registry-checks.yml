@@ -1,20 +1,21 @@
-name: FINAL TEC local nonce registry checks
+name: FINAL TEC nonce-validator integration checks
 
 on:
   pull_request:
     branches:
-      - feature/final-tec-g0-g2b-contract-validator
+      - feature/final-tec-local-nonce-registry
     paths:
+      - "final_tec_authorization_contract.py"
       - "final_tec_nonce_registry.py"
+      - "tests/test_final_tec_authorization_nonce_integration.py"
       - "tests/test_final_tec_nonce_registry.py"
-      - "docs/FINAL_TEC_LOCAL_NONCE_REGISTRY.md"
       - ".github/workflows/final-tec-nonce-registry-checks.yml"
 
 permissions:
   contents: read
 
 jobs:
-  local-nonce-registry:
+  nonce-validator-integration:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,4 +23,4 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install --upgrade pip pytest
-      - run: python -m pytest -q tests/test_final_tec_nonce_registry.py
+      - run: python -m pytest -q tests/test_final_tec_nonce_registry.py tests/test_final_tec_authorization_nonce_integration.py
