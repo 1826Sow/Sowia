@@ -154,6 +154,18 @@ class ReadFailureResponse(Response):
         raise OSError("sensitive body read detail")
 
 
+class IncompleteHTTPResponse(Exception):
+    pass
+
+
+def test_incomplete_http_response_is_normalized():
+    from http.client import IncompleteRead
+
+    opener = FakeOpener([IncompleteRead(b"partial", 20)])
+    with pytest.raises(JWKSConfigurationError, match="could not be reached safely"):
+        make_resolver(opener)("key-1")
+
+
 def test_body_read_network_failure_is_normalized():
     opener = FakeOpener([ReadFailureResponse({"keys": [jwk("key-1")]})])
     with pytest.raises(JWKSConfigurationError, match="could not be reached safely") as error:
