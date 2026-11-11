@@ -44,13 +44,13 @@ def _required_text(data: Mapping[str, Any], key: str) -> str:
     return value
 
 
-def _positive_number(data: Mapping[str, Any], key: str, *, integer: bool = False) -> int | float:
+def _positive_number(data: Mapping[str, Any], key: str, *, integer: bool = False, allow_zero: bool = False) -> int | float:
     value = data.get(key)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise RunPolicyError(f"{key} doit être numérique.")
     if integer and not isinstance(value, int):
         raise RunPolicyError(f"{key} doit être un entier.")
-    if not math.isfinite(float(value)) or value <= 0:
+    if not math.isfinite(float(value)) or value < 0 or (value == 0 and not allow_zero):
         raise RunPolicyError(f"{key} doit être fini et strictement positif.")
     return value
 
@@ -115,7 +115,7 @@ def validate_run_manifest(manifest: Mapping[str, Any], *, now: datetime | None =
     cost_basis = _required_text(manifest, "cost_basis")
 
     budget = _positive_number(manifest, "budget_limit")
-    estimate = _positive_number(manifest, "estimated_cost")
+    estimate = _positive_number(manifest, "estimated_cost", allow_zero=True)
     if estimate > budget:
         raise RunPolicyError("Le coût estimé dépasse le budget plafond.")
 
