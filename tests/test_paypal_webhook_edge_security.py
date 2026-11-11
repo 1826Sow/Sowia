@@ -178,3 +178,18 @@ def test_subscription_webhook_deduplicates_exact_paypal_event_ids():
     assert "drop function if exists public.sowia_reconcile_paypal_subscription(" in migration
     assert "p_event_id text" in migration
     assert "to service_role" in migration
+
+
+def test_paypal_event_receipt_registry_is_private_and_claimed_atomically():
+    migration = (ROOT / "supabase/migrations/20261111000600_paypal_webhook_event_deduplication.sql").read_text(encoding="utf-8")
+    lock = migration.index("pg_advisory_xact_lock")
+    claim = migration.index("insert into public.sowia_paypal_webhook_events")
+    duplicate = migration.index("if v_claimed_event_id is null then", claim)
+    chronology = migration.index("p_event_time < v_existing_event_time", duplicate)
+    assert lock < claim < duplicate < chronology
+    assert "alter table public.sowia_paypal_webhook_events enable row level security" in migration
+    assert "revoke all on public.sowia_paypal_webhook_events from public, anon, authenticated" in migration
+    assert "event_id text primary key" in migration
+    assert "event_type = p_event_type" in migration
+    assert "event_time = p_event_time" in migration
+    assert "on conflict (event_id) do nothing" in migration
