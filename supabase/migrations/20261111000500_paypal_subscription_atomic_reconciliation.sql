@@ -2,6 +2,10 @@
 -- Prevent concurrent refund/recovery events from overwriting payment_review.
 begin;
 
+alter table public.sowia_subscriptions
+    add column if not exists payment_review_at timestamptz,
+    add column if not exists last_webhook_event_time timestamptz;
+
 create or replace function public.sowia_reconcile_paypal_subscription(
     p_user_id uuid,
     p_paypal_subscription_id text,
@@ -12,6 +16,7 @@ create or replace function public.sowia_reconcile_paypal_subscription(
     p_amount numeric,
     p_next_billing_time timestamptz,
     p_last_payment_at timestamptz,
+    p_event_time timestamptz,
     p_recovery_verified boolean
 )
 returns text
@@ -21,6 +26,9 @@ set search_path = ''
 as $$
 declare
     v_existing_status text;
+    v_existing_review_at timestamptz;
+    v_existing_event_time timestamptz;
+    v_review_at timestamptz;
     v_effective_status text;
 begin
     if p_user_id is null
@@ -28,6 +36,7 @@ begin
        or p_paypal_plan_id is null
        or p_event_type is null
        or p_status is null
+       or p_event_time is null
        or p_paypal_subscription_id !~ '^I-[A-Z0-9-]{5,64}$'
        or p_paypal_plan_id !~ '^P-[A-Z0-9]+$'
        or p_event_type not in (
@@ -61,26 +70,42 @@ begin
         pg_catalog.hashtextextended(p_paypal_subscription_id, 0)
     );
 
-    select status
-      into v_existing_status
+    select status, payment_review_at, last_webhook_event_time
+      into v_existing_status, v_existing_review_at, v_existing_event_time
       from public.sowia_subscriptions
      where paypal_subscription_id = p_paypal_subscription_id
      for update;
 
-    if p_event_type in ('PAYMENT.SALE.REFUNDED', 'PAYMENT.SALE.REVERSED')
-       or (v_existing_status = 'payment_review' and not p_recovery_verified) then
+    -- Ignore out-of-order provider events. A delayed success notification
+    -- must never clear a newer refund/reversal hold.
+    if v_existing_event_time is not null and p_event_time < v_existing_event_time then
+        return v_existing_status;
+    end if;
+
+    v_review_at := v_existing_review_at;
+    if p_event_type in ('PAYMENT.SALE.REFUNDED', 'PAYMENT.SALE.REVERSED') then
         v_effective_status := 'payment_review';
+        v_review_at := greatest(coalesce(v_review_at, p_event_time), p_event_time);
+    elsif v_existing_status = 'payment_review' then
+        if p_recovery_verified and
+           (v_review_at is null or p_event_time > v_review_at) then
+            v_effective_status := p_status;
+            v_review_at := null;
+        else
+            v_effective_status := 'payment_review';
+        end if;
     else
         v_effective_status := p_status;
     end if;
 
     insert into public.sowia_subscriptions (
         user_id, provider, paypal_subscription_id, paypal_plan_id, status,
-        currency, amount, next_billing_time, last_payment_at, updated_at
+        currency, amount, next_billing_time, last_payment_at,
+        payment_review_at, last_webhook_event_time, updated_at
     ) values (
         p_user_id, 'paypal', p_paypal_subscription_id, p_paypal_plan_id,
         v_effective_status, p_currency, p_amount, p_next_billing_time,
-        p_last_payment_at, pg_catalog.now()
+        p_last_payment_at, v_review_at, p_event_time, pg_catalog.now()
     )
     on conflict (paypal_subscription_id) do update
        set user_id = excluded.user_id,
@@ -91,6 +116,8 @@ begin
            amount = excluded.amount,
            next_billing_time = excluded.next_billing_time,
            last_payment_at = excluded.last_payment_at,
+           payment_review_at = v_review_at,
+           last_webhook_event_time = excluded.last_webhook_event_time,
            updated_at = pg_catalog.now();
 
     return v_effective_status;
@@ -98,10 +125,10 @@ end;
 $$;
 
 revoke all on function public.sowia_reconcile_paypal_subscription(
-    uuid, text, text, text, text, text, numeric, timestamptz, timestamptz, boolean
+    uuid, text, text, text, text, text, numeric, timestamptz, timestamptz, timestamptz, boolean
 ) from public, anon, authenticated;
 grant execute on function public.sowia_reconcile_paypal_subscription(
-    uuid, text, text, text, text, text, numeric, timestamptz, timestamptz, boolean
+    uuid, text, text, text, text, text, numeric, timestamptz, timestamptz, timestamptz, boolean
 ) to service_role;
 
 commit;
