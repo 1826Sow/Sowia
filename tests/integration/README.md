@@ -23,7 +23,7 @@ SOWIA_TEST_USER_B_PASSWORD
 SOWIA_TEST_PROJECT_CONFIRMATION
 ```
 
-Pour `SOWIA_TEST_PROJECT_CONFIRMATION`, utiliser exactement la valeur `I_CONFIRM_THIS_IS_A_DEDICATED_SOWIA_TEST_PROJECT` uniquement après avoir vérifié l'URL et le projet Supabase de test. Cette confirmation supplémentaire est obligatoire : sans elle, aucun appel réseau de test n'est effectué.
+Pour `SOWIA_TEST_PROJECT_CONFIRMATION`, utiliser exactement la valeur `I_CONFIRM_THIS_IS_A_DEDICATED_SOWIA_TEST_PROJECT` uniquement après avoir vérifié l'URL et le projet Supabase de test. Cette confirmation supplémentaire est obligatoire : sans elle, aucun appel réseau de test n'est effectué. Les scripts n'acceptent qu'une URL de projet hébergé au format HTTPS `https://<projet>.supabase.co`, sans identifiants, port, chemin, paramètres ni fragment. Les redirections HTTP sont désactivées pour empêcher le transfert involontaire des clés ou jetons vers une autre destination.
 
 Ne jamais utiliser les comptes de production, ni inscrire les secrets dans Git, les journaux CI ou une capture d'écran. Le projet de test doit rester distinct de l'application SOW IA en production.
 
