@@ -659,6 +659,61 @@ def test_dual_approval_engine_can_use_only_verified_external_anchor_callback(tmp
 
 
 
+def test_anchor_recovery_handles_lost_append_response_idempotently(tmp_path):
+    """A remote append committed before response loss must be safe to retry."""
+    from final_tec_audit_anchor import ExternalAuditAnchorCoordinator
+
+    class LostFirstResponseAnchor:
+        def __init__(self):
+            self.receipts = {}
+            self.append_calls = 0
+
+        def append_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc):
+            key = (sequence, previous_hash, event_hash, created_at_utc)
+            self.append_calls += 1
+            receipt = self.receipts.setdefault(
+                key, {"receipt_id": f"remote-{sequence}", "event_hash": event_hash}
+            )
+            if self.append_calls == 1:
+                # Model remote durability followed by a lost network response.
+                raise TimeoutError("response lost after remote append")
+            return receipt
+
+        def verify_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc, receipt):
+            key = (sequence, previous_hash, event_hash, created_at_utc)
+            return self.receipts.get(key) == receipt
+
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path, "outbox-lost-anchor-response.sqlite3")
+    records = _records(now)
+    authorization_id = "auth-anchor-lost-response"
+    event = {
+        "event_type": "anchor-recovery",
+        "authorization_id": authorization_id,
+    }
+    assert store.register_pair(authorization_id, records, now=now)
+    anchor = LostFirstResponseAnchor()
+    coordinator = ExternalAuditAnchorCoordinator(store, anchor)
+
+    # The ledger commit is durable even though the remote acknowledgement is lost.
+    assert coordinator.commit_and_anchor(authorization_id, records, event) is False
+    pending = store.pending_anchor_checkpoints()
+    assert len(pending) == 1
+    assert store.anchor_outbox_status(authorization_id) == "pending"
+    assert len(store.audit_events()) == 1
+
+    # Recovery replays the identical checkpoint; the remote anchor returns its
+    # original receipt rather than appending a duplicate.
+    assert coordinator.recover_pending() == 1
+    assert anchor.append_calls == 2
+    assert len(anchor.receipts) == 1
+    assert store.pending_anchor_checkpoints() == []
+    assert store.anchor_outbox_status(authorization_id) == "anchored"
+    assert len(store.audit_events()) == 1
+    assert store.verify_audit_chain() is True
+    assert store.verify_anchor_outbox() is True
+
+
 def test_outbox_rejects_audit_event_with_missing_or_mismatched_authorization_id(tmp_path):
     now = datetime.now(timezone.utc)
     store = _store(tmp_path, "outbox-authorization-binding.sqlite3")
