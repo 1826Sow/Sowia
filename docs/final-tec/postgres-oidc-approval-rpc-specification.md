@@ -332,3 +332,15 @@ The canonical entitlement schema grants authenticated users SELECT only; its com
 **Live verification still required:** inspect actual `pg_proc.prosecdef`, function owners, `proconfig` search paths, EXECUTE grants, schema CREATE grants, default privileges, role membership, table/sequence ACLs, RLS and FORCE RLS, Auth admin API access, Edge Function secret deployment, and key rotation. The repository inspection cannot establish any of those live project facts.
 
 **Decision:** do not extend either existing SECURITY DEFINER function for FINAL TEC. Implement a dedicated, narrowly granted RPC set only after the role authority is selected and the live privilege inventory is captured. Keep all existing financial-ledger and PayPal functions/migrations unchanged.
+
+### 7.4 Admin-claim issuance path and application authentication boundary
+
+The application authentication helper `sowia_supabase_auth.py` creates a per-session Supabase client using only `SUPABASE_URL` and `SUPABASE_ANON_KEY`; its docstring explicitly excludes service-role keys. It uses GitHub OAuth through Supabase PKCE, stores only a short-lived browser-scoped PKCE verifier in SQLite, and keeps access/refresh session values in client memory. The helper contains no Auth Admin API call and no operation that writes `app_metadata`.
+
+The inspected application code reads `current_user.app_metadata` to decide whether to display administrator functions. The inspected GLOBAL ID and technical-incident SQL policies independently check the same JWT claims. No application-side route or helper that assigns/removes `role=admin` or `sowia_admin=true` was found in the reviewed files. Repository evidence therefore points to claim issuance being an out-of-band Supabase Auth administration task (Dashboard or a separately controlled Auth Admin API operator), but the actual live operator, process, MFA, approval, and audit trail are **not verified**. Absence from the inspected application code is not proof that no external automation or dashboard process exists.
+
+The PKCE browser scope is a locator, not an authentication credential; it is hashed before SQLite storage and cannot by itself grant a SOW IA role. This is a useful separation to preserve.
+
+**Required control before production FINAL TEC:** document and test a break-glass/admin-claim lifecycle owned outside the end-user application: named authorized operators, MFA, dual control for grant/revoke, immutable issuance/revocation log, reason/ticket, bounded JWT lifetime, forced session refresh/revocation strategy, and independent verification of effective claims. Do not implement a self-service admin-claim endpoint in Streamlit. The FINAL TEC role authority must be separate from general SOW IA UI admin claims and must have its own version/revocation semantics.
+
+**Current result:** no in-app admin-claim minting path was found in the reviewed authentication helper and application call sites. Actual claim issuer and live Supabase Auth controls remain **NOT_VERIFIED**.
