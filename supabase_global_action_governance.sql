@@ -1,5 +1,5 @@
 -- SOWIA GLOBAL ACTION GOVERNANCE
--- Append-only audit log. A second authenticated account must approve a submitted plan.
+-- Authenticated users receive scoped read access; transitions write audit rows through the privileged RPC. A second account must approve a submitted plan.
 begin;
 create table if not exists public.sowia_global_action_plans (
     id uuid primary key default gen_random_uuid(),
