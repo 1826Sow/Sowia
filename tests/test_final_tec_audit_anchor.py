@@ -109,3 +109,33 @@ def test_wrong_authorization_checkpoint_is_rejected_before_provider_call():
         "auth-4", (("n" * 48, "expiry"),), {"event": "approved"}
     ) is False
     assert anchor.append_calls == 0
+
+
+def test_real_sqlite_outbox_retries_external_anchor_without_nonce_replay(tmp_path):
+    from datetime import timedelta
+    from final_tec_atomic_approval_store import SQLiteAtomicApprovalStore
+
+    now = datetime.now(timezone.utc)
+    expiry = (now + timedelta(minutes=10)).isoformat()
+    records = (("x" * 48, expiry), ("y" * 48, expiry))
+    ledger = SQLiteAtomicApprovalStore(tmp_path / "coordinator-outbox.sqlite3")
+    assert ledger.register_pair("auth-real-outbox", records, now=now)
+
+    anchor = FakeExternalAnchor(fail_append=True)
+    coordinator = ExternalAuditAnchorCoordinator(ledger, anchor)
+    event = {"event_type": "dual_approval_verified", "authorization_id": "auth-real-outbox"}
+
+    assert coordinator.commit_and_anchor("auth-real-outbox", records, event) is False
+    pending = ledger.pending_anchor_checkpoints()
+    assert len(pending) == 1
+    assert ledger.anchor_outbox_status("auth-real-outbox") == "pending"
+    assert len(ledger.audit_events()) == 1
+
+    # Simulate provider recovery. Exact retry returns the persisted checkpoint;
+    # it does not consume either nonce or append a second audit row.
+    anchor.fail_append = False
+    assert coordinator.commit_and_anchor("auth-real-outbox", records, event) is True
+    assert ledger.anchor_outbox_status("auth-real-outbox") == "anchored"
+    assert ledger.pending_anchor_checkpoints() == []
+    assert len(ledger.audit_events()) == 1
+    assert ledger.verify_audit_chain() is True
