@@ -489,6 +489,11 @@ Deno.serve(async (request: Request) => {
       return json({ error: "PayPal event timestamp is invalid" }, 422);
     }
 
+    const eventId = String(event.id || "").trim();
+    if (!eventId || eventId.length > 128) {
+      return json({ error: "PayPal event identifier is invalid" }, 422);
+    }
+
     const reconcileResponse = await fetch(
       supabaseUrl + "/rest/v1/rpc/sowia_reconcile_paypal_subscription",
       {
@@ -512,6 +517,7 @@ Deno.serve(async (request: Request) => {
           p_next_billing_time: billing.next_billing_time || null,
           p_last_payment_at: lastPayment.time || null,
           p_event_time: eventTime,
+          p_event_id: eventId,
           p_recovery_verified: verifiedPaymentRecovery,
         }),
       },
