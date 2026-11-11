@@ -35,6 +35,15 @@ create policy "Require Premium for Business Club meetings"
     using (public.sowia_has_professional_access())
     with check (public.sowia_has_professional_access());
 
+
+-- Private Business Club notifications are Premium data too, including after
+-- a member's entitlement expires. Trigger inserts remain server-owned.
+drop policy if exists "Require Premium for Business Club notifications" on public.sowia_business_club_notifications;
+create policy "Require Premium for Business Club notifications"
+    on public.sowia_business_club_notifications as restrictive for all to authenticated
+    using (public.sowia_has_professional_access())
+    with check (public.sowia_has_professional_access());
+
 -- NIGHT EXCHANGE is Professional-only, including approved directory reads
 -- and its append-only event history.
 drop policy if exists "Require Premium for NIGHT EXCHANGE apps" on public.sowia_night_exchange_apps;
