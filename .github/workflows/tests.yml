@@ -19,7 +19,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
+          cache: pip
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -39,6 +39,7 @@ jobs:
       SOWIA_TEST_USER_A_PASSWORD: ${{ secrets.SOWIA_TEST_USER_A_PASSWORD }}
       SOWIA_TEST_USER_B_EMAIL: ${{ secrets.SOWIA_TEST_USER_B_EMAIL }}
       SOWIA_TEST_USER_B_PASSWORD: ${{ secrets.SOWIA_TEST_USER_B_PASSWORD }}
+      SOWIA_TEST_FINANCIAL_FIXTURE_PAYMENT_ID: ${{ secrets.SOWIA_TEST_FINANCIAL_FIXTURE_PAYMENT_ID }}
     steps:
       - name: Check integration-test configuration
         id: credentials
@@ -72,4 +73,7 @@ jobs:
       - name: Verify real two-user RLS isolation
         if: steps.credentials.outputs.configured == 'true'
         run: >-
-          pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py
+          pytest -q
+          tests/integration/test_supabase_two_user_isolation.py
+          tests/integration/test_supabase_storage_two_user_isolation.py
+          tests/integration/test_supabase_financial_ledger_two_user_isolation.py
