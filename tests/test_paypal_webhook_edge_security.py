@@ -110,7 +110,7 @@ def test_one_time_capture_refund_is_verified_and_revokes_only_linked_entitlement
     assert 'new Set(["PARTIALLY_REFUNDED", "REFUNDED"])' in source
     assert 'JSON.stringify({ status: "inactive" })' in source
     assert '"return=representation"' in source
-    assert "PAYMENT.CAPTURE.REVERSED" not in source
+    assert "PAYMENT.CAPTURE.REVERSED" in source
 
 
 def test_terminal_paypal_events_override_a_stale_active_api_snapshot():
@@ -206,3 +206,20 @@ def test_paypal_recovery_requires_complete_latest_payment_proof():
     rpc = source.index('"/rest/v1/rpc/sowia_reconcile_paypal_subscription"', reject)
     assert recovery < proof < amount < currency < payment_time < reject < rpc
     assert 'const lastPaymentTime = String(lastPayment.time || "").trim();' in source
+
+
+def test_one_time_capture_reversal_is_verified_recorded_and_revokes_entitlement():
+    source = WEBHOOK
+    event = source.index('"PAYMENT.CAPTURE.REVERSED"')
+    handler = source.index('if (eventType === "PAYMENT.CAPTURE.REVERSED")')
+    capture_fetch = source.index('/v2/payments/captures/', handler)
+    status_check = source.index('!== "REVERSED"', capture_fetch)
+    ledger_lookup = source.index('transaction_type=eq.payment', status_check)
+    prior_refunds = source.index('parent_capture_id=eq.', ledger_lookup)
+    reversal_write = source.index('reversal:" + eventId', prior_refunds)
+    entitlement_revoke = source.index('/rest/v1/sowia_entitlements?user_id=eq.', reversal_write)
+    assert event < handler < capture_fetch < status_check < ledger_lookup < prior_refunds < reversal_write < entitlement_revoke
+    assert 'remainingAmount > 0' in source
+    assert 'resolution=ignore-duplicates,return=minimal' in source[reversal_write:entitlement_revoke]
+    assert 'status: "manual_review"' in source[reversal_write:entitlement_revoke]
+    assert 'capture_reversed: true' in source[entitlement_revoke:]
