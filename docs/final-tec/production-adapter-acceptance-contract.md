@@ -87,14 +87,19 @@ présence des sept rôles d'adaptateur, leurs méthodes et une déclaration expl
 pas une preuve de sécurité ni une certification. Le contrôle ne contacte aucun
 fournisseur et ne valide ni TLS, ni IAM, ni KMS/HSM, ni transaction distribuée.
 
-Pour les sessions, `consume_approval_session(session_id, expected_nonce)` doit
-réaliser une consommation atomique à usage unique dans le stockage serveur :
-la vérification du nonce attendu et le passage de la session à l'état consommé
-doivent être indivisibles, y compris sous appels concurrents. La méthode doit
-retourner le booléen strict `True` uniquement pour l'unique consommation
-réussie ; session absente, nonce différent, session expirée, déjà consommée
-ou erreur de stockage doivent produire un refus. Une simple lecture suivie
-d'une suppression non atomique ne satisfait pas ce contrat.
+Pour les sessions, le contrat de production exige
+`consume_approval_session_pair(session_records)` : une opération groupée
+recevant exactement les deux références de sessions côté serveur, les nonces
+attendus, les sujets attendus et les rôles requis. Elle doit vérifier les deux
+sessions et les deux autorisations courantes, puis consommer les deux sessions
+dans une seule unité atomique et durable, ou n'en consommer aucune. Elle doit
+retourner le booléen strict `True` uniquement après validation durable des
+deux consommations ; toute session absente, nonce ou sujet différent,
+expiration, révocation, rejeu, indisponibilité ou résultat ambigu doit produire
+un refus fermé. Deux appels successifs à un consommateur unitaire ne satisfont
+pas ce contrat. Si sessions et annuaire de rôles sont des systèmes distincts,
+un protocole de réservation/commit récupérable et idempotent doit garantir
+l'absence d'état partiel.
 
 **Tests de contrat :** les fakes vérifient la structure et les refus en cas
 d'adaptateur absent/incomplet/non déclaré. Ils ne constituent pas des tests
