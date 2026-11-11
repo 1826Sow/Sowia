@@ -62,7 +62,7 @@ def test_paypal_webhook_checks_plan_price_before_subscription_write():
     source = Path("supabase/functions/paypal-webhook/index.ts").read_text(encoding="utf-8")
     price_check = source.index('const planResponse = await fetch(')
     rejection = source.index('if (!validPrice)', price_check)
-    subscription_write = source.index('"/rest/v1/sowia_subscriptions?on_conflict=paypal_subscription_id"')
+    subscription_write = source.index('"/rest/v1/rpc/sowia_reconcile_paypal_subscription"')
     assert price_check < rejection < subscription_write
     assert 'Number(fixedPrice.value) === 9.90' in source
     assert 'fixedPrice.currency_code || "").toUpperCase() === "EUR"' in source
