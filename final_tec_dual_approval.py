@@ -47,6 +47,17 @@ def _nonempty(value: Any, field: str) -> str:
     return value
 
 
+def _sha256_digest(value: Any, field: str) -> str:
+    digest = _nonempty(value, field)
+    if len(digest) != 64:
+        raise DualApprovalError(f"{field}: 64-character SHA-256 hex digest required")
+    try:
+        int(digest, 16)
+    except ValueError as exc:
+        raise DualApprovalError(f"{field}: invalid SHA-256 hex digest") from exc
+    return digest.lower()
+
+
 def request_digest(request: Mapping[str, Any]) -> str:
     """Return SHA-256 over the RFC 8785 canonical request representation."""
     try:
@@ -95,6 +106,8 @@ def validate_dual_approval(
 
     for field in _REQUEST_FIELDS:
         _nonempty(request[field], f"request.{field}")
+    for field in ("environment_digest", "constraints_digest", "action_digest"):
+        _sha256_digest(request[field], f"request.{field}")
     if request["requester_id"] in {request["operator_id"], request["reviewer_id"]}:
         raise DualApprovalError("Requester must be distinct from operator and reviewer")
     if request["operator_id"] == request["reviewer_id"]:
@@ -115,6 +128,16 @@ def validate_dual_approval(
         ]
         if len(set(values)) != 2:
             raise DualApprovalError(f"Both approvals must use distinct {field} values")
+
+    # Both signatures must be issued under the same approval policy. Check
+    # this pair-level invariant before invoking any trust callback.
+    policy_ids = [
+        _nonempty(item.get("approval_policy_id"), f"approvals[{index}].approval_policy_id")
+        if isinstance(item, Mapping) else ""
+        for index, item in enumerate(approvals)
+    ]
+    if policy_ids[0] != policy_ids[1]:
+        raise DualApprovalError("Both approvals must use the same approval_policy_id")
 
     normalized: list[dict[str, Any]] = []
     subjects: set[str] = set()
