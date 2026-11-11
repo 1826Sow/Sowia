@@ -130,7 +130,7 @@ def test_public_fetch_reports_read_only_complete_statement(monkeypatch):
     assert result["complete"] is True
     assert result["limit_reached"] is False
     assert result["database_writes"] == 0
-    assert result["event_count"] == 2  # same event returned in overlapping window boundary
+    assert result["event_count"] == 1  # duplicate event across windows is collapsed
     assert result["windows_checked"] == 2
     assert all(set(item) == {"transaction_info"} for item in result["events"])
 
