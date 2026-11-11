@@ -45,73 +45,65 @@ def build_demo_snapshot() -> dict[str, Any]:
     }
 
 
-def render_dashboard(st: Any) -> None:
-    """Render the read-only investor dashboard prototype using Streamlit."""
-    snapshot = build_demo_snapshot()
-
+def render_dashboard(st: Any, metrics: list[dict[str, Any]] | None) -> None:
+    """Render only Supabase-published FINAL TEC metrics; never show demo values as live."""
     st.subheader("FINAL TEC LIVE — Investor Dashboard")
     st.caption(
-        "Espace de présentation en lecture seule · prototype graphique "
-        "préparatoire à l'ouverture d'un accès investisseur contrôlé"
-    )
-    st.warning(snapshot["notice"])
-
-    meta_cols = st.columns(2)
-    meta_cols[0].caption("Source : " + snapshot["source"])
-    meta_cols[1].caption("Actualisation : " + snapshot["updated_at"])
-
-    st.markdown("### Indicateurs clés")
-    kpis = snapshot["kpis"]
-    columns = st.columns(4)
-    columns[0].metric("Jalons techniques", kpis["technical_milestones"]["value"])
-    columns[1].metric("Tests", kpis["validated_tests"]["value"])
-    columns[2].metric("Partenariats confirmés", kpis["confirmed_partners"]["value"])
-    columns[3].metric("Pilotes commerciaux", kpis["commercial_pilots"]["value"])
-
-    st.markdown("### Performance technique — série fictive")
-    performance = snapshot["performance"]
-    left, right = st.columns(2)
-    with left:
-        st.caption("Latence simulée (ms) — plus bas est préférable")
-        st.line_chart(
-            [{"Période": row["period"], "Latence (ms)": row["latency_ms"]} for row in performance],
-            x="Période",
-            y="Latence (ms)",
-        )
-    with right:
-        st.caption("Disponibilité simulée (%) — série fictive")
-        st.line_chart(
-            [{"Période": row["period"], "Disponibilité (%)": row["availability_pct"]} for row in performance],
-            x="Période",
-            y="Disponibilité (%)",
-        )
-
-    st.markdown("### Feuille de route — progression illustrative")
-    st.bar_chart(
-        [
-            {"Jalon": row["milestone"], "Progression (%)": row["progress_pct"]}
-            for row in snapshot["roadmap"]
-        ],
-        x="Jalon",
-        y="Progression (%)",
+        "Espace en lecture seule · indicateurs issus du registre de publication FINAL TEC "
+        "et filtrés par les règles RLS Supabase"
     )
 
-    st.markdown("### Provenance et règles de publication")
-    st.dataframe(
-        [
+    if metrics is None:
+        st.error(
+            "La source des indicateurs FINAL TEC est indisponible. "
+            "Aucune donnée locale ou fictive n'est substituée."
+        )
+        st.info("Réessayez ultérieurement ou faites vérifier la connexion Supabase.")
+        return
+
+    if not metrics:
+        st.info(
+            "Aucun indicateur n'a encore été publié pour FINAL TEC. "
+            "Le tableau reste vide jusqu'à validation et publication de données sourcées."
+        )
+        st.caption(
+            "Les données de démonstration ne sont pas affichées dans cet espace investisseur."
+        )
+        return
+
+    st.success(f"{len(metrics)} indicateur(s) publié(s) et autorisé(s).")
+    display_rows = []
+    for row in metrics:
+        value = row.get("metric_value")
+        if isinstance(value, (dict, list)):
+            import json
+            value = json.dumps(value, ensure_ascii=False, sort_keys=True)
+        display_rows.append(
             {
-                "Indicateur": row["indicator"],
-                "Source attendue": row["expected_source"],
-                "État": row["display_status"],
+                "Indicateur": row.get("title") or row.get("metric_key") or "Sans titre",
+                "Catégorie": row.get("category") or "Non classée",
+                "Valeur publiée": value if value is not None else "Non renseignée",
+                "Unité": row.get("unit") or "",
+                "Nature de la donnée": row.get("display_status", "Statut non disponible"),
+                "Date de mesure": row.get("observed_at") or "Non applicable",
+                "Date de publication": row.get("published_at") or "Non renseignée",
+                "Référence de preuve": row.get("evidence_ref") or "—",
+                "Responsable": row.get("evidence_owner") or "—",
+                "Source": row.get("source_url") or "—",
+                "Hypothèses": row.get("assumptions") or "—",
+                "Horizon": row.get("horizon") or "—",
+                "Étiquette synthétique": row.get("synthetic_label") or "—",
             }
-            for row in build_pending_register()
-        ],
-        use_container_width=True,
-        hide_index=True,
+        )
+
+    st.markdown("### Indicateurs publiés")
+    st.dataframe(display_rows, use_container_width=True, hide_index=True)
+    st.caption(
+        "Les résultats vérifiés, projections et démonstrations synthétiques sont "
+        "explicitement distingués. Une projection n'est pas un résultat réalisé."
     )
     st.info(
-        "Aucun accès externe investisseur n'est activé par cette maquette. "
-        "Avant toute ouverture, il faudra créer une liste d'investisseurs autorisés, "
-        "des droits de lecture limités, un journal d'accès et des sources de données "
-        "validées. Les projections devront rester séparées des résultats réalisés."
+        "Affichage en lecture seule. La visibilité des lignes dépend de l'autorisation "
+        "FINAL TEC et des politiques RLS Supabase. Aucun chiffre n'est calculé ou "
+        "complété localement pour combler une donnée manquante."
     )
