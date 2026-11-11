@@ -6,6 +6,7 @@ A production marker is a configuration assertion, never independent evidence.
 """
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
 
@@ -77,17 +78,28 @@ _REQUIRED_METHODS = {
     "signature_verifier": ("verify",),
     "ledger": ("commit_pair_and_audit", "healthcheck"),
 }
+_MISSING = object()
 
 
 class ProductionAdapterContractError(ValueError):
     """Raised when a required production adapter is absent or incomplete."""
 
 
+def _static_attribute(instance: object, name: str) -> Any:
+    """Inspect an attribute without executing descriptors or properties."""
+    try:
+        return inspect.getattr_static(instance, name)
+    except AttributeError:
+        return _MISSING
+
+
 def validate_production_adapter_bundle(bundle: ProductionAdapterBundle) -> None:
-    """Check structural completeness and explicit production declarations.
+    """Check structural completeness without executing adapter-controlled code.
 
     This is only a local preflight. It does not contact providers, verify their
     security posture, or replace integration tests and independent review.
+    Attribute inspection is static so hostile properties/descriptors cannot
+    run code during this check.
     """
     if not isinstance(bundle, ProductionAdapterBundle):
         raise ProductionAdapterContractError("A complete adapter bundle is required")
@@ -98,10 +110,14 @@ def validate_production_adapter_bundle(bundle: ProductionAdapterBundle) -> None:
         if adapter is None:
             failures.append(f"{field}: missing")
             continue
-        if getattr(adapter, "production_grade", False) is not True:
+
+        production_marker = _static_attribute(adapter, "production_grade")
+        if production_marker is not True:
             failures.append(f"{field}: production_grade must be explicitly true")
+
         for method in methods:
-            if not callable(getattr(adapter, method, None)):
+            candidate = _static_attribute(adapter, method)
+            if candidate is _MISSING or not callable(candidate):
                 failures.append(f"{field}: missing callable {method}")
 
     if failures:
