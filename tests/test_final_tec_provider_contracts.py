@@ -13,6 +13,7 @@ class Adapter:
 
     def resolve_signing_key(self, key_id): return object()
     def load_approval_session(self, context): return {}
+    def consume_approval_session(self, session_id, expected_nonce): return True
     def has_current_role(self, subject_id, role): return True
     def sign(self, key_id, canonical_payload): return b"signature"
     def verify(self, key_id, canonical_payload, signature): return True
@@ -104,6 +105,7 @@ def test_structural_preflight_never_calls_adapters_or_returns_authorization():
 
         def resolve_signing_key(self, *args): return self._called("resolve_signing_key")
         def load_approval_session(self, *args): return self._called("load_approval_session")
+        def consume_approval_session(self, *args): return self._called("consume_approval_session")
         def has_current_role(self, *args): return self._called("has_current_role")
         def sign(self, *args): return self._called("sign")
         def verify(self, *args): return self._called("verify")
@@ -188,3 +190,18 @@ def test_external_audit_anchor_preflight_does_not_execute_properties():
     with pytest.raises(ProductionAdapterContractError):
         validate_external_audit_anchor(HostileAnchor())
     assert calls == []
+
+
+
+def test_session_adapter_requires_atomic_one_time_consumption():
+    bundle = valid_bundle()
+
+    class IncompleteSessionStore:
+        production_grade = True
+
+        def load_approval_session(self, context):
+            return {}
+
+    object.__setattr__(bundle, "sessions", IncompleteSessionStore())
+    with pytest.raises(ProductionAdapterContractError, match="consume_approval_session"):
+        validate_production_adapter_bundle(bundle)
