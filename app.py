@@ -46,6 +46,7 @@ import sowia_global_alerts
 import sowia_business_card
 import final_tec_investor_dashboard
 import final_tec_edge_control_center
+import final_tec_evidence_monitor_ui
 from final_tec_access import (
     authorize_final_tec_investor_viewer,
     fetch_published_final_tec_metrics,
@@ -401,6 +402,7 @@ NAV_GROUPS = {
     "🚀 FINAL TEC — investisseurs": [
         "FINAL TEC LIVE — investisseurs",
         "FINAL TEC EDGE — Centre de contrôle",
+        "FINAL TEC — Registre de preuves & suivi",
     ],
     "🛡️ Administration & assistance": [
         "Centre de notifications", "SOWIA CONTROL CENTER", "Paramètres", "Aide",
@@ -6932,6 +6934,17 @@ elif page == "FINAL TEC EDGE — Centre de contrôle":
     else:
         final_tec_edge_control_center.render_control_center(st)
         st.caption("Simulation locale uniquement · aucune exécution, dépense ou écriture distante.")
+
+elif page == "FINAL TEC — Registre de preuves & suivi":
+    admin_metadata = getattr(current_user, "app_metadata", None) or {} if current_user is not None else {}
+    is_sowia_admin = isinstance(admin_metadata, dict) and (
+        admin_metadata.get("sowia_admin") is True or admin_metadata.get("role") == "admin"
+    )
+    if not cloud_mode or current_user is None or not is_sowia_admin:
+        st.error("Accès refusé. Le registre de preuves est réservé aux administrateurs SOWIA authentifiés.")
+        st.info("Aucune donnée de preuve n'a été chargée.")
+    else:
+        final_tec_evidence_monitor_ui.render_evidence_monitor(st)
 
 elif page == "FINAL TEC LIVE — investisseurs":
     # SOWIA login proves identity only. FINAL TEC access requires a separate,
