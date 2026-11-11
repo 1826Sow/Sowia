@@ -109,3 +109,19 @@ def load_user_financial_transactions(user_client, user, *, limit=500):
     if not isinstance(rows, list):
         raise RuntimeError("Réponse du registre financier invalide.")
     return rows
+
+def summarize_subscription_statuses(rows):
+    """Count stored subscription statuses without inferring lifecycle state."""
+    if not isinstance(rows, (list, tuple)):
+        raise ValueError("Les abonnements doivent être une liste.")
+    counts = {"active": 0, "suspended": 0, "cancelled": 0, "other": 0}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("Abonnement invalide.")
+        status = str(row.get("status") or "").strip().lower()
+        if status in {"active", "suspended", "cancelled"}:
+            counts[status] += 1
+        else:
+            counts["other"] += 1
+    return counts
+\n
