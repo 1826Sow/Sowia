@@ -87,6 +87,7 @@ class StorageTestSession:
             headers={**self.headers, "Content-Type": "application/json"},
             json={"prefixes": [path]},
             timeout=20,
+            allow_redirects=False,
         )
 
 
