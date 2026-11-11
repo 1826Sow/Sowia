@@ -351,3 +351,67 @@ def test_outbox_receipt_transition_is_one_way_and_idempotent(tmp_path):
     assert store.mark_checkpoint_anchored(
         checkpoint.authorization_id, checkpoint.event_hash, {"receipt_id": "different"}
     ) is False
+
+
+def test_outbox_integrity_verifier_accepts_pending_and_anchored_rows(tmp_path):
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path, "outbox-integrity.sqlite3")
+    records = _records(now)
+    assert store.register_pair("auth-integrity-01", records, now=now)
+    checkpoint = store.commit_pair_audit_and_outbox(
+        "auth-integrity-01", records,
+        {"event_type": "verified", "authorization_id": "auth-integrity-01"},
+        now=now,
+    )
+    assert checkpoint is not None
+    assert store.verify_anchor_outbox() is True
+    assert store.mark_checkpoint_anchored(
+        checkpoint.authorization_id, checkpoint.event_hash,
+        {"receipt_id": "receipt-1"},
+    ) is True
+    assert store.verify_anchor_outbox() is True
+
+
+def test_outbox_integrity_verifier_detects_database_tampering(tmp_path):
+    now = datetime.now(timezone.utc)
+    path = tmp_path / "outbox-tamper.sqlite3"
+    store = SQLiteAtomicApprovalStore(path)
+    records = _records(now)
+    assert store.register_pair("auth-integrity-02", records, now=now)
+    checkpoint = store.commit_pair_audit_and_outbox(
+        "auth-integrity-02", records, {"event_type": "verified"}, now=now
+    )
+    assert checkpoint is not None
+    assert store.verify_anchor_outbox() is True
+    with sqlite3.connect(path) as connection:
+        connection.execute("DROP TRIGGER anchor_outbox_immutable_fields")
+        connection.execute(
+            "UPDATE dual_approval_anchor_outbox SET event_json='{}' WHERE authorization_id=?",
+            ("auth-integrity-02",),
+        )
+    assert store.verify_anchor_outbox() is False
+
+
+def test_concurrent_outbox_commit_has_one_checkpoint_and_one_audit(tmp_path):
+    now = datetime.now(timezone.utc)
+    path = tmp_path / "outbox-concurrent.sqlite3"
+    records = _records(now)
+    store = SQLiteAtomicApprovalStore(path, timeout_seconds=20)
+    assert store.register_pair("auth-outbox-concurrent", records, now=now)
+    event = {"event_type": "concurrent", "authorization_id": "auth-outbox-concurrent"}
+
+    def attempt(_):
+        independent = SQLiteAtomicApprovalStore(path, timeout_seconds=20)
+        return independent.commit_pair_audit_and_outbox(
+            "auth-outbox-concurrent", records, event, now=now
+        )
+
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        results = list(pool.map(attempt, range(12)))
+    checkpoints = [item for item in results if item is not None]
+    assert len(checkpoints) == 12
+    assert all(item == checkpoints[0] for item in checkpoints)
+    assert len(store.audit_events()) == 1
+    assert store.pending_anchor_checkpoints() == [checkpoints[0]]
+    assert store.verify_audit_chain() is True
+    assert store.verify_anchor_outbox() is True
