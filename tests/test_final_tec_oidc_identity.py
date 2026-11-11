@@ -107,6 +107,37 @@ def test_wrong_session_nonce_is_rejected(signing_material):
     assert verifier(SUBJECT, "security-approver", {}) is False
 
 
+def test_one_time_session_consumer_rejects_replayed_id_token(signing_material):
+    private, public = signing_material
+    consumed = set()
+
+    def consume_once(session_id, nonce):
+        if session_id in consumed:
+            return False
+        consumed.add(session_id)
+        return True
+
+    verifier = build_verifier(
+        make_token(private), public, consume_assertion_session=consume_once
+    )
+    context = {"approval": {"key_id": "server-session-001"}}
+    assert verifier(SUBJECT, "security-approver", context) is True
+    assert verifier(SUBJECT, "security-approver", context) is False
+
+
+def test_missing_server_session_id_is_rejected(signing_material):
+    private, public = signing_material
+    verifier = build_verifier(
+        make_token(private),
+        public,
+        assertion_resolver=lambda context: {
+            "id_token": make_token(private),
+            "expected_nonce": NONCE,
+        },
+    )
+    assert verifier(SUBJECT, "security-approver", {}) is False
+
+
 def test_stale_authentication_is_rejected(signing_material):
     private, public = signing_material
     now = int(time.time())
