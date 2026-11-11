@@ -195,6 +195,31 @@ Rules:
 
 ## 7. Role freshness decision required before migration
 
+### 7.1 Repository authority inventory (verified at commit 5e1726f)
+
+The existing Supabase schema does **not** provide a central, versioned FINAL TEC approval-role registry.
+
+Observed mechanisms are narrower and must not be conflated:
+
+- `auth.users` is the account identity source; the inspected application auth helper performs GitHub OAuth through Supabase Auth and returns the authenticated user. It does not implement FINAL TEC role assignment.
+- `app_metadata.role` and `app_metadata.sowia_admin` are consulted by selected administrative SQL paths, including GLOBAL ID verification and technical-incident access. These are administrative flags, not a documented `security-approver` assignment system.
+- GLOBAL Action Governance stores a per-plan `approver_id` and checks that account when transitioning a submitted plan. It is scoped to that plan workflow; it is not a global role registry, has no shared role version/revocation epoch contract, and cannot be reused as FINAL TEC authority without a separate reviewed mapping.
+- Premium entitlements, PayPal subscriptions, and financial-ledger ownership describe commercial/account state, not security approval authority.
+- No inspected migration establishes a protected role-assignment table, a role version, a revocation epoch, or a transactionally enforced `security-approver` role.
+
+**Decision:** neither role-authority model A nor model B is currently implemented or proven by repository evidence. Model A is a possible future design, not an existing capability. Do not map `admin` to `security-approver`, infer approval authority from account ownership, or trust user-editable profile metadata.
+
+Before implementation, the owner/security design must explicitly decide:
+1. who may grant, revoke and inspect the `security-approver` role;
+2. whether role assignments are held in a dedicated protected PostgreSQL table or an external authority;
+3. how each change increments a monotonic version/revocation epoch;
+4. how the commit transaction rejects stale decisions and handles concurrent revocation;
+5. how two distinct approvers and separation-of-duties rules are enforced;
+6. how privileged administration is audited independently.
+
+A PostgreSQL role table can make role lookup and challenge consumption transactionally consistent only if the trusted role assignment and revocation records are themselves authoritative and protected. It cannot establish that trust merely by existing.
+
+
 Choose one model and document it:
 
 **A. Same trust domain:** current role assignments and revocation epoch live in protected PostgreSQL tables. Commit RPC locks/reads the relevant assignment and verifies its version in the same transaction.
