@@ -100,6 +100,13 @@ def validate_dual_approval(
         raise DualApprovalError("Request expired")
     digest = request_digest(request)
 
+    # Reject duplicate identities/keys/nonces before invoking any external
+    # trust callback, so callback order cannot mask a pair-level violation.
+    for field in ("subject_id", "key_id", "nonce"):
+        values = [item.get(field) if isinstance(item, Mapping) else None for item in approvals]
+        if len(set(values)) != 2:
+            raise DualApprovalError(f"Both approvals must use distinct {field} values")
+
     normalized: list[dict[str, Any]] = []
     subjects: set[str] = set()
     key_ids: set[str] = set()
