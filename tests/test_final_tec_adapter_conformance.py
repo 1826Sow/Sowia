@@ -61,9 +61,16 @@ def test_non_boolean_truthy_probe_result_does_not_pass():
 
 
 
-@pytest.mark.parametrize("probes", [[None], ["not-a-probe"], "not-a-suite"])
-def test_malformed_suite_entries_are_rejected(probes):
-    with pytest.raises(ConformanceConfigurationError, match="ConformanceProbe"):
+@pytest.mark.parametrize(
+    ("probes", "message"),
+    [
+        ([None], "ConformanceProbe"),
+        (["not-a-probe"], "ConformanceProbe"),
+        ("not-a-suite", "finite sequence"),
+    ],
+)
+def test_malformed_suite_entries_are_rejected(probes, message):
+    with pytest.raises(ConformanceConfigurationError, match=message):
         run_adapter_conformance(probes)
 
 
