@@ -357,3 +357,27 @@ def test_url_error_is_normalized():
     with pytest.raises(JWKSConfigurationError, match="could not be reached safely") as error:
         make_resolver(opener)("key-1")
     assert "sensitive" not in str(error.value)
+
+def test_json_nesting_limit_accepts_exact_boundary():
+    nested = 0
+    for _ in range(63):
+        nested = [nested]
+    opener = FakeOpener([Response({"keys": [jwk("key-1")], "extra": nested})])
+    assert make_resolver(opener)("key-1") is not None
+
+
+def test_json_nesting_limit_rejects_one_level_over_boundary():
+    nested = 0
+    for _ in range(64):
+        nested = [nested]
+    opener = FakeOpener([Response({"keys": [jwk("key-1")], "extra": nested})])
+    with pytest.raises(JWKSConfigurationError, match="invalid JSON"):
+        make_resolver(opener)("key-1")
+
+
+def test_json_delimiters_inside_strings_do_not_count_as_nesting():
+    body = b'{"keys":[],"note":"escaped quote: \\" and delimiters: [[{{}}]]"}'
+    opener = FakeOpener([RawResponse(body)])
+    with pytest.raises(JWKSConfigurationError, match="no usable RS256"):
+        make_resolver(opener)("key-1")
+
