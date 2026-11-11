@@ -241,5 +241,8 @@ Le test vérifie l'état final `anchored`, l'unicité de l'audit, l'intégrité 
 chaîne et de l'outbox, ainsi que la réutilisation du checkpoint exact sans nouvelle
 consommation de nonces.
 
-Cette preuve est un test automatisé écrit dans le dépôt ; elle n'est pas encore
-une exécution CI confirmée sur le dernier commit.
+Cette preuve est couverte par la suite automatisée exécutée avec succès dans
+GitHub Actions sur le commit `bb0ea5212b577d91c0ff18cbb27a8b4fa6978641`
+(run SOW IA quality checks #2675, le 11 novembre 2026). Elle confirme le
+scénario de reprise SQLite simulé par le test ; elle ne constitue pas une
+preuve d'intégration fournisseur externe ni une revue indépendante.
