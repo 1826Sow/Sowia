@@ -56,7 +56,14 @@ create policy "Require Premium for Business Club notifications"
 drop policy if exists "Require Premium for NIGHT EXCHANGE apps" on public.sowia_night_exchange_apps;
 create policy "Require Premium for NIGHT EXCHANGE apps"
     on public.sowia_night_exchange_apps as restrictive for all to authenticated
-    using (public.sowia_has_professional_access())
+    -- Trusted administrators must retain access to the moderation queue even
+    -- when their account does not carry a customer Premium entitlement.
+    using (
+        public.sowia_has_professional_access()
+        or coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin'
+        or coalesce(auth.jwt() -> 'app_metadata' ->> 'sowia_admin', '') = 'true'
+    )
+    -- Admin review writes remain available only through the guarded SECURITY DEFINER RPC.
     with check (public.sowia_has_professional_access());
 
 drop policy if exists "Require Premium for NIGHT EXCHANGE events" on public.sowia_night_exchange_events;
