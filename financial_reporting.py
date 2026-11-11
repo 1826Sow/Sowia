@@ -53,6 +53,8 @@ def partition_financial_transactions(rows):
             reasons.append("Devise brute manquante.")
         if kind not in {"payment", "refund"}:
             reasons.append("Type de transaction invalide.")
+        elif (status == "confirmed" and kind != "payment") or (status == "refunded" and kind != "refund"):
+            reasons.append("Le statut ne correspond pas au type de transaction.")
         try:
             gross = _amount(row.get("gross_amount"), "Montant brut")
             if gross is None:
