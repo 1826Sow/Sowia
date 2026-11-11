@@ -89,3 +89,39 @@ Ne jamais enregistrer de jeton OAuth, mot de passe, clé API, contenu de documen
 L'accès externe reste désactivé tant qu'un seul des points suivants manque : inventaire RLS, tests d'isolation entre utilisateurs, révocation démontrée, journalisation, validation des données publiées, revue de sécurité et autorisation humaine explicite.
 
 **Aucune promesse de performance, de partenariat, de chiffre financier ou de financement ne doit être affichée sans preuve vérifiable, datée et approuvée. FINAL TEC reste juridiquement et opérationnellement distinct de SOWIA.**
+
+
+## 9. Audit statique du dépôt — 11 novembre 2026
+
+Audit réalisé sur les fichiers SQL suivis dans la branche `main` du dépôt, et sur le code applicatif de la branche du tableau de bord. **Il s'agit d'un audit du code versionné, pas d'une inspection de la base Supabase en production.** Les migrations effectivement appliquées, les politiques présentes dans le projet Supabase et les métadonnées réelles des comptes restent à vérifier dans l'environnement Supabase.
+
+### Tables et périmètres RLS identifiés dans le code
+
+| Ressource | Contrôle versionné observé | Conclusion pour FINAL TEC |
+|---|---|---|
+| `sowia_messages` | RLS ; lecture/insertion/suppression limitées à `auth.uid() = user_id` | Historique privé SOWIA ; ne pas réutiliser pour les investisseurs |
+| `sowia_memory_items` | RLS ; lecture/insertion/suppression limitées au propriétaire | Mémoire privée ; hors périmètre investisseur |
+| `sowia_entitlements` | RLS ; lecture limitée au propriétaire ; aucune écriture client | Données d'accès Premium ; hors périmètre investisseur |
+| `sowia_subscriptions` | RLS ; lecture limitée au propriétaire ; écritures serveur uniquement | Abonnements privés ; hors périmètre investisseur |
+| `sowia_paypal_catalog` | RLS activée ; aucune politique client intentionnellement créée | Catalogue privé réservé au serveur ; ne pas exposer |
+| `sowia_financial_transactions` | RLS ; lecture limitée au propriétaire ; droits client limités à SELECT | Grand livre financier privé ; ne pas exposer |
+| `sowia_technical_incidents` | RLS ; lecture/mise à jour via revendications admin dans `app_metadata` | Journal opérationnel privé ; ne pas exposer |
+| `storage.objects` / bucket `sowia-files` | Bucket privé ; politiques basées sur le premier dossier égal à l'UUID utilisateur | Documents privés SOWIA ; compartiment distinct obligatoire |
+
+### Constat sur l'authentification et la navigation
+
+- `app.py` initialise un client Supabase par session, utilise OAuth GitHub/PKCE et récupère l'utilisateur authentifié ; le cache privé est nettoyé lors d'un changement de compte.
+- Le code du tableau de bord ajoute une entrée de navigation « FINAL TEC LIVE — investisseurs » et une route qui appelle directement `render_dashboard(st)`.
+- Dans cette route, aucun contrôle explicite de rôle FINAL TEC ou d'attribution d'accès investisseur n'est présent.
+- L'authentification SOWIA existante n'est donc pas une autorisation spécifique à FINAL TEC. Avant une vraie ouverture, le routage et le chargement des données doivent appeler un contrôle serveur commun qui refuse par défaut et vérifie l'attribution active du dossier.
+- Les rôles admin actuellement utilisés par certains contrôles SOWIA reposent sur `app_metadata`; ils ne constituent pas un mécanisme d'attribution d'investisseurs et ne doivent pas être étendus implicitement à FINAL TEC.
+
+### Décisions d'architecture qui en découlent
+
+1. Ne modifier aucune politique RLS existante des tables personnelles, financières, PayPal, incidents ou Storage pour accueillir FINAL TEC.
+2. Créer ultérieurement un schéma de données FINAL TEC séparé et des tables d'attribution/audit dédiées, après vérification de l'état réel Supabase.
+3. L'accès investisseur doit reposer sur un rôle attribué côté serveur à un `auth.users.id` précis, une attribution explicite au dossier FINAL TEC et une échéance.
+4. Le tableau de bord de démonstration peut rester dans l'interface SOWIA tant que les valeurs restent synthétiques et clairement signalées. Il ne doit pas être présenté comme un espace investisseur sécurisé ou un accès externe.
+5. Les tests RLS réels à deux utilisateurs doivent être configurés dans un projet Supabase de test avant toute migration ou mise en production.
+
+**Conclusion de l'audit statique :** les ressources privées SOWIA ont plusieurs politiques de cloisonnement dans le code versionné, mais aucun périmètre FINAL TEC dédié n'est identifié. La page de démonstration n'a pas encore de contrôle d'autorisation investisseur. Aucune migration ne doit être appliquée et aucun accès externe ne doit être ouvert sur cette base.
