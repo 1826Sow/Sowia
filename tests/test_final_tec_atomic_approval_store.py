@@ -846,6 +846,77 @@ def test_anchor_recovery_continues_after_one_checkpoint_temporarily_fails(tmp_pa
     assert store.verify_anchor_outbox() is True
 
 
+def test_anchor_recovery_retries_after_sqlite_receipt_update_aborts(tmp_path):
+    """A real SQLite update failure must leave the outbox pending for retry."""
+    from final_tec_audit_anchor import ExternalAuditAnchorCoordinator
+
+    class IdempotentAnchor:
+        def __init__(self):
+            self.receipts = {}
+            self.append_calls = 0
+
+        def append_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc):
+            self.append_calls += 1
+            key = (sequence, previous_hash, event_hash, created_at_utc)
+            return self.receipts.setdefault(
+                key, {"receipt_id": f"sqlite-retry-{sequence}", "event_hash": event_hash}
+            )
+
+        def verify_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc, receipt):
+            key = (sequence, previous_hash, event_hash, created_at_utc)
+            return self.receipts.get(key) == receipt
+
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path, "outbox-sqlite-receipt-update-abort.sqlite3")
+    records = _records(now)
+    authorization_id = "auth-sqlite-receipt-update-abort"
+    event = {"event_type": "sqlite-update-abort", "authorization_id": authorization_id}
+    assert store.register_pair(authorization_id, records, now=now)
+    checkpoint = store.commit_pair_audit_and_outbox(
+        authorization_id, records, event, now=now
+    )
+    assert checkpoint is not None
+
+    connection = store._connect()
+    try:
+        connection.execute(
+            """CREATE TRIGGER reject_anchor_receipt_update
+               BEFORE UPDATE ON dual_approval_anchor_outbox
+               WHEN NEW.status = 'anchored'
+               BEGIN
+                   SELECT RAISE(ABORT, 'simulated durable receipt update failure');
+               END"""
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    anchor = IdempotentAnchor()
+    coordinator = ExternalAuditAnchorCoordinator(store, anchor)
+
+    # The external receipt exists, but SQLite rejects the local state transition.
+    assert coordinator.recover_pending() == 0
+    assert store.anchor_outbox_status(authorization_id) == "pending"
+    assert anchor.append_calls == 1
+    assert store.verify_audit_chain() is True
+    assert store.verify_anchor_outbox() is True
+
+    connection = store._connect()
+    try:
+        connection.execute("DROP TRIGGER reject_anchor_receipt_update")
+        connection.commit()
+    finally:
+        connection.close()
+
+    # Recovery reuses the same idempotent receipt and completes the local update.
+    assert coordinator.recover_pending() == 1
+    assert anchor.append_calls == 2
+    assert store.anchor_outbox_status(authorization_id) == "anchored"
+    assert store.pending_anchor_checkpoints() == []
+    assert store.verify_audit_chain() is True
+    assert store.verify_anchor_outbox() is True
+
+
 def test_anchor_recovery_skips_invalid_checkpoint_and_continues(tmp_path):
     """Malformed pending data must fail closed without blocking valid entries."""
     from dataclasses import replace
