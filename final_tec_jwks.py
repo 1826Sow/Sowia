@@ -7,7 +7,6 @@ cache lifetimes are bounded. This module does not select an identity provider.
 from __future__ import annotations
 
 import json
-import re
 import threading
 import time
 from email.message import Message
