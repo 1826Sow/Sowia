@@ -23,9 +23,9 @@ def test_premium_admin_client_is_created_only_inside_authenticated_paypal_flows(
         and isinstance(node.func.value, ast.Name)
         and node.func.value.id == "premium_access"
     ]
-    # One call validates a returned checkout; one prepares a Sandbox subscription;
-    # one reads the signed-in user's subscription overview; two are explicit
-    # synchronization actions; one is the admin-only read-only control center.
+    # One call validates a returned checkout; one reads the signed-in user's
+    # subscription overview; two are explicit synchronization actions; one is
+    # the admin-only read-only control center. Sandbox checkout uses a lazy factory.
     assert len(admin_calls) == 5
 
     for call in admin_calls:
