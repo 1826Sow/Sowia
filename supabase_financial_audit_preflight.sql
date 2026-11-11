@@ -7,6 +7,10 @@ with expected_columns(table_name, column_name, expected_type) as (
     values
       ('sowia_financial_transactions', 'id', 'uuid'),
       ('sowia_financial_transactions', 'user_id', 'uuid'),
+      ('sowia_financial_transactions', 'order_id', 'uuid'),
+      ('sowia_financial_transactions', 'reference_amount_eur', 'numeric'),
+      ('sowia_financial_transactions', 'tax_amount_eur', 'numeric'),
+      ('sowia_financial_transactions', 'created_at', 'timestamp with time zone'),
       ('sowia_financial_transactions', 'provider', 'text'),
       ('sowia_financial_transactions', 'provider_payment_id', 'text'),
       ('sowia_financial_transactions', 'parent_capture_id', 'text'),
