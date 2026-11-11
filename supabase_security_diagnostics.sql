@@ -20,6 +20,23 @@ where schemaname = 'storage'
   and tablename = 'objects'
 order by policyname, cmd;
 
+-- 1b) Show every policy on the private application tables as well.
+-- Review permissive policies for SELECT/INSERT/UPDATE/DELETE; policies
+-- combine by OR within each command and role scope.
+select
+    schemaname,
+    tablename,
+    policyname,
+    permissive,
+    roles,
+    cmd,
+    qual,
+    with_check
+from pg_catalog.pg_policies
+where schemaname = 'public'
+  and tablename in ('sowia_messages', 'sowia_memory_items', 'sowia_entitlements')
+order by tablename, policyname, cmd;
+
 -- 2) Show RLS and FORCE RLS state for SOW IA tables and Storage objects.
 select
     n.nspname as schema_name,
