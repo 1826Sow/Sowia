@@ -635,6 +635,26 @@ class SQLiteAtomicApprovalStore:
             for sequence, event_json, previous_hash, event_hash in rows
         ]
 
+    def verify_integrity(self) -> bool:
+        """Run SQLite, foreign-key, audit-chain, and anchor-outbox integrity checks.
+
+        This is a consistency diagnostic, not proof against a privileged actor
+        able to replace the database file or its schema.
+        """
+        connection = self._connect()
+        try:
+            integrity_rows = connection.execute("PRAGMA integrity_check").fetchall()
+            if integrity_rows != [("ok",)]:
+                return False
+            if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+                return False
+        except sqlite3.Error:
+            return False
+        finally:
+            connection.close()
+
+        return self.verify_audit_chain() and self.verify_anchor_outbox()
+
     def verify_audit_chain(self) -> bool:
         connection = self._connect()
         try:
