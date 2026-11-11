@@ -107,3 +107,8 @@ def test_action_plan_insert_privileges_exclude_server_owned_workflow_fields():
         ") on public.sowia_global_action_plans to authenticated"
     ) in SQL
     assert "grant select, insert on public.sowia_global_action_plans to authenticated" not in SQL
+    assert (
+        "revoke insert (id, creator_id, title, objective, country, owner_label, budget_cap, currency, "
+        "due_date, success_metric, stop_condition, approver_id, status, approval_note, created_at, "
+        "updated_at, approved_at) on public.sowia_global_action_plans from anon, public, authenticated"
+    ) in SQL
