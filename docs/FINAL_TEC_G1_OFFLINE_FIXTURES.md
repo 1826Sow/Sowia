@@ -40,6 +40,14 @@ evidence.
 5. Real workload/provider tests remain a later gate requiring explicit written
    authorization, a selected provider, and a hard approved budget.
 
+## Targeted CI
+
+The G0 base branch now contains a dedicated GitHub Actions workflow for pull requests
+targeting that branch. It compiles the G0/G1 policy modules and runs only the focused
+G0 and G1 unit-test files. The workflow is read-only and does not use secrets, network
+services, Supabase, providers, or paid resources. Its result must be observed on the
+updated PR before G1 can be considered CI-validated.
+
 ## Current status
 
 Prototype code and unit tests only. The PR is based on the G0 branch and remains
