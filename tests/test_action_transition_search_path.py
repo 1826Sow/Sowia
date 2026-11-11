@@ -56,8 +56,11 @@ def test_action_tables_revoke_old_authenticated_grants_before_allowlisting():
         "public.sowia_global_action_audit from anon, public, authenticated"
     )
     assert revoke in SQL
+    assert "grant select on public.sowia_global_action_plans to authenticated" in SQL
     assert (
-        "grant select, insert on public.sowia_global_action_plans to authenticated"
+        "grant insert (\\n    creator_id, title, objective, country, owner_label, budget_cap, currency,\\n"
+        "    due_date, success_metric, stop_condition, approver_id\\n"
+        ") on public.sowia_global_action_plans to authenticated"
     ) in SQL
     assert "grant select on public.sowia_global_action_audit to authenticated" in SQL
     assert "grant update on public.sowia_global_action_plans to authenticated" not in SQL
