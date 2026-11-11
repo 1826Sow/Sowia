@@ -108,3 +108,24 @@ l'acceptation d'un adaptateur réel, les sondes devront être fournies et exécu
 contre les environnements officiels de test du fournisseur, avec preuves
 expurgées, configuration contrôlée et revue indépendante. Une suite vide,
 ambiguë ou incomplète ne peut pas être déclarée conforme.
+
+## 9. Matrice minimale des sondes d'acceptation réelles
+
+| Domaine | Cas positif | Cas négatif obligatoire | Preuve attendue |
+|---|---|---|---|
+| OIDC/JWKS | jeton valide, issuer/audience attendus | issuer/audience faux, `alg=none`, `kid` inconnu, signature invalide | résultat d'intégration expurgé et configuration approuvée |
+| Session | nonce frais, session liée à l'approbation | nonce absent, différent ou rejoué ; session expirée | traces corrélées sans jeton ni nonce en clair |
+| Autorisations | rôle actif relu au moment de l'approbation | rôle retiré, compte désactivé, approbateur non autorisé | preuve de lecture de l'annuaire et délai de révocation mesuré |
+| KMS/HSM | principal autorisé signe avec clé attendue | principal non autorisé, clé suspendue/révoquée, coffre indisponible | journal de signature et politique IAM expurgés |
+| Anti-rejeu/audit | deux nonces distincts consommés et audit durable dans le même commit | nonce déjà consommé, commit interrompu, audit indisponible, concurrence sur même autorisation | résultats multi-processus/multi-hôtes et preuve de rollback |
+| Exploitation | restauration testée et alertes reçues | dérive d'horloge, perte de connectivité, tentative de falsification | rapport de reprise, alertes et horodatages contrôlés |
+
+Chaque cas doit être exécuté contre un environnement de test officiel ou une
+infrastructure représentative approuvée. Les cas concurrents doivent inclure
+plusieurs processus et plusieurs hôtes. Les résultats doivent préciser la
+version de l'adaptateur, la version de configuration, l'environnement, l'heure
+UTC et l'identifiant de corrélation, sans inclure de secret ni donnée personnelle.
+
+La réussite d'un sous-ensemble ne permet pas de déclarer le domaine complet
+conforme. Toute sonde obligatoire absente, non exécutée ou non vérifiable
+maintient le domaine en **NOT_RUN** et bloque G2-B.
