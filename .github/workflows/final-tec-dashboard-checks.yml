@@ -15,6 +15,7 @@ on:
       - "final_tec_evidence.py"
       - "final_tec_evidence_review.py"
       - "final_tec_audit_trail.py"
+      - "final_tec_audit_service.py"
       - "supabase/proposals/final_tec_audit_vault.sql"
       - "tests/test_final_tec_access.py"
       - "tests/test_final_tec_published_metrics.py"
@@ -27,6 +28,7 @@ on:
       - "tests/test_final_tec_evidence.py"
       - "tests/test_final_tec_evidence_review.py"
       - "tests/test_final_tec_audit_trail.py"
+      - "tests/test_final_tec_audit_service.py"
       - "tests/test_final_tec_audit_vault_sql.py"
       - ".github/workflows/final-tec-dashboard-checks.yml"
   push:
@@ -96,6 +98,7 @@ jobs:
           tests/test_final_tec_evidence.py
           tests/test_final_tec_evidence_review.py
           tests/test_final_tec_audit_trail.py
+          tests/test_final_tec_audit_service.py
           tests/test_final_tec_audit_vault_sql.py
       - name: Compile guarded application modules
         run: >-
