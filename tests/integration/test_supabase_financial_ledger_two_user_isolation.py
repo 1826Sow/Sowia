@@ -119,6 +119,22 @@ def test_authenticated_users_cannot_insert_financial_ledger_rows(accounts):
         f"received HTTP {response.status_code}"
     )
 
+    # Account B must not be able to forge ownership by submitting A's user_id.
+    _, account_b = accounts
+    forged = account_b.request(
+        "POST",
+        params={"select": "id"},
+        payload={
+            **payload,
+            "provider_payment_id": "must-not-be-forged-by-account-b",
+        },
+        headers={"Prefer": "return=representation"},
+    )
+    assert forged.status_code in (401, 403), (
+        "Account B must not insert a ledger row owned by account A; "
+        f"received HTTP {forged.status_code}"
+    )
+
 
 def test_two_users_cannot_read_each_others_financial_rows(accounts):
     payment_id = _fixture_payment_id()
