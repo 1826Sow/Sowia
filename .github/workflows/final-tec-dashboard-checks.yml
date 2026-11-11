@@ -13,6 +13,7 @@ on:
       - "final_tec_evidence_monitor_ui.py"
       - "final_tec_investor_dashboard.py"
       - "final_tec_evidence.py"
+      - "final_tec_evidence_review.py"
       - "tests/test_final_tec_access.py"
       - "tests/test_final_tec_published_metrics.py"
       - "tests/test_final_tec_evidence_intake.py"
@@ -22,6 +23,7 @@ on:
       - "tests/test_final_tec_evidence_monitor.py"
       - "tests/test_final_tec_investor_dashboard.py"
       - "tests/test_final_tec_evidence.py"
+      - "tests/test_final_tec_evidence_review.py"
       - ".github/workflows/final-tec-dashboard-checks.yml"
   push:
     branches:
