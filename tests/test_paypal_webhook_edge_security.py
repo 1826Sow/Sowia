@@ -10,7 +10,7 @@ def test_paypal_webhook_requires_paypal_signature_before_subscription_write():
     source = WEBHOOK
     verify = source.index("const verified = await verifyWebhook(")
     reject = source.index('if (!verified) return json(', verify)
-    write = source.index('"/rest/v1/sowia_subscriptions?on_conflict=paypal_subscription_id"', reject)
+    write = source.index('"/rest/v1/rpc/sowia_reconcile_paypal_subscription"', reject)
     assert verify < reject < write
     assert 'verification_status === "SUCCESS"' in source
 
@@ -33,11 +33,11 @@ def test_paypal_webhook_endpoint_disables_supabase_jwt_only_for_signed_paypal_ev
 def test_paypal_webhook_rejects_unknown_subscription_status_before_persistence():
     status_check = WEBHOOK.index("const allowedStatuses = new Set([")
     reject = WEBHOOK.index('if (!allowedStatuses.has(normalizedStatus))', status_check)
-    write = WEBHOOK.index('"/rest/v1/sowia_subscriptions?on_conflict=paypal_subscription_id"', reject)
+    write = WEBHOOK.index('"/rest/v1/rpc/sowia_reconcile_paypal_subscription"', reject)
     assert status_check < reject < write
     for status in ("APPROVAL_PENDING", "APPROVED", "ACTIVE", "SUSPENDED", "CANCELLED", "EXPIRED"):
         assert f'"{status}"' in WEBHOOK
-    assert 'status: effectiveStatus' in WEBHOOK
+    assert 'p_status: effectiveStatus' in WEBHOOK
 
 def test_paypal_payment_failure_blocks_premium_until_paypal_counter_resets():
     assert '"BILLING.SUBSCRIPTION.PAYMENT.FAILED"' in WEBHOOK
@@ -45,25 +45,42 @@ def test_paypal_payment_failure_blocks_premium_until_paypal_counter_resets():
     counter = WEBHOOK.index("const failedPaymentsCount = Number(billing.failed_payments_count);")
     validation = WEBHOOK.index("if (!Number.isInteger(failedPaymentsCount)", counter)
     gate = WEBHOOK.index('let effectiveStatus = normalizedStatus === "ACTIVE" && failedPaymentsCount > 0', validation)
-    write = WEBHOOK.index('"/rest/v1/sowia_subscriptions?on_conflict=paypal_subscription_id"', gate)
+    write = WEBHOOK.index('"/rest/v1/rpc/sowia_reconcile_paypal_subscription"', gate)
     assert counter < validation < gate < write
     assert '? "past_due"' in WEBHOOK
     assert "failedPaymentsCount > 0" in WEBHOOK
 
 
-def test_subscription_refund_or_reversal_blocks_premium_until_verified_successful_payment():
+def test_subscription_refund_or_reversal_uses_atomic_database_reconciliation():
     source = WEBHOOK
-    refund_gate = source.index("const isRefundOrReversal =")
-    existing_state = source.index('"&select=status&limit=1"', refund_gate)
-    recovery = source.index("const verifiedPaymentRecovery =", existing_state)
-    hold = source.index('effectiveStatus = "payment_review"', recovery)
-    write = source.index('"/rest/v1/sowia_subscriptions?on_conflict=paypal_subscription_id"', hold)
-    assert refund_gate < existing_state < recovery < hold < write
+    recovery = source.index("const verifiedPaymentRecovery =")
+    rpc = source.index('"/rest/v1/rpc/sowia_reconcile_paypal_subscription"', recovery)
+    assert recovery < rpc
     assert 'eventType === "PAYMENT.SALE.REFUNDED"' in source
     assert 'eventType === "PAYMENT.SALE.REVERSED"' in source
     assert 'eventType === "BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED"' in source
-    assert "paymentReviewAlreadyActive && !verifiedPaymentRecovery" in source
-    assert 'effectiveStatus = "payment_review"' in source
+    assert "p_recovery_verified: verifiedPaymentRecovery" in source
+    assert "p_event_type: eventType" in source
+
+
+def test_subscription_reconciliation_rpc_serializes_concurrent_events():
+    migration = (ROOT / "supabase/migrations/20261111000500_paypal_subscription_atomic_reconciliation.sql").read_text(encoding="utf-8")
+    assert "security definer" in migration.lower()
+    assert "set search_path = ''" in migration
+    assert "pg_advisory_xact_lock" in migration
+    assert "for update" in migration.lower()
+    assert "PAYMENT.SALE.REFUNDED" in migration
+    assert "PAYMENT.SALE.REVERSED" in migration
+    assert "v_existing_status = 'payment_review'" in migration
+    assert "grant execute" in migration.lower()
+    assert "to service_role" in migration
+
+
+def test_one_time_refund_branch_does_not_depend_on_subscription_plan_catalog():
+    source = WEBHOOK
+    refund_branch = source.index('if (eventType === "PAYMENT.CAPTURE.REFUNDED")')
+    catalog = source.index("const catalogResponse = await fetch(")
+    assert refund_branch < catalog
 
 
 def test_one_time_capture_refund_is_verified_and_revokes_only_linked_entitlement():
