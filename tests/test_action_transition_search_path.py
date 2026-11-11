@@ -35,15 +35,16 @@ def test_action_transition_execution_is_not_granted_to_unauthenticated_roles():
     ) in SQL
 
 
+
 def test_action_transition_uses_one_valid_plpgsql_declare_section():
     match = re.search(
-        r"create or replace function public\\.sowia_action_transition\\([\\s\\S]*?as (\\$[a-z_]*\\$)([\\s\\S]*?)\\1;",
+        r"create or replace function public\.sowia_action_transition\([\s\S]*?as (\$[a-z_]*\$)([\s\S]*?)\1;",
         SQL,
     )
     assert match, "Action transition function must exist"
     body = match.group(2)
     assert re.search(
-        r"\\bdeclare\\s+p public\\.sowia_global_action_plans%rowtype;\\s+actor uuid := auth\\.uid\\(\\);\\s+begin\\b",
+        r"\bdeclare\s+p public\.sowia_global_action_plans%rowtype;\s+actor uuid := auth\.uid\(\);\s+begin\b",
         body,
     ), "PL/pgSQL variables must share one DECLARE section"
-    assert not re.search(r"\\bdeclare\\s+p[^;]+;\\s*declare\\b", body)
+    assert not re.search(r"\bdeclare\s+p[^;]+;\s*declare\b", body)
