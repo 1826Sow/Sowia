@@ -177,7 +177,12 @@ class HTTPSJWKSResolver:
 
     def _response_ttl(self, headers: Message) -> int:
         cache_control = headers.get("Cache-Control", "")
-        match = re.search(r"(?:^|,)\s*max-age=(\d+)", cache_control, re.IGNORECASE)
+        directives = [part.strip().lower() for part in cache_control.split(",")]
+        # This resolver has no conditional revalidation path. Do not reuse a
+        # response that the origin says must not be stored or revalidated.
+        if any(part.split("=", 1)[0].strip() in {"no-store", "no-cache"} for part in directives):
+            return 0
+        match = re.search(r'(?:^|,)\s*max-age\s*=\s*"?([0-9]+)"?\s*(?:,|$)', cache_control, re.IGNORECASE)
         if match:
-            return max(1, min(int(match.group(1)), self.max_cache_ttl_seconds))
+            return min(int(match.group(1)), self.max_cache_ttl_seconds)
         return self.cache_ttl_seconds
