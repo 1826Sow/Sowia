@@ -119,7 +119,7 @@ def test_terminal_paypal_events_override_a_stale_active_api_snapshot():
     cancel = source.index('eventType === "BILLING.SUBSCRIPTION.CANCELLED"', status_block)
     expire = source.index('eventType === "BILLING.SUBSCRIPTION.EXPIRED"', cancel)
     suspend = source.index('eventType === "BILLING.SUBSCRIPTION.SUSPENDED"', expire)
-    rpc = source.index('"\/rest\/v1\/rpc\/sowia_reconcile_paypal_subscription"', suspend)
+    rpc = source.index('"/rest/v1/rpc/sowia_reconcile_paypal_subscription"', suspend)
     assert status_block < cancel < expire < suspend < rpc
     assert 'effectiveStatus = "cancelled"' in source
     assert 'effectiveStatus = "expired"' in source
