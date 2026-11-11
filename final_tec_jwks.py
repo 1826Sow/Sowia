@@ -7,6 +7,7 @@ cache lifetimes are bounded. This module does not select an identity provider.
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 from http.client import HTTPException
@@ -122,10 +123,9 @@ class HTTPSJWKSResolver:
                     raise JWKSConfigurationError("JWKS endpoint did not return HTTP 200")
                 content_type = response.headers.get("Content-Type", "")
                 media_type = content_type.split(";", 1)[0].strip().lower()
-                subtype = media_type.partition("/")[2]
-                if not (
-                    media_type == "application/json"
-                    or (media_type.startswith("application/") and subtype.endswith("+json"))
+                if not re.fullmatch(
+                    r"application/(?:json|[!#$%&'*+.^_\x60|~0-9a-z-]+\\+json)",
+                    media_type,
                 ):
                     raise JWKSConfigurationError("JWKS response is not an accepted JSON media type")
                 raw = response.read(self.max_response_bytes + 1)
