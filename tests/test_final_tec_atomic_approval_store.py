@@ -778,8 +778,8 @@ def test_anchor_recovery_retries_when_local_receipt_mark_fails(tmp_path):
     assert store.verify_anchor_outbox() is True
 
 
-def test_anchor_recovery_continues_after_one_checkpoint_temporarily_fails(tmp_path):
-    """One unavailable checkpoint must not block recovery of later outbox rows."""
+def test_anchor_recovery_preserves_sequence_when_earlier_checkpoint_fails(tmp_path):
+    """A pending earlier checkpoint blocks later external appends."""
     from final_tec_audit_anchor import ExternalAuditAnchorCoordinator
 
     class OneCheckpointTemporarilyUnavailable:
@@ -804,9 +804,9 @@ def test_anchor_recovery_continues_after_one_checkpoint_temporarily_fails(tmp_pa
             return self.receipts.get(key) == receipt
 
     now = datetime.now(timezone.utc)
-    store = _store(tmp_path, "outbox-independent-recovery.sqlite3")
-    first_id = "auth-independent-recovery-1"
-    second_id = "auth-independent-recovery-2"
+    store = _store(tmp_path, "outbox-ordered-recovery.sqlite3")
+    first_id = "auth-ordered-recovery-1"
+    second_id = "auth-ordered-recovery-2"
     first_records = _records(now)
     second_records = (("c" * 48, first_records[0][1]), ("d" * 48, first_records[1][1]))
     first_event = {"event_type": "pending-one", "authorization_id": first_id}
@@ -826,25 +826,23 @@ def test_anchor_recovery_continues_after_one_checkpoint_temporarily_fails(tmp_pa
     anchor = OneCheckpointTemporarilyUnavailable(first_checkpoint.event_hash)
     coordinator = ExternalAuditAnchorCoordinator(store, anchor)
 
-    # The first item fails, but recovery continues and anchors the second item.
-    assert coordinator.recover_pending() == 1
+    # The earlier item fails; the later item must not be sent out of order.
+    assert coordinator.recover_pending() == 0
+    assert anchor.attempts == [first_checkpoint.event_hash]
     assert store.anchor_outbox_status(first_id) == "pending"
-    assert store.anchor_outbox_status(second_id) == "anchored"
-    assert store.pending_anchor_checkpoints() == [first_checkpoint]
-    assert any(key[2] == second_checkpoint.event_hash for key in anchor.receipts)
+    assert store.anchor_outbox_status(second_id) == "pending"
 
-    # A later pass recovers the remaining checkpoint without duplicating the
-    # already anchored second checkpoint.
-    attempts_before_retry = len(anchor.attempts)
-    assert coordinator.recover_pending() == 1
-    assert len(anchor.attempts) == attempts_before_retry + 1
+    # Once the earlier checkpoint succeeds, the later one can follow.
+    assert coordinator.recover_pending() == 2
+    assert anchor.attempts[-2:] == [
+        first_checkpoint.event_hash, second_checkpoint.event_hash
+    ]
     assert store.anchor_outbox_status(first_id) == "anchored"
     assert store.anchor_outbox_status(second_id) == "anchored"
     assert store.pending_anchor_checkpoints() == []
     assert len(store.audit_events()) == 2
     assert store.verify_audit_chain() is True
     assert store.verify_anchor_outbox() is True
-
 
 def test_anchor_recovery_retries_after_sqlite_receipt_update_aborts(tmp_path):
     """A real SQLite update failure must leave the outbox pending for retry."""
