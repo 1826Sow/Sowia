@@ -81,6 +81,14 @@ def test_wrong_audience_is_rejected(signing_material):
     assert verifier(SUBJECT, "security-approver", {}) is False
 
 
+def test_multi_audience_token_is_rejected_even_when_expected_audience_is_present(signing_material):
+    private, public = signing_material
+    verifier = build_verifier(
+        make_token(private, aud=[AUDIENCE, "another-client"]), public
+    )
+    assert verifier(SUBJECT, "security-approver", {}) is False
+
+
 def test_expired_token_is_rejected(signing_material):
     private, public = signing_material
     now = int(time.time())
