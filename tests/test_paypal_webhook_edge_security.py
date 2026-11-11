@@ -208,18 +208,25 @@ def test_paypal_recovery_requires_complete_latest_payment_proof():
     assert 'const lastPaymentTime = String(lastPayment.time || "").trim();' in source
 
 
-def test_one_time_capture_reversal_is_verified_recorded_and_revokes_entitlement():
+def test_one_time_capture_reversal_resolves_verified_refund_parent_and_revokes_entitlement():
     source = WEBHOOK
     event = source.index('"PAYMENT.CAPTURE.REVERSED"')
     handler = source.index('if (eventType === "PAYMENT.CAPTURE.REVERSED")')
-    capture_fetch = source.index('/v2/payments/captures/', handler)
-    status_check = source.index('!== "REVERSED"', capture_fetch)
-    ledger_lookup = source.index('transaction_type=eq.payment', status_check)
-    prior_refunds = source.index('parent_capture_id=eq.', ledger_lookup)
-    reversal_write = source.index('reversal:" + eventId', prior_refunds)
-    entitlement_revoke = source.index('/rest/v1/sowia_entitlements?user_id=eq.', reversal_write)
-    assert event < handler < capture_fetch < status_check < ledger_lookup < prior_refunds < reversal_write < entitlement_revoke
-    assert 'remainingAmount > 0' in source
-    assert 'resolution=ignore-duplicates,return=minimal' in source[reversal_write:entitlement_revoke]
-    assert 'status: "manual_review"' in source[reversal_write:entitlement_revoke]
+    refund_fetch = source.index('/v2/payments/refunds/', handler)
+    refund_status = source.index('refund.status || ""', refund_fetch)
+    parent_link = source.index('String(link.rel || "").toLowerCase() === "up"', refund_status)
+    capture_fetch = source.index('/v2/payments/captures/', parent_link)
+    capture_status = source.index('capture.status || ""', capture_fetch)
+    ledger_lookup = source.index('transaction_type=eq.payment', capture_status)
+    reversal_ledger = source.index('encodeURIComponent(refundId)', ledger_lookup)
+    entitlement_revoke = source.index('/rest/v1/sowia_entitlements?user_id=eq.', reversal_ledger)
+    assert event < handler < refund_fetch < refund_status < parent_link < capture_fetch < capture_status < ledger_lookup < reversal_ledger < entitlement_revoke
+    assert 'parentUrl.origin === new URL(baseUrl).origin' in source
+    assert 'captureMatch[1]' in source
+    assert 'Number(refundAmount.value) > Number(captureAmount.value)' in source
+    assert 'gross_amount: Number(refundAmount.value)' in source
+    assert 'provider_payment_id: refundId' in source
+    assert 'new Set(["COMPLETED", "PARTIALLY_REFUNDED", "REFUNDED"])' in source
+    assert 'status: "manual_review"' in source[reversal_ledger:entitlement_revoke]
+    assert 'resolution=ignore-duplicates,return=minimal' in source[reversal_ledger:entitlement_revoke]
     assert 'capture_reversed: true' in source[entitlement_revoke:]
