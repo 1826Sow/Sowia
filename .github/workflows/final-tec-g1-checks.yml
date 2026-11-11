@@ -1,0 +1,39 @@
+name: FINAL TEC G1 offline fixture checks
+
+on:
+  pull_request:
+    branches:
+      - feature/final-tec-g0-local-policy
+    paths:
+      - "final_tec_runner_policy.py"
+      - "final_tec_offline_fixtures.py"
+      - "tests/test_final_tec_runner_policy.py"
+      - "tests/test_final_tec_offline_fixtures.py"
+      - ".github/workflows/final-tec-g1-checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  g1-offline-tests:
+    name: G0 policy and G1 offline fixture tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pull request code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependency
+        run: python -m pip install --upgrade pip pytest
+      - name: Compile G0 and G1 modules
+        run: >-
+          python -m py_compile
+          final_tec_runner_policy.py
+          final_tec_offline_fixtures.py
+      - name: Run focused G0 and G1 tests
+        run: >-
+          python -m pytest -q
+          tests/test_final_tec_runner_policy.py
+          tests/test_final_tec_offline_fixtures.py
