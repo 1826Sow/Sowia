@@ -47,6 +47,12 @@ def run_adapter_conformance(
     """
     if not probes:
         raise ConformanceConfigurationError("At least one conformance probe is required")
+    if isinstance(probes, (str, bytes)) or any(
+        not isinstance(probe, ConformanceProbe) for probe in probes
+    ):
+        raise ConformanceConfigurationError(
+            "Every suite entry must be a ConformanceProbe"
+        )
 
     names = [probe.name for probe in probes]
     if any(not isinstance(name, str) or not name.strip() for name in names):
