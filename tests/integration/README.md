@@ -20,7 +20,10 @@ SOWIA_TEST_USER_A_EMAIL
 SOWIA_TEST_USER_A_PASSWORD
 SOWIA_TEST_USER_B_EMAIL
 SOWIA_TEST_USER_B_PASSWORD
+SOWIA_TEST_PROJECT_CONFIRMATION
 ```
+
+Pour `SOWIA_TEST_PROJECT_CONFIRMATION`, utiliser exactement la valeur `I_CONFIRM_THIS_IS_A_DEDICATED_SOWIA_TEST_PROJECT` uniquement après avoir vérifié l'URL et le projet Supabase de test. Cette confirmation supplémentaire est obligatoire : sans elle, aucun appel réseau de test n'est effectué.
 
 Ne jamais utiliser les comptes de production, ni inscrire les secrets dans Git, les journaux CI ou une capture d'écran. Le projet de test doit rester distinct de l'application SOW IA en production.
 
@@ -34,9 +37,9 @@ pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integratio
 
 ## Exécution automatique dans GitHub Actions
 
-Dans GitHub, ouvrir **Settings → Secrets and variables → Actions**, puis créer les six secrets portant exactement les noms listés plus haut. Leurs valeurs doivent provenir exclusivement du projet Supabase de test et de ses deux comptes dédiés.
+Dans GitHub, ouvrir **Settings → Secrets and variables → Actions**, puis créer les sept secrets portant exactement les noms listés plus haut. Leurs valeurs doivent provenir exclusivement du projet Supabase de test et de ses deux comptes dédiés.
 
-L'action GitHub lance alors les tests réels entre les deux comptes à chaque push/PR. Si les six secrets ne sont pas configurés, le job indique explicitement que les tests réels sont ignorés ; il ne prétend jamais avoir validé la RLS. Ne jamais renseigner les identifiants d'un compte réel ni ceux du projet de production.
+L'action GitHub lance alors les tests réels entre les deux comptes à chaque push/PR. Si l'un des six identifiants ou la confirmation dédiée manque ou est incorrect, le job indique explicitement que les tests réels sont ignorés ; il ne prétend jamais avoir validé la RLS. Ne jamais renseigner les identifiants d'un compte réel ni ceux du projet de production.
 
 Avec les six variables, deux sessions authentifiées vérifient pour chaque table que le compte A peut lire ses propres lignes, que le compte B ne peut pas les lire, qu'il ne peut pas insérer une ligne au nom de A et qu'il ne peut pas supprimer la ligne de A. Les lignes témoins créées sont supprimées par le compte A dans un bloc `finally`.
 
@@ -46,7 +49,7 @@ Un test ignoré ne constitue pas une validation RLS réelle. La validation exige
 
 ## Diagnostic préalable des politiques et privilèges (lecture seule)
 
-Avant de configurer les six secrets CI, exécuter `supabase_security_diagnostics.sql` dans le SQL Editor du projet de test, avec un rôle administrateur. Le script est strictement en lecture seule : il inventorie toutes les politiques de `storage.objects` et des tables privées `sowia_messages`, `sowia_memory_items` et `sowia_entitlements`, l'état RLS, les privilèges sur les tables et séquences, ainsi que la configuration du bucket `sowia-files`.
+Avant de configurer les sept secrets CI, exécuter `supabase_security_diagnostics.sql` dans le SQL Editor du projet de test, avec un rôle administrateur. Le script est strictement en lecture seule : il inventorie toutes les politiques de `storage.objects` et des tables privées `sowia_messages`, `sowia_memory_items` et `sowia_entitlements`, l'état RLS, les privilèges sur les tables et séquences, ainsi que la configuration du bucket `sowia-files`.
 
 Examiner chaque politique Storage, quel que soit son nom : les politiques permissives sont combinées par OR. Toute politique trop large doit être comprise et corrigée dans le projet de test avant d'exécuter les tests à deux comptes. Vérifier également que `sowia_entitlements` n'accorde pas d'écriture à `authenticated`, que `anon` n'a aucun accès aux données privées et que le bucket reste privé.
 
