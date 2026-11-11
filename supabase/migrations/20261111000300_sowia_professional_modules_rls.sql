@@ -46,7 +46,7 @@ create policy "Require Premium for NIGHT EXCHANGE apps"
 drop policy if exists "Require Premium for NIGHT EXCHANGE events" on public.sowia_night_exchange_events;
 create policy "Require Premium for NIGHT EXCHANGE events"
     on public.sowia_night_exchange_events as restrictive for all to authenticated
-    using (workspace_id = 'personal' or public.sowia_has_professional_access())
-    with check (workspace_id = 'personal' or public.sowia_has_professional_access());
+    using (public.sowia_has_professional_access())
+    with check (public.sowia_has_professional_access());
 
 commit;
