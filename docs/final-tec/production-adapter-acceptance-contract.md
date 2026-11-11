@@ -140,3 +140,28 @@ Le contrôle local validate_external_audit_anchor vérifie uniquement les deux m
 Critères d'acceptation d'un fournisseur réel : identité et contrôle d'accès distincts de l'administration SQLite ; rétention verrouillée WORM ou équivalent ; reçu externe authentifiable lié au checkpoint ; refus fermé si écriture, vérification ou reçu échoue ; tests de suppression, réécriture, troncature, rejeu, panne, reprise et restauration ; preuves expurgées et revue indépendante.
 
 Limite actuelle : aucun appel d'ancrage n'est intégré au commit SQLite, aucun fournisseur n'est sélectionné et aucun reçu externe n'est émis. Le hash-chain SQLite ne protège pas contre un administrateur privilégié capable de réécrire ou tronquer toute la base. L'ancrage externe reste NOT_RUN et G2-B reste NO-GO / NOT_RUN.
+
+
+## 11. Coordination fail-closed avec outbox transactionnel
+
+Le module `final_tec_audit_anchor.py` formalise le coordinateur entre le
+registre transactionnel et l'ancre externe. Le registre doit fournir
+`commit_pair_audit_and_outbox` : consommation des deux nonces, append de
+l'événement d'audit et création du checkpoint en attente dans **une seule
+transaction locale**. Le checkpoint est ensuite envoyé à l'ancre externe,
+son reçu est vérifié, puis le registre marque durablement le checkpoint comme
+ancré. Le callback ne retourne `True` qu'après ces quatre étapes.
+
+La reprise après panne doit être idempotente : pour un même identifiant
+d'autorisation et un même événement, le registre retourne le checkpoint
+d'outbox déjà créé, sans reconsommer les nonces. L'ancre externe doit accepter
+une répétition strictement identique comme la même opération et refuser toute
+réutilisation conflictuelle de la séquence. Une panne après écriture externe
+mais avant le marquage local est récupérée par append idempotent, vérification
+du reçu, puis marquage local.
+
+**Important :** il ne s'agit pas d'une transaction distribuée atomique entre
+SQLite et le fournisseur. Le statut d'approbation reste en attente/échec fermé
+jusqu'à confirmation externe durable. Les fakes de test vérifient seulement le
+contrat du coordinateur ; aucun adaptateur SQLite outbox ni fournisseur réel
+n'est encore implémenté ou raccordé. G2-B reste **NO-GO / NOT_RUN**.
