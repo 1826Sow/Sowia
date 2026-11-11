@@ -1,4 +1,5 @@
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+import multiprocessing
 from datetime import datetime, timedelta, timezone
 import sqlite3
 
@@ -18,6 +19,13 @@ def _records(now):
 
 def _store(tmp_path, name="atomic-approval.sqlite3"):
     return SQLiteAtomicApprovalStore(tmp_path / name, timeout_seconds=20)
+
+
+def _process_outbox_commit(args):
+    store, authorization_id, records, event, now = args
+    return store.commit_pair_audit_and_outbox(
+        authorization_id, records, event, now=now
+    )
 
 
 def test_boolean_sqlite_timeout_configuration_is_rejected(tmp_path):
@@ -417,6 +425,39 @@ def test_concurrent_outbox_commit_has_one_checkpoint_and_one_audit(tmp_path):
         results = list(pool.map(attempt, range(12)))
     checkpoints = [item for item in results if item is not None]
     assert len(checkpoints) == 12
+    assert all(item == checkpoints[0] for item in checkpoints)
+    assert len(store.audit_events()) == 1
+    assert store.pending_anchor_checkpoints() == [checkpoints[0]]
+    assert store.verify_audit_chain() is True
+    assert store.verify_anchor_outbox() is True
+
+
+def test_multiprocess_outbox_retry_returns_one_durable_checkpoint(tmp_path):
+    """Independent OS processes must converge on one idempotent outbox row.
+
+    This exercises SQLite process-level locking on one local host. It does not
+    establish safety for multiple hosts or network filesystems.
+    """
+    now = datetime.now(timezone.utc)
+    path = tmp_path / "outbox-multiprocess.sqlite3"
+    store = SQLiteAtomicApprovalStore(path, timeout_seconds=30)
+    records = _records(now)
+    authorization_id = "auth-outbox-multiprocess"
+    event = {
+        "event_type": "multiprocess-concurrent",
+        "authorization_id": authorization_id,
+    }
+    assert store.register_pair(authorization_id, records, now=now)
+
+    args = (store, authorization_id, records, event, now)
+    with ProcessPoolExecutor(
+        max_workers=8,
+        mp_context=multiprocessing.get_context("spawn"),
+    ) as pool:
+        results = list(pool.map(_process_outbox_commit, [args] * 8))
+
+    checkpoints = [item for item in results if item is not None]
+    assert len(checkpoints) == 8
     assert all(item == checkpoints[0] for item in checkpoints)
     assert len(store.audit_events()) == 1
     assert store.pending_anchor_checkpoints() == [checkpoints[0]]
