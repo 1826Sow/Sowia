@@ -168,6 +168,19 @@ def test_invalid_configuration_is_rejected():
         )
 
 
+def test_boolean_auth_age_configuration_is_rejected():
+    with pytest.raises(OIDCIdentityError):
+        OIDCApprovalIdentityVerifier(
+            issuer=ISSUER,
+            audience=AUDIENCE,
+            signing_key_resolver=lambda kid: None,
+            assertion_resolver=lambda context: {},
+            role_resolver=lambda subject, role: False,
+            required_acr="acr",
+            max_auth_age_seconds=True,
+        )
+
+
 def test_oidc_verifier_integrates_with_dual_approval_engine(signing_material):
     from datetime import timedelta
     from final_tec_dual_approval import validate_dual_approval
