@@ -79,3 +79,30 @@ def test_unknown_fee_and_net_remain_null():
     )[0]
     assert result["fee_amount"] is None
     assert result["net_amount"] is None
+
+
+@pytest.mark.parametrize(
+    "fee,net",
+    [
+        ("10.00", "0.00"),
+        ("0.49", "10.00"),
+        ("0.40", "9.41"),
+    ],
+)
+def test_rejects_inconsistent_gross_fee_net_breakdown(fee, net):
+    tx = _transaction()
+    tx["amount_with_breakdown"]["fee_amount"]["value"] = fee
+    tx["amount_with_breakdown"]["net_amount"]["value"] = net
+    with pytest.raises(ValueError, match="brut|frais|net"):
+        record_paypal_billing_transaction(
+            Client(), user_id="u1", subscription_id="I-ABC123", transaction=tx
+        )
+
+
+@pytest.mark.parametrize("timestamp", ["", "not-a-date", "2026-11-10T12:00:00"])
+def test_rejects_missing_invalid_or_timezone_naive_transaction_time(timestamp):
+    tx = _transaction(time=timestamp)
+    with pytest.raises(ValueError, match="Date|fuseau"):
+        record_paypal_billing_transaction(
+            Client(), user_id="u1", subscription_id="I-ABC123", transaction=tx
+        )
