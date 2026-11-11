@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import threading
 import time
+from http.client import HTTPException
 from email.message import Message
 from typing import Any, Callable, Iterable
 from urllib.error import HTTPError, URLError
@@ -133,7 +134,7 @@ class HTTPSJWKSResolver:
                 cache_ttl = self._response_ttl(response.headers)
         except HTTPError as exc:
             raise JWKSConfigurationError("JWKS endpoint returned an HTTP error or redirect") from exc
-        except (URLError, TimeoutError, OSError) as exc:
+        except (URLError, HTTPException, TimeoutError, OSError) as exc:
             # Includes failures during body reads. Never fall back to expired
             # keys and never expose provider/network details to callers.
             raise JWKSConfigurationError("JWKS endpoint could not be reached safely") from exc
