@@ -15,6 +15,13 @@ create policy "Require Premium for Professional relationship events"
     using (workspace_id = 'personal' or public.sowia_has_professional_access())
     with check (workspace_id = 'personal' or public.sowia_has_professional_access());
 
+-- The business-opportunity pipeline also stores Personal and Professional workspaces.
+drop policy if exists "Require Premium for Professional business opportunities" on public.sowia_business_opportunities;
+create policy "Require Premium for Professional business opportunities"
+    on public.sowia_business_opportunities as restrictive for all to authenticated
+    using (workspace_id = 'personal' or public.sowia_has_professional_access())
+    with check (workspace_id = 'personal' or public.sowia_has_professional_access());
+
 -- Business Club is a Professional-only feature. Keep existing opt-in,
 -- publication, participant, and ownership policies as additional restrictions.
 drop policy if exists "Require Premium for Business Club profiles" on public.sowia_business_club_profiles;
