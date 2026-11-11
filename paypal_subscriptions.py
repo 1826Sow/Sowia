@@ -249,14 +249,16 @@ def ensure_premium_plan(admin_client):
 
 
 def reconcile_returned_subscription(subscription_id: str, user_id: str):
-    """Validate PayPal's browser return server-side and persist an ACTIVE subscription.
+    """Validate a browser return without granting or persisting Premium access.
 
-    The query parameter is only an identifier; ownership, plan and status are
-    re-fetched from PayPal using the server credentials before Premium is granted.
+    A browser redirect is not an authoritative billing event. This function
+    checks PayPal ownership and plan details, but the signed PayPal webhook and
+    its atomic database RPC remain the only path that can activate a subscription.
     """
     config = paypal_subscription_configuration()
     if not config or config["mode"] != "sandbox":
         raise RuntimeError("La réconciliation du retour est limitée à PayPal Sandbox.")
+    # Read the private plan catalogue only; never write subscription state here.
     # Import lazily so the app does not initialize an admin client on ordinary page loads.
     import premium_access
     admin_client = premium_access.create_admin_client()
@@ -290,21 +292,20 @@ def reconcile_returned_subscription(subscription_id: str, user_id: str):
     billing = details.get("billing_info") or {}
     last_payment = billing.get("last_payment") or {}
     amount = (last_payment.get("amount") or {})
-    payload = {
+    # Deliberately do not persist ACTIVE here. The webhook performs signature
+    # verification and calls the atomic reconciliation RPC, which enforces
+    # event ordering, payment-review holds and terminal subscription states.
+    return {
         "user_id": normalized_user_id,
         "provider": "paypal",
         "paypal_subscription_id": normalized_subscription_id,
         "paypal_plan_id": expected_plan_id,
-        "status": "active",
-        "currency": amount.get("currency_code") or "EUR",
-        "amount": amount.get("value") or PREMIUM_PRICE,
+        "status": "pending_webhook",
+        "currency": PREMIUM_CURRENCY,
+        "amount": PREMIUM_PRICE,
         "next_billing_time": billing.get("next_billing_time"),
         "last_payment_at": last_payment.get("time"),
     }
-    admin_client.table("sowia_subscriptions").upsert(
-        payload, on_conflict="paypal_subscription_id"
-    ).execute()
-    return payload
 
 def create_premium_subscription(user_id: str, plan_id: str | None = None):
     """Create an approval-pending monthly subscription for the signed-in user."""
