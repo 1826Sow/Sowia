@@ -33,7 +33,13 @@ using (
         array_length(storage.foldername(name), 1) = 1
         or (
             array_length(storage.foldername(name), 1) = 2
-            and (storage.foldername(name))[2] in ('personal', 'professional')
+            and (
+                (storage.foldername(name))[2] = 'personal'
+                or (
+                    (storage.foldername(name))[2] = 'professional'
+                    and public.sowia_has_professional_access()
+                )
+            )
         )
     )
 );
@@ -45,7 +51,13 @@ with check (
     bucket_id = 'sowia-files'
     and (storage.foldername(name))[1] = (select auth.uid())::text
     and array_length(storage.foldername(name), 1) = 2
-    and (storage.foldername(name))[2] in ('personal', 'professional')
+    and (
+        (storage.foldername(name))[2] = 'personal'
+        or (
+            (storage.foldername(name))[2] = 'professional'
+            and public.sowia_has_professional_access()
+        )
+    )
 );
 
 drop policy if exists "SOW IA users can delete own workspace PDFs" on storage.objects;
