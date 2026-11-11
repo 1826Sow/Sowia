@@ -43,6 +43,7 @@ on:
       - "feature/final-tec-evidence-review-engine"
       - "security/final-tec-audit-trail"
       - "security/final-tec-audit-vault"
+      - "security/final-tec-audit-server-service"
     paths:
       - "app.py"
       - "final_tec_access.py"
@@ -56,6 +57,7 @@ on:
       - "final_tec_evidence.py"
       - "final_tec_evidence_review.py"
       - "final_tec_audit_trail.py"
+      - "final_tec_audit_service.py"
       - "supabase/proposals/final_tec_audit_vault.sql"
       - "tests/test_final_tec_access.py"
       - "tests/test_final_tec_published_metrics.py"
@@ -115,3 +117,4 @@ jobs:
           final_tec_evidence.py
           final_tec_evidence_review.py
           final_tec_audit_trail.py
+          final_tec_audit_service.py
