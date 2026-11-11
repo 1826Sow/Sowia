@@ -1,0 +1,28 @@
+name: FINAL TEC atomic pair and audit checks
+
+on:
+  pull_request:
+    branches:
+      - feature/final-tec-dual-approval-ed25519-v2
+    paths:
+      - "final_tec_dual_approval.py"
+      - "final_tec_atomic_approval_store.py"
+      - "tests/test_final_tec_dual_approval.py"
+      - "tests/test_final_tec_dual_approval_ed25519.py"
+      - "tests/test_final_tec_atomic_approval_store.py"
+      - ".github/workflows/final-tec-atomic-pair-audit-checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  atomic-pair-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install "cryptography>=44,<47" "rfc8785>=0.1.4,<1" pytest
+      - run: python -m pytest -q tests/test_final_tec_dual_approval.py tests/test_final_tec_dual_approval_ed25519.py tests/test_final_tec_atomic_approval_store.py
