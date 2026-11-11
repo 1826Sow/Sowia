@@ -92,6 +92,9 @@ Aucun état ne doit être interprété comme une preuve d'exécution réussie.
   consommer atomiquement la session serveur après validation cryptographique
   et contrôle du rôle. Un même ID token ou une même session ne peut être
   accepté qu'une seule fois, y compris lors d'appels concurrents.
+- Le contrat de l'adaptateur de sessions doit exposer explicitement une
+  opération `consume_approval_session(session_id, expected_nonce)` atomique ;
+  un simple chargement de session ne satisfait pas le contrat de production.
 - Refus des clés inconnues, révoquées, expirées ou hors usage.
 - Révocation et retrait de rôle recontrôlés au moment de l'exécution.
 - Les changements de clé, de rôle ou de politique nécessitent un flux distinct
