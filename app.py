@@ -801,10 +801,7 @@ if page == "Accueil":
 
 elif page == "Hub SOWIA":
     st.subheader(translate_ui("Bienvenue sur le Hub SOWIA", language))
-    metadata = getattr(current_user, "app_metadata", None) or {}
-    is_sowia_admin = isinstance(metadata, dict) and (
-        metadata.get("sowia_admin") is True or metadata.get("role") == "admin"
-    )
+    is_sowia_admin = premium_access.is_sowia_admin(current_user)
     current_workspace = st.session_state.get("workspace_id", "personal")
     workspace_title = "Professionnel" if current_workspace == "professional" else "Personnel"
     st.markdown(
@@ -2905,8 +2902,7 @@ elif page == "SOWIA GLOBAL ID":
                 else:
                     st.info("Votre fiche est privée. Elle n’apparaîtra pas dans l’annuaire avant votre autorisation.")
                 st.caption("Le QR code et le lien public individuel seront activés après le déploiement de la page publique HTTPS. Aucun lien non fonctionnel n’est affiché.")
-            metadata = getattr(current_user, "app_metadata", None) or {}
-            is_global_id_admin = metadata.get("sowia_admin") is True or metadata.get("role") == "admin"
+            is_global_id_admin = premium_access.is_sowia_admin(current_user)
             if is_global_id_admin:
                 st.divider()
                 st.markdown("#### Modération des identités GLOBAL ID")
