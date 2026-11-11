@@ -88,7 +88,6 @@ def test_valid_profile_is_only_static_and_never_executable():
         (("security", "capabilities_drop"), ["NET_ADMIN"]),
         (("security", "seccomp_profile"), ""),
         (("security", "apparmor_profile"), None),
-        (("security", "selinux_profile"), None),
         (("network", "enabled"), True),
         (("network", "egress"), True),
         (("network", "dns"), True),
@@ -133,6 +132,14 @@ def test_boolean_is_not_accepted_as_numeric_resource_limit(field):
     profile = valid_profile()
     profile["resources"][field] = True
     with pytest.raises(IsolationPolicyError):
+        validate_static_isolation_profile(profile)
+
+
+def test_missing_both_apparmor_and_selinux_profiles_fails_closed():
+    profile = valid_profile()
+    profile["security"]["apparmor_profile"] = None
+    profile["security"]["selinux_profile"] = None
+    with pytest.raises(IsolationPolicyError, match="AppArmor ou SELinux"):
         validate_static_isolation_profile(profile)
 
 
