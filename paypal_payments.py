@@ -289,7 +289,10 @@ def sync_one_time_paypal_refunds(admin_client, user_id: str, days: int = 90, lim
             )
             flagged += 1
             order_id = str((row or {}).get("paypal_order_id") or "").strip()
-            if order_id:
+            capture_status = str(capture.get("status") or "").upper()
+            # A partial refund is not a full loss of the purchase. Keep the
+            # entitlement active while the exact refund is under review.
+            if order_id and capture_status == "REFUNDED":
                 revoked = (
                     admin_client.table("sowia_entitlements")
                     .update({"status": "inactive"})
