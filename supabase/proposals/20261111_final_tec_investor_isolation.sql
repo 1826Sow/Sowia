@@ -51,7 +51,7 @@ create table if not exists public.final_tec_published_metrics (
     updated_at timestamptz not null default now(),
     constraint final_tec_metric_evidence_complete check (
         (evidence_status <> 'verified' or (
-            source_url like 'https://%'
+            source_url is not null and source_url like 'https://%'
             and observed_at is not null
             and evidence_ref is not null and length(trim(evidence_ref)) > 0
             and evidence_owner is not null and length(trim(evidence_owner)) > 0
