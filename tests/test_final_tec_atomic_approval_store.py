@@ -28,6 +28,17 @@ def _process_outbox_commit(args):
     )
 
 
+def _process_commit_then_exit_without_ack(args):
+    """Commit durably, then simulate process death before returning a result."""
+    import os
+
+    store, authorization_id, records, event, now = args
+    checkpoint = store.commit_pair_audit_and_outbox(
+        authorization_id, records, event, now=now
+    )
+    os._exit(23 if checkpoint is not None else 24)
+
+
 def test_boolean_sqlite_timeout_configuration_is_rejected(tmp_path):
     from final_tec_atomic_approval_store import AtomicApprovalStoreError
 
@@ -463,6 +474,47 @@ def test_multiprocess_outbox_retry_returns_one_durable_checkpoint(tmp_path):
     assert store.pending_anchor_checkpoints() == [checkpoints[0]]
     assert store.verify_audit_chain() is True
     assert store.verify_anchor_outbox() is True
+
+
+def test_crash_after_durable_commit_retries_original_checkpoint(tmp_path):
+    """A lost caller acknowledgement must not duplicate a committed approval."""
+    now = datetime.now(timezone.utc)
+    path = tmp_path / "outbox-crash-after-commit.sqlite3"
+    store = SQLiteAtomicApprovalStore(path, timeout_seconds=30)
+    records = _records(now)
+    authorization_id = "auth-crash-after-commit"
+    event = {
+        "event_type": "crash-after-commit",
+        "authorization_id": authorization_id,
+    }
+    assert store.register_pair(authorization_id, records, now=now)
+
+    args = (store, authorization_id, records, event, now)
+    process = multiprocessing.get_context("spawn").Process(
+        target=_process_commit_then_exit_without_ack,
+        args=(args,),
+    )
+    process.start()
+    process.join(timeout=30)
+    if process.is_alive():
+        process.terminate()
+        process.join()
+        pytest.fail("crash simulation process did not terminate")
+    assert process.exitcode == 23
+
+    # Reopen from disk as a fresh process would, then replay the exact request.
+    reopened = SQLiteAtomicApprovalStore(path, timeout_seconds=30)
+    recovered = reopened.commit_pair_audit_and_outbox(
+        authorization_id, records, event, now=now
+    )
+    assert recovered is not None
+    assert reopened.commit_pair_audit_and_outbox(
+        authorization_id, records, event, now=now
+    ) == recovered
+    assert len(reopened.audit_events()) == 1
+    assert reopened.pending_anchor_checkpoints() == [recovered]
+    assert reopened.verify_audit_chain() is True
+    assert reopened.verify_anchor_outbox() is True
 
 
 def test_dual_approval_engine_can_use_only_verified_external_anchor_callback(tmp_path):
