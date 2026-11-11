@@ -27,7 +27,7 @@ def test_all_remaining_professional_modules_have_restrictive_premium_policies():
 
 def test_personal_rows_remain_available_without_premium_where_supported():
     normalized = " ".join(MIGRATION.split())
-    assert normalized.count("workspace_id = 'personal' or public.sowia_has_professional_access()") == 2
+    assert normalized.count("workspace_id = 'personal' or public.sowia_has_professional_access()") == 4
 
 
 def test_business_club_and_night_exchange_remain_professional_only():
