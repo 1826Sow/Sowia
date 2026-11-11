@@ -170,3 +170,19 @@ def test_external_identity_check_rejects_subject_mismatch_before_signature():
     approvals[0]["subject_id"] = "different-person"
     with pytest.raises(DualApprovalError, match="identity"):
         run_validation(now, request, approvals, DualApprovalEd25519Verifier(trusted))
+
+
+def test_signing_disabled_key_is_rejected_even_for_backdated_approval():
+    now, request, approvals, trusted = fixture()
+    original = trusted["dual-key-1"]
+    trusted["dual-key-1"] = TrustedApprovalKey(
+        key_id=original.key_id,
+        approver_id=original.approver_id,
+        approver_role=original.approver_role,
+        public_key_raw=original.public_key_raw,
+        valid_from=original.valid_from,
+        valid_until=original.valid_until,
+        signing_disabled_at=now - timedelta(seconds=1),
+    )
+    with pytest.raises(DualApprovalError, match="signature"):
+        run_validation(now, request, approvals, DualApprovalEd25519Verifier(trusted))
