@@ -44,19 +44,19 @@ select
 from information_schema.role_table_grants
 where table_schema = 'public'
   and table_name in ('sowia_messages', 'sowia_memory_items', 'sowia_entitlements')
-  and grantee in ('anon', 'authenticated', 'service_role', 'public')
+  and grantee in ('anon', 'authenticated', 'service_role', 'PUBLIC')
 order by table_name, grantee, privilege_type;
 
 select
-    sequence_schema,
-    sequence_name,
+    object_schema as sequence_schema,
+    object_name as sequence_name,
     grantee,
     privilege_type,
     is_grantable
 from information_schema.role_usage_grants
 where object_type = 'SEQUENCE'
-  and sequence_schema = 'public'
-  and grantee in ('anon', 'authenticated', 'service_role', 'public')
+  and object_schema = 'public'
+  and grantee in ('anon', 'authenticated', 'service_role', 'PUBLIC')
 order by sequence_name, grantee, privilege_type;
 
 -- 4) Confirm the private bucket configuration.
