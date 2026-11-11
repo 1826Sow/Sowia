@@ -69,15 +69,18 @@ def test_subscription_refund_or_reversal_blocks_premium_until_verified_successfu
 def test_one_time_capture_refund_is_verified_and_revokes_only_linked_entitlement():
     source = WEBHOOK
     capture_events = source.index('"PAYMENT.CAPTURE.REFUNDED"')
-    handler = source.index("if (eventType === \"PAYMENT.CAPTURE.REFUNDED\"")
-    capture_fetch = source.index("/v2/payments/captures/", handler)
-    capture_status = source.index("expectedCaptureStatus", capture_fetch)
+    handler = source.index('if (eventType === "PAYMENT.CAPTURE.REFUNDED")')
+    refund_fetch = source.index("/v2/payments/refunds/", handler)
+    refund_status = source.index('refund.status || ""', refund_fetch)
+    parent_link = source.index('String(link.rel || "").toLowerCase() === "up"', refund_status)
+    capture_fetch = source.index("/v2/payments/captures/", parent_link)
+    capture_status = source.index('capture.status || ""', capture_fetch)
     ledger_lookup = source.index("/rest/v1/sowia_financial_transactions", capture_status)
     order_check = source.index("ledger.paypal_order_id !== orderId", ledger_lookup)
     revoke = source.index("/rest/v1/sowia_entitlements?user_id=eq.", order_check)
-    write = source.index("method: \"PATCH\"", revoke)
-    assert capture_events < handler < capture_fetch < capture_status < ledger_lookup < order_check < revoke < write
-    assert '"PAYMENT.CAPTURE.REVERSED"' in source
-    assert '"REFUNDED"' in source and '"REVERSED"' in source
+    write = source.index('method: "PATCH"', revoke)
+    assert capture_events < handler < refund_fetch < refund_status < parent_link < capture_fetch < capture_status < ledger_lookup < order_check < revoke < write
+    assert 'new Set(["PARTIALLY_REFUNDED", "REFUNDED"])' in source
     assert 'JSON.stringify({ status: "inactive" })' in source
     assert '"return=representation"' in source
+    assert "PAYMENT.CAPTURE.REVERSED" not in source
