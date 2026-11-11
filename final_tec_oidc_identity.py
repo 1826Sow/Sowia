@@ -46,7 +46,7 @@ class OIDCApprovalIdentityVerifier:
     ) -> None:
         if not issuer or not audience or not required_acr or not required_amr:
             raise OIDCIdentityError("issuer, audience, ACR and AMR policy are required")
-        if not isinstance(max_auth_age_seconds, int) or max_auth_age_seconds <= 0:
+        if isinstance(max_auth_age_seconds, bool) or not isinstance(max_auth_age_seconds, int) or max_auth_age_seconds <= 0:
             raise OIDCIdentityError("max_auth_age_seconds must be a positive integer")
         self.issuer = issuer
         self.audience = audience
