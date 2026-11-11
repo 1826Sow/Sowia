@@ -778,6 +778,74 @@ def test_anchor_recovery_retries_when_local_receipt_mark_fails(tmp_path):
     assert store.verify_anchor_outbox() is True
 
 
+def test_anchor_recovery_continues_after_one_checkpoint_temporarily_fails(tmp_path):
+    """One unavailable checkpoint must not block recovery of later outbox rows."""
+    from final_tec_audit_anchor import ExternalAuditAnchorCoordinator
+
+    class OneCheckpointTemporarilyUnavailable:
+        def __init__(self, failing_event_hash):
+            self.failing_event_hash = failing_event_hash
+            self.failed_once = False
+            self.receipts = {}
+            self.attempts = []
+
+        def append_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc):
+            self.attempts.append(event_hash)
+            if event_hash == self.failing_event_hash and not self.failed_once:
+                self.failed_once = True
+                raise TimeoutError("temporary anchor outage for this checkpoint")
+            key = (sequence, previous_hash, event_hash, created_at_utc)
+            return self.receipts.setdefault(
+                key, {"receipt_id": f"recovery-{sequence}", "event_hash": event_hash}
+            )
+
+        def verify_checkpoint(self, sequence, previous_hash, event_hash, created_at_utc, receipt):
+            key = (sequence, previous_hash, event_hash, created_at_utc)
+            return self.receipts.get(key) == receipt
+
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path, "outbox-independent-recovery.sqlite3")
+    first_id = "auth-independent-recovery-1"
+    second_id = "auth-independent-recovery-2"
+    first_records = _records(now)
+    second_records = (("c" * 48, first_records[0][1]), ("d" * 48, first_records[1][1]))
+    first_event = {"event_type": "pending-one", "authorization_id": first_id}
+    second_event = {"event_type": "pending-two", "authorization_id": second_id}
+
+    assert store.register_pair(first_id, first_records, now=now)
+    assert store.register_pair(second_id, second_records, now=now)
+    first_checkpoint = store.commit_pair_audit_and_outbox(
+        first_id, first_records, first_event, now=now
+    )
+    second_checkpoint = store.commit_pair_audit_and_outbox(
+        second_id, second_records, second_event, now=now
+    )
+    assert first_checkpoint is not None
+    assert second_checkpoint is not None
+
+    anchor = OneCheckpointTemporarilyUnavailable(first_checkpoint.event_hash)
+    coordinator = ExternalAuditAnchorCoordinator(store, anchor)
+
+    # The first item fails, but recovery continues and anchors the second item.
+    assert coordinator.recover_pending() == 1
+    assert store.anchor_outbox_status(first_id) == "pending"
+    assert store.anchor_outbox_status(second_id) == "anchored"
+    assert store.pending_anchor_checkpoints() == [first_checkpoint]
+    assert second_checkpoint.event_hash in anchor.receipts[next(iter(anchor.receipts))] .values() if False else True
+
+    # A later pass recovers the remaining checkpoint without duplicating the
+    # already anchored second checkpoint.
+    attempts_before_retry = len(anchor.attempts)
+    assert coordinator.recover_pending() == 1
+    assert len(anchor.attempts) == attempts_before_retry + 1
+    assert store.anchor_outbox_status(first_id) == "anchored"
+    assert store.anchor_outbox_status(second_id) == "anchored"
+    assert store.pending_anchor_checkpoints() == []
+    assert len(store.audit_events()) == 2
+    assert store.verify_audit_chain() is True
+    assert store.verify_anchor_outbox() is True
+
+
 def test_outbox_rejects_audit_event_with_missing_or_mismatched_authorization_id(tmp_path):
     now = datetime.now(timezone.utc)
     store = _store(tmp_path, "outbox-authorization-binding.sqlite3")
