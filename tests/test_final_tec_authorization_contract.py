@@ -141,6 +141,7 @@ def test_unknown_top_level_field_fails_closed():
     (("constraints", "network_policy"), "allow_all"),
     (("constraints", "secrets_policy"), "environment"),
     (("constraints", "budget_limit"), 0.01),
+    (("constraints", "budget_limit"), False),
     (("constraints", "cpu_limit"), 100),
     (("constraints", "pids_limit"), 0),
 ])
@@ -228,3 +229,10 @@ def test_naive_clock_is_rejected():
             nonce_consumer=nc,
             now=datetime(2026, 11, 11, 12, 0),
         )
+
+
+def test_environment_descriptive_fields_allow_spaces():
+    contract = valid_contract()
+    contract["environment"]["host_os"] = "Ubuntu 26.04 LTS"
+    result = validate(contract)
+    assert result["workload_executed"] is False
