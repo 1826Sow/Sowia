@@ -12,9 +12,9 @@ Pour une installation neuve du socle SOW IA, exécuter dans cet ordre :
 2. `supabase_workspaces.sql` — ajoute la séparation Personnel / Professionnel aux messages et à la mémoire.
 3. `supabase/migrations/20261111000200_sowia_professional_workspace_rls.sql` — applique le contrôle Premium au niveau RLS pour la mémoire et les messages. La vérification de l'abonnement récurrent est facultative et détectée seulement si `sowia_subscriptions` existe ; appliquer `supabase/migrations/20261109000100_sowia_subscriptions.sql` pour activer ce chemin.
 4. `supabase_storage_policies.sql` — bucket PDF privé et règles d’accès par utilisateur/espace ; ce script utilise la fonction créée à l'étape 3 pour protéger les dossiers `professional`.
-4. `supabase_growth_crm.sql` — carnet de partenaires.
-5. `supabase_language_preferences.sql` — préférences de langue par compte.
-6. `supabase_business_opportunities.sql` — pipeline d’opportunités et prévisions commerciales.
+5. `supabase_growth_crm.sql` — carnet de partenaires.
+6. `supabase_language_preferences.sql` — préférences de langue par compte.
+7. `supabase_business_opportunities.sql` — pipeline d’opportunités et prévisions commerciales.
 
 Le script `supabase_accessibility_preferences.sql` est facultatif et doit être exécuté **après** `supabase_language_preferences.sql`, car il ajoute une colonne à `sowia_user_preferences`.
 
