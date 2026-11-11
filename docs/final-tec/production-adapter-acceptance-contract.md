@@ -87,6 +87,15 @@ présence des sept rôles d'adaptateur, leurs méthodes et une déclaration expl
 pas une preuve de sécurité ni une certification. Le contrôle ne contacte aucun
 fournisseur et ne valide ni TLS, ni IAM, ni KMS/HSM, ni transaction distribuée.
 
+Pour les sessions, `consume_approval_session(session_id, expected_nonce)` doit
+réaliser une consommation atomique à usage unique dans le stockage serveur :
+la vérification du nonce attendu et le passage de la session à l'état consommé
+doivent être indivisibles, y compris sous appels concurrents. La méthode doit
+retourner le booléen strict `True` uniquement pour l'unique consommation
+réussie ; session absente, nonce différent, session expirée, déjà consommée
+ou erreur de stockage doivent produire un refus. Une simple lecture suivie
+d'une suppression non atomique ne satisfait pas ce contrat.
+
 **Tests de contrat :** les fakes vérifient la structure et les refus en cas
 d'adaptateur absent/incomplet/non déclaré. Ils ne constituent pas des tests
 d'intégration fournisseur. L'adaptateur SQLite mono-hôte existant reste réservé
