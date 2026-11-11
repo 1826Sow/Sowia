@@ -1,0 +1,246 @@
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
+import sqlite3
+
+import pytest
+
+from final_tec_atomic_approval_store import (
+    AtomicApprovalStoreError,
+    SQLiteAtomicApprovalStore,
+)
+from final_tec_dual_approval import validate_dual_approval, DualApprovalError
+
+
+def _records(now):
+    expiry = (now + timedelta(minutes=15)).isoformat()
+    return (("a" * 48, expiry), ("b" * 48, expiry))
+
+
+def _store(tmp_path, name="atomic-approval.sqlite3"):
+    return SQLiteAtomicApprovalStore(tmp_path / name, timeout_seconds=20)
+
+
+def test_pair_registration_and_atomic_commit_append_one_audit(tmp_path):
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path)
+    records = _records(now)
+    assert store.register_pair("auth-01", records, now=now) is True
+    event = {"event_type": "dual_approval_verified", "authorization_id": "auth-01"}
+    assert store.commit_pair_and_audit("auth-01", records, event, now=now) is True
+    assert len(store.audit_events()) == 1
+    assert store.verify_audit_chain() is True
+    assert store.commit_pair_and_audit("auth-01", records, event, now=now) is False
+    assert len(store.audit_events()) == 1
+
+
+def test_pair_commit_is_all_or_nothing_when_one_nonce_missing(tmp_path):
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path)
+    records = _records(now)
+    assert store.register_pair("auth-02", records[:1] + (("c" * 48, records[1][1]),), now=now)
+    assert store.commit_pair_and_audit(
+        "auth-02", records, {"event_type": "should_not_commit"}, now=now
+    ) is False
+    assert store.audit_events() == []
+    # The first nonce remains unconsumed because the other member was absent.
+    assert store.commit_pair_and_audit(
+        "auth-02",
+        (records[0], ("c" * 48, records[1][1])),
+        {"event_type": "pair_retry"},
+        now=now,
+    ) is True
+
+
+def test_revoking_either_member_prevents_both_from_being_consumed(tmp_path):
+    now = datetime.now(timezone.utc)
+    store = _store(tmp_path)
+    records = _records(now)
+    assert store.register_pair("auth-03", records, now=now)
+    assert store.revoke(records[1][0], now=now)
+    assert store.commit_pair_and_audit(
+        "auth-03", records, {"event_type": "revoked_pair"}, now=now
+    ) is False
+    assert store.audit_events() == []
+    # The non-revoked partner remains unconsumed; revocation is not a consume.
+    assert store.revoke(records[0][0], now=now) is True
+
+
+def test_audit_insert_failure_rolls_back_both_nonce_consumptions(tmp_path):
+    now = datetime.now(timezone.utc)
+    path = tmp_path / "rollback.sqlite3"
+    store = SQLiteAtomicApprovalStore(path)
+    records = _records(now)
+    assert store.register_pair("auth-04", records, now=now)
+    with sqlite3.connect(path) as connection:
+        connection.execute("""
+            CREATE TRIGGER reject_audit_insert
+            BEFORE INSERT ON dual_approval_audit
+            BEGIN
+                SELECT RAISE(ABORT, 'injected audit outage');
+            END
+        """)
+    assert store.commit_pair_and_audit(
+        "auth-04", records, {"event_type": "must_rollback"}, now=now
+    ) is False
+    assert store.audit_events() == []
+    with sqlite3.connect(path) as connection:
+        connection.execute("DROP TRIGGER reject_audit_insert")
+    assert store.commit_pair_and_audit(
+        "auth-04", records, {"event_type": "retry_after_recovery"}, now=now
+    ) is True
+    assert len(store.audit_events()) == 1
+
+
+def test_concurrent_pair_commits_have_one_winner_and_one_audit(tmp_path):
+    now = datetime.now(timezone.utc)
+    path = tmp_path / "concurrent.sqlite3"
+    store = SQLiteAtomicApprovalStore(path, timeout_seconds=20)
+    records = _records(now)
+    assert store.register_pair("auth-05", records, now=now)
+
+    def attempt(_):
+        independent = SQLiteAtomicApprovalStore(path, timeout_seconds=20)
+        return independent.commit_pair_and_audit(
+            "auth-05", records, {"event_type": "concurrent_attempt"}, now=now
+        )
+
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        results = list(pool.map(attempt, range(12)))
+    assert results.count(True) == 1
+    assert results.count(False) == 11
+    assert len(store.audit_events()) == 1
+    assert store.verify_audit_chain() is True
+
+
+def test_store_and_audit_survive_reopening(tmp_path):
+    now = datetime.now(timezone.utc)
+    path = tmp_path / "persistent.sqlite3"
+    records = _records(now)
+    first = SQLiteAtomicApprovalStore(path)
+    assert first.register_pair("auth-06", records, now=now)
+    assert first.commit_pair_and_audit(
+        "auth-06", records, {"event_type": "persisted"}, now=now
+    )
+    reopened = SQLiteAtomicApprovalStore(path)
+    assert reopened.verify_audit_chain() is True
+    assert len(reopened.audit_events()) == 1
+    assert reopened.commit_pair_and_audit(
+        "auth-06", records, {"event_type": "replay"}, now=now
+    ) is False
+
+
+def test_audit_rows_reject_update_and_delete(tmp_path):
+    now = datetime.now(timezone.utc)
+    path = tmp_path / "append-only.sqlite3"
+    store = SQLiteAtomicApprovalStore(path)
+    records = _records(now)
+    assert store.register_pair("auth-07", records, now=now)
+    assert store.commit_pair_and_audit(
+        "auth-07", records, {"event_type": "append_only"}, now=now
+    )
+    with sqlite3.connect(path) as connection:
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute("UPDATE dual_approval_audit SET event_json='{}'")
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute("DELETE FROM dual_approval_audit")
+
+
+def test_hash_chain_detects_direct_database_tampering(tmp_path):
+    now = datetime.now(timezone.utc)
+    path = tmp_path / "tamper.sqlite3"
+    store = SQLiteAtomicApprovalStore(path)
+    records = _records(now)
+    assert store.register_pair("auth-08", records, now=now)
+    assert store.commit_pair_and_audit(
+        "auth-08", records, {"event_type": "original"}, now=now
+    )
+    with sqlite3.connect(path) as connection:
+        connection.execute("DROP TRIGGER dual_approval_audit_no_update")
+        connection.execute(
+            "UPDATE dual_approval_audit SET event_json='{}' WHERE sequence=1"
+        )
+    assert store.verify_audit_chain() is False
+
+
+def test_dual_approval_engine_uses_atomic_store_callback(tmp_path):
+    now = datetime.now(timezone.utc)
+    expiry = now + timedelta(minutes=10)
+    request = {
+        "authorization_id": "auth-engine-01",
+        "request_version": "v1",
+        "requester_id": "requester",
+        "operator_id": "operator",
+        "reviewer_id": "reviewer",
+        "policy_version": "policy-v1",
+        "expires_at": expiry.isoformat(),
+        "environment_digest": "a" * 64,
+        "constraints_digest": "b" * 64,
+        "action_digest": "c" * 64,
+    }
+    approvals = []
+    records = []
+    for index, subject in enumerate(("approver-a", "approver-b")):
+        nonce = (str(index + 1) * 48)
+        approval_expiry = now + timedelta(minutes=5)
+        approvals.append({
+            "subject_id": subject,
+            "role": "security-approver",
+            "key_id": f"key-{index}",
+            "algorithm": "Ed25519",
+            "approval_policy_id": "dual-v1",
+            "policy_version": "policy-v1",
+            "nonce": nonce,
+            "issued_at": (now - timedelta(seconds=1)).isoformat(),
+            "expires_at": approval_expiry.isoformat(),
+            "signature": "test-signature",
+        })
+        records.append((nonce, approval_expiry.isoformat()))
+
+    store = _store(tmp_path, "engine.sqlite3")
+    assert store.register_pair(request["authorization_id"], tuple(records), now=now)
+    result = validate_dual_approval(
+        request,
+        approvals,
+        signature_verifier=lambda envelope, approval: True,
+        identity_verifier=lambda subject, role, context: True,
+        atomic_pair_audit_commit=store.atomic_commit_callback,
+        now=now,
+    )
+    assert result["nonce_pair_and_audit_committed_atomically"] is True
+    assert result["execution_authorized"] is False
+    assert result["workload_executed"] is False
+    assert len(store.audit_events()) == 1
+
+
+def test_missing_atomic_or_legacy_commit_callbacks_fail_closed():
+    now = datetime.now(timezone.utc)
+    request = {
+        "authorization_id": "auth-no-callback",
+        "request_version": "v1",
+        "requester_id": "requester",
+        "operator_id": "operator",
+        "reviewer_id": "reviewer",
+        "policy_version": "policy-v1",
+        "expires_at": (now + timedelta(minutes=5)).isoformat(),
+        "environment_digest": "a" * 64,
+        "constraints_digest": "b" * 64,
+        "action_digest": "c" * 64,
+    }
+    approvals = []
+    for index, subject in enumerate(("approver-a", "approver-b")):
+        approvals.append({
+            "subject_id": subject, "role": "security-approver",
+            "key_id": f"key-{index}", "algorithm": "Ed25519",
+            "approval_policy_id": "dual-v1", "policy_version": "policy-v1",
+            "nonce": str(index + 1) * 48,
+            "issued_at": (now - timedelta(seconds=1)).isoformat(),
+            "expires_at": (now + timedelta(minutes=2)).isoformat(),
+            "signature": "test-signature",
+        })
+    with pytest.raises(DualApprovalError, match="Atomic pair/audit"):
+        validate_dual_approval(
+            request, approvals,
+            signature_verifier=lambda envelope, approval: True,
+            identity_verifier=lambda subject, role, context: True,
+            now=now,
+        )
