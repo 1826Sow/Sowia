@@ -176,12 +176,34 @@ class HTTPSJWKSResolver:
 
     def _response_ttl(self, headers: Message) -> int:
         cache_control = headers.get("Cache-Control", "")
-        directives = [part.strip().lower() for part in cache_control.split(",")]
+        directives = [part.strip() for part in cache_control.split(",")]
+        parsed_directives = [part.split("=", 1) for part in directives]
+
         # This resolver has no conditional revalidation path. Do not reuse a
         # response that the origin says must not be stored or revalidated.
-        if any(part.split("=", 1)[0].strip() in {"no-store", "no-cache"} for part in directives):
+        if any(parts[0].strip().lower() in {"no-store", "no-cache"} for parts in parsed_directives):
             return 0
-        match = re.search(r'(?:^|,)\s*max-age\s*=\s*"?([0-9]+)"?\s*(?:,|$)', cache_control, re.IGNORECASE)
-        if match:
-            return min(int(match.group(1)), self.max_cache_ttl_seconds)
+
+        max_age_values = [
+            parts[1].strip()
+            for parts in parsed_directives
+            if parts[0].strip().lower() == "max-age" and len(parts) == 2
+        ]
+        malformed_max_age = any(
+            parts[0].strip().lower() == "max-age" and len(parts) != 2
+            for parts in parsed_directives
+        )
+        # Duplicate or malformed freshness directives are ambiguous. Fail
+        # closed instead of applying a potentially more permissive default.
+        if malformed_max_age or len(max_age_values) > 1:
+            return 0
+        if max_age_values:
+            value = max_age_values[0]
+            if value.startswith('"') or value.endswith('"'):
+                if not (value.startswith('"') and value.endswith('"') and len(value) >= 2):
+                    return 0
+                value = value[1:-1]
+            if not value.isdigit():
+                return 0
+            return min(int(value), self.max_cache_ttl_seconds)
         return self.cache_ttl_seconds
