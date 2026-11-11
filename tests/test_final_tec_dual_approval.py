@@ -180,3 +180,26 @@ def test_legacy_split_callbacks_are_rejected_before_any_callback(legacy_name):
     with pytest.raises(DualApprovalError, match="Separate nonce and audit callbacks are prohibited"):
         validate_dual_approval(request, approvals, **kwargs)
     assert calls == []
+
+
+def test_approvals_must_share_one_policy_before_trust_callbacks():
+    now, request, approvals = fixture()
+    approvals[1]["approval_policy_id"] = "different-policy-v2"
+    cb = callbacks(approvals)
+    with pytest.raises(DualApprovalError, match="same approval_policy_id"):
+        validate(now, request, approvals, cb)
+    assert cb[-2] == []
+
+
+@pytest.mark.parametrize("field,value", [
+    ("environment_digest", "not-a-digest"),
+    ("constraints_digest", "g" * 64),
+    ("action_digest", "a" * 63),
+])
+def test_request_digest_fields_must_be_sha256_hex(field, value):
+    now, request, approvals = fixture()
+    request[field] = value
+    cb = callbacks(approvals)
+    with pytest.raises(DualApprovalError, match="SHA-256"):
+        validate(now, request, approvals, cb)
+    assert cb[-2] == []
