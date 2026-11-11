@@ -1,4 +1,5 @@
--- SOW IA: harden PayPal refund reconciliation against currency mismatches.
+-- SOW IA: harden PayPal refund reconciliation against currency mismatches
+-- and protect captures that already have recorded refunds.
 -- Additive migration: preserves existing ledger rows and the existing capture lock.
 begin;
 
@@ -11,8 +12,62 @@ declare
     v_capture_gross numeric(30,12);
     v_capture_currency text;
     v_prior_refunds numeric(30,12);
+    v_refund_currency_mismatch boolean;
 begin
-    if new.provider <> 'paypal' or new.transaction_type <> 'refund' then
+    -- A capture with child refunds is the anchor for those refunds. Do not
+    -- let an update silently detach those refunds from their original capture.
+    if tg_op = 'UPDATE'
+       and old.provider = 'paypal'
+       and old.transaction_type = 'payment'
+       and exists (
+           select 1
+             from public.sowia_financial_transactions r
+            where r.user_id = old.user_id
+              and r.provider = 'paypal'
+              and r.parent_capture_id = old.provider_payment_id
+              and r.transaction_type = 'refund'
+       )
+       and (
+           new.user_id is distinct from old.user_id
+           or new.provider is distinct from old.provider
+           or new.transaction_type is distinct from old.transaction_type
+           or new.provider_payment_id is distinct from old.provider_payment_id
+       ) then
+        raise exception 'PayPal capture identity cannot change while refunds reference it';
+    end if;
+
+    if new.provider <> 'paypal' then
+        return new;
+    end if;
+
+    -- A capture amount/currency cannot be changed to values that invalidate
+    -- refunds already recorded against it.
+    if new.transaction_type = 'payment' and tg_op = 'UPDATE' then
+        select coalesce(sum(r.gross_amount), 0),
+               coalesce(bool_or(
+                   r.gross_currency is null
+                   or btrim(r.gross_currency) = ''
+                   or upper(btrim(r.gross_currency)) <> upper(btrim(new.gross_currency))
+               ), false)
+          into v_prior_refunds, v_refund_currency_mismatch
+          from public.sowia_financial_transactions r
+         where r.user_id = new.user_id
+           and r.provider = 'paypal'
+           and r.parent_capture_id = new.provider_payment_id
+           and r.transaction_type = 'refund';
+
+        if v_prior_refunds > new.gross_amount then
+            raise exception 'Updated PayPal capture amount is below refunds already recorded';
+        end if;
+
+        if v_refund_currency_mismatch then
+            raise exception 'Updated PayPal capture currency conflicts with refunds already recorded';
+        end if;
+
+        return new;
+    end if;
+
+    if new.transaction_type <> 'refund' then
         return new;
     end if;
 
