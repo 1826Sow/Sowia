@@ -9,14 +9,14 @@ on:
       - "final_tec_atomic_approval_store.py"
       - "final_tec_ed25519_verifier.py"
       - "final_tec_dual_approval_ed25519.py"
-      - "final_tec_oidc_identity.py"
+      - "final_tec_oidc_identity.py"\n      - "final_tec_jwks.py"
       - "final_tec_provider_contracts.py"
       - "final_tec_adapter_conformance.py"
       - "final_tec_audit_anchor.py"
       - "tests/test_final_tec_dual_approval.py"
       - "tests/test_final_tec_dual_approval_ed25519.py"
       - "tests/test_final_tec_atomic_approval_store.py"
-      - "tests/test_final_tec_oidc_identity.py"
+      - "tests/test_final_tec_oidc_identity.py"\n      - "tests/test_final_tec_jwks.py"
       - "tests/test_final_tec_ed25519_verifier.py"
       - "tests/test_final_tec_provider_contracts.py"
       - "tests/test_final_tec_adapter_conformance.py"
@@ -37,4 +37,4 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install --upgrade pip
       - run: python -m pip install "cryptography>=50,<51" "rfc8785>=0.1.4,<1" "PyJWT[crypto]>=2.10,<3" pytest
-      - run: python -m pytest -q tests/test_final_tec_dual_approval.py tests/test_final_tec_dual_approval_ed25519.py tests/test_final_tec_atomic_approval_store.py tests/test_final_tec_oidc_identity.py tests/test_final_tec_ed25519_verifier.py tests/test_final_tec_provider_contracts.py tests/test_final_tec_adapter_conformance.py tests/test_final_tec_audit_anchor.py
+      - run: python -m pytest -q tests/test_final_tec_dual_approval.py tests/test_final_tec_dual_approval_ed25519.py tests/test_final_tec_atomic_approval_store.py tests/test_final_tec_oidc_identity.py tests/test_final_tec_jwks.py tests/test_final_tec_ed25519_verifier.py tests/test_final_tec_provider_contracts.py tests/test_final_tec_adapter_conformance.py tests/test_final_tec_audit_anchor.py
