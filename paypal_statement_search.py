@@ -95,9 +95,28 @@ def _fetch_window(config, headers, start, end):
         payload = response.json()
         if not isinstance(payload, dict):
             raise RuntimeError("Réponse Transaction Search invalide.")
-        page_events = payload.get("transaction_details") or []
-        if not isinstance(page_events, list):
+        # A missing or malformed total_pages value must never be interpreted
+        # as an empty, complete statement. PayPal returns this pagination
+        # metadata with each Transaction Search response.
+        raw_total_pages = payload.get("total_pages")
+        if isinstance(raw_total_pages, bool):
+            raise RuntimeError("Pagination PayPal invalide : total_pages absent ou incorrect.")
+        try:
+            total_pages = int(raw_total_pages)
+        except (TypeError, ValueError, OverflowError):
+            raise RuntimeError("Pagination PayPal invalide : total_pages absent ou incorrect.") from None
+        if str(raw_total_pages).strip() != str(total_pages) or total_pages < 1:
+            raise RuntimeError("Pagination PayPal invalide : total_pages absent ou incorrect.")
+        if total_pages > MAX_PAGES_PER_WINDOW:
+            raise RuntimeError(
+                "Pagination PayPal trop volumineuse : import interrompu sans écriture."
+            )
+
+        page_events = payload.get("transaction_details")
+        if not isinstance(page_events, list) or len(page_events) > PAGE_SIZE:
             raise RuntimeError("Liste des transactions PayPal invalide.")
+        if page > total_pages:
+            raise RuntimeError("Pagination PayPal incohérente : page au-delà du total annoncé.")
         for item in page_events:
             if not isinstance(item, dict):
                 continue
@@ -107,18 +126,8 @@ def _fetch_window(config, headers, start, end):
                 # free-text notes/subjects, and unrelated personal information.
                 events.append({"transaction_info": _safe_transaction_info(info)})
 
-        try:
-            total_pages = int(payload.get("total_pages") or 0)
-        except (TypeError, ValueError):
-            raise RuntimeError("Pagination PayPal invalide.") from None
-        if total_pages < 0:
-            raise RuntimeError("Pagination PayPal invalide.")
         if page >= total_pages:
             break
-        if page >= MAX_PAGES_PER_WINDOW:
-            raise RuntimeError(
-                "Pagination PayPal trop volumineuse : import interrompu sans écriture."
-            )
         page += 1
     return events
 
