@@ -71,3 +71,12 @@ def test_malformed_suite_entries_are_rejected(probes):
 def test_invalid_probe_names_are_rejected(name):
     with pytest.raises(ConformanceConfigurationError, match="non-empty strings"):
         run_adapter_conformance([ConformanceProbe(name, lambda: True)])
+
+
+
+def test_one_shot_generator_is_rejected_instead_of_passing_empty_suite():
+    probes = (probe for probe in [
+        ConformanceProbe("must-run", lambda: True),
+    ])
+    with pytest.raises(ConformanceConfigurationError, match="finite sequence"):
+        run_adapter_conformance(probes)
