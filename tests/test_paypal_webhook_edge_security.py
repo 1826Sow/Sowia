@@ -78,6 +78,8 @@ def test_subscription_reconciliation_rpc_serializes_concurrent_events():
     assert "payment_review_at" in migration
     assert "p_event_time < v_existing_event_time" in migration
     assert "p_event_time > v_review_at" in migration
+    assert "p_last_payment_at > v_review_at" in migration
+    assert "p_last_payment_at is not null" in migration
     assert "for update" in migration.lower()
     assert "PAYMENT.SALE.REFUNDED" in migration
     assert "PAYMENT.SALE.REVERSED" in migration
@@ -214,6 +216,8 @@ def test_paypal_sale_completion_can_recover_payment_review_with_complete_latest_
     assert "p_recovery_verified is distinct from" in migration
     assert "p_event_type in (" in migration
     assert "'BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED'" in migration
+    assert "p_last_payment_at > v_review_at" in migration
+    assert "p_last_payment_at is not null" in migration
 
 def test_one_time_capture_reversal_resolves_verified_refund_parent_and_revokes_entitlement():
     source = WEBHOOK
