@@ -336,7 +336,10 @@ class SQLiteAtomicApprovalStore:
                 return None
             event_bytes = _canonical_json(audit_event)
             event_text = event_bytes.decode("utf-8")
-            nonce_digests_json = json.dumps(sorted(item[0] for item in prepared), separators=(",", ":"))
+            nonce_digests_json = json.dumps(
+                sorted([[digest, expiry] for digest, expiry in prepared]),
+                separators=(",", ":"),
+            )
         except (AtomicApprovalStoreError, UnicodeDecodeError):
             return None
 
