@@ -165,10 +165,12 @@ def test_invalid_signature_encoding_is_rejected():
         run_validation(now, request, approvals, DualApprovalEd25519Verifier(trusted))
 
 
-def test_external_identity_check_rejects_subject_mismatch_before_signature():
+def test_subject_mismatch_invalidates_signature_binding_before_identity_lookup():
     now, request, approvals, trusted = fixture()
     approvals[0]["subject_id"] = "different-person"
-    with pytest.raises(DualApprovalError, match="identity"):
+    # The subject is part of the signed envelope. A changed subject must fail
+    # signature/key binding before any separate identity callback is considered.
+    with pytest.raises(DualApprovalError, match="signature"):
         run_validation(now, request, approvals, DualApprovalEd25519Verifier(trusted))
 
 
