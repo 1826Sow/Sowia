@@ -195,18 +195,25 @@ def test_paypal_event_receipt_registry_is_private_and_claimed_atomically():
     assert "on conflict (event_id) do nothing" in migration
 
 
-def test_paypal_recovery_requires_complete_latest_payment_proof():
+def test_paypal_sale_completion_can_recover_payment_review_with_complete_latest_payment_proof():
     source = WEBHOOK
     recovery = source.index("const verifiedPaymentRecovery =")
-    proof = source.index("if (verifiedPaymentRecovery) {", recovery)
+    sale_event = source.index('eventType === "PAYMENT.SALE.COMPLETED"', recovery)
+    legacy_event = source.index('eventType === "BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED"', sale_event)
+    proof = source.index("if (verifiedPaymentRecovery) {", legacy_event)
     amount = source.index("Number(paymentAmount.value) !== 9.90", proof)
     currency = source.index('String(paymentAmount.currency_code || "").toUpperCase() !== "EUR"', amount)
     payment_time = source.index("!lastPaymentTime || !Number.isFinite(Date.parse(lastPaymentTime))", currency)
     reject = source.index('PayPal recovery payment proof is incomplete', payment_time)
     rpc = source.index('"/rest/v1/rpc/sowia_reconcile_paypal_subscription"', reject)
-    assert recovery < proof < amount < currency < payment_time < reject < rpc
+    assert recovery < sale_event < legacy_event < proof < amount < currency < payment_time < reject < rpc
     assert 'const lastPaymentTime = String(lastPayment.time || "").trim();' in source
 
+    migration = (ROOT / "supabase/migrations/20261111000600_paypal_webhook_event_deduplication.sql").read_text(encoding="utf-8")
+    assert "'PAYMENT.SALE.COMPLETED'" in migration
+    assert "p_recovery_verified is distinct from" in migration
+    assert "p_event_type in (" in migration
+    assert "'BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED'" in migration
 
 def test_one_time_capture_reversal_resolves_verified_refund_parent_and_revokes_entitlement():
     source = WEBHOOK
