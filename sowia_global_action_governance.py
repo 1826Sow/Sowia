@@ -1,5 +1,6 @@
 """SOWIA GLOBAL ACTION GOVERNANCE: validated action plans and approval workflow."""
 from datetime import date
+import math
 
 STATUSES = ("draft", "submitted", "approved", "rejected", "completed", "cancelled")
 CURRENCIES = ("EUR", "USD", "CNY", "SGD", "MYR", "TWD", "KRW", "XOF", "AED", "CHF", "BRL")
@@ -31,9 +32,9 @@ def validate_action_plan(title, objective, country, owner_label, approver_id, bu
         raise ValueError("Identifiant UUID du compte approbateur invalide.")
     try:
         cap = float(clean["budget_cap"])
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         raise ValueError("Plafond budgétaire invalide.")
-    if cap < 0 or cap > 1000000000:
+    if not math.isfinite(cap) or cap < 0 or cap > 1000000000:
         raise ValueError("Le budget doit être compris entre 0 et 1 000 000 000.")
     if clean["currency"] not in CURRENCIES:
         raise ValueError("Devise non prise en charge.")
