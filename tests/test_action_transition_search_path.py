@@ -81,6 +81,26 @@ def test_action_tables_keep_rls_and_scoped_read_policies():
 
 
 
+
+def test_action_audit_is_read_only_for_authenticated_clients():
+    assert "grant select on public.sowia_global_action_audit to authenticated" in SQL
+    assert "grant insert on public.sowia_global_action_audit to authenticated" not in SQL
+    assert "grant update on public.sowia_global_action_audit to authenticated" not in SQL
+    assert "grant delete on public.sowia_global_action_audit to authenticated" not in SQL
+    assert (
+        "revoke all on public.sowia_global_action_plans, "
+        "public.sowia_global_action_audit from anon, public, authenticated"
+    ) in SQL
+
+
+def test_action_audit_retention_cascade_is_explicitly_detected():
+    assert (
+        "plan_id uuid not null references public.sowia_global_action_plans(id) on delete cascade"
+    ) in SQL
+    assert (
+        "creator_id uuid not null references auth.users(id) on delete cascade"
+    ) in SQL
+
 def test_action_transition_enforces_two_party_approval_and_audit_trail():
     match = re.search(
         r"create or replace function public\.sowia_action_transition\([\s\S]*?as (\$[a-z_]*\$)([\s\S]*?)\1;",
