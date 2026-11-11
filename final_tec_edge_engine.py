@@ -73,8 +73,11 @@ def _validate_weights(weights: dict[str, Any] | None) -> dict[str, float]:
 
 def select_edge_resources(task_profile: dict[str, Any], candidates: list[dict[str, Any]],
                           *, now: str, max_age_seconds: int = 86400,
-                          weights: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Rank authorized candidates; return an explainable simulation, never execute."""
+                          weights: dict[str, Any] | None = None,
+                          allow_demo_evidence: bool = False) -> dict[str, Any]:
+    """Rank authorized candidates; demo evidence is accepted only by explicit opt-in."""
+    if not isinstance(allow_demo_evidence, bool):
+        raise EdgeSelectionError("allow_demo_evidence must be a boolean.")
     profile = _validate_profile(task_profile)
     current = _aware_datetime(now, "now")
     if isinstance(max_age_seconds, bool) or not isinstance(max_age_seconds, int) or max_age_seconds < 1:
@@ -100,7 +103,16 @@ def select_edge_resources(task_profile: dict[str, Any], candidates: list[dict[st
         if not isinstance(benchmark, dict):
             reasons.append("benchmark_missing")
             benchmark = {}
-        if benchmark.get("evidence_status") != "verified" or benchmark.get("publication_state") != "published":
+        verified_and_published = (
+            benchmark.get("evidence_status") == "verified"
+            and benchmark.get("publication_state") == "published"
+        )
+        explicitly_demo = (
+            allow_demo_evidence
+            and benchmark.get("evidence_status") == "demo_only"
+            and benchmark.get("publication_state") == "demo_only"
+        )
+        if not (verified_and_published or explicitly_demo):
             reasons.append("benchmark_not_verified_and_published")
         if benchmark.get("workload_type") != profile["workload_type"]:
             reasons.append("workload_mismatch")
@@ -167,7 +179,7 @@ def select_edge_resources(task_profile: dict[str, Any], candidates: list[dict[st
     evaluated.sort(key=lambda x: (not x["eligible"], -x.get("score", -1), x["resource_id"]))
     eligible = [x for x in evaluated if x["eligible"]]
     return {
-        "mode": "offline_simulation",
+        "mode": "offline_demo_simulation" if allow_demo_evidence else "offline_simulation",
         "decision": "recommendation" if eligible else "no_eligible_resource",
         "selected_resource_id": eligible[0]["resource_id"] if eligible else None,
         "ranking": eligible, "excluded": [x for x in evaluated if not x["eligible"]],
