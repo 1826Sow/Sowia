@@ -45,6 +45,7 @@ import sowia_global_messenger
 import sowia_global_alerts
 import sowia_business_card
 import final_tec_investor_dashboard
+from final_tec_access import authorize_final_tec_investor_viewer
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -6916,8 +6917,25 @@ elif page == "SOWIA CONTROL CENTER":
 
 
 elif page == "FINAL TEC LIVE — investisseurs":
-    final_tec_investor_dashboard.render_dashboard(st)
-    st.caption("Documentation technique : docs/FINAL_TEC_LIVE_INVESTOR_DASHBOARD.md")
+    # SOWIA login proves identity only. FINAL TEC access requires a separate,
+    # active investor assignment checked by Supabase on every page load.
+    if (
+        cloud_mode
+        and current_user is not None
+        and supabase_client is not None
+        and authorize_final_tec_investor_viewer(supabase_client, current_user)
+    ):
+        final_tec_investor_dashboard.render_dashboard(st)
+        st.caption("Documentation technique : docs/FINAL_TEC_LIVE_INVESTOR_DASHBOARD.md")
+    else:
+        st.error(
+            "Accès FINAL TEC non autorisé ou service de vérification indisponible. "
+            "La connexion à SOWIA ne donne pas automatiquement accès à cet espace."
+        )
+        st.info(
+            "Aucune donnée FINAL TEC n'a été chargée. L'accès exige une attribution "
+            "investisseur active, non expirée et vérifiée côté serveur."
+        )
 
 elif page == "Paramètres":
     st.subheader(translate_ui("⚙️ Paramètres", language))
