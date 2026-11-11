@@ -137,3 +137,17 @@ def test_subscription_creation_requires_a_valid_plan_id(monkeypatch):
         assert "forfait" in str(exc)
     else:
         raise AssertionError("Checkout must reject a missing plan ID")
+
+@pytest.mark.parametrize("url,expected", [
+    ("https://api-m.sandbox.paypal.com/v1/next?page=2", True),
+    ("http://api-m.sandbox.paypal.com/v1/next", False),
+    ("https://api-m.sandbox.paypal.com.evil.test/v1/next", False),
+    ("https://api-m.sandbox.paypal.com:8443/v1/next", False),
+    ("https://attacker@api-m.sandbox.paypal.com/v1/next", False),
+    ("https://api-m.sandbox.paypal.com/v1/next#fragment", False),
+])
+def test_paypal_pagination_url_requires_exact_https_authority(url, expected):
+    assert paypal._is_trusted_paypal_pagination_url(
+        url, "https://api-m.sandbox.paypal.com"
+    ) is expected
+
