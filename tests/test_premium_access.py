@@ -128,3 +128,21 @@ def test_premium_guard_returns_active_entitlement():
 def test_premium_guard_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         premium_access.require_active_entitlement(Client(), None)
+
+
+
+@pytest.mark.parametrize(
+    "user, expected",
+    [
+        (SimpleNamespace(app_metadata={"sowia_admin": True}), True),
+        (SimpleNamespace(app_metadata={"role": "admin"}), True),
+        (SimpleNamespace(app_metadata={"sowia_admin": False, "role": "user"}), False),
+        (SimpleNamespace(app_metadata={}), False),
+        (SimpleNamespace(app_metadata=None), False),
+        (SimpleNamespace(app_metadata="admin"), False),
+        (SimpleNamespace(user_metadata={"sowia_admin": True}), False),
+        (None, False),
+    ],
+)
+def test_sowia_admin_requires_server_managed_app_metadata(user, expected):
+    assert premium_access.is_sowia_admin(user) is expected
