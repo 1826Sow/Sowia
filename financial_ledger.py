@@ -239,13 +239,10 @@ def record_paypal_refund_for_review(
         raise ValueError("Seuls les remboursements EUR sont admis.")
     try:
         amount = Decimal(str(amount_obj.get("value"))).quantize(Decimal("0.01"))
-        capture_amount = Decimal(str(capture_row.get("gross_amount"))).quantize(Decimal("0.01"))
     except (InvalidOperation, TypeError, ValueError):
-        raise ValueError("Montant de remboursement ou capture invalide.") from None
+        raise ValueError("Montant de remboursement invalide.") from None
     if (
         not amount.is_finite() or amount <= 0 or amount > Decimal("9999.99")
-        or not capture_amount.is_finite() or capture_amount <= 0
-        or amount > capture_amount
     ):
         raise ValueError("Montant de remboursement hors limites.")
     occurred_at = str(refund.get("update_time") or refund.get("create_time") or "").strip()
@@ -254,7 +251,7 @@ def record_paypal_refund_for_review(
 
     table = admin_client.table("sowia_financial_transactions")
     parent = (
-        table.select("provider_payment_id")
+        table.select("provider_payment_id,gross_amount")
         .eq("user_id", user_id)
         .eq("provider", "paypal")
         .eq("provider_payment_id", capture_id)
@@ -264,6 +261,16 @@ def record_paypal_refund_for_review(
     )
     if not getattr(parent, "data", None):
         raise PermissionError("La capture parente n'appartient pas à cet utilisateur.")
+
+    # Use the owner-scoped persisted amount, never a caller-supplied value.
+    try:
+        capture_amount = Decimal(str(parent.data[0].get("gross_amount"))).quantize(Decimal("0.01"))
+    except (InvalidOperation, TypeError, ValueError, IndexError):
+        raise RuntimeError("Montant de la capture parente introuvable ou invalide.") from None
+    if not capture_amount.is_finite() or capture_amount <= 0:
+        raise RuntimeError("Montant de la capture parente invalide.")
+    if amount > capture_amount:
+        raise ValueError("Le remboursement dépasse le montant de la capture.")
 
     # Keep the exact parent relationship so cumulative partial refunds can be
     # bounded against the original capture. Exclude this refund ID on retries.
