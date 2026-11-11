@@ -1,3 +1,6 @@
+import hashlib
+import json
+
 import pytest
 
 from final_tec_benchmark import (
@@ -31,6 +34,21 @@ def payload(**overrides):
     }
     data.update(overrides)
     return data
+
+
+
+def test_record_fingerprint_is_deterministic_and_covers_normalized_content():
+    first = prepare_benchmark_record(payload())
+    second = prepare_benchmark_record(payload())
+    fingerprint = first.pop("record_fingerprint_sha256")
+    second_fingerprint = second.pop("record_fingerprint_sha256")
+
+    assert fingerprint == second_fingerprint
+    canonical = json.dumps(first, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    assert fingerprint == hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    changed = prepare_benchmark_record(payload(latency_samples_ms=[10, 12, 15, 20, 31]))
+    assert changed["record_fingerprint_sha256"] != fingerprint
 
 
 def test_record_computes_latency_availability_and_duration():
