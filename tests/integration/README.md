@@ -17,6 +17,16 @@ Les tests d'intégration vérifient les politiques RLS réellement appliquées e
    - `supabase/schema.sql`
    - `supabase_workspaces.sql`
    - `supabase_storage_policies.sql`
+   Pour la suite Professionnelle, appliquer également les scripts SQL racine dans cet ordre :
+   - `supabase_growth_crm.sql`
+   - `supabase_relationship_calendar.sql`
+   - `supabase_business_opportunities.sql`
+   - `supabase_business_club.sql`
+   - `supabase_business_club_notifications.sql`
+   - `supabase_night_exchange_registry.sql`
+   - `supabase_night_exchange_events.sql`
+
+   Appliquer ensuite, dans cet ordre, `supabase/migrations/20261111000200_sowia_professional_workspace_rls.sql` puis `supabase/migrations/20261111000300_sowia_professional_modules_rls.sql`. Respecter aussi les dépendances et l'ordre complet de `docs/SUPABASE_INSTALLATION_ORDER.md`. Ne pas exécuter ces scripts sur la base de production pour préparer ce test.
    Les autres migrations PayPal doivent être appliquées dans l'ordre lorsqu'on prépare un environnement complet de l'application.
 4. Dans les paramètres API du projet de test, récupérer l'URL du projet, la clé publique **anon/publishable** et la clé **service_role** propre à ce projet de test.
 5. Fournir les sept variables d'identification ci-dessous et la variable de confirmation dans l'environnement d'exécution sécurisé :
