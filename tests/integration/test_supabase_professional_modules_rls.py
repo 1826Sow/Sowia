@@ -311,6 +311,7 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
         inbox_b = inbox_b_rows[0]
 
         # A and B are participants; C is not. Profile is public only while published.
+        assert b.rows("sowia_business_club_profiles", params={"id": f"eq.{profile['id']}", "select": "id"})
         assert a.rows("sowia_business_club_requests", params={"id": f"eq.{request['id']}", "select": "id"})
         assert b.rows("sowia_business_club_requests", params={"id": f"eq.{request['id']}", "select": "id"})
         _expect_hidden(c, "sowia_business_club_requests", request["id"])
@@ -354,6 +355,7 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
         )
         rpc.raise_for_status()
         assert c.rows("sowia_night_exchange_apps", params={"id": f"eq.{app['id']}", "select": "id,status"})[0]["status"] == "approved"
+        assert b.rows("sowia_night_exchange_apps", params={"id": f"eq.{app['id']}", "select": "id,status"})[0]["status"] == "approved"
 
         # NIGHT EXCHANGE event ledger is Premium-only, owner-readable, append-only,
         # and clients cannot forge payment confirmation.
