@@ -1,0 +1,25 @@
+name: SOWIA Python syntax checks
+
+on:
+  pull_request:
+    branches:
+      - security/hardening-clean
+  push:
+    branches:
+      - feature/nex-secure-exchange-workflow
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile application modules
+        run: python -m compileall -q app.py cloud_storage.py
