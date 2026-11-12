@@ -20,6 +20,14 @@ Le script `supabase_accessibility_preferences.sql` est facultatif et doit être 
 
 Ne pas confondre ce socle avec l’installation de tous les modules du dépôt : les modules ci-dessous sont facultatifs et ne doivent être installés que si la fonctionnalité correspondante est utilisée.
 
+## 1 bis. Projet Supabase dédié aux tests RLS live
+
+Le workflow GitHub Actions `Supabase real-account RLS tests` utilise le projet Supabase indiqué par les secrets `SOWIA_TEST_*`. Ce projet est distinct du projet de production et peut aussi être distinct du projet Supabase utilisé par l'application.
+
+Avant de lancer les tests live, ce projet de test doit contenir les mêmes migrations de sécurité que le commit testé. En particulier, après toute modification de la fonction `public.sowia_has_professional_access()`, exécuter la version courante de `supabase/migrations/20261111000200_sowia_professional_workspace_rls.sql` dans **le projet Supabase dédié dont l'URL est configurée dans les secrets GitHub**. Exécuter la migration sur le projet de l'application ne met pas automatiquement à jour le projet de test.
+
+Ne jamais utiliser le projet de production pour les tests live : le workflow crée/modifie des comptes Auth et des données de test. Après application de la migration, relancer le job RLS live pour confirmer l'isolation.
+
 ## 2. Modules facultatifs — ordre et dépendances
 
 ### CRM et Club Business
