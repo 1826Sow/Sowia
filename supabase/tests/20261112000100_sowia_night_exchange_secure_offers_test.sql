@@ -173,7 +173,7 @@ select set_config(
     '{"sub":"f1792829-ca68-4815-b173-79bd13ce0ed3","role":"authenticated","app_metadata":{}}',
     true
 );
-do $
+do $$
 begin
     begin
         perform public.sowia_admin_review_nex_integration(
@@ -187,7 +187,7 @@ begin
         insert into pg_temp.sowia_nex_test_results
         values ('Approbation par un membre ordinaire', 'BLOQUÉE');
     end;
-end $;
+end $$;
 
 -- Only the signed administrator can approve integration.
 select set_config(
@@ -207,7 +207,7 @@ values ('Approbation administrative de l’intégration', 'RÉUSSI');
 reset role;
 
 -- Confirm the final workflow state and both participants' audit events.
-do $
+do $$
 declare
     v_offer_id uuid;
     v_status text;
