@@ -6,6 +6,9 @@ ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = (
     ROOT / "supabase/migrations/20261111000300_sowia_professional_modules_rls.sql"
 ).read_text(encoding="utf-8").lower()
+WORKSPACE_MIGRATION = (
+    ROOT / "supabase/migrations/20261111000200_sowia_professional_workspace_rls.sql"
+).read_text(encoding="utf-8").lower()
 
 
 def test_all_remaining_professional_modules_have_restrictive_premium_policies():
@@ -70,3 +73,12 @@ def test_migration_preserves_existing_rows_and_base_policies():
     assert "truncate " not in MIGRATION
     assert "drop table " not in MIGRATION
     assert "create policy" in MIGRATION
+
+
+def test_professional_access_requires_an_active_paypal_premium_tier():
+    normalized = " ".join(WORKSPACE_MIGRATION.split())
+    assert "add column if not exists plan text" in normalized
+    assert "plan in ('free', 'premium')" in normalized
+    assert "entitlement.plan = 'premium'" in normalized
+    assert "entitlement.status = 'active'" in normalized
+    assert "entitlement.provider = 'paypal'" in normalized
