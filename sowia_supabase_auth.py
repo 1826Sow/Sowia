@@ -241,7 +241,7 @@ def read_email_auth_fragment():
         js="""
         export default function({ setStateValue }) {
             try {
-                const page = window.parent;
+                const page = window; // Streamlit Components v2 run in the app page, not an iframe.
                 const url = new URL(page.location.href);
                 const params = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash);
                 const accessToken = params.get("access_token");
