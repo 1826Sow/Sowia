@@ -135,8 +135,26 @@ def _expect_hidden(client: Api, table: str, row_id):
 
 
 def _expect_denied(response, operation: str):
-    assert response.status_code in (401, 403), (
-        f"{operation} should be rejected by grants/RLS; received HTTP {response.status_code}: "
+    """Accept explicit authorization errors or a successful RLS-filtered empty result.
+
+    PostgREST may hide rows through RLS and return HTTP 200 with [] instead
+    of 401/403. UPDATE/DELETE callers request representation so a zero-row
+    mutation can be distinguished from a successful mutation.
+    """
+    if response.status_code in (401, 403):
+        return
+    if 200 <= response.status_code < 300:
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = None
+        assert payload == [], (
+            f"{operation} unexpectedly succeeded or returned rows; "
+            f"received HTTP {response.status_code}: {response.text[:300]}"
+        )
+        return
+    pytest.fail(
+        f"{operation} returned an unexpected HTTP {response.status_code}: "
         f"{response.text[:300]}"
     )
 
@@ -379,6 +397,7 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
         delete_event = a.call(
             "DELETE", "/rest/v1/sowia_night_exchange_events",
             params={"id": f"eq.{event['id']}"},
+            prefer="return=representation",
         )
         _expect_denied(delete_event, "NIGHT EXCHANGE event DELETE")
 
