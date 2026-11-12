@@ -145,7 +145,7 @@ begin
     if not public.sowia_has_professional_access() then
         raise exception 'Accès Premium requis' using errcode = '42501';
     end if;
-    if p_decision not in ('accepted', 'rejected') then
+    if p_decision is null or p_decision not in ('accepted', 'rejected') then
         raise exception 'Décision invalide' using errcode = '22023';
     end if;
 
@@ -205,12 +205,12 @@ declare
     v_payload jsonb;
 begin
     if v_admin is null or not (
-        pg_catalog.coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin'
-        or pg_catalog.coalesce(auth.jwt() -> 'app_metadata' ->> 'sowia_admin', '') = 'true'
+        coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin'
+        or coalesce(auth.jwt() -> 'app_metadata' ->> 'sowia_admin', '') = 'true'
     ) then
         raise exception 'Accès administrateur requis' using errcode = '42501';
     end if;
-    if p_decision not in ('approved', 'rejected') then
+    if p_decision is null or p_decision not in ('approved', 'rejected') then
         raise exception 'Décision de modération invalide' using errcode = '22023';
     end if;
     if p_review_note is null or pg_catalog.char_length(p_review_note) > 1000 then
@@ -230,7 +230,7 @@ begin
 
     update public.sowia_night_exchange_offers
        set integration_status = p_decision,
-           integration_review_note = pg_catalog.nullif(pg_catalog.btrim(p_review_note), ''),
+           integration_review_note = nullif(pg_catalog.btrim(p_review_note), ''),
            integration_reviewed_at = pg_catalog.now(),
            integration_reviewed_by = v_admin
      where id = p_offer_id;
