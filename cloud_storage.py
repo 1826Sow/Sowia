@@ -791,10 +791,13 @@ def list_night_exchange_offers(client, user, workspace_id="professional",
 def list_night_exchange_integrations_for_admin(client, user, limit=200):
     """Read pending integration reviews through the signed-admin SQL RPC."""
     _user_id(user)
-    metadata = getattr(user, "app_metadata", None) or {}
-    if not (metadata.get("sowia_admin") is True or metadata.get("role") == "admin"):
+    metadata = getattr(user, "app_metadata", None)
+    if not isinstance(metadata, dict) or not (
+        metadata.get("sowia_admin") is True or metadata.get("role") == "admin"
+    ):
         raise PermissionError("Accès administrateur requis.")
-    return client.rpc("sowia_admin_list_nex_integrations", {}).execute().data[:min(max(int(limit), 1), 200)]
+    rows = client.rpc("sowia_admin_list_nex_integrations", {}).execute().data or []
+    return rows[:min(max(int(limit), 1), 200)]
 
 
 
