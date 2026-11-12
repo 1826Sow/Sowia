@@ -741,6 +741,66 @@ def list_night_exchange_events(client, user, workspace_id="professional",
     )
 
 
+
+# SOWIA NIGHT EXCHANGE — guarded bilateral offer workflow.
+def create_night_exchange_offer(client, user, sender_app_id, recipient_app_id, offer_summary):
+    """Create a proposal through the SECURITY DEFINER RPC; no direct table writes."""
+    _user_id(user)
+    summary = str(offer_summary or "").strip()
+    if not 10 <= len(summary) <= 2000:
+        raise ValueError("La proposition doit contenir entre 10 et 2000 caractères.")
+    result = client.rpc("sowia_nex_create_offer", {
+        "p_sender_app_id": str(sender_app_id),
+        "p_recipient_app_id": str(recipient_app_id),
+        "p_offer_summary": summary,
+    }).execute()
+    return result.data
+
+
+def respond_night_exchange_offer(client, user, offer_id, decision):
+    """Only the recipient can respond; SQL enforces ownership and state transitions."""
+    _user_id(user)
+    if decision not in {"accepted", "rejected"}:
+        raise ValueError("Décision invalide.")
+    return client.rpc("sowia_nex_respond_offer", {
+        "p_offer_id": str(offer_id),
+        "p_decision": decision,
+    }).execute()
+
+
+def list_night_exchange_offers(client, user, workspace_id="professional",
+                               direction="inbox", limit=100):
+    """Read offers involving the current user; RLS enforces participant access."""
+    uid = _user_id(user)
+    workspace = _workspace_id(workspace_id)
+    if direction not in {"inbox", "outbox"}:
+        raise ValueError("Sens de consultation invalide.")
+    column = "recipient_user_id" if direction == "inbox" else "sender_user_id"
+    return (
+        client.table("sowia_night_exchange_offers")
+        .select("id,workspace_id,sender_user_id,recipient_user_id,sender_app_id,recipient_app_id,offer_summary,status,integration_status,integration_review_note,created_at,responded_at,integration_reviewed_at")
+        .eq(column, uid)
+        .eq("workspace_id", workspace)
+        .order("created_at", desc=True)
+        .limit(min(max(int(limit), 1), 200))
+        .execute().data
+    )
+
+
+def admin_review_night_exchange_integration(client, user, offer_id, decision, review_note=""):
+    """Submit an integration decision; SQL validates the signed administrator claim."""
+    _user_id(user)
+    if decision not in {"approved", "rejected"}:
+        raise ValueError("Décision administrative invalide.")
+    if not isinstance(review_note, str) or len(review_note) > 1000:
+        raise ValueError("Note de modération invalide.")
+    return client.rpc("sowia_admin_review_nex_integration", {
+        "p_offer_id": str(offer_id),
+        "p_decision": decision,
+        "p_review_note": review_note,
+    }).execute()
+
+
 # SOWIA GLOBAL CONNECT — consent-based professional introductions.
 def create_global_connection_request(client, user, public_id, message):
     """Send a request to a published profile; recipient identity is resolved server-side."""
