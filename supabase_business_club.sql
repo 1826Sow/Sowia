@@ -49,7 +49,7 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 begin
  new.updated_at := pg_catalog.now();
  return new;
@@ -96,7 +96,7 @@ update public.sowia_business_club_meetings
 set invitee_user_id = case when organizer_user_id = sender_user_id then recipient_user_id else sender_user_id end
 where invitee_user_id is null;
 alter table public.sowia_business_club_meetings alter column invitee_user_id set not null;
-do $
+do $$
 begin
  if not exists (
   select 1 from pg_constraint
@@ -117,7 +117,7 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 begin
  new.updated_at := pg_catalog.now();
  return new;
