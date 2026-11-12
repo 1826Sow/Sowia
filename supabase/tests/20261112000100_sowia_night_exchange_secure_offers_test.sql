@@ -81,16 +81,9 @@ select set_config(
     '{"sub":"f1792829-ca68-4815-b173-79bd13ce0ed3","role":"authenticated","app_metadata":{"role":"admin"}}',
     true
 );
-select public.sowia_admin_review_nex_app(
-    (select app_id from pg_temp.sowia_nex_test_apps where owner_label = 'A'),
-    'approved',
-    'Validation de test'
-);
-select public.sowia_admin_review_nex_app(
-    (select app_id from pg_temp.sowia_nex_test_apps where owner_label = 'B'),
-    'approved',
-    'Validation de test'
-);
+update public.sowia_night_exchange_apps
+   set status = 'approved', verified_at = pg_catalog.now()
+ where id in (select app_id from pg_temp.sowia_nex_test_apps);
 
 -- A creates a proposal to B.
 select set_config(
