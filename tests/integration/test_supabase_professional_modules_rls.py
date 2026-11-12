@@ -248,9 +248,18 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
         fixture_ids["sowia_business_club_profiles"].append(profile["id"])
         request = admin.insert("sowia_business_club_requests", {
             "profile_id": profile["id"], "sender_user_id": user_b,
-            "recipient_user_id": user_a, "message": f"Hello {marker}", "status": "Acceptée",
+            "recipient_user_id": user_a, "message": f"Hello {marker}", "status": "En attente",
         }).json()[0]
         fixture_ids["sowia_business_club_requests"].append(request["id"])
+        accepted = a.call(
+            "PATCH", "/rest/v1/sowia_business_club_requests",
+            params={"id": f"eq.{request['id']}", "status": "eq.En attente"},
+            body={"status": "Acceptée"}, prefer="return=representation",
+        )
+        accepted.raise_for_status()
+        assert admin.rows("sowia_business_club_requests", params={
+            "id": f"eq.{request['id']}", "select": "status"
+        })[0]["status"] == "Acceptée"
         meeting = admin.insert("sowia_business_club_meetings", {
             "request_id": request["id"], "organizer_user_id": user_b,
             "sender_user_id": user_b, "recipient_user_id": user_a,
@@ -258,10 +267,19 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
             "timezone": "Europe/Paris", "duration_minutes": 30, "status": "Proposée",
         }).json()[0]
         fixture_ids["sowia_business_club_meetings"].append(meeting["id"])
+        confirmed = a.call(
+            "PATCH", "/rest/v1/sowia_business_club_meetings",
+            params={"id": f"eq.{meeting['id']}", "status": "eq.Proposée"},
+            body={"status": "Confirmée"}, prefer="return=representation",
+        )
+        confirmed.raise_for_status()
+        assert admin.rows("sowia_business_club_meetings", params={
+            "id": f"eq.{meeting['id']}", "select": "status"
+        })[0]["status"] == "Confirmée"
         # The meeting trigger creates a private invitee notification.
         meeting_inbox = admin.rows("sowia_business_club_notifications", params={
             "user_id": f"eq.{user_a}", "entity_id": f"eq.{meeting['id']}",
-            "entity_type": "eq.meeting", "select": "id",
+            "entity_type": "eq.meeting", "event_type": "eq.meeting_proposed", "select": "id",
         })
         fixture_ids["sowia_business_club_notifications"].extend(
             row["id"] for row in meeting_inbox
@@ -274,11 +292,23 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
         })
         assert inbox_a, "Business Club request trigger did not create the recipient notification"
         fixture_ids["sowia_business_club_notifications"].extend(row["id"] for row in inbox_a)
-        inbox_b = admin.insert("sowia_business_club_notifications", {
-            "user_id": user_b, "event_type": "request_accepted", "entity_type": "request",
-            "entity_id": request["id"], "message": f"Test notification {marker}",
-        }).json()[0]
-        fixture_ids["sowia_business_club_notifications"].append(inbox_b["id"])
+        inbox_b_rows = admin.rows("sowia_business_club_notifications", params={
+            "user_id": f"eq.{user_b}", "entity_id": f"eq.{request['id']}",
+            "event_type": "eq.request_accepted", "select": "id",
+        })
+        assert inbox_b_rows, "Business Club acceptance trigger did not notify the sender"
+        fixture_ids["sowia_business_club_notifications"].extend(
+            row["id"] for row in inbox_b_rows
+        )
+        meeting_inbox_b = admin.rows("sowia_business_club_notifications", params={
+            "user_id": f"eq.{user_b}", "entity_id": f"eq.{meeting['id']}",
+            "entity_type": "eq.meeting", "event_type": "eq.meeting_confirmed", "select": "id",
+        })
+        assert meeting_inbox_b, "Business Club meeting confirmation trigger did not notify the organizer"
+        fixture_ids["sowia_business_club_notifications"].extend(
+            row["id"] for row in meeting_inbox_b
+        )
+        inbox_b = inbox_b_rows[0]
 
         # A and B are participants; C is not. Profile is public only while published.
         assert a.rows("sowia_business_club_requests", params={"id": f"eq.{request['id']}", "select": "id"})
