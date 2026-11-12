@@ -5144,7 +5144,53 @@ elif page == "SOWIA NIGHT EXCHANGE":
 
         if nex_is_admin:
             with nex_tab_views[8]:
-                st.markdown("#### Console de validation SOWIA")
+                st.markdown("#### Validation des intégrations NIGHT EXCHANGE")
+                try:
+                    pending_integrations = cloud_storage.list_night_exchange_integrations_for_admin(
+                        supabase_client, current_user, limit=200
+                    )
+                    if not pending_integrations:
+                        st.success("Aucune intégration en attente.")
+                    for offer in pending_integrations:
+                        with st.container(border=True):
+                            sender_name = app_name_by_id.get(str(offer.get("sender_app_id")), "Application émettrice")
+                            recipient_name = app_name_by_id.get(str(offer.get("recipient_app_id")), "Application destinataire")
+                            st.markdown(f"**{sender_name} ↔ {recipient_name}**")
+                            st.write(offer.get("offer_summary", ""))
+                            st.caption("Proposition acceptée · En attente de validation SOWIA")
+                            review_note = st.text_area(
+                                "Note de validation (facultative)",
+                                key=f"nex_integration_note_{offer['id']}", max_chars=1000
+                            )
+                            review_cols = st.columns(2)
+                            with review_cols[0]:
+                                if st.button("Approuver l’intégration", key=f"nex_integration_approve_{offer['id']}", use_container_width=True):
+                                    try:
+                                        cloud_storage.admin_review_night_exchange_integration(
+                                            supabase_client, current_user, offer["id"], "approved", review_note
+                                        )
+                                        st.success("Intégration approuvée. Les deux participants sont informés dans leur journal.")
+                                        st.rerun()
+                                    except Exception as exc:
+                                        st.error("Approbation refusée par le contrôle administratif.")
+                                        st.caption("Diagnostic : " + type(exc).__name__)
+                            with review_cols[1]:
+                                if st.button("Refuser l’intégration", key=f"nex_integration_reject_{offer['id']}", use_container_width=True):
+                                    try:
+                                        cloud_storage.admin_review_night_exchange_integration(
+                                            supabase_client, current_user, offer["id"], "rejected", review_note
+                                        )
+                                        st.success("Intégration refusée.")
+                                        st.rerun()
+                                    except Exception as exc:
+                                        st.error("Refus impossible.")
+                                        st.caption("Diagnostic : " + type(exc).__name__)
+                except Exception as exc:
+                    st.error("La file de validation des intégrations n’est pas disponible.")
+                    st.caption("Diagnostic : " + type(exc).__name__)
+
+                st.divider()
+                st.markdown("#### Console de modération des candidatures")
                 st.caption("Les décisions de modération sont contrôlées par une fonction SQL qui vérifie le rôle administrateur signé.")
                 try:
                     pending_apps = cloud_storage.list_night_exchange_apps_for_admin(
