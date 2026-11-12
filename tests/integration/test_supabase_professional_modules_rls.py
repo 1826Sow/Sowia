@@ -98,7 +98,13 @@ def _login(api_key, email, password):
         "POST", "/auth/v1/token", params={"grant_type": "password"},
         body={"email": email, "password": password},
     )
-    response.raise_for_status()
+    if not response.ok:
+        try:
+            error = response.json()
+        except ValueError:
+            error = {}
+        reason = error.get("msg") or error.get("message") or error.get("error_description") or error.get("error") or "no safe error detail returned"
+        raise RuntimeError(f"Supabase test-user login failed (HTTP {response.status_code}): {reason}")
     payload = response.json()
     return Api(api_key, payload["access_token"]), payload["user"]["id"]
 
