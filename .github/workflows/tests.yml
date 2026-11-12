@@ -30,7 +30,10 @@ jobs:
           pip-audit -r requirements.txt
       - name: Regenerate and verify hashed dependency lock
         run: |
-          pip-compile --resolver=backtracking --generate-hashes --output-file=requirements-hashes.lock requirements.txt
+          # Hash the already-reviewed exact pins; do not re-resolve open-ended requirements.txt ranges in CI.
+          # This keeps the security check reproducible and prevents unrelated upstream releases from
+          # changing the dependency graph during a pull-request run.
+          pip-compile --resolver=backtracking --generate-hashes --output-file=requirements-hashes.lock requirements.lock
           python - <<'PY'
           import re
           from pathlib import Path
