@@ -392,6 +392,7 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
         update_event = a.call(
             "PATCH", "/rest/v1/sowia_night_exchange_events",
             params={"id": f"eq.{event['id']}"}, body={"event_payload": {"tampered": True}},
+            prefer="return=representation",
         )
         _expect_denied(update_event, "NIGHT EXCHANGE event UPDATE")
         delete_event = a.call(
