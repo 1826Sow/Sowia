@@ -5146,6 +5146,10 @@ elif page == "SOWIA NIGHT EXCHANGE":
             with nex_tab_views[8]:
                 st.markdown("#### Validation des intégrations NIGHT EXCHANGE")
                 try:
+                    admin_visible_apps = cloud_storage.list_approved_night_exchange_apps(
+                        supabase_client, current_user, limit=200
+                    )
+                    admin_app_name_by_id = {str(row.get("id")): row.get("app_name", "Application") for row in admin_visible_apps}
                     pending_integrations = cloud_storage.list_night_exchange_integrations_for_admin(
                         supabase_client, current_user, limit=200
                     )
@@ -5153,8 +5157,8 @@ elif page == "SOWIA NIGHT EXCHANGE":
                         st.success("Aucune intégration en attente.")
                     for offer in pending_integrations:
                         with st.container(border=True):
-                            sender_name = app_name_by_id.get(str(offer.get("sender_app_id")), "Application émettrice")
-                            recipient_name = app_name_by_id.get(str(offer.get("recipient_app_id")), "Application destinataire")
+                            sender_name = admin_app_name_by_id.get(str(offer.get("sender_app_id")), "Application émettrice")
+                            recipient_name = admin_app_name_by_id.get(str(offer.get("recipient_app_id")), "Application destinataire")
                             st.markdown(f"**{sender_name} ↔ {recipient_name}**")
                             st.write(offer.get("offer_summary", ""))
                             st.caption("Proposition acceptée · En attente de validation SOWIA")
