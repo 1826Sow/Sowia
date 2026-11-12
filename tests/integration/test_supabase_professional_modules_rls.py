@@ -123,7 +123,9 @@ def _admin_user(admin: Api, email: str, password: str):
 
 def _entitlement(admin: Api, user_id: str, active: bool):
     payload = {
-        "user_id": user_id, "status": "active" if active else "inactive",
+        "user_id": user_id,
+        "plan": "premium" if active else "free",
+        "status": "active" if active else "inactive",
         "provider": "paypal", "paypal_order_id": f"rls-test-{user_id}",
         "amount": 1, "currency": "EUR",
     }
