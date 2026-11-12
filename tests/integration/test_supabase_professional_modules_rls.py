@@ -394,6 +394,20 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
         }, required=False)
         _expect_denied(denied_insert, "Professional CRM INSERT without Premium")
     finally:
+        # Re-discover trigger-created notifications so cleanup still works if
+        # an earlier assertion failed before their IDs were recorded.
+        for source_table, entity_type in (
+            ("sowia_business_club_requests", "request"),
+            ("sowia_business_club_meetings", "meeting"),
+        ):
+            for entity_id in fixture_ids[source_table]:
+                notices = admin.rows("sowia_business_club_notifications", params={
+                    "entity_id": f"eq.{entity_id}", "entity_type": f"eq.{entity_type}",
+                    "select": "id",
+                })
+                fixture_ids["sowia_business_club_notifications"].extend(
+                    row["id"] for row in notices
+                )
         # Delete fixtures in dependency order. Cleanup uses only the disposable
         # project's service role and must not hide an earlier assertion failure.
         for table in (
