@@ -25,6 +25,8 @@ from sowia_supabase_auth import (
     authenticated_user,
     browser_storage_id,
     complete_github_login,
+    email_magic_link,
+    complete_email_magic_link,
     configuration_ready,
     create_user_client,
     github_authorization_url,
@@ -148,6 +150,14 @@ if cloud_mode:
         supabase_client = st.session_state.sowia_supabase_client
 
         auth_stage = "échange du code de retour GitHub avec Supabase"
+        email_token_hash = st.query_params.get("token_hash")
+        email_token_type = st.query_params.get("type")
+        if email_token_hash:
+            complete_email_magic_link(supabase_client, email_token_hash, email_token_type)
+            st.session_state.pop("sowia_email_login_pending", None)
+            st.query_params.clear()
+            st.rerun()
+
         authorization_code = st.query_params.get("code")
         if authorization_code:
             complete_github_login(supabase_client, authorization_code)
@@ -183,6 +193,8 @@ if cloud_mode:
         st.session_state.pop("sowia_github_login_url", None)
         if st.query_params.get("code"):
             st.query_params.pop("code", None)
+        if st.query_params.get("token_hash"):
+            st.query_params.pop("token_hash", None)
         clear_private_session_state(st.session_state)
         st.session_state.pop("sowia_authenticated_user_id", None)
         if auth_required:
@@ -257,6 +269,22 @@ if cloud_mode:
                 type="primary",
                 use_container_width=True,
             )
+            with st.expander("Autre méthode : recevoir un lien sécurisé par e-mail"):
+                st.caption("Un lien à usage unique sera envoyé à l'adresse indiquée. Cette méthode ne crée aucun nouveau compte.")
+                email_address = st.text_input(
+                    "Adresse e-mail du compte SOW IA",
+                    value=st.session_state.get("sowia_email_login_pending", ""),
+                    max_chars=254,
+                    key="sowia_email_login_address",
+                )
+                if st.button("Envoyer mon lien de connexion", key="sowia_send_email_link", use_container_width=True):
+                    try:
+                        email_magic_link(supabase_client, email_address, redirect_to)
+                        st.session_state["sowia_email_login_pending"] = email_address.strip().lower()
+                        st.success("Si cette adresse correspond à un compte existant, un lien de connexion vient d'être envoyé. Consultez aussi les courriers indésirables.")
+                    except Exception as email_exc:
+                        st.error("Impossible d'envoyer le lien de connexion. Vérifiez la configuration e-mail de Supabase.")
+                        st.caption("Diagnostic : " + type(email_exc).__name__)
             if st.button("Recommencer la connexion", use_container_width=True):
                 st.session_state.pop("sowia_github_login_url", None)
                 st.rerun()
