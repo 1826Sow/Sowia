@@ -29,6 +29,7 @@ def test_one_time_paypal_rpc_writes_ledger_and_entitlement_in_one_function():
 
 
 def test_one_time_paypal_replay_cannot_regrant_stale_entitlement():
-    assert "v_entitlement_order_id = p_order_id and v_entitlement_status = 'active'" in MIGRATION
+    assert "select paypal_order_id, plan, status" in MIGRATION
+    assert "v_entitlement_plan = 'premium'" in MIGRATION
     assert "return 'replay_ignored'" in MIGRATION
     assert "return 'already_granted'" in MIGRATION
