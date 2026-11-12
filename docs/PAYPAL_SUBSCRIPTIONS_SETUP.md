@@ -24,6 +24,7 @@ Appliquer les migrations dans l'ordre chronologique du dépôt, en particulier l
 5. `supabase/migrations/20261111000400_paypal_capture_order_link.sql` — lien des achats ponctuels aux commandes.
 6. `supabase/migrations/20261111000500_paypal_subscription_atomic_reconciliation.sql` — réconciliation atomique, verrouillage concurrent et ordre chronologique des événements.
 7. `supabase/migrations/20261111000600_paypal_webhook_event_deduplication.sql` — registre privé des identifiants d'événements PayPal pour ignorer durablement les notifications répétées.
+8. `supabase/migrations/20261111000700_paypal_one_time_entitlement_atomic.sql` — requis pour les achats Premium ponctuels ; enregistre atomiquement la capture et le droit Premium. Cette migration dépend du grand livre et du lien commande/capture.
 
 Déployer ensuite la fonction Edge `paypal-webhook`, puis configurer les secrets Edge : `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_SUBSCRIPTION_WEBHOOK_ID`, `PAYPAL_MODE=sandbox`.
 
