@@ -59,4 +59,4 @@ Le job exécute les quatre suites :
 
 Les lignes témoins financières, abonnement et modules Professionnels sont supprimées par le rôle administrateur de test dans un bloc `finally`. Le compte C temporaire est supprimé et les entitlements initiaux de A/B sont restaurés. Les tests PDF et les tests messages/mémoire nettoient également leurs propres données temporaires.
 
-Un test ignoré ne constitue pas une validation RLS réelle. La validation exige un projet de test configuré et un résultat d'exécution réussi pour les trois suites.
+Un test ignoré ne constitue pas une validation RLS réelle. La validation exige un projet de test configuré et un résultat d'exécution réussi pour les quatre suites.
