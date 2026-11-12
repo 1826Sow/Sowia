@@ -41,7 +41,7 @@ def test_professional_workspace_requires_active_entitlement():
 
 
 def test_professional_workspace_accepts_active_entitlement():
-    active = {"status": "active", "provider": "paypal"}
+    active = {"plan": "premium", "status": "active", "provider": "paypal"}
     assert premium_access.require_workspace_access(
         "professional", Client(active), User()
     ) == active
@@ -59,7 +59,7 @@ def test_unknown_workspace_is_rejected_instead_of_falling_back_to_personal(works
 
 
 def test_workspace_name_is_normalized_before_access_check():
-    active = {"status": "active", "provider": "paypal"}
+    active = {"plan": "premium", "status": "active", "provider": "paypal"}
     assert premium_access.require_workspace_access(
         " PROFESSIONAL ", Client(active), User()
     ) == active
