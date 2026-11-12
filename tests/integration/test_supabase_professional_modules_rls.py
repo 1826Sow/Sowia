@@ -247,12 +247,19 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
         fixture_ids["sowia_business_club_meetings"].append(meeting["id"])
         # Notification trigger may have created request/meeting notices; create a
         # unique admin-owned notice as a deterministic fixture as well.
-        notification = admin.insert("sowia_business_club_notifications", {
-            "user_id": user_a, "event_type": "request_received", "entity_type": "request",
+        # The request trigger creates A's inbox notification. Add a distinct
+        # B-owned notification so Premium expiry can be tested on the owner.
+        inbox_a = admin.rows("sowia_business_club_notifications", params={
+            "user_id": f"eq.{user_a}", "entity_id": f"eq.{request['id']}",
+            "event_type": "eq.request_received", "select": "id",
+        })
+        assert inbox_a, "Business Club request trigger did not create the recipient notification"
+        fixture_ids["sowia_business_club_notifications"].extend(row["id"] for row in inbox_a)
+        inbox_b = admin.insert("sowia_business_club_notifications", {
+            "user_id": user_b, "event_type": "request_accepted", "entity_type": "request",
             "entity_id": request["id"], "message": f"Test notification {marker}",
-        }, required=False)
-        if notification.ok and notification.json():
-            fixture_ids["sowia_business_club_notifications"].append(notification.json()[0]["id"])
+        }).json()[0]
+        fixture_ids["sowia_business_club_notifications"].append(inbox_b["id"])
 
         # A and B are participants; C is not. Profile is public only while published.
         assert a.rows("sowia_business_club_requests", params={"id": f"eq.{request['id']}", "select": "id"})
@@ -261,12 +268,15 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
         assert a.rows("sowia_business_club_meetings", params={"id": f"eq.{meeting['id']}", "select": "id"})
         assert b.rows("sowia_business_club_meetings", params={"id": f"eq.{meeting['id']}", "select": "id"})
         _expect_hidden(c, "sowia_business_club_meetings", meeting["id"])
-        _expect_hidden(b, "sowia_business_club_notifications", notification.json()[0]["id"] if notification.ok and notification.json() else -1)
+        assert b.rows("sowia_business_club_notifications", params={"id": f"eq.{inbox_b['id']}", "select": "id"})
+        _expect_hidden(c, "sowia_business_club_notifications", inbox_a[0]["id"])
 
-        # No Premium blocks Business Club even when the profile is published.
+        # No Premium blocks Business Club even when the profile is published,
+        # and revoking entitlement hides the member's own private inbox.
         _entitlement(admin, user_b, False)
         _expect_hidden(b, "sowia_business_club_profiles", profile["id"])
         _expect_hidden(b, "sowia_business_club_requests", request["id"])
+        _expect_hidden(b, "sowia_business_club_notifications", inbox_b["id"])
         _entitlement(admin, user_b, True)
 
         # NIGHT EXCHANGE: admin C can inspect pending queue without Premium;
@@ -325,6 +335,13 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
         # tables without entitlement.
         _expect_hidden(c, "sowia_night_exchange_events", event["id"])
         _expect_hidden(c, "sowia_growth_leads", lead_a["id"])
+
+        # No-Premium account C cannot create a Professional CRM record either.
+        denied_insert = c.insert("sowia_growth_leads", {
+            "user_id": user_c, "workspace_id": "professional",
+            "organization": f"Forbidden {marker}", "country": "FR",
+        }, required=False)
+        _expect_denied(denied_insert, "Professional CRM INSERT without Premium")
     finally:
         # Delete fixtures in dependency order. Cleanup uses only the disposable
         # project's service role and must not hide an earlier assertion failure.
