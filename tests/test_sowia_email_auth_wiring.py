@@ -25,6 +25,8 @@ class SowiaEmailAuthWiringTests(unittest.TestCase):
         self.assertIn("read_email_auth_fragment()", self.app)
         self.assertIn('supabase_client.auth.set_session(', self.app)
         self.assertIn('token_type == "magiclink"', self.auth)
+        self.assertIn("const page = window;", self.auth)
+        self.assertIn("page.history.replaceState", self.auth)
 
     def test_both_modules_parse_as_python(self):
         self.assertIsInstance(self.app_tree, ast.Module)
