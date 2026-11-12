@@ -167,6 +167,28 @@ begin
     end;
 end $$;
 
+-- A normal member must not be able to approve an integration.
+select set_config(
+    'request.jwt.claims',
+    '{"sub":"f1792829-ca68-4815-b173-79bd13ce0ed3","role":"authenticated","app_metadata":{}}',
+    true
+);
+do $
+begin
+    begin
+        perform public.sowia_admin_review_nex_integration(
+            (select offer_id from pg_temp.sowia_nex_test_offer),
+            'approved',
+            'Tentative non autorisée'
+        );
+        insert into pg_temp.sowia_nex_test_results
+        values ('Approbation par un membre ordinaire', 'ÉCHEC : autorisée');
+    exception when insufficient_privilege then
+        insert into pg_temp.sowia_nex_test_results
+        values ('Approbation par un membre ordinaire', 'BLOQUÉE');
+    end;
+end $;
+
 -- Only the signed administrator can approve integration.
 select set_config(
     'request.jwt.claims',
