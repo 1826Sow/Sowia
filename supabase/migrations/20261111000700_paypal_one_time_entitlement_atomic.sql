@@ -58,6 +58,7 @@ declare
     v_existing_amount numeric(30,12);
     v_existing_currency text;
     v_entitlement_order_id text;
+    v_entitlement_plan text;
     v_entitlement_status text;
 begin
     if p_user_id is null
@@ -120,13 +121,15 @@ begin
             raise exception 'PayPal capture identity conflicts with existing ledger entry';
         end if;
 
-        select paypal_order_id, status
-          into v_entitlement_order_id, v_entitlement_status
+        select paypal_order_id, plan, status
+          into v_entitlement_order_id, v_entitlement_plan, v_entitlement_status
           from public.sowia_entitlements
          where user_id = p_user_id
          for update;
 
-        if v_entitlement_order_id = p_order_id and v_entitlement_status = 'active' then
+        if v_entitlement_order_id = p_order_id
+           and v_entitlement_plan = 'premium'
+           and v_entitlement_status = 'active' then
             return 'already_granted';
         end if;
 
