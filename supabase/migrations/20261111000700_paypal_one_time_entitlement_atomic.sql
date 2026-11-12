@@ -3,6 +3,30 @@
 -- resurrect an old order over a newer entitlement or after a refund.
 begin;
 
+-- Keep the entitlement tier explicit and compatible with installations
+-- whose legacy entitlement table predates the plan column.
+alter table public.sowia_entitlements
+    add column if not exists plan text;
+update public.sowia_entitlements
+   set plan = case when status = 'active' then 'premium' else 'free' end
+ where plan is null;
+alter table public.sowia_entitlements
+    alter column plan set default 'free',
+    alter column plan set not null;
+do $plan_constraint$
+begin
+    if not exists (
+        select 1 from pg_constraint
+        where conrelid = 'public.sowia_entitlements'::regclass
+          and conname = 'sowia_entitlements_plan_allowed'
+    ) then
+        alter table public.sowia_entitlements
+            add constraint sowia_entitlements_plan_allowed
+            check (plan in ('free', 'premium'));
+    end if;
+end
+$plan_constraint$;
+
 -- Make the RPC self-contained on installations that applied the base
 -- entitlement schema but have not yet run the legacy additive SQL script.
 alter table public.sowia_entitlements
@@ -112,12 +136,13 @@ begin
     end if;
 
     insert into public.sowia_entitlements (
-        user_id, status, provider, paypal_order_id, amount, currency, updated_at
+        user_id, plan, status, provider, paypal_order_id, amount, currency, updated_at
     ) values (
-        p_user_id, 'active', 'paypal', p_order_id, p_amount, 'EUR', pg_catalog.now()
+        p_user_id, 'premium', 'active', 'paypal', p_order_id, p_amount, 'EUR', pg_catalog.now()
     )
     on conflict (user_id) do update
-       set status = 'active',
+       set plan = excluded.plan,
+           status = 'active',
            provider = 'paypal',
            paypal_order_id = excluded.paypal_order_id,
            amount = excluded.amount,
