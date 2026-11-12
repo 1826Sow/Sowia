@@ -38,8 +38,9 @@ class Client:
 
 
 def test_entitlement_read_is_scoped_to_authenticated_user():
-    client = Client({"status": "active"})
-    assert premium_access.get_entitlement(client, User()) == {"status": "active"}
+    active = {"plan": "premium", "status": "active", "provider": "paypal"}
+    client = Client(active)
+    assert premium_access.get_entitlement(client, User()) == active
     assert client.table_name == "sowia_entitlements"
     assert ("user_id", "user-123") in client.query.filters
 
@@ -54,6 +55,7 @@ def test_entitlement_grant_uses_admin_upsert_and_user_id():
     premium_access.grant_paypal_entitlement(client, "user-123", "ORDER-1", "12.90", "EUR")
     assert client.query.on_conflict == "user_id"
     assert client.query.payload["user_id"] == "user-123"
+    assert client.query.payload["plan"] == "premium"
     assert client.query.payload["paypal_order_id"] == "ORDER-1"
     assert client.query.payload["status"] == "active"
 
@@ -107,7 +109,9 @@ def test_entitlement_grant_rejects_blank_identity_fields(user_id, order_id):
 
 @pytest.mark.parametrize(
     "entitlement",
-    [None, {"status": "inactive"}, {"status": "pending"}],
+    [None, {"plan": "premium", "status": "inactive", "provider": "paypal"},
+     {"plan": "free", "status": "active", "provider": "paypal"},
+     {"plan": "premium", "status": "pending", "provider": "paypal"}],
 )
 def test_premium_guard_denies_missing_or_inactive_entitlement(entitlement):
     client = Client(entitlement)
@@ -117,6 +121,7 @@ def test_premium_guard_denies_missing_or_inactive_entitlement(entitlement):
 
 def test_premium_guard_returns_active_entitlement():
     active = {
+        "plan": "premium",
         "status": "active",
         "provider": "paypal",
         "amount": "12.90",
