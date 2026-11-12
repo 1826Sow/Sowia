@@ -86,15 +86,25 @@ Ils ne sont pas interchangeables et ne font pas partie du socle décrit dans le 
 
 Les scripts ci-dessous touchent aux droits Premium, au grand livre ou aux flux de paiement. Ils ne font pas partie du socle à installer automatiquement. Les paiements SOWIA restent désactivés tant que le propriétaire n’a pas validé explicitement leur mise en service.
 
-- `supabase/migrations/20261110000100_sowia_financial_ledger.sql` — grand livre financier en lecture utilisateur ; migration distincte des flux de paiement.
-- `supabase_paypal_refund_parent_migration.sql` — ancienne migration de liaison des remboursements. La migration actuelle du grand livre contient déjà le champ et le contrôle de remboursement correspondant ; ne pas appliquer cette ancienne migration en doublon sans audit.
-- `supabase_entitlements_migration.sql` — évolution des droits Premium ; à planifier avec le schéma et le parcours d’abonnement.
-- `supabase/migrations/20261109000100_sowia_subscriptions.sql` — table des abonnements.
-- `supabase/migrations/20261109000200_sowia_paypal_catalog.sql` — catalogue PayPal.
+Pour le parcours PayPal, appliquer les migrations nécessaires dans cet ordre, après le schéma de base `supabase/schema.sql` et avant le déploiement des composants serveur correspondants :
+
+1. `supabase/migrations/20261109000100_sowia_subscriptions.sql` — table des abonnements récurrents.
+2. `supabase/migrations/20261109000200_sowia_paypal_catalog.sql` — catalogue PayPal privé.
+3. `supabase/migrations/20261110000100_sowia_financial_ledger.sql` — grand livre financier en lecture utilisateur et contrôles des remboursements.
+4. `supabase/migrations/20261111000100_paypal_billing_ledger_link.sql` — lien des échéances récurrentes au grand livre.
+5. `supabase/migrations/20261111000400_paypal_capture_order_link.sql` — lien des achats ponctuels aux commandes PayPal.
+6. `supabase/migrations/20261111000500_paypal_subscription_atomic_reconciliation.sql` — réconciliation atomique des abonnements.
+7. `supabase/migrations/20261111000600_paypal_webhook_event_deduplication.sql` — déduplication durable des événements webhook ; remplace la signature RPC précédente.
+8. `supabase/migrations/20261111000700_paypal_one_time_entitlement_atomic.sql` — écriture atomique du grand livre et du droit Premium pour les achats ponctuels ; dépend du grand livre et du lien commande/capture.
+
+La migration `supabase/migrations/20261111000200_sowia_professional_workspace_rls.sql` appartient au socle Professionnel décrit plus haut. La migration `20261111000300_sowia_professional_modules_rls.sql` doit être exécutée seulement après création de ses neuf tables dépendantes, comme indiqué dans la section CRM et Club Business.
+
+Scripts historiques ou alternatifs :
+- `supabase_paypal_refund_parent_migration.sql` — ancienne migration de liaison des remboursements. La migration actuelle du grand livre contient déjà le champ et le contrôle correspondant ; ne pas appliquer cette ancienne migration en doublon sans audit.
+- `supabase_entitlements_migration.sql` — évolution historique des droits Premium ; comparer son contenu au schéma et aux migrations actuels avant toute exécution.
 - `supabase_crypto_payments.sql` — flux crypto et objets financiers associés ; **ne pas exécuter** dans le cadre de l’installation standard. Il touche également à `sowia_financial_transactions` et aux droits Premium : une revue dédiée de compatibilité est nécessaire avant toute utilisation.
 
 Aucun de ces scripts ne suffit, à lui seul, à activer les paiements. Les secrets, webhooks, fonctions Edge, contrôles serveur, tests Sandbox et autorisation du propriétaire restent des étapes séparées.
-
 ## 4. Scripts de stockage et de finalisation
 
 - `supabase_storage_policies.sql` est le script canonique de sécurisation du bucket PDF.
