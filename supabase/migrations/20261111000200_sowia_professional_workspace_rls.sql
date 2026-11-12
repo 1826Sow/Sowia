@@ -3,6 +3,29 @@
 begin;
 
 -- Make the migration independent of the legacy manual workspace upgrade file.
+-- Normalize the entitlement tier before using it as a database authorization condition.
+alter table public.sowia_entitlements
+    add column if not exists plan text;
+update public.sowia_entitlements
+   set plan = case when status = 'active' then 'premium' else 'free' end
+ where plan is null;
+alter table public.sowia_entitlements
+    alter column plan set default 'free',
+    alter column plan set not null;
+do $plan_constraint$
+begin
+    if not exists (
+        select 1 from pg_constraint
+        where conrelid = 'public.sowia_entitlements'::regclass
+          and conname = 'sowia_entitlements_plan_allowed'
+    ) then
+        alter table public.sowia_entitlements
+            add constraint sowia_entitlements_plan_allowed
+            check (plan in ('free', 'premium'));
+    end if;
+end
+$plan_constraint$;
+
 alter table public.sowia_memory_items
     add column if not exists workspace_id text not null default 'personal';
 alter table public.sowia_messages
@@ -52,6 +75,7 @@ begin
         select 1
         from public.sowia_entitlements as entitlement
         where entitlement.user_id = current_user_id
+          and entitlement.plan = 'premium'
           and entitlement.status = 'active'
           and entitlement.provider = 'paypal'
     ) into has_one_time_entitlement;
