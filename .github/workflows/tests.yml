@@ -27,7 +27,7 @@ jobs:
       - name: Audit resolved Python dependencies
         run: |
           python -m pip install --upgrade pip-audit
-          pip-audit -r requirements.txt
+          pip-audit -r requirements.lock
       - name: Regenerate and verify hashed dependency lock
         run: |
           # Hash the already-reviewed exact pins; do not re-resolve open-ended requirements.txt ranges in CI.
@@ -57,7 +57,6 @@ jobs:
               raise SystemExit(f"Lock mismatch; missing={missing}; stale_or_extra={stale}")
           print(f"Verified {len(committed)} exact dependency pins against pip-compile output")
           PY
-          pip-audit -r requirements.lock
           pip-audit -r requirements-hashes.lock
       - name: Install test environment from generated hash lock
         run: |
