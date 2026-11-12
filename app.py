@@ -235,62 +235,63 @@ if cloud_mode:
         )
         if callback_error_description:
             st.warning("Motif communiqué par le fournisseur : " + callback_error_description[:300])
-        try:
-            # Return OAuth to the exact Streamlit app currently open.
-            # This prevents redirects to an older test or production deployment.
-            from urllib.parse import urlsplit, urlunsplit
-            current_app_url = str(getattr(st.context, "url", "") or "").strip()
-            configured_public_url = str(get_setting("SOWIA_PUBLIC_URL", "") or "").strip()
-            candidate_url = current_app_url or configured_public_url
-            parts = urlsplit(candidate_url)
-            if parts.scheme != "https" or not parts.netloc:
-                st.error(
-                    "Adresse publique de SOW IA invalide. Ouvrez l'application depuis "
-                    "son adresse HTTPS Streamlit et réessayez."
-                )
-                st.stop()
+        # Resolve the exact HTTPS callback independently of either login provider.
+        from urllib.parse import urlsplit, urlunsplit
+        current_app_url = str(getattr(st.context, "url", "") or "").strip()
+        configured_public_url = str(get_setting("SOWIA_PUBLIC_URL", "") or "").strip()
+        candidate_url = current_app_url or configured_public_url
+        parts = urlsplit(candidate_url)
+        redirect_to = ""
+        if parts.scheme == "https" and parts.netloc:
             redirect_to = urlunsplit(
                 (parts.scheme, parts.netloc, parts.path.rstrip("/"), "", "")
             )
             st.caption("Adresse de retour sécurisée : " + redirect_to)
-            # Keep one OAuth URL per Streamlit session. Each call to
-            # sign_in_with_oauth creates a new PKCE verifier; generating a
-            # fresh URL on every rerun can overwrite the verifier for the
-            # GitHub redirect currently in progress.
+        else:
+            st.error("Adresse publique HTTPS invalide. Ouvrez SOW IA depuis son adresse Streamlit officielle.")
+
+        # GitHub OAuth is optional here: a provider error must never hide email sign-in.
+        try:
+            if not redirect_to:
+                raise ValueError("URL HTTPS de retour invalide")
             login_url = st.session_state.get("sowia_github_login_url")
             if not login_url:
                 login_url = github_authorization_url(supabase_client, redirect_to)
                 st.session_state.sowia_github_login_url = login_url
-            # Use Streamlit's native external-navigation control rather than
-            # an HTML anchor embedded in the app document.
             st.link_button(
                 "Continuer avec GitHub",
                 login_url,
                 type="primary",
                 use_container_width=True,
             )
-            st.markdown("#### Autre méthode : connexion par e-mail")
-            st.caption("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA. Un lien à usage unique sera envoyé ; aucun nouveau compte ne sera créé.")
-            email_address = st.text_input(
-                "Adresse e-mail du compte SOW IA",
-                value=st.session_state.get("sowia_email_login_pending", ""),
-                max_chars=254,
-                key="sowia_email_login_address",
-            )
-            if st.button("Envoyer mon lien de connexion", key="sowia_send_email_link", type="secondary", use_container_width=True):
-                try:
-                    email_magic_link(supabase_client, email_address, redirect_to)
-                    st.session_state["sowia_email_login_pending"] = email_address.strip().lower()
-                    st.success("Si cette adresse correspond à un compte existant, un lien de connexion vient d'être envoyé. Consultez aussi les courriers indésirables.")
-                except Exception as email_exc:
-                    st.error("Impossible d'envoyer le lien de connexion. Vérifiez la configuration e-mail de Supabase.")
-                    st.caption("Diagnostic : " + type(email_exc).__name__)
-            if st.button("Recommencer la connexion", use_container_width=True):
-                st.session_state.pop("sowia_github_login_url", None)
-                st.rerun()
-        except Exception as exc:
+        except Exception as github_exc:
             st.session_state.pop("sowia_github_login_url", None)
-            st.warning("La connexion GitHub n'a pas pu être préparée. Vérifiez la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
+            st.warning("La connexion GitHub n'est pas disponible pour le moment. Vous pouvez essayer la connexion par e-mail.")
+            st.caption("Diagnostic GitHub : " + type(github_exc).__name__)
+
+        # Keep the email form outside the GitHub try/except so it always renders.
+        st.markdown("#### Autre méthode : connexion par e-mail")
+        st.caption("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA. Un lien à usage unique sera envoyé ; aucun nouveau compte ne sera créé.")
+        email_address = st.text_input(
+            "Adresse e-mail du compte SOW IA",
+            value=st.session_state.get("sowia_email_login_pending", ""),
+            max_chars=254,
+            key="sowia_email_login_address",
+        )
+        if st.button("Envoyer mon lien de connexion", key="sowia_send_email_link", type="secondary", use_container_width=True):
+            try:
+                if not redirect_to:
+                    raise ValueError("URL HTTPS de retour invalide")
+                email_magic_link(supabase_client, email_address, redirect_to)
+                st.session_state["sowia_email_login_pending"] = email_address.strip().lower()
+                st.success("Si cette adresse correspond à un compte existant, un lien de connexion vient d'être envoyé. Consultez aussi les courriers indésirables.")
+            except Exception as email_exc:
+                st.error("Impossible d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
+                st.caption("Diagnostic e-mail : " + type(email_exc).__name__)
+
+        if st.button("Recommencer la connexion", use_container_width=True):
+            st.session_state.pop("sowia_github_login_url", None)
+            st.rerun()
         st.stop()
 
 
