@@ -57,7 +57,7 @@ jobs:
               raise SystemExit(f"Lock mismatch; missing={missing}; stale_or_extra={stale}")
           print(f"Verified {len(committed)} exact dependency pins against pip-compile output")
           PY
-          pip-audit -r requirements-hashes.lock
+          # requirements.lock was already audited above; the pin-set comparison verifies this hash lock is identical.
       - name: Install test environment from generated hash lock
         run: |
           python -m venv /tmp/sowia-lock-venv
