@@ -7,11 +7,13 @@ sessions, never the service-role key.
 import os
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 
 import pytest
 import requests
 
 
+_CONFIRMATION = "I_CONFIRM_THIS_IS_A_DEDICATED_SOWIA_TEST_PROJECT"
 _REQUIRED = (
     "SOWIA_TEST_SUPABASE_URL",
     "SOWIA_TEST_SUPABASE_ANON_KEY",
@@ -20,17 +22,37 @@ _REQUIRED = (
     "SOWIA_TEST_USER_A_PASSWORD",
     "SOWIA_TEST_USER_B_EMAIL",
     "SOWIA_TEST_USER_B_PASSWORD",
+    "SOWIA_TEST_PROJECT_CONFIRMATION",
 )
 _MISSING = [name for name in _REQUIRED if not os.getenv(name)]
+if not _MISSING and os.environ["SOWIA_TEST_PROJECT_CONFIRMATION"] != _CONFIRMATION:
+    raise RuntimeError("Refusing live tests: explicit dedicated-test-project confirmation is missing")
 pytestmark = pytest.mark.skipif(
     bool(_MISSING),
     reason="Dedicated live Supabase test-project credentials are not configured",
 )
 
 
+def _validated_supabase_url(value):
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or not parsed.hostname.endswith(".supabase.co")
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port is not None
+        or parsed.query
+        or parsed.fragment
+        or parsed.path not in ("", "/")
+    ):
+        raise ValueError("Refusing live tests: URL must be a plain HTTPS hosted Supabase project URL")
+    return value.rstrip("/")
+
+
 class ApiSession:
     def __init__(self, url, api_key, bearer=None):
-        self.url = url.rstrip("/")
+        self.url = _validated_supabase_url(url)
         self.http = requests.Session()
         self.headers = {"apikey": api_key, "Content-Type": "application/json"}
         if bearer:
