@@ -174,8 +174,11 @@ select public.sowia_admin_review_nex_integration(
 insert into pg_temp.sowia_nex_test_results
 values ('Approbation administrative de l’intégration', 'RÉUSSI');
 
+-- Switch back to the migration owner so the test can inspect both participants' private audit rows.
+reset role;
+
 -- Confirm the final workflow state and both participants' audit events.
-do $$
+do $
 declare
     v_offer_id uuid;
     v_status text;
@@ -214,8 +217,6 @@ begin
         end
     );
 end $$;
-
-reset role;
 
 select * from pg_temp.sowia_nex_test_results order by test;
 
