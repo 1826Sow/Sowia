@@ -48,7 +48,7 @@ pytest -q tests/integration/
 
 Dans GitHub, ouvrir **Settings → Secrets and variables → Actions**, puis créer les huit secrets portant exactement les noms listés plus haut. Leurs valeurs doivent provenir exclusivement du projet Supabase de test et de ses deux comptes dédiés.
 
-Les tests réels sont lancés sur les pushes de la branche de consolidation `security/hardening-clean` et de `main`. Ils ne sont volontairement pas lancés sur les événements `pull_request`, afin de ne jamais exposer les secrets Supabase au code d'une pull request. Si un secret manque ou si la confirmation explicite est incorrecte, le job signale que les tests sont ignorés ; il ne prétend jamais avoir validé la RLS. Ne jamais renseigner les identifiants d'un compte réel ni ceux du projet de production.
+Les tests réels sont lancés sur les pushes de la branche de consolidation `security/hardening-clean` et de `main`. Ils ne sont volontairement pas lancés sur les événements `pull_request`, afin de ne jamais exposer les secrets Supabase au code d'une pull request : dans ce cas, le job est marqué `skipped` par sa condition d'exécution. Sur un push fiable, si un secret manque ou si la confirmation explicite est incorrecte, le job échoue volontairement (`fail closed`) et signale que les tests réels n'ont pas été exécutés. Seul un résultat réussi des trois suites constitue une validation RLS. Ne jamais renseigner les identifiants d'un compte réel ni ceux du projet de production.
 
 Le job exécute les trois suites :
 - messages et mémoire : A lit ses propres lignes, B ne les lit pas, ne peut pas insérer une ligne au nom de A et ne peut pas supprimer la ligne de A ;
