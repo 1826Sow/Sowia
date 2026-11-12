@@ -22,9 +22,10 @@ class Query:
 class Client:
     def __init__(self, data=None):
         self.query = Query(data)
+        self.subscription_query = Query(None)
     def table(self, name):
         self.table_name = name
-        return self.query
+        return self.query if name == "sowia_entitlements" else self.subscription_query
 
 
 class User:
@@ -38,6 +39,12 @@ def test_personal_workspace_remains_free_without_entitlement():
 def test_professional_workspace_requires_active_entitlement():
     with pytest.raises(PermissionError, match="accès SOW IA Premium actif"):
         premium_access.require_workspace_access("professional", Client(None), User())
+
+
+def test_professional_workspace_denies_active_free_entitlement():
+    free_active = {"plan": "free", "status": "active", "provider": "paypal"}
+    with pytest.raises(PermissionError, match="accès SOW IA Premium actif"):
+        premium_access.require_workspace_access("professional", Client(free_active), User())
 
 
 def test_professional_workspace_accepts_active_entitlement():
