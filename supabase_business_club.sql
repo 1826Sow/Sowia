@@ -54,7 +54,7 @@ begin
  new.updated_at := pg_catalog.now();
  return new;
 end;
-$;
+$$;
 drop trigger if exists sowia_business_club_touch_request on public.sowia_business_club_requests;
 create trigger sowia_business_club_touch_request
 before update on public.sowia_business_club_requests
@@ -107,7 +107,7 @@ begin
    add constraint sowia_club_meeting_invitee_check
    check (invitee_user_id <> organizer_user_id and invitee_user_id in (sender_user_id, recipient_user_id));
  end if;
-end $;
+end $$;
 create index if not exists sowia_club_meetings_participants_idx
  on public.sowia_business_club_meetings (sender_user_id, recipient_user_id, starts_at);
 alter table public.sowia_business_club_meetings enable row level security;
@@ -122,7 +122,7 @@ begin
  new.updated_at := pg_catalog.now();
  return new;
 end;
-$;
+$$;
 drop trigger if exists sowia_business_club_touch_meeting on public.sowia_business_club_meetings;
 create trigger sowia_business_club_touch_meeting
 before update on public.sowia_business_club_meetings
