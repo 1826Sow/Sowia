@@ -80,7 +80,13 @@ def _login(url, anon_key, email, password):
         params={"grant_type": "password"},
         payload={"email": email, "password": password},
     )
-    response.raise_for_status()
+    if not response.ok:
+        try:
+            error = response.json()
+        except ValueError:
+            error = {}
+        reason = error.get("msg") or error.get("message") or error.get("error_description") or error.get("error") or "no safe error detail returned"
+        raise RuntimeError(f"Supabase test-user login failed (HTTP {response.status_code}): {reason}")
     payload = response.json()
     return ApiSession(url, anon_key, payload["access_token"]), payload["user"]["id"]
 
