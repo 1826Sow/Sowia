@@ -35,8 +35,9 @@ class OIDCApprovalIdentityVerifier:
     durable session store in production.
 
     signing_key_resolver(kid) must resolve a key from the configured issuer's
-    authenticated JWKS source. role_resolver(subject, role) must query current
-    authoritative role assignment on every call.
+    authenticated JWKS source. role_resolver(issuer, subject, role) must query
+    the current authoritative role assignment scoped to the exact issuer and
+    subject on every call.
     """
 
     def __init__(
@@ -47,7 +48,7 @@ class OIDCApprovalIdentityVerifier:
         signing_key_resolver: Callable[[str], Any],
         assertion_resolver: Callable[[Mapping[str, Any]], Mapping[str, str]],
         consume_assertion_session: Callable[[str, str], bool],
-        role_resolver: Callable[[str, str], bool],
+        role_resolver: Callable[[str, str, str], bool],
         required_acr: str,
         required_amr: str = "webauthn",
         max_auth_age_seconds: int = 300,
@@ -144,7 +145,7 @@ class OIDCApprovalIdentityVerifier:
 
             # Re-check current role membership, then atomically consume the
             # server-side session. A valid ID token is not reusable evidence.
-            if self.role_resolver(subject_id, role) is not True:
+            if self.role_resolver(self.issuer, subject_id, role) is not True:
                 return False
             return self.consume_assertion_session(session_id, expected_nonce) is True
         except (InvalidTokenError, OIDCIdentityError, KeyError, TypeError, ValueError):
