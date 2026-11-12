@@ -28,8 +28,10 @@ from sowia_supabase_auth import (
     email_magic_link,
     complete_email_magic_link,
     configuration_ready,
+    create_email_user_client,
     create_user_client,
     github_authorization_url,
+    read_email_auth_fragment,
     sign_out,
 )
 import cloud_storage
@@ -148,6 +150,17 @@ if cloud_mode:
             # Keep this PKCE client in this browser session; never use a global cache.
             st.session_state.sowia_supabase_client = create_user_client(browser_id)
         supabase_client = st.session_state.sowia_supabase_client
+
+        auth_stage = "lecture du retour de connexion par e-mail"
+        email_tokens = read_email_auth_fragment()
+        if email_tokens:
+            supabase_client.auth.set_session(
+                email_tokens["access_token"],
+                email_tokens["refresh_token"],
+            )
+            st.session_state.pop("sowia_email_login_pending", None)
+            st.session_state.pop("sowia_email_auth_fragment", None)
+            st.rerun()
 
         auth_stage = "échange du code de retour GitHub avec Supabase"
         email_token_hash = st.query_params.get("token_hash")
@@ -282,7 +295,8 @@ if cloud_mode:
             try:
                 if not redirect_to:
                     raise ValueError("URL HTTPS de retour invalide")
-                email_magic_link(supabase_client, email_address, redirect_to)
+                email_client = create_email_user_client()
+                email_magic_link(email_client, email_address, redirect_to)
                 st.session_state["sowia_email_login_pending"] = email_address.strip().lower()
                 st.success("Si cette adresse correspond à un compte existant, un lien de connexion vient d'être envoyé. Consultez aussi les courriers indésirables.")
             except Exception as email_exc:
