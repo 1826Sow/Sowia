@@ -247,6 +247,15 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
         }).json()[0]
         fixture_ids["sowia_business_opportunities"].append(opportunity_a["id"])
 
+        # An active row with plan=free must never grant Professional access.
+        free_plan = admin.call(
+            "PATCH", "/rest/v1/sowia_entitlements",
+            params={"user_id": f"eq.{user_a}"},
+            body={"plan": "free"},
+        )
+        free_plan.raise_for_status()
+        _expect_hidden(a, "sowia_growth_leads", lead_a["id"])
+        _entitlement(admin, user_a, True)
         assert a.rows("sowia_growth_leads", params={"id": f"eq.{lead_a['id']}", "select": "id"})
         _expect_hidden(b, "sowia_growth_leads", lead_a["id"])
         assert c.rows("sowia_growth_leads", params={"id": f"eq.{lead_personal_c['id']}", "select": "id"})
