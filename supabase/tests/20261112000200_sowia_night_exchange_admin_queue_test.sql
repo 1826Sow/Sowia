@@ -6,7 +6,7 @@ do $$
 declare
     v_a uuid := 'f1792829-ca68-4815-b173-79bd13ce0ed3';
     v_b uuid := '54b7271b-bc5f-4218-bad9-2b53aaa6e90f';
-    v_result record;
+    v_count bigint;
     v_blocked boolean := false;
 begin
     -- The queue function must reject an ordinary authenticated member.
@@ -25,7 +25,18 @@ begin
         raise exception 'FAIL: unprivileged member accessed the admin queue';
     end if;
     raise notice 'PASS: ordinary member blocked from admin integration queue';
+
+    -- A signed administrator may query the queue, even when it is empty.
+    perform set_config('request.jwt.claim.sub', v_a::text, true);
+    perform set_config('request.jwt.claims',
+        jsonb_build_object('sub', v_a, 'role', 'authenticated',
+                           'app_metadata', jsonb_build_object('role', 'admin'))::text, true);
+    execute 'set local role authenticated';
+    select count(*) into v_count
+      from public.sowia_admin_list_nex_integrations();
+    reset role;
+    raise notice 'PASS: signed administrator can query integration queue (% rows)', v_count;
 end;
-$$;
+$;
 
 rollback;
