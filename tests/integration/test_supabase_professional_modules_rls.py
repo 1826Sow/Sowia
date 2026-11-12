@@ -127,7 +127,6 @@ def _entitlement(admin: Api, user_id: str, active: bool):
         "plan": "premium" if active else "free",
         "status": "active" if active else "inactive",
         "provider": "paypal", "paypal_order_id": f"rls-test-{user_id}",
-        "amount": 1, "currency": "EUR",
     }
     response = admin.call(
         "POST", "/rest/v1/sowia_entitlements",
