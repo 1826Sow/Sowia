@@ -137,6 +137,8 @@ as $$
 declare
     v_actor uuid := auth.uid();
     v_offer public.sowia_night_exchange_offers%rowtype;
+    v_sender_app public.sowia_night_exchange_apps%rowtype;
+    v_recipient_app public.sowia_night_exchange_apps%rowtype;
     v_payload jsonb;
 begin
     if v_actor is null then
@@ -161,6 +163,25 @@ begin
     end if;
     if v_offer.status <> 'pending' then
         raise exception 'Cette proposition a déjà reçu une réponse' using errcode = '55000';
+    end if;
+
+    select * into v_sender_app
+      from public.sowia_night_exchange_apps
+     where id = v_offer.sender_app_id
+     for share;
+    select * into v_recipient_app
+      from public.sowia_night_exchange_apps
+     where id = v_offer.recipient_app_id
+     for share;
+
+    if not found
+       or v_sender_app.user_id <> v_offer.sender_user_id
+       or v_sender_app.status <> 'approved'
+       or v_sender_app.workspace_id <> 'professional'
+       or v_recipient_app.user_id <> v_offer.recipient_user_id
+       or v_recipient_app.status <> 'approved'
+       or v_recipient_app.workspace_id <> 'professional' then
+        raise exception 'Une des applications n’est plus éligible' using errcode = '55000';
     end if;
 
     update public.sowia_night_exchange_offers
@@ -226,6 +247,21 @@ begin
     end if;
     if v_offer.status <> 'accepted' or v_offer.integration_status <> 'pending' then
         raise exception 'Seule une proposition acceptée en attente peut être examinée' using errcode = '55000';
+    end if;
+    if p_decision = 'approved' and not exists (
+        select 1
+          from public.sowia_night_exchange_apps sender_app
+          join public.sowia_night_exchange_apps recipient_app
+            on recipient_app.id = v_offer.recipient_app_id
+         where sender_app.id = v_offer.sender_app_id
+           and sender_app.user_id = v_offer.sender_user_id
+           and recipient_app.user_id = v_offer.recipient_user_id
+           and sender_app.status = 'approved'
+           and recipient_app.status = 'approved'
+           and sender_app.workspace_id = 'professional'
+           and recipient_app.workspace_id = 'professional'
+    ) then
+        raise exception 'Les deux applications doivent être approuvées' using errcode = '55000';
     end if;
 
     update public.sowia_night_exchange_offers
