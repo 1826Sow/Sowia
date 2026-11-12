@@ -22,6 +22,6 @@ jobs:
         with:
           python-version: "3.11"
       - name: Compile application modules
-        run: python -m compileall -q app.py cloud_storage.py tests/test_nex_offer_cloud_storage.py
+        run: python -m compileall -q app.py cloud_storage.py tests/test_nex_offer_*.py
       - name: Test NIGHT EXCHANGE client helpers
         run: python -m unittest discover -s tests -p 'test_nex_offer_cloud_storage.py' -v
