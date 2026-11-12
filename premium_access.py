@@ -27,13 +27,20 @@ def get_entitlement(user_client, user):
         raise PermissionError("Connexion requise.")
     result = (
         user_client.table("sowia_entitlements")
-        .select("status, provider, paypal_order_id, amount, currency, updated_at")
+        .select("plan, status, provider, paypal_order_id, amount, currency, updated_at")
         .eq("user_id", str(user_id))
         .maybe_single()
         .execute()
     )
     data = getattr(result, "data", None)
-    return data if data and data.get("status") == "active" else None
+    return (
+        data
+        if data
+        and data.get("plan") == "premium"
+        and data.get("status") == "active"
+        and data.get("provider") == "paypal"
+        else None
+    )
 
 
 def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
@@ -61,6 +68,7 @@ def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
         raise ValueError("Le montant Premium ou la devise ne sont pas valides.")
     payload = {
         "user_id": normalized_user_id,
+        "plan": "premium",
         "status": "active",
         "provider": "paypal",
         "paypal_order_id": normalized_order_id,
