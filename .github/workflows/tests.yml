@@ -31,12 +31,8 @@ jobs:
           pip-audit -r requirements.lock
       - name: Regenerate and verify hashed dependency lock
         run: |
-          # Hash the already-reviewed exact pins; do not re-resolve open-ended requirements.txt ranges in CI.
-          # This keeps the security check reproducible and prevents unrelated upstream releases from
-          # changing the dependency graph during a pull-request run.
           pip-compile --resolver=backtracking --generate-hashes --output-file=requirements-hashes.lock requirements.lock
           python - <<'PY'
-          import re
           from pathlib import Path
 
           def pins(path):
@@ -50,15 +46,10 @@ jobs:
 
           committed = pins("requirements.lock")
           resolved = pins("requirements-hashes.lock")
-          if not committed:
-              raise SystemExit("requirements.lock contains no exact pins")
-          if committed != resolved:
-              missing = sorted(resolved - committed)
-              stale = sorted(committed - resolved)
-              raise SystemExit(f"Lock mismatch; missing={missing}; stale_or_extra={stale}")
+          if not committed or committed != resolved:
+              raise SystemExit(f"Lock mismatch; missing={sorted(resolved - committed)}; stale_or_extra={sorted(committed - resolved)}")
           print(f"Verified {len(committed)} exact dependency pins against pip-compile output")
           PY
-          # requirements.lock was already audited above; the pin-set comparison verifies this hash lock is identical.
       - name: Install test environment from generated hash lock
         run: |
           python -m venv /tmp/sowia-lock-venv
@@ -80,8 +71,6 @@ jobs:
   supabase-rls-integration:
     name: Supabase real-account RLS tests
     timeout-minutes: 15
-    # Never expose Supabase test credentials to code from a pull request.
-    # Live tests run only for trusted pushes to the consolidation branch or main.
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/security/hardening-clean')
     runs-on: ubuntu-latest
     env:
@@ -113,7 +102,7 @@ jobs:
       - name: Fail closed when live RLS tests are not configured
         if: steps.credentials.outputs.configured != 'true'
         run: |
-          echo "::error::Live Supabase RLS tests were not executed. Configure the seven dedicated test-project credentials plus the explicit confirmation secret described in tests/integration/README.md."
+          echo "::error::Live Supabase RLS tests were not executed. Configure the dedicated test-project credentials and explicit confirmation."
           exit 1
       - name: Check out repository
         if: steps.credentials.outputs.configured == 'true'
@@ -126,6 +115,66 @@ jobs:
       - name: Install integration-test dependencies
         if: steps.credentials.outputs.configured == 'true'
         run: python -m pip install --upgrade pytest requests
+      - name: Prepare the two dedicated Supabase test accounts
+        if: steps.credentials.outputs.configured == 'true'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from urllib.parse import urlsplit
+          import requests
+
+          base = os.environ["SOWIA_TEST_SUPABASE_URL"].rstrip("/")
+          parsed = urlsplit(base)
+          if (parsed.scheme != "https" or not parsed.hostname
+              or not parsed.hostname.endswith(".supabase.co")
+              or parsed.username or parsed.password or parsed.port
+              or parsed.query or parsed.fragment or parsed.path not in ("", "/")):
+              raise SystemExit("Refusing account preparation: expected a plain hosted HTTPS Supabase project URL")
+          if os.environ["SOWIA_TEST_PROJECT_CONFIRMATION"] != "I_CONFIRM_THIS_IS_A_DEDICATED_SOWIA_TEST_PROJECT":
+              raise SystemExit("Refusing account preparation: dedicated-test-project confirmation is invalid")
+
+          service = os.environ["SOWIA_TEST_SUPABASE_SERVICE_ROLE_KEY"]
+          anon = os.environ["SOWIA_TEST_SUPABASE_ANON_KEY"]
+          session = requests.Session()
+          admin_headers = {"apikey": service, "Authorization": f"Bearer {service}", "Content-Type": "application/json"}
+
+          def admin_request(method, path, **kwargs):
+              response = session.request(method, base + path, headers=admin_headers, timeout=20, allow_redirects=False, **kwargs)
+              if not response.ok:
+                  raise SystemExit(f"Supabase test-account preparation failed (HTTP {response.status_code}); verify the dedicated test project and service-role secret")
+              return response
+
+          users = []
+          for page in range(1, 21):
+              batch = admin_request("GET", "/auth/v1/admin/users", params={"page": page, "per_page": 100}).json().get("users", [])
+              users.extend(batch)
+              if len(batch) < 100:
+                  break
+
+          for label in ("A", "B"):
+              email = os.environ[f"SOWIA_TEST_USER_{label}_EMAIL"].strip()
+              password = os.environ[f"SOWIA_TEST_USER_{label}_PASSWORD"]
+              if not email or not password:
+                  raise SystemExit(f"Test account {label} is missing required credentials")
+              existing = next((u for u in users if (u.get("email") or "").casefold() == email.casefold()), None)
+              payload = {"email": email, "password": password, "email_confirm": True}
+              if existing:
+                  admin_request("PUT", f"/auth/v1/admin/users/{existing['id']}", json=payload)
+              else:
+                  created = admin_request("POST", "/auth/v1/admin/users", json=payload).json()
+                  users.append(created)
+              check = session.post(
+                  base + "/auth/v1/token", params={"grant_type": "password"},
+                  headers={"apikey": anon, "Content-Type": "application/json"},
+                  json={"email": email, "password": password}, timeout=20, allow_redirects=False,
+              )
+              if not check.ok:
+                  raise SystemExit(f"Supabase test account {label} could not authenticate after preparation (HTTP {check.status_code})")
+          if os.environ["SOWIA_TEST_USER_A_EMAIL"].casefold() == os.environ["SOWIA_TEST_USER_B_EMAIL"].casefold():
+              raise SystemExit("Test accounts A and B must use different email addresses")
+          print("Both dedicated Supabase test accounts were prepared and authenticated successfully.")
+          PY
       - name: Verify real two-user RLS isolation
         if: steps.credentials.outputs.configured == 'true'
         run: >-
