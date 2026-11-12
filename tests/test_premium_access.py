@@ -32,9 +32,10 @@ class Query:
 class Client:
     def __init__(self, data=None):
         self.query = Query(data)
+        self.subscription_query = Query(None)
     def table(self, name):
         self.table_name = name
-        return self.query
+        return self.query if name == "sowia_entitlements" else self.subscription_query
 
 
 def test_entitlement_read_is_scoped_to_authenticated_user():
@@ -117,6 +118,12 @@ def test_premium_guard_denies_missing_or_inactive_entitlement(entitlement):
     client = Client(entitlement)
     with pytest.raises(PermissionError, match="accès SOW IA Premium actif"):
         premium_access.require_active_entitlement(client, User())
+
+
+def test_active_free_entitlement_does_not_grant_premium_access():
+    free_active = {"plan": "free", "status": "active", "provider": "paypal"}
+    with pytest.raises(PermissionError, match="accès SOW IA Premium actif"):
+        premium_access.require_active_entitlement(Client(free_active), User())
 
 
 def test_premium_guard_returns_active_entitlement():
