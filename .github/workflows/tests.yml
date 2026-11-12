@@ -129,4 +129,5 @@ jobs:
           pytest -q
           tests/integration/test_supabase_two_user_isolation.py
           tests/integration/test_supabase_storage_two_user_isolation.py
-          tests/integration/test_supabase_financial_two_user_isolation.py
+          tests/integration/test_supabase_financial_two_user_isolation.py \
+          tests/integration/test_supabase_professional_modules_rls.py
