@@ -51,7 +51,7 @@ Dans GitHub, ouvrir **Settings → Secrets and variables → Actions**, puis cr�
 
 Les tests réels sont lancés sur les pushes de la branche de consolidation `security/hardening-clean` et de `main`. Ils ne sont volontairement pas lancés sur les événements `pull_request`, afin de ne jamais exposer les secrets Supabase au code d'une pull request : dans ce cas, le job est marqué `skipped` par sa condition d'exécution. Sur un push fiable, si un secret manque ou si la confirmation explicite est incorrecte, le job échoue volontairement (`fail closed`) et signale que les tests réels n'ont pas été exécutés. Seul un résultat réussi des quatre suites constitue une validation RLS. Ne jamais renseigner les identifiants d'un compte réel ni ceux du projet de production.
 
-Le job exécute les trois suites :
+Le job exécute les quatre suites :
 - messages et mémoire : A lit ses propres lignes, B ne les lit pas, ne peut pas insérer une ligne au nom de A et ne peut pas supprimer la ligne de A ;
 - PDF : A peut déposer et télécharger son fichier, B ne peut ni le télécharger, ni déposer dans le dossier de A, ni supprimer le PDF de A ;
 - transactions financières et abonnements : des lignes témoins sont créées par le rôle administrateur du projet de test, puis les sessions authentifiées A/B vérifient la lecture limitée au propriétaire, le refus des écritures client et l'impossibilité pour B de supprimer la ligne de A ;
