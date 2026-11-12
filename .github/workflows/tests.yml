@@ -142,7 +142,13 @@ jobs:
           def admin_request(method, path, **kwargs):
               response = session.request(method, base + path, headers=admin_headers, timeout=20, allow_redirects=False, **kwargs)
               if not response.ok:
-                  raise SystemExit(f"Supabase test-account preparation failed (HTTP {response.status_code}); verify the dedicated test project and service-role secret")
+                  try:
+                      body = response.json()
+                  except ValueError:
+                      body = {}
+                  detail = next((body.get(k) for k in ("message", "msg", "error_description", "error") if isinstance(body.get(k), str)), "no safe error detail returned")
+                  detail = " ".join(detail.split())[:240]
+                  raise SystemExit(f"Supabase test-account preparation failed (HTTP {response.status_code}): {detail}")
               return response
 
           users = []
