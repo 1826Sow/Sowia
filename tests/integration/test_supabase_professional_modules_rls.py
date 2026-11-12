@@ -167,12 +167,25 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
     user_c = None
     fixture_ids: dict[str, list] = {table: [] for table in PROFESSIONAL_TABLES}
     entitlement_snapshots = {}
-    entitlement_ids = [user_a, user_b, user_c]
+    subscription_snapshots = {}
     try:
         # Preserve and restore A/B entitlements even though this is a disposable project.
         for uid in (user_a, user_b):
             old = admin.rows("sowia_entitlements", params={"user_id": f"eq.{uid}", "select": "*"})
             entitlement_snapshots[uid] = old[0] if old else None
+            subscription_snapshots[uid] = admin.rows(
+                "sowia_subscriptions", params={"user_id": f"eq.{uid}", "select": "id,status"}
+            )
+            # Remove any pre-existing recurring Premium grant during the test;
+            # restore its exact status in finally.
+            for subscription in subscription_snapshots[uid]:
+                if subscription["status"] == "active":
+                    changed = admin.call(
+                        "PATCH", "/rest/v1/sowia_subscriptions",
+                        params={"id": f"eq.{subscription['id']}"},
+                        body={"status": "inactive"},
+                    )
+                    changed.raise_for_status()
         user_c = _admin_user(admin, c_email, c_password)
         c, logged_c = _login(anon, c_email, c_password)
         assert logged_c == user_c
@@ -245,8 +258,14 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
             "timezone": "Europe/Paris", "duration_minutes": 30, "status": "Proposée",
         }).json()[0]
         fixture_ids["sowia_business_club_meetings"].append(meeting["id"])
-        # Notification trigger may have created request/meeting notices; create a
-        # unique admin-owned notice as a deterministic fixture as well.
+        # The meeting trigger creates a private invitee notification.
+        meeting_inbox = admin.rows("sowia_business_club_notifications", params={
+            "user_id": f"eq.{user_a}", "entity_id": f"eq.{meeting['id']}",
+            "entity_type": "eq.meeting", "select": "id",
+        })
+        fixture_ids["sowia_business_club_notifications"].extend(
+            row["id"] for row in meeting_inbox
+        )
         # The request trigger creates A's inbox notification. Add a distinct
         # B-owned notification so Premium expiry can be tested on the owner.
         inbox_a = admin.rows("sowia_business_club_notifications", params={
@@ -366,6 +385,15 @@ def test_professional_module_rls_real_accounts_and_admin_exception():
                 )
             if response.status_code not in (200, 201, 204):
                 pytest.fail(f"Could not restore test entitlement for {uid}: HTTP {response.status_code}")
+        for uid, subscriptions in subscription_snapshots.items():
+            for subscription in subscriptions:
+                restored = admin.call(
+                    "PATCH", "/rest/v1/sowia_subscriptions",
+                    params={"id": f"eq.{subscription['id']}"},
+                    body={"status": subscription["status"]},
+                )
+                if restored.status_code not in (200, 204):
+                    pytest.fail(f"Could not restore subscription status for {uid}: HTTP {restored.status_code}")
         if user_c:
             deleted = admin.call("DELETE", f"/auth/v1/admin/users/{user_c}")
             if deleted.status_code not in (200, 204):
