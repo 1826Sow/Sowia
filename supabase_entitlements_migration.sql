@@ -1,6 +1,6 @@
 -- Safe additive migration for existing SOW IA Premium entitlements.
--- Existing rows are preserved. Legacy rows remain NULL for the new metadata;
--- new PayPal grants populate both fields through premium_access.grant_paypal_entitlement.
+-- Existing rows are preserved; active legacy rows are classified as Premium,
+-- inactive rows as Free. New PayPal grants populate the provider and order metadata.
 begin;
 
 -- Make the entitlement tier explicit on existing installations. Active legacy
