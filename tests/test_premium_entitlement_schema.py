@@ -7,6 +7,7 @@ PREMIUM_SCHEMA = (ROOT / "supabase" / "schema.sql").read_text(encoding="utf-8").
 
 def test_premium_entitlement_table_has_row_level_security():
     assert "create table if not exists public.sowia_entitlements" in PREMIUM_SCHEMA
+    assert "plan text not null default 'free' check (plan in ('free', 'premium'))" in PREMIUM_SCHEMA
     assert "alter table public.sowia_entitlements enable row level security" in PREMIUM_SCHEMA
 
 
