@@ -224,6 +224,33 @@ def github_authorization_url(client, redirect_to):
     return url
 
 
+
+def email_magic_link(client, email, redirect_to):
+    """Send a passwordless sign-in link to an existing Supabase user only."""
+    address = str(email or "").strip().lower()
+    if not address or len(address) > 254 or "@" not in address:
+        raise ValueError("Adresse e-mail invalide.")
+    if not redirect_to or not redirect_to.startswith("https://"):
+        raise ValueError("L'adresse de retour HTTPS n'est pas configurée.")
+    # Prevent account creation: this flow can authenticate existing users only.
+    return client.auth.sign_in_with_otp({
+        "email": address,
+        "options": {
+            "should_create_user": False,
+            "email_redirect_to": redirect_to,
+        },
+    })
+
+
+def complete_email_magic_link(client, token_hash, otp_type):
+    """Verify a one-time Supabase email link; accept only email magic-link types."""
+    token = str(token_hash or "").strip()
+    kind = str(otp_type or "").strip().lower()
+    if not token or len(token) > 4096 or kind not in {"magiclink", "email"}:
+        raise ValueError("Lien de connexion invalide ou expiré.")
+    return client.auth.verify_otp({"token_hash": token, "type": kind})
+
+
 def complete_github_login(client, authorization_code):
     """Exchange the one-time PKCE code using the browser-scoped verifier."""
     if not authorization_code:
