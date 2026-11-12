@@ -53,7 +53,7 @@ def build_verifier(token, public, *, role_ok=True, expected_nonce=NONCE,
             }
         ),
         consume_assertion_session=consume_assertion_session or (lambda session_id, nonce: True),
-        role_resolver=role_resolver or (lambda subject, role: role_ok and role == "security-approver"),
+        role_resolver=role_resolver or (lambda issuer, subject, role: role_ok and role == "security-approver"),
         required_acr="urn:example:loa:phishing-resistant",
         required_amr="webauthn",
         max_auth_age_seconds=300,
@@ -169,6 +169,20 @@ def test_unknown_jwks_key_is_rejected(signing_material):
     assert verifier(SUBJECT, "security-approver", {}) is False
 
 
+def test_role_lookup_is_scoped_to_configured_issuer(signing_material):
+    private, public = signing_material
+    token = make_token(private)
+    calls = []
+
+    def resolve_role(issuer, subject, role):
+        calls.append((issuer, subject, role))
+        return issuer == ISSUER and subject == SUBJECT and role == "security-approver"
+
+    verifier = build_verifier(token, public, role_resolver=resolve_role)
+    assert verifier(SUBJECT, "security-approver", {}) is True
+    assert calls == [(ISSUER, SUBJECT, "security-approver")]
+
+
 def test_role_is_rechecked_and_missing_role_is_rejected(signing_material):
     private, public = signing_material
     verifier = build_verifier(make_token(private), public, role_ok=False)
@@ -214,7 +228,7 @@ def test_invalid_configuration_is_rejected():
             signing_key_resolver=lambda kid: None,
             assertion_resolver=lambda context: {},
             consume_assertion_session=lambda session_id, nonce: True,
-            role_resolver=lambda subject, role: False,
+            role_resolver=lambda issuer, subject, role: False,
             required_acr="acr",
         )
 
@@ -234,7 +248,7 @@ def test_insecure_or_ambiguous_issuer_configuration_is_rejected(issuer):
             signing_key_resolver=lambda kid: None,
             assertion_resolver=lambda context: {},
             consume_assertion_session=lambda session_id, nonce: True,
-            role_resolver=lambda subject, role: False,
+            role_resolver=lambda issuer, subject, role: False,
             required_acr="acr",
         )
 
@@ -247,7 +261,7 @@ def test_boolean_auth_age_configuration_is_rejected():
             signing_key_resolver=lambda kid: None,
             assertion_resolver=lambda context: {},
             consume_assertion_session=lambda session_id, nonce: True,
-            role_resolver=lambda subject, role: False,
+            role_resolver=lambda issuer, subject, role: False,
             required_acr="acr",
             max_auth_age_seconds=True,
         )
@@ -278,7 +292,7 @@ def test_oidc_verifier_integrates_with_dual_approval_engine(signing_material):
         },
         consume_assertion_session=lambda session_id, nonce: session_id not in consumed_sessions
             and not consumed_sessions.add(session_id),
-        role_resolver=lambda subject, role: (
+        role_resolver=lambda issuer, subject, role: (
             subject in {"approver-a", "approver-b"} and role == "security-approver"
         ),
         required_acr="urn:example:loa:phishing-resistant",
