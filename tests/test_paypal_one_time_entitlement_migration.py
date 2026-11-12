@@ -21,6 +21,9 @@ def test_one_time_paypal_rpc_is_transactional_and_service_role_only():
 def test_one_time_paypal_rpc_writes_ledger_and_entitlement_in_one_function():
     assert "insert into public.sowia_financial_transactions" in MIGRATION
     assert "insert into public.sowia_entitlements" in MIGRATION
+    assert "user_id, plan, status, provider, paypal_order_id" in MIGRATION
+    assert "'premium', 'active', 'paypal'" in MIGRATION
+    assert "set plan = excluded.plan" in MIGRATION
     assert "pg_advisory_xact_lock" in MIGRATION
     assert "on conflict (provider, provider_payment_id, transaction_type) do nothing" in MIGRATION
 
