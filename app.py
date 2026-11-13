@@ -5111,8 +5111,16 @@ elif page == "SOWIA NIGHT EXCHANGE":
                     for row in external_apps
                 }
                 st.markdown("**Créer une proposition**")
+                # Keep the user's text after a failed submission. On success, clear
+                # it only on the next rerun and retain a visible confirmation.
+                nex_offer_success_ref = st.session_state.pop("nex_offer_success_notice", None)
+                if nex_offer_success_ref is not None:
+                    st.session_state.pop("nex_offer_summary", None)
+                    st.success("Proposition envoyée. Elle est visible uniquement par les deux participants.")
+                    st.caption("Référence : " + str(nex_offer_success_ref))
                 if app_labels and partner_labels:
-                    with st.form("nex_create_offer_form", clear_on_submit=True):
+                    st.caption("Après avoir rempli les trois champs, appuyez sur « Envoyer la proposition » juste sous la description.")
+                    with st.form("nex_create_offer_form", clear_on_submit=False):
                         sender_label = st.selectbox("Votre application approuvée", list(app_labels), key="nex_offer_sender")
                         recipient_label = st.selectbox("Application partenaire", list(partner_labels), key="nex_offer_recipient")
                         offer_summary = st.text_area(
@@ -5127,12 +5135,11 @@ elif page == "SOWIA NIGHT EXCHANGE":
                                 app_labels[sender_label]["id"], partner_labels[recipient_label]["id"],
                                 offer_summary
                             )
-                            st.success("Proposition envoyée. Elle est visible uniquement par les deux participants.")
-                            st.caption("Référence : " + str(offer_id))
+                            st.session_state["nex_offer_success_notice"] = str(offer_id)
                             st.rerun()
                         except Exception as exc:
-                            st.error("La proposition n’a pas pu être envoyée. Vérifiez les conditions d’éligibilité et l’absence d’une proposition déjà en attente.")
-                            st.caption("Diagnostic : " + type(exc).__name__)
+                            st.error("La proposition n’a pas pu être envoyée. Votre texte est conservé : corrigez le problème puis réessayez.")
+                            st.caption("Diagnostic technique : " + type(exc).__name__)
                 elif not own_approved:
                     st.info("Vous devez disposer d’au moins une application personnelle approuvée.")
                 else:
