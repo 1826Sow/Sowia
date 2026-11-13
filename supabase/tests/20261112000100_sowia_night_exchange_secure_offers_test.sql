@@ -3,20 +3,10 @@
 -- Uses the two existing synthetic auth users A and B. No real payments.
 begin;
 
-insert into public.sowia_entitlements
-    (user_id, status, provider, paypal_order_id, amount, currency, plan)
-values
-    ('f1792829-ca68-4815-b173-79bd13ce0ed3',
-     'active', 'paypal', 'SOWIA_NEX_OFFER_TEST_A', 1, 'EUR', 'premium'),
-    ('54b7271b-bc5f-4218-bad9-2b53aaa6e90f',
-     'active', 'paypal', 'SOWIA_NEX_OFFER_TEST_B', 1, 'EUR', 'premium')
-on conflict (user_id) do update set
-    status = excluded.status,
-    provider = excluded.provider,
-    paypal_order_id = excluded.paypal_order_id,
-    amount = excluded.amount,
-    currency = excluded.currency,
-    plan = excluded.plan;
+-- IMPORTANT: both synthetic accounts must already have valid Premium TEST access.
+-- This test never creates, changes, or simulates an entitlement or payment.
+-- If either account lacks Premium access, the guarded RPC must reject the test;
+-- provision access only through the separately approved TEST entitlement workflow.
 
 create temp table sowia_nex_test_apps (
     owner_label text primary key,
