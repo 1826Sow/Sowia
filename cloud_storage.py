@@ -694,6 +694,69 @@ def list_night_exchange_apps_for_admin(client, user, limit=200):
     )
 
 
+# SOWIA NIGHT EXCHANGE — bilateral offers and administrative integration review.
+
+def create_night_exchange_offer(client, user, sender_app_id, recipient_app_id, offer_summary):
+    """Create a bilateral offer through the database-enforced Premium workflow."""
+    _user_id(user)
+    summary = str(offer_summary or "").strip()
+    if not 10 <= len(summary) <= 2000:
+        raise ValueError("La proposition doit contenir entre 10 et 2000 caractères.")
+    if not sender_app_id or not recipient_app_id or str(sender_app_id) == str(recipient_app_id):
+        raise ValueError("Sélectionnez deux applications différentes.")
+    return client.rpc("sowia_nex_create_offer", {
+        "p_sender_app_id": str(sender_app_id),
+        "p_recipient_app_id": str(recipient_app_id),
+        "p_offer_summary": summary,
+    }).execute().data
+
+
+def respond_night_exchange_offer(client, user, offer_id, decision):
+    """Allow the recipient to accept or reject through the guarded SQL function."""
+    _user_id(user)
+    if decision not in {"accepted", "rejected"}:
+        raise ValueError("Décision invalide.")
+    return client.rpc("sowia_nex_respond_offer", {
+        "p_offer_id": str(offer_id),
+        "p_decision": decision,
+    }).execute()
+
+
+def list_my_night_exchange_offers(client, user, limit=200):
+    """List offers involving the authenticated user; RLS remains authoritative."""
+    user_id = _user_id(user)
+    columns = "id,sender_user_id,recipient_user_id,sender_app_id,recipient_app_id,offer_summary,status,integration_status,integration_review_note,created_at"
+    cap = min(max(int(limit), 1), 200)
+    sent = client.table("sowia_night_exchange_offers").select(columns).eq("sender_user_id", user_id).eq("workspace_id", "professional").order("created_at", desc=True).limit(cap).execute().data or []
+    received = client.table("sowia_night_exchange_offers").select(columns).eq("recipient_user_id", user_id).eq("workspace_id", "professional").order("created_at", desc=True).limit(cap).execute().data or []
+    unique = {str(row.get("id")): row for row in sent + received}
+    return sorted(unique.values(), key=lambda row: str(row.get("created_at") or ""), reverse=True)[:cap]
+
+
+def list_night_exchange_integrations_for_admin(client, user):
+    """Read the administrative queue via the signed-claim-checked SQL RPC."""
+    metadata = getattr(user, "app_metadata", None) or {}
+    if not (metadata.get("sowia_admin") is True or metadata.get("role") == "admin"):
+        raise PermissionError("Accès administrateur requis.")
+    return client.rpc("sowia_admin_list_nex_integrations", {}).execute().data or []
+
+
+def admin_review_night_exchange_integration(client, user, offer_id, decision, review_note=""):
+    """Approve/reject an accepted offer's integration through the guarded SQL RPC."""
+    metadata = getattr(user, "app_metadata", None) or {}
+    if not (metadata.get("sowia_admin") is True or metadata.get("role") == "admin"):
+        raise PermissionError("Accès administrateur requis.")
+    if decision not in {"approved", "rejected"}:
+        raise ValueError("Décision de validation invalide.")
+    if not isinstance(review_note, str) or len(review_note) > 1000:
+        raise ValueError("La note doit contenir au maximum 1000 caractères.")
+    return client.rpc("sowia_admin_review_nex_integration", {
+        "p_offer_id": str(offer_id),
+        "p_decision": decision,
+        "p_review_note": review_note,
+    }).execute()
+
+
 
 # SOWIA NIGHT EXCHANGE — append-only activity ledger.
 NIGHT_EXCHANGE_EVENT_TYPES = {
