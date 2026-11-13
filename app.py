@@ -4760,9 +4760,9 @@ elif page == "SOWIA NIGHT EXCHANGE":
         nex_is_admin = isinstance(nex_metadata, dict) and (
             nex_metadata.get("sowia_admin") is True or nex_metadata.get("role") == "admin"
         )
-        nex_tabs = ["🌐 Annuaire approuvé", "🤝 Matching SOWIA", "🏷️ Inscrire une application", "📂 Mes applications", "🌍 Horloge mondiale", "💡 Opportunités intelligentes", "☀️ Rapport matinal"]
+        nex_tabs = ["🌐 Annuaire approuvé", "🤝 Matching SOWIA", "🏷️ Inscrire une application", "📂 Mes applications", "🌍 Horloge mondiale", "💡 Opportunités intelligentes", "☀️ Rapport matinal", "📨 Propositions"]
         if nex_is_admin:
-            nex_tabs.append("🛡️ Modération")
+            nex_tabs.extend(["🛡️ Modération", "🔐 Validation des intégrations"])
         nex_tab_views = st.tabs(nex_tabs)
 
         with nex_tab_views[0]:
@@ -5042,9 +5042,84 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 st.error("Le journal d'activité n'est pas disponible. Appliquez la migration Supabase dédiée.")
                 st.caption(f"Diagnostic : {type(exc).__name__}")
 
+        with nex_tab_views[7]:
+            st.markdown("#### Propositions de collaboration")
+            st.caption("Les propositions sont adressées entre applications professionnelles approuvées. Seul le destinataire peut répondre.")
+            try:
+                own_offer_apps = cloud_storage.list_my_night_exchange_apps(
+                    supabase_client, current_user, workspace_id="professional", limit=200
+                )
+                approved_offer_apps = cloud_storage.list_approved_night_exchange_apps(
+                    supabase_client, current_user, limit=200
+                )
+                own_approved = [row for row in own_offer_apps if row.get("status") == "approved"]
+                current_user_id = str(getattr(current_user, "id", ""))
+                if own_approved and approved_offer_apps:
+                    own_labels = {f"{row['app_name']} · {row['country']}": row for row in own_approved}
+                    partner_labels = {
+                        f"{row['app_name']} · {row['country']}": row
+                        for row in approved_offer_apps
+                        if str(row.get("user_id") or "") != current_user_id
+                    }
+                    if partner_labels:
+                        with st.form("nex_create_offer_form", clear_on_submit=True):
+                            selected_own = st.selectbox("Votre application approuvée", list(own_labels), key="nex_offer_sender")
+                            selected_partner = st.selectbox("Application partenaire", list(partner_labels), key="nex_offer_recipient")
+                            offer_summary = st.text_area("Objet et conditions de la collaboration", max_chars=2000, key="nex_offer_summary", help="Entre 10 et 2000 caractères.")
+                            create_offer_clicked = st.form_submit_button("Envoyer la proposition", type="primary", use_container_width=True)
+                        if create_offer_clicked:
+                            try:
+                                created_offer_id = cloud_storage.create_night_exchange_offer(
+                                    supabase_client, current_user,
+                                    own_labels[selected_own]["id"], partner_labels[selected_partner]["id"],
+                                    offer_summary,
+                                )
+                                st.success("Proposition envoyée. Identifiant : " + str(created_offer_id))
+                                st.rerun()
+                            except Exception as exc:
+                                st.error("La proposition n’a pas pu être envoyée.")
+                                st.caption(f"Diagnostic : {type(exc).__name__}")
+                    else:
+                        st.info("Aucune application partenaire approuvée appartenant à un autre compte n’est disponible.")
+                else:
+                    st.info("Il faut une application personnelle approuvée et au moins une application partenaire approuvée.")
+                st.markdown("#### Mes propositions envoyées et reçues")
+                my_offers = cloud_storage.list_my_night_exchange_offers(supabase_client, current_user, limit=200)
+                if not my_offers:
+                    st.info("Aucune proposition pour le moment.")
+                for offer in my_offers:
+                    is_recipient = str(offer.get("recipient_user_id")) == current_user_id
+                    direction = "Reçue" if is_recipient else "Envoyée"
+                    status_labels = {"pending": "En attente de réponse", "accepted": "Acceptée", "rejected": "Refusée"}
+                    integration_labels = {"pending": "En attente de validation administrative", "approved": "Intégration approuvée", "rejected": "Intégration refusée", "not_requested": "Aucune intégration demandée"}
+                    with st.container(border=True):
+                        st.markdown(f"**{direction} · {status_labels.get(offer.get('status'), offer.get('status'))}**")
+                        st.write(offer.get("offer_summary") or "")
+                        st.caption("Intégration : " + integration_labels.get(offer.get("integration_status"), str(offer.get("integration_status") or "—")))
+                        st.caption("Créée le : " + str(offer.get("created_at") or "—"))
+                        if offer.get("integration_review_note"):
+                            st.info("Note administrative : " + str(offer["integration_review_note"]))
+                        if is_recipient and offer.get("status") == "pending":
+                            response_cols = st.columns(2)
+                            for col, decision, label in zip(response_cols, ["accepted", "rejected"], ["Accepter", "Refuser"]):
+                                with col:
+                                    if st.button(label, key=f"nex_offer_{decision}_{offer['id']}", use_container_width=True):
+                                        try:
+                                            cloud_storage.respond_night_exchange_offer(
+                                                supabase_client, current_user, offer["id"], decision
+                                            )
+                                            st.success("Votre réponse a été enregistrée.")
+                                            st.rerun()
+                                        except Exception as exc:
+                                            st.error("La réponse n’a pas pu être enregistrée.")
+                                            st.caption(f"Diagnostic : {type(exc).__name__}")
+            except Exception as exc:
+                st.error("Le module de propositions n’est pas disponible.")
+                st.caption(f"Diagnostic : {type(exc).__name__}")
+
         if nex_is_admin:
-            with nex_tab_views[7]:
-                st.markdown("#### Console de validation SOWIA")
+            with nex_tab_views[8]:
+                st.markdown("#### Console de modération des applications")
                 st.caption("Les décisions de modération sont contrôlées par une fonction SQL qui vérifie le rôle administrateur signé.")
                 try:
                     pending_apps = cloud_storage.list_night_exchange_apps_for_admin(
@@ -5078,6 +5153,41 @@ elif page == "SOWIA NIGHT EXCHANGE":
                                             st.caption(f"Diagnostic : {type(exc).__name__}")
                 except Exception as exc:
                     st.error("La console de modération n’est pas disponible. Vérifiez la migration et les droits administrateur Supabase.")
+                    st.caption(f"Diagnostic : {type(exc).__name__}")
+
+            with nex_tab_views[9]:
+                st.markdown("#### Validation administrative des intégrations")
+                st.caption("Cette file ne contient que les propositions acceptées dont l’intégration attend une décision administrative. La validation SQL contrôle également les deux applications.")
+                try:
+                    pending_integrations = cloud_storage.list_night_exchange_integrations_for_admin(
+                        supabase_client, current_user
+                    )
+                    if not pending_integrations:
+                        st.success("Aucune intégration en attente de validation.")
+                    for integration in pending_integrations:
+                        with st.container(border=True):
+                            st.markdown("**Proposition · " + str(integration.get("id")) + "**")
+                            st.write(integration.get("offer_summary") or "")
+                            st.caption("Émetteur : " + str(integration.get("sender_user_id")))
+                            st.caption("Destinataire : " + str(integration.get("recipient_user_id")))
+                            st.caption("Applications : " + str(integration.get("sender_app_id")) + " → " + str(integration.get("recipient_app_id")))
+                            st.caption("Créée le : " + str(integration.get("created_at") or "—"))
+                            review_note = st.text_area("Note de décision", key=f"nex_integration_note_{integration['id']}", max_chars=1000)
+                            review_cols = st.columns(2)
+                            for col, decision, label in zip(review_cols, ["approved", "rejected"], ["Approuver l’intégration", "Refuser l’intégration"]):
+                                with col:
+                                    if st.button(label, key=f"nex_integration_{decision}_{integration['id']}", use_container_width=True):
+                                        try:
+                                            cloud_storage.admin_review_night_exchange_integration(
+                                                supabase_client, current_user, integration["id"], decision, review_note
+                                            )
+                                            st.success("Décision administrative enregistrée et journalisée.")
+                                            st.rerun()
+                                        except Exception as exc:
+                                            st.error("Décision non enregistrée. Vérifiez notamment que les deux applications sont toujours approuvées.")
+                                            st.caption(f"Diagnostic : {type(exc).__name__}")
+                except Exception as exc:
+                    st.error("La file de validation des intégrations n’est pas accessible.")
                     st.caption(f"Diagnostic : {type(exc).__name__}")
 
 elif page == "SOW IA Business Club":
