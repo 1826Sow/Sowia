@@ -61,7 +61,7 @@ class NightExchangeOfferHelperTests(unittest.TestCase):
         self.user = SimpleNamespace(id="user-123", app_metadata={"role": "admin"})
 
     def test_create_offer_trims_summary_and_uses_guarded_rpc(self):
-        client = FakeClient(rpc_data="offer-456")
+        client = FakeClient(rpc_data="offer-456", table_data=[{"id": "offer-456"}])
         result = cloud_storage.create_night_exchange_offer(
             client, self.user, "sender-app", "recipient-app", "  Collaboration proposal  "
         )
@@ -74,6 +74,26 @@ class NightExchangeOfferHelperTests(unittest.TestCase):
                 "p_offer_summary": "Collaboration proposal",
             },
         )])
+        self.assertEqual(client.table_name, "sowia_night_exchange_offers")
+        self.assertIn(("sender_user_id", "user-123"), client.query.filters)
+        self.assertIn(("workspace_id", "professional"), client.query.filters)
+
+    def test_create_offer_fails_closed_when_rpc_returns_no_identifier(self):
+        client = FakeClient(rpc_data=None)
+        with self.assertRaisesRegex(RuntimeError, "aucun identifiant"):
+            cloud_storage.create_night_exchange_offer(
+                client, self.user, "sender-app", "recipient-app",
+                "A sufficiently long collaboration proposal"
+            )
+        self.assertEqual(len(client.rpc_calls), 1)
+
+    def test_create_offer_fails_when_new_row_is_not_visible_in_sender_outbox(self):
+        client = FakeClient(rpc_data="offer-456", table_data=[])
+        with self.assertRaisesRegex(RuntimeError, "pas visible dans la boîte d'envoi"):
+            cloud_storage.create_night_exchange_offer(
+                client, self.user, "sender-app", "recipient-app",
+                "A sufficiently long collaboration proposal"
+            )
 
     def test_create_offer_rejects_short_summary_before_rpc(self):
         client = FakeClient()
