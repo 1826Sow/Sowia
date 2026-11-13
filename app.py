@@ -272,7 +272,7 @@ if cloud_mode:
                 github_login_url = github_authorization_url(supabase_client, redirect_to)
                 st.session_state.sowia_github_login_url = github_login_url
             except Exception as github_exc:
-                st.caption("Connexion GitHub temporairement indisponible : " + type(github_exc).__name__)
+                st.caption("La connexion GitHub n'a pas pu être préparée. Réessayez ou utilisez la connexion de secours par e-mail.")
         if github_login_url:
             st.link_button(
                 "Continuer avec GitHub",
