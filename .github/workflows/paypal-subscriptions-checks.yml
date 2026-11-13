@@ -2,9 +2,9 @@ name: PayPal subscription safety checks
 
 on:
   push:
-    branches: [main]
+    branches: [main, "feature/nex-secure-exchange-workflow"]
   pull_request:
-    branches: [main]
+    branches: [main, "security/hardening-clean"]
     paths:
       - "app.py"
       - "paypal_subscriptions.py"
