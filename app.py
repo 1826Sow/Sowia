@@ -4791,6 +4791,8 @@ elif page == "SOWIA NIGHT EXCHANGE":
         st.warning("Cet espace professionnel est réservé aux comptes Premium.")
     elif not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre compte sécurisé pour enregistrer une application partenaire. En mode local, aucune fiche ne sera conservée dans le registre mondial.")
+    elif st.session_state.get("workspace_id", "professional") != "professional":
+        st.warning("NIGHT EXCHANGE est réservé à l’espace Professionnel. Passez dans cet espace pour consulter ou inscrire des applications.")
     else:
         st.markdown(
             '<div class="partner-intro"><h3>Le marché mondial qui travaille pendant la nuit</h3>'
@@ -4798,7 +4800,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
             'Chaque nouvelle fiche est privée et soumise à validation avant toute apparition dans l’annuaire public.</p></div>',
             unsafe_allow_html=True,
         )
-        nex_workspace = st.session_state.get("workspace_id", "professional")
+        nex_workspace = "professional"
         nex_metadata = getattr(current_user, "app_metadata", None) or {}
         nex_is_admin = isinstance(nex_metadata, dict) and (
             nex_metadata.get("sowia_admin") is True or nex_metadata.get("role") == "admin"
