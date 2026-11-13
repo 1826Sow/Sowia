@@ -30,6 +30,11 @@ class NightExchangeAppWiringTests(unittest.TestCase):
         self.assertIn('NIGHT EXCHANGE est réservé à l’espace Professionnel', self.source)
         self.assertIn('nex_workspace = "professional"', self.source)
 
+    def test_offer_form_preserves_draft_on_failure_and_confirms_success(self):
+        self.assertIn('with st.form("nex_create_offer_form", clear_on_submit=False):', self.source)
+        self.assertIn('nex_offer_success_notice', self.source)
+        self.assertIn('Votre texte est conservé', self.source)
+
     def test_app_source_parses_as_python(self):
         self.assertIsInstance(self.tree, ast.Module)
 
