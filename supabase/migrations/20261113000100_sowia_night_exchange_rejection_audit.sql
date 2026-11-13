@@ -2,25 +2,9 @@
 -- Additive migration. Does not alter offer state rules or payment processing.
 begin;
 
-do $$
-declare
-    v_constraint record;
-begin
-    -- Replace the existing event_type CHECK without relying on its generated name.
-    for v_constraint in
-        select conname
-          from pg_catalog.pg_constraint
-         where conrelid = 'public.sowia_night_exchange_events'::regclass
-           and contype = 'c'
-           and pg_catalog.pg_get_constraintdef(oid) ilike '%event_type%'
-    loop
-        execute pg_catalog.format(
-            'alter table public.sowia_night_exchange_events drop constraint %I',
-            v_constraint.conname
-        );
-    end loop;
-end;
-$$;
+-- Replace only the event_type CHECK; preserve unrelated CHECK constraints.
+alter table public.sowia_night_exchange_events
+    drop constraint if exists sowia_night_exchange_events_event_type_check;
 
 alter table public.sowia_night_exchange_events
     add constraint sowia_night_exchange_events_event_type_check
