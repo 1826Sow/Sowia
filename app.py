@@ -238,13 +238,13 @@ if cloud_mode:
         )
         st.subheader(translate_ui("Connexion à SOW IA", language))
         st.write("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA. Un lien sécurisé à usage unique vous sera envoyé. Aucun compte GitHub n’est nécessaire.")
-        callback_code_present = bool(st.query_params.get("code"))
+        callback_code_present = bool(st.query_params.get("code") or st.query_params.get("token_hash"))
         callback_error = str(st.query_params.get("error", "")).strip()
         callback_error_description = str(st.query_params.get("error_description", "")).strip()
         st.caption(
             "Diagnostic de retour : "
-            + ("code de connexion reçu" if callback_code_present else "aucun code de connexion reçu")
-            + (f" · erreur OAuth : {callback_error}" if callback_error else "")
+            + ("retour de connexion reçu" if callback_code_present else "aucun retour de connexion reçu")
+            + (f" · erreur de connexion : {callback_error}" if callback_error else "")
         )
         if callback_error_description:
             st.warning("Motif communiqué par le fournisseur : " + callback_error_description[:300])
@@ -263,8 +263,8 @@ if cloud_mode:
         else:
             st.error("Adresse publique HTTPS invalide. Ouvrez SOW IA depuis son adresse Streamlit officielle.")
 
-        # Connexion utilisateur par e-mail uniquement : aucun compte GitHub requis.\n\n        # Keep the email form outside the GitHub try/except so it always renders.
-        st.markdown("#### Autre méthode : connexion par e-mail")
+        # Keep the email form visible as the single supported user sign-in method.
+        st.markdown("#### Connexion sécurisée par e-mail")
         st.caption("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA. Un lien à usage unique sera envoyé ; aucun nouveau compte ne sera créé.")
         email_address = st.text_input(
             "Adresse e-mail du compte SOW IA",
