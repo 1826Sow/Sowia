@@ -115,7 +115,7 @@ def browser_storage_id():
     component = st.components.v2.component(
         name="sowia_browser_scope",
         html='<span aria-hidden="true"></span>',
-        js="""
+        js=r"""
         const STORAGE_KEY = "sowia.browser_scope.v1";
         function newBrowserId() {
             const bytes = new Uint8Array(32);
