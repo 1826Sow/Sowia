@@ -283,6 +283,15 @@ if cloud_mode:
 
         st.markdown("#### Connexion de secours par e-mail")
         st.caption("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA. Un lien à usage unique sera envoyé ; aucun nouveau compte ne sera créé.")
+
+        # Streamlit preserves keyed widget values in session_state. Explicitly
+        # clear both the widget value and the remembered address before rerun,
+        # so a previous login address can be replaced on mobile as well.
+        if st.button("Changer d'adresse e-mail", key="sowia_reset_email_login", use_container_width=True):
+            st.session_state.pop("sowia_email_login_address", None)
+            st.session_state.pop("sowia_email_login_pending", None)
+            st.rerun()
+
         email_address = st.text_input(
             "Adresse e-mail du compte SOW IA",
             value=st.session_state.get("sowia_email_login_pending", ""),
