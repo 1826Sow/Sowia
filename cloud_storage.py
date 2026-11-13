@@ -755,7 +755,33 @@ def create_night_exchange_offer(client, user, sender_app_id, recipient_app_id, o
         "p_recipient_app_id": str(recipient_app_id),
         "p_offer_summary": summary,
     }).execute()
-    return result.data
+
+    # Normalize the RPC return value before claiming that the proposal was sent.
+    returned = result.data
+    if isinstance(returned, dict):
+        offer_id = returned.get("id") or returned.get("offer_id")
+    elif isinstance(returned, list):
+        first = returned[0] if returned else None
+        offer_id = (first.get("id") or first.get("offer_id")) if isinstance(first, dict) else first
+    else:
+        offer_id = returned
+    if not offer_id:
+        raise RuntimeError(
+            "La fonction Supabase n'a retourné aucun identifiant de proposition. "
+            "Aucune confirmation d'envoi ne peut être affichée."
+        )
+
+    # Read-after-write: verify that RLS exposes the new row to its sender.
+    visible_outbox = list_night_exchange_offers(
+        client, user, workspace_id="professional", direction="outbox", limit=200
+    )
+    if not any(str(row.get("id")) == str(offer_id) for row in visible_outbox):
+        raise RuntimeError(
+            "Supabase a retourné une référence de proposition, mais celle-ci "
+            "n'est pas visible dans la boîte d'envoi du compte connecté. "
+            "Vérifiez les règles RLS, l'identité du compte et l'espace professionnel."
+        )
+    return offer_id
 
 
 def respond_night_exchange_offer(client, user, offer_id, decision):
