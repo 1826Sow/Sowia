@@ -16,6 +16,12 @@ class SowiaEmailAuthWiringTests(unittest.TestCase):
         self.assertIn('flow_type="pkce"', self.auth)
         self.assertIn("create_user_client(browser_id)", self.app)
 
+    def test_github_oauth_remains_available_without_email_login(self):
+        self.assertIn('st.markdown("#### Connexion sans e-mail")', self.app)
+        self.assertIn("github_authorization_url(supabase_client, redirect_to)", self.app)
+        self.assertIn('"Continuer avec GitHub"', self.app)
+        self.assertIn('st.markdown("#### Connexion de secours par e-mail")', self.app)
+
     def test_email_link_uses_separate_implicit_client(self):
         self.assertIn('flow_type="implicit"', self.auth)
         self.assertIn("create_email_user_client()", self.app)
