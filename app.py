@@ -56,8 +56,10 @@ st.markdown(
     .stApp { background: linear-gradient(180deg, #f5f8fc 0%, #edf2f8 100%) !important; color: #17243a !important; }
     [data-testid="stAppViewContainer"], [data-testid="stMain"] { background: transparent !important; color: #17243a !important; }
     [data-testid="stMainBlockContainer"] { max-width: 1240px; padding-top: 1.2rem; padding-bottom: 3.2rem; }
-    section[data-testid="stSidebar"] { background: #e8eef6 !important; border-right: 1px solid #d6e0ed !important; }
-    section[data-testid="stSidebar"] * { color: #23364f !important; }
+    section[data-testid="stSidebar"] { background: linear-gradient(180deg,#030b1c 0%,#071b39 72%,#020817 100%) !important; border-right: 1px solid #174d85 !important; }
+    section[data-testid="stSidebar"] * { color: #f1f7ff !important; }
+    section[data-testid="stSidebar"] [data-testid="stSelectbox"] > label { color:#9bdcff !important; font-weight:700; }
+    section[data-testid="stSidebar"] div[data-baseweb="select"] > div { background:#0c2344 !important; border:1px solid #1766a4 !important; border-radius:11px !important; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label { border-radius: 11px; padding: .38rem .55rem; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { background: #d7e5f4; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color: #15395e !important; font-weight: 750; }
@@ -633,11 +635,30 @@ with st.sidebar:
         on_change=choose_navigation_category,
     )
     selected_pages = NAV_GROUPS[st.session_state.nav_category]
+    page_icons = {
+        "Accueil": "🏠", "Hub SOWIA": "🧭", "Assistant IA": "💬",
+        "Ma mémoire": "🧠", "Recherche Web": "🌐", "Analyse PDF": "📕",
+        "Créer un PDF": "📄", "Mes documents": "🗂️", "Historique": "🕘",
+        "Développement mondial": "🌍", "SOWIA NIGHT EXCHANGE": "🌙",
+        "SOWIA GLOBAL ID": "🪪", "SOWIA GLOBAL DIRECTORY": "📇",
+        "SOWIA GLOBAL TRUST": "🛡️", "SOWIA GLOBAL ADMIN & MODERATION": "⚖️",
+        "SOW IA Business Club": "🤝", "Opportunités et revenus": "💎",
+        "Technologies & fournisseurs": "🧩", "SOWIA GLOBAL COLLABORATION HUB": "🌐",
+        "Décisions humaines vs SOW IA": "⚖️", "SOWIA GLOBAL INTELLIGENCE": "✨",
+        "SOWIA GLOBAL PULSE": "📡", "SOWIA GLOBAL STRATEGIC FORECAST": "🔭",
+        "SOWIA GLOBAL DECISION ENGINE": "🎯", "SOWIA GLOBAL LEARNING ENGINE": "🎓",
+        "Stratégie & scénarios": "♟️", "SOWIA GLOBAL AUTONOMOUS STRATEGY": "🧭",
+        "SOWIA GLOBAL ACTION GOVERNANCE": "🏛️", "SOWIA GLOBAL PERFORMANCE & IMPACT": "📈",
+        "SOWIA GLOBAL PORTFOLIO CONTROL": "🗃️", "SOWIA GLOBAL EXECUTIVE REPORTS": "📊",
+        "Finance & investissements": "💶", "Revenus & paiements": "💳",
+        "Abonnement": "👑", "Centre de notifications": "🔔",
+        "SOWIA CONTROL CENTER": "🎛️", "Paramètres": "⚙️", "Aide": "❔",
+    }
     page = st.selectbox(
         "🧭 Outil à ouvrir",
         selected_pages,
         key="page_nav",
-        format_func=lambda value: translate_ui(value, language),
+        format_func=lambda value: f"{page_icons.get(value, '✦')}  {translate_ui(value, language)}",
         on_change=sync_navigation_category,
     )
 st.markdown(
