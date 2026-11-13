@@ -263,8 +263,25 @@ if cloud_mode:
         else:
             st.error("Adresse publique HTTPS invalide. Ouvrez SOW IA depuis son adresse Streamlit officielle.")
 
-        # Keep the email form visible as the single supported user sign-in method.
-        st.markdown("#### Connexion sécurisée par e-mail")
+        # Prefer the already-configured GitHub OAuth flow to avoid sending
+        # a login email on every sign-in. Keep email magic-link as a fallback.
+        st.markdown("#### Connexion sans e-mail")
+        github_login_url = st.session_state.get("sowia_github_login_url")
+        if not github_login_url and redirect_to:
+            try:
+                github_login_url = github_authorization_url(supabase_client, redirect_to)
+                st.session_state.sowia_github_login_url = github_login_url
+            except Exception as github_exc:
+                st.caption("Connexion GitHub temporairement indisponible : " + type(github_exc).__name__)
+        if github_login_url:
+            st.link_button(
+                "Continuer avec GitHub",
+                github_login_url,
+                type="primary",
+                use_container_width=True,
+            )
+
+        st.markdown("#### Connexion de secours par e-mail")
         st.caption("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA. Un lien à usage unique sera envoyé ; aucun nouveau compte ne sera créé.")
         email_address = st.text_input(
             "Adresse e-mail du compte SOW IA",
