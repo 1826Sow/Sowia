@@ -23,3 +23,29 @@ Before publishing:
 - Do not expose Supabase service-role keys or private application data on this page.
 - Do not add analytics or tracking until the measurement plan and privacy notice are approved.
 - The landing page describes only capabilities documented in the repository; optional services may require configuration.
+
+## Audience measurement — approved direction
+
+The project owner approved Cloudflare Web Analytics as the preferred visitor-measurement option. This is a preparation decision, not an active installation: the landing page has no public hostname or separate hosting deployment yet, and no Cloudflare site token has been supplied.
+
+### What it can measure
+
+- Page views and visitor/audience metrics shown in the Cloudflare Web Analytics dashboard.
+- Performance measurements collected by the Cloudflare beacon.
+
+Cloudflare Web Analytics does **not** currently support custom events. Do not promise or implement CTA/button-click counts with this beacon alone. If click-through measurement is later required, assess a separate privacy-reviewed method.
+
+### Activation after hosting is chosen
+
+1. Publish this static directory on the selected host and confirm the final public hostname.
+2. Create a Cloudflare account/site entry for that hostname under Web Analytics.
+3. If using Cloudflare Pages, enable Web Analytics in the Pages project's Metrics tab; Cloudflare says the beacon is added on the next deployment. Otherwise, copy the hostname-specific snippet from Manage site and add it before the closing `</body>` tag.
+4. Verify that data appears in the Cloudflare dashboard and that the configured hostname matches the live site.
+5. Add a clear privacy notice describing audience measurement and verify the provider's contractual and technical configuration against current CNIL requirements before relying on any consent exemption. Do not assume that a tool is automatically exempt merely because it is described as privacy-first.
+
+Official references:
+- [Cloudflare Web Analytics setup](https://developers.cloudflare.com/web-analytics/get-started/)
+- [Cloudflare Web Analytics FAQ](https://developers.cloudflare.com/web-analytics/faq/)
+- [CNIL — audience measurement solutions](https://www.cnil.fr/fr/cookies-solutions-pour-les-outils-de-mesure-daudience)
+
+No tracking script, cookie banner, account identifier, or visitor-level profiling is added by this preparation change.
