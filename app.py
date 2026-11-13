@@ -683,12 +683,8 @@ with st.sidebar:
     page = st.session_state.get("page_nav", "Accueil")
 
 st.markdown(
-    '<div class="hero"><div class="hero-kicker">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>'
-    '<h1>🧠 SOW <span style="color:#42d7ff;text-shadow:0 0 22px rgba(35,190,255,.55)">IA</span></h1>'
-    '<p>Explorez, apprenez, créez et transformez vos idées. Un environnement intelligent au service des particuliers, des entreprises et des partenaires.</p>'
-    '<div class="hero-meta"><span class="hero-chip">🔐 Espaces sécurisés</span>'
-    '<span class="hero-chip">🌍 Ouverture internationale</span>'
-    '<span class="hero-chip">🤝 Collaboration professionnelle</span></div></div>',
+    '<h1 style="margin:.2rem 0 .35rem;font-size:2rem;font-weight:800;color:#17243a;">SOW IA</h1>'
+    '<p style="margin:0 0 1.1rem;color:#52647b;font-size:1rem;">Votre espace intelligent pour explorer, apprendre, créer et collaborer.</p>',
     unsafe_allow_html=True,
 )
 st.write("")
