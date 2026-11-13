@@ -341,18 +341,56 @@ def complete_github_login(client, authorization_code):
     )
 
 
-def authenticated_user(client):
-    """Validate an existing session and return its authenticated user, if any.
+def _jwt_app_metadata(access_token):
+    """Read non-sensitive JWT claims locally; never return or log the token."""
+    import base64
+    import json
 
-    supabase-py versions expose get_session() as either a Session directly
-    or a response wrapper containing .session. Accept both shapes.
+    parts = str(access_token or "").split(".")
+    if len(parts) != 3:
+        return {}
+    try:
+        payload = parts[1] + "=" * (-len(parts[1]) % 4)
+        claims = json.loads(base64.urlsafe_b64decode(payload.encode("ascii")))
+    except (ValueError, TypeError, UnicodeError):
+        return {}
+    metadata = claims.get("app_metadata", {})
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def authenticated_user(client):
+    """Validate the session and refresh stale administrator claims when needed.
+
+    Supabase get_user() can return current database metadata while PostgREST
+    RPC authorization still uses older app_metadata embedded in the access JWT.
+    Refresh only when the validated user is an admin but the signed token lacks
+    that admin claim. Ordinary sessions are not refreshed by this helper.
     """
     session_response = client.auth.get_session()
     session = getattr(session_response, "session", session_response)
     if session is None:
         return None
+
     response = client.auth.get_user()
-    return getattr(response, "user", response)
+    user = getattr(response, "user", response)
+    user_metadata = getattr(user, "app_metadata", None)
+    token_metadata = _jwt_app_metadata(getattr(session, "access_token", None))
+
+    if isinstance(user_metadata, dict):
+        user_is_admin = (
+            user_metadata.get("sowia_admin") is True
+            or user_metadata.get("role") == "admin"
+        )
+        token_is_admin = (
+            token_metadata.get("sowia_admin") is True
+            or token_metadata.get("role") == "admin"
+        )
+        if user_is_admin and not token_is_admin:
+            client.auth.refresh_session()
+            refreshed_response = client.auth.get_user()
+            user = getattr(refreshed_response, "user", refreshed_response)
+
+    return user
 
 
 def sign_out(client):
