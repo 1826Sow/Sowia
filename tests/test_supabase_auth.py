@@ -343,3 +343,51 @@ def test_email_magic_link_rejects_non_https_redirect():
         supabase_auth.email_magic_link(
             object(), "user@example.com", "http://sowia.example"
         )
+
+
+@pytest.mark.parametrize("otp_type", ["magiclink", "email"])
+def test_email_magic_link_verification_accepts_only_supported_types(otp_type):
+    calls = []
+
+    class Auth:
+        def verify_otp(self, payload):
+            calls.append(payload)
+            return "verified"
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    assert supabase_auth.complete_email_magic_link(
+        client, "one-time-token-hash", otp_type
+    ) == "verified"
+    assert calls == [{
+        "token_hash": "one-time-token-hash",
+        "type": otp_type,
+    }]
+
+
+@pytest.mark.parametrize("otp_type", ["signup", "recovery", ""])
+def test_email_magic_link_verification_rejects_other_token_types(otp_type):
+    class Auth:
+        def verify_otp(self, _payload):
+            raise AssertionError("Unsupported token types must not reach Supabase")
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    with pytest.raises(ValueError, match="invalide ou expiré"):
+        supabase_auth.complete_email_magic_link(
+            client, "one-time-token-hash", otp_type
+        )
+
+
+@pytest.mark.parametrize("token_hash", ["", None, "x" * 4097])
+def test_email_magic_link_verification_rejects_missing_or_oversized_tokens(token_hash):
+    class Auth:
+        def verify_otp(self, _payload):
+            raise AssertionError("Invalid token hashes must not reach Supabase")
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    with pytest.raises(ValueError, match="invalide ou expiré"):
+        supabase_auth.complete_email_magic_link(
+            client, token_hash, "magiclink"
+        )
