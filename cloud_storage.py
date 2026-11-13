@@ -727,8 +727,8 @@ def list_my_night_exchange_offers(client, user, limit=200):
     user_id = _user_id(user)
     columns = "id,sender_user_id,recipient_user_id,sender_app_id,recipient_app_id,offer_summary,status,integration_status,integration_review_note,created_at"
     cap = min(max(int(limit), 1), 200)
-    sent = client.table("sowia_night_exchange_offers").select(columns).eq("sender_user_id", user_id).order("created_at", desc=True).limit(cap).execute().data or []
-    received = client.table("sowia_night_exchange_offers").select(columns).eq("recipient_user_id", user_id).order("created_at", desc=True).limit(cap).execute().data or []
+    sent = client.table("sowia_night_exchange_offers").select(columns).eq("sender_user_id", user_id).eq("workspace_id", "professional").order("created_at", desc=True).limit(cap).execute().data or []
+    received = client.table("sowia_night_exchange_offers").select(columns).eq("recipient_user_id", user_id).eq("workspace_id", "professional").order("created_at", desc=True).limit(cap).execute().data or []
     unique = {str(row.get("id")): row for row in sent + received}
     return sorted(unique.values(), key=lambda row: str(row.get("created_at") or ""), reverse=True)[:cap]
 
