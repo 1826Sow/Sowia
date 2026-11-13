@@ -253,3 +253,63 @@ def test_authenticated_user_propagates_server_validation_errors():
 
     with pytest.raises(ConnectionError, match="unavailable"):
         supabase_auth.authenticated_user(client)
+
+def test_authenticated_user_refreshes_stale_admin_jwt_claims():
+    import base64
+    import json
+
+    payload = base64.urlsafe_b64encode(
+        json.dumps({"app_metadata": {}}).encode()
+    ).decode().rstrip("=")
+    access_token = "header." + payload + ".signature"
+    expected_user = type(
+        "User", (),
+        {"app_metadata": {"sowia_admin": True}},
+    )()
+    calls = []
+
+    class Auth:
+        def get_session(self):
+            return type("Session", (), {"access_token": access_token})()
+
+        def get_user(self):
+            calls.append("get_user")
+            return type("UserResponse", (), {"user": expected_user})()
+
+        def refresh_session(self):
+            calls.append("refresh_session")
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    assert supabase_auth.authenticated_user(client) is expected_user
+    assert calls == ["get_user", "refresh_session", "get_user"]
+
+
+def test_authenticated_user_does_not_refresh_when_admin_claim_is_current():
+    import base64
+    import json
+
+    payload = base64.urlsafe_b64encode(
+        json.dumps({"app_metadata": {"sowia_admin": True}}).encode()
+    ).decode().rstrip("=")
+    access_token = "header." + payload + ".signature"
+    expected_user = type(
+        "User", (),
+        {"app_metadata": {"sowia_admin": True}},
+    )()
+    calls = []
+
+    class Auth:
+        def get_session(self):
+            return type("Session", (), {"access_token": access_token})()
+
+        def get_user(self):
+            return type("UserResponse", (), {"user": expected_user})()
+
+        def refresh_session(self):
+            calls.append("refresh_session")
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    assert supabase_auth.authenticated_user(client) is expected_user
+    assert calls == []
