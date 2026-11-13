@@ -62,6 +62,12 @@ st.markdown(
     section[data-testid="stSidebar"] button[kind="header"]:hover { background:rgba(16,75,118,.9) !important; border-color:#37c8ff !important; }
     section[data-testid="stSidebar"] * { color: #f1f7ff !important; }
     section[data-testid="stSidebar"] [data-testid="stSelectbox"] > label { color:#9bdcff !important; font-weight:700; }
+    .sowia-nav-heading { color:#77dfff; font-size:.7rem; font-weight:800; letter-spacing:.16em; margin:.85rem .15rem .5rem; }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button { justify-content:flex-start !important; text-align:left !important; border-radius:10px !important; min-height:2.55rem !important; margin:.12rem 0 !important; transition:background .16s ease,border-color .16s ease,transform .16s ease; }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button:not([kind="primary"]) { background:rgba(9,34,64,.48) !important; border:1px solid rgba(87,164,220,.13) !important; }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button:not([kind="primary"]):hover { background:rgba(17,78,121,.78) !important; border-color:#37c8ff !important; transform:translateX(2px); }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"] { background:linear-gradient(100deg,#075b91,#087eb5) !important; border:1px solid #39caff !important; box-shadow:0 0 14px rgba(39,190,255,.18) !important; }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button [data-testid="stMarkdownContainer"] p { font-weight:650 !important; font-size:.88rem !important; }
     section[data-testid="stSidebar"] div[data-baseweb="select"] > div { background:#0c2344 !important; border:1px solid #1766a4 !important; border-radius:11px !important; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label { border-radius: 11px; padding: .38rem .55rem; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { background: #d7e5f4; }
@@ -640,32 +646,42 @@ with st.sidebar:
         on_change=choose_navigation_category,
     )
     selected_pages = NAV_GROUPS[st.session_state.nav_category]
-    page_icons = {
-        "Accueil": "🏠", "Hub SOWIA": "🧭", "Assistant IA": "💬",
-        "Ma mémoire": "🧠", "Recherche Web": "🌐", "Analyse PDF": "📕",
-        "Créer un PDF": "📄", "Mes documents": "🗂️", "Historique": "🕘",
-        "Développement mondial": "🌍", "SOWIA NIGHT EXCHANGE": "🌙",
-        "SOWIA GLOBAL ID": "🪪", "SOWIA GLOBAL DIRECTORY": "📇",
-        "SOWIA GLOBAL TRUST": "🛡️", "SOWIA GLOBAL ADMIN & MODERATION": "⚖️",
-        "SOW IA Business Club": "🤝", "Opportunités et revenus": "💎",
-        "Technologies & fournisseurs": "🧩", "SOWIA GLOBAL COLLABORATION HUB": "🌐",
-        "Décisions humaines vs SOW IA": "⚖️", "SOWIA GLOBAL INTELLIGENCE": "✨",
-        "SOWIA GLOBAL PULSE": "📡", "SOWIA GLOBAL STRATEGIC FORECAST": "🔭",
-        "SOWIA GLOBAL DECISION ENGINE": "🎯", "SOWIA GLOBAL LEARNING ENGINE": "🎓",
-        "Stratégie & scénarios": "♟️", "SOWIA GLOBAL AUTONOMOUS STRATEGY": "🧭",
-        "SOWIA GLOBAL ACTION GOVERNANCE": "🏛️", "SOWIA GLOBAL PERFORMANCE & IMPACT": "📈",
-        "SOWIA GLOBAL PORTFOLIO CONTROL": "🗃️", "SOWIA GLOBAL EXECUTIVE REPORTS": "📊",
-        "Finance & investissements": "💶", "Revenus & paiements": "💳",
-        "Abonnement": "👑", "Centre de notifications": "🔔",
-        "SOWIA CONTROL CENTER": "🎛️", "Paramètres": "⚙️", "Aide": "❔",
+    page_material_icons = {
+        "Accueil": "home", "Hub SOWIA": "dashboard", "Assistant IA": "chat",
+        "Ma mémoire": "psychology", "Recherche Web": "travel_explore", "Analyse PDF": "picture_as_pdf",
+        "Créer un PDF": "post_add", "Mes documents": "folder_open", "Historique": "history",
+        "Développement mondial": "public", "SOWIA NIGHT EXCHANGE": "nightlight",
+        "SOWIA GLOBAL ID": "badge", "SOWIA GLOBAL DIRECTORY": "contacts",
+        "SOWIA GLOBAL TRUST": "verified_user", "SOWIA GLOBAL ADMIN & MODERATION": "gavel",
+        "SOW IA Business Club": "handshake", "Opportunités et revenus": "diamond",
+        "Technologies & fournisseurs": "hub", "SOWIA GLOBAL COLLABORATION HUB": "groups",
+        "Décisions humaines vs SOW IA": "balance", "SOWIA GLOBAL INTELLIGENCE": "neurology",
+        "SOWIA GLOBAL PULSE": "sensors", "SOWIA GLOBAL STRATEGIC FORECAST": "query_stats",
+        "SOWIA GLOBAL DECISION ENGINE": "target", "SOWIA GLOBAL LEARNING ENGINE": "school",
+        "Stratégie & scénarios": "strategy", "SOWIA GLOBAL AUTONOMOUS STRATEGY": "explore",
+        "SOWIA GLOBAL ACTION GOVERNANCE": "account_balance", "SOWIA GLOBAL PERFORMANCE & IMPACT": "monitoring",
+        "SOWIA GLOBAL PORTFOLIO CONTROL": "inventory_2", "SOWIA GLOBAL EXECUTIVE REPORTS": "analytics",
+        "Finance & investissements": "payments", "Revenus & paiements": "credit_card",
+        "Abonnement": "workspace_premium", "Centre de notifications": "notifications",
+        "SOWIA CONTROL CENTER": "tune", "Paramètres": "settings", "Aide": "help",
     }
-    page = st.selectbox(
-        "🧭 Outil à ouvrir",
-        selected_pages,
-        key="page_nav",
-        format_func=lambda value: f"{page_icons.get(value, '✦')}  {translate_ui(value, language)}",
-        on_change=sync_navigation_category,
+    st.markdown(
+        "<div class='sowia-nav-heading'>NAVIGATION</div>",
+        unsafe_allow_html=True,
     )
+    for nav_index, page_name in enumerate(selected_pages):
+        is_active = page_name == st.session_state.get("page_nav", "Accueil")
+        st.button(
+            translate_ui(page_name, language),
+            key=f"sowia_nav_item_{nav_index}",
+            icon=f":material/{page_material_icons.get(page_name, 'apps')}:",
+            type="primary" if is_active else "secondary",
+            use_container_width=True,
+            on_click=go_to_page,
+            args=(page_name,),
+        )
+    page = st.session_state.get("page_nav", "Accueil")
+
 st.markdown(
     '<div class="hero"><div class="hero-kicker">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>'
     '<h1>🧠 SOW <span style="color:#42d7ff;text-shadow:0 0 22px rgba(35,190,255,.55)">IA</span></h1>'
