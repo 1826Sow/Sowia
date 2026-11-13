@@ -157,6 +157,19 @@ class NightExchangeOfferHelperTests(unittest.TestCase):
             },
         )])
 
+    def test_rejected_integration_is_counted_in_activity_report(self):
+        from sowia_night_exchange import build_morning_report
+
+        report = build_morning_report([
+            {"event_type": "integration_rejected", "event_payload": {"offer_id": "offer-456"}},
+            {"event_type": "integration_approved", "event_payload": {"offer_id": "offer-789"}},
+        ])
+
+        self.assertEqual(report["counts"]["integration_rejected"], 1)
+        self.assertEqual(report["counts"]["integration_approved"], 1)
+        self.assertEqual(report["recognized_events"], 2)
+        self.assertEqual(report["confirmed_spend"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
