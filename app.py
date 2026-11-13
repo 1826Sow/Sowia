@@ -162,7 +162,7 @@ if cloud_mode:
             st.session_state.pop("sowia_email_auth_fragment", None)
             st.rerun()
 
-        auth_stage = "échange du code de retour GitHub avec Supabase"
+        auth_stage = "échange du code de retour de connexion avec Supabase"
         email_token_hash = st.query_params.get("token_hash")
         email_token_type = st.query_params.get("type")
         if email_token_hash:
@@ -216,7 +216,7 @@ if cloud_mode:
             st.error(
                 "La connexion sécurisée Supabase n'a pas abouti. "
                 "L'accès reste fermé par sécurité. Rechargez cette page pour "
-                "générer une nouvelle tentative GitHub.\n\n"
+                "relancer la connexion.\n\n"
                 f"Étape : {auth_stage}.\nCode technique : {type(exc).__name__}"
             )
             with st.expander("Détails techniques pour le diagnostic"):
@@ -237,13 +237,13 @@ if cloud_mode:
             unsafe_allow_html=True,
         )
         st.subheader(translate_ui("Connexion à SOW IA", language))
-        st.write("Connectez-vous avec votre compte GitHub pour accéder à votre mémoire et à votre historique privés.")
+        st.write("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA. Un lien sécurisé à usage unique vous sera envoyé. Aucun compte GitHub n’est nécessaire.")
         callback_code_present = bool(st.query_params.get("code"))
         callback_error = str(st.query_params.get("error", "")).strip()
         callback_error_description = str(st.query_params.get("error_description", "")).strip()
         st.caption(
             "Diagnostic de retour : "
-            + ("code GitHub reçu" if callback_code_present else "aucun code GitHub reçu")
+            + ("code de connexion reçu" if callback_code_present else "aucun code de connexion reçu")
             + (f" · erreur OAuth : {callback_error}" if callback_error else "")
         )
         if callback_error_description:
@@ -263,26 +263,7 @@ if cloud_mode:
         else:
             st.error("Adresse publique HTTPS invalide. Ouvrez SOW IA depuis son adresse Streamlit officielle.")
 
-        # GitHub OAuth is optional here: a provider error must never hide email sign-in.
-        try:
-            if not redirect_to:
-                raise ValueError("URL HTTPS de retour invalide")
-            login_url = st.session_state.get("sowia_github_login_url")
-            if not login_url:
-                login_url = github_authorization_url(supabase_client, redirect_to)
-                st.session_state.sowia_github_login_url = login_url
-            st.link_button(
-                "Continuer avec GitHub",
-                login_url,
-                type="primary",
-                use_container_width=True,
-            )
-        except Exception as github_exc:
-            st.session_state.pop("sowia_github_login_url", None)
-            st.warning("La connexion GitHub n'est pas disponible pour le moment. Vous pouvez essayer la connexion par e-mail.")
-            st.caption("Diagnostic GitHub : " + type(github_exc).__name__)
-
-        # Keep the email form outside the GitHub try/except so it always renders.
+        # Connexion utilisateur par e-mail uniquement : aucun compte GitHub requis.\n\n        # Keep the email form outside the GitHub try/except so it always renders.
         st.markdown("#### Autre méthode : connexion par e-mail")
         st.caption("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA. Un lien à usage unique sera envoyé ; aucun nouveau compte ne sera créé.")
         email_address = st.text_input(
