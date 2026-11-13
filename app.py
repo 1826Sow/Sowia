@@ -5049,6 +5049,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 report_cols[2].metric("Offres acceptées", morning_report["counts"]["offer_accepted"])
                 st.write("Consultations de matching : " + str(morning_report["counts"]["match_viewed"]))
                 st.write("Intégrations approuvées (événements de confiance) : " + str(morning_report["counts"]["integration_approved"]))
+                st.write("Intégrations refusées (événements de confiance) : " + str(morning_report["counts"]["integration_rejected"]))
                 if morning_report["spend_currencies"]:
                     st.write("Dépenses confirmées : " + " · ".join(
                         f"{currency} {amount:.2f}"
@@ -5063,6 +5064,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
                         "meeting_confirmed": "Rencontre confirmée par le membre",
                         "offer_accepted": "Offre acceptée",
                         "integration_approved": "Intégration approuvée",
+                        "integration_rejected": "Intégration refusée par SOWIA",
                         "payment_confirmed": "Paiement confirmé par serveur",
                     }
                     event_rows = [{
