@@ -120,6 +120,14 @@ class NightExchangeOfferHelperTests(unittest.TestCase):
             )
         self.assertIsNone(getattr(client, "table_name", None))
 
+    def test_approved_directory_is_scoped_to_professional_workspace(self):
+        client = FakeClient(table_data=[{"id": "professional-app"}])
+        rows = cloud_storage.list_approved_night_exchange_apps(client, self.user)
+        self.assertEqual(rows, [{"id": "professional-app"}])
+        self.assertEqual(client.table_name, "sowia_night_exchange_apps")
+        self.assertIn(("status", "approved"), client.query.filters)
+        self.assertIn(("workspace_id", "professional"), client.query.filters)
+
     def test_admin_queue_requires_admin_metadata(self):
         client = FakeClient(rpc_data=[])
         ordinary_user = SimpleNamespace(id="user-123", app_metadata={"role": "member"})
