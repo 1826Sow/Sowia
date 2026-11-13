@@ -57,6 +57,9 @@ st.markdown(
     [data-testid="stAppViewContainer"], [data-testid="stMain"] { background: transparent !important; color: #17243a !important; }
     [data-testid="stMainBlockContainer"] { max-width: 1240px; padding-top: 1.2rem; padding-bottom: 3.2rem; }
     section[data-testid="stSidebar"] { background: linear-gradient(180deg,#030b1c 0%,#071b39 72%,#020817 100%) !important; border-right: 1px solid #174d85 !important; }
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2 { color:#ffffff !important; font-size:1.22rem; letter-spacing:.08em; text-shadow:0 0 14px rgba(0,190,255,.28); border-bottom:1px solid rgba(83,190,255,.25); padding-bottom:.75rem; }
+    section[data-testid="stSidebar"] button[kind="header"] { color:#8fe4ff !important; border:1px solid rgba(72,180,255,.28) !important; border-radius:10px !important; background:rgba(9,36,68,.72) !important; }
+    section[data-testid="stSidebar"] button[kind="header"]:hover { background:rgba(16,75,118,.9) !important; border-color:#37c8ff !important; }
     section[data-testid="stSidebar"] * { color: #f1f7ff !important; }
     section[data-testid="stSidebar"] [data-testid="stSelectbox"] > label { color:#9bdcff !important; font-weight:700; }
     section[data-testid="stSidebar"] div[data-baseweb="select"] > div { background:#0c2344 !important; border:1px solid #1766a4 !important; border-radius:11px !important; }
