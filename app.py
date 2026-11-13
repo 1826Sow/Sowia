@@ -49,19 +49,31 @@ from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
 from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_authenticated_session_state
 
-st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
+st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-logo.webp", layout="wide")
 st.markdown(
     """<style>
     :root { color-scheme: light; }
     .stApp { background: linear-gradient(180deg, #f5f8fc 0%, #edf2f8 100%) !important; color: #17243a !important; }
     [data-testid="stAppViewContainer"], [data-testid="stMain"] { background: transparent !important; color: #17243a !important; }
     [data-testid="stMainBlockContainer"] { max-width: 1240px; padding-top: 1.2rem; padding-bottom: 3.2rem; }
-    section[data-testid="stSidebar"] { background: #e8eef6 !important; border-right: 1px solid #d6e0ed !important; }
-    section[data-testid="stSidebar"] * { color: #23364f !important; }
+    section[data-testid="stSidebar"] { background: linear-gradient(180deg,#030b1c 0%,#071b39 72%,#020817 100%) !important; border-right: 1px solid #174d85 !important; }
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2 { color:#ffffff !important; font-size:1.22rem; letter-spacing:.08em; text-shadow:0 0 14px rgba(0,190,255,.28); border-bottom:1px solid rgba(83,190,255,.25); padding-bottom:.75rem; }
+    section[data-testid="stSidebar"] button[kind="header"] { color:#8fe4ff !important; border:1px solid rgba(72,180,255,.28) !important; border-radius:10px !important; background:rgba(9,36,68,.72) !important; }
+    section[data-testid="stSidebar"] button[kind="header"]:hover { background:rgba(16,75,118,.9) !important; border-color:#37c8ff !important; }
+    section[data-testid="stSidebar"] * { color: #f1f7ff !important; }
+    section[data-testid="stSidebar"] [data-testid="stSelectbox"] > label { color:#9bdcff !important; font-weight:700; }
+    .sowia-nav-heading { color:#77dfff; font-size:.7rem; font-weight:800; letter-spacing:.16em; margin:.85rem .15rem .5rem; }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button { justify-content:flex-start !important; text-align:left !important; border-radius:10px !important; min-height:2.55rem !important; margin:.12rem 0 !important; transition:background .16s ease,border-color .16s ease,transform .16s ease; }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button:not([kind="primary"]) { background:rgba(9,34,64,.48) !important; border:1px solid rgba(87,164,220,.13) !important; }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button:not([kind="primary"]):hover { background:rgba(17,78,121,.78) !important; border-color:#37c8ff !important; transform:translateX(2px); }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"] { background:linear-gradient(100deg,#075b91,#087eb5) !important; border:1px solid #39caff !important; box-shadow:0 0 14px rgba(39,190,255,.18) !important; }
+    section[data-testid="stSidebar"] [data-testid="stButton"] button [data-testid="stMarkdownContainer"] p { font-weight:650 !important; font-size:.88rem !important; }
+    section[data-testid="stSidebar"] div[data-baseweb="select"] > div { background:#0c2344 !important; border:1px solid #1766a4 !important; border-radius:11px !important; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label { border-radius: 11px; padding: .38rem .55rem; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { background: #d7e5f4; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color: #15395e !important; font-weight: 750; }
-    .hero { position: relative; overflow: hidden; padding: clamp(1.35rem, 3vw, 2.25rem); border: 1px solid #d4dfec; border-radius: 24px; background: radial-gradient(circle at 88% 12%, rgba(75,153,161,.23), transparent 28%), radial-gradient(circle at 6% 100%, rgba(194,164,104,.18), transparent 30%), linear-gradient(120deg, #102a46 0%, #173d5c 58%, #1d5361 100%); box-shadow: 0 18px 42px rgba(22,49,78,.14); margin: .35rem 0 1.35rem; }
+    .hero { position: relative; isolation: isolate; overflow: hidden; padding: clamp(1.5rem, 3.4vw, 2.65rem); border: 1px solid rgba(65,203,255,.48); border-radius: 24px; background: radial-gradient(ellipse at 84% 18%, rgba(0,190,255,.25), transparent 34%), radial-gradient(ellipse at 12% 100%, rgba(155,65,255,.20), transparent 38%), linear-gradient(118deg, #020b1d 0%, #071a37 52%, #09284a 100%); box-shadow: 0 0 0 1px rgba(32,130,220,.12), 0 18px 48px rgba(1,12,31,.34), inset 0 1px rgba(255,255,255,.06); margin: .35rem 0 1.35rem; }
+    .hero::before { content: ""; position: absolute; z-index: -1; inset: auto -8% -62% 30%; height: 100%; border-radius: 50%; background: radial-gradient(ellipse, rgba(0,195,255,.18), transparent 68%); filter: blur(18px); pointer-events: none; }
     .hero-kicker { color: #b9d7d8 !important; font-size: .72rem; letter-spacing: .17em; font-weight: 800; margin-bottom: .55rem; text-transform: uppercase; }
     .hero h1 { font-size: clamp(2.15rem, 5vw, 3.25rem); line-height: 1.08; margin: 0; color: #fff !important; letter-spacing: -.045em; }
     .hero p { color: #e1ebf2 !important; margin: .65rem 0 0; font-size: clamp(1rem, 2vw, 1.12rem); line-height: 1.55; max-width: 820px; }
@@ -461,7 +473,8 @@ if cloud_mode and current_user is not None:
 premium_active = bool(premium_entitlement)
 
 with st.sidebar:
-    st.markdown("## 🧠 SOW IA")
+    st.image("assets/sowia-logo.webp", width=142)
+    st.markdown("<div style=\"height:1px;background:linear-gradient(90deg,transparent,#27c9ff,transparent);margin:.35rem 0 1rem;\"></div>", unsafe_allow_html=True)
     preference_owner = str(getattr(current_user, "id", "")) if cloud_mode and current_user is not None else "local"
     if st.session_state.get("sowia_language_loaded_for") != preference_owner:
         saved_language = "Français"
@@ -633,21 +646,45 @@ with st.sidebar:
         on_change=choose_navigation_category,
     )
     selected_pages = NAV_GROUPS[st.session_state.nav_category]
-    page = st.selectbox(
-        "🧭 Outil à ouvrir",
-        selected_pages,
-        key="page_nav",
-        format_func=lambda value: translate_ui(value, language),
-        on_change=sync_navigation_category,
+    page_material_icons = {
+        "Accueil": "home", "Hub SOWIA": "dashboard", "Assistant IA": "chat",
+        "Ma mémoire": "psychology", "Recherche Web": "travel_explore", "Analyse PDF": "picture_as_pdf",
+        "Créer un PDF": "post_add", "Mes documents": "folder_open", "Historique": "history",
+        "Développement mondial": "public", "SOWIA NIGHT EXCHANGE": "nightlight",
+        "SOWIA GLOBAL ID": "badge", "SOWIA GLOBAL DIRECTORY": "contacts",
+        "SOWIA GLOBAL TRUST": "verified_user", "SOWIA GLOBAL ADMIN & MODERATION": "gavel",
+        "SOW IA Business Club": "handshake", "Opportunités et revenus": "diamond",
+        "Technologies & fournisseurs": "hub", "SOWIA GLOBAL COLLABORATION HUB": "groups",
+        "Décisions humaines vs SOW IA": "balance", "SOWIA GLOBAL INTELLIGENCE": "neurology",
+        "SOWIA GLOBAL PULSE": "sensors", "SOWIA GLOBAL STRATEGIC FORECAST": "query_stats",
+        "SOWIA GLOBAL DECISION ENGINE": "target", "SOWIA GLOBAL LEARNING ENGINE": "school",
+        "Stratégie & scénarios": "strategy", "SOWIA GLOBAL AUTONOMOUS STRATEGY": "explore",
+        "SOWIA GLOBAL ACTION GOVERNANCE": "account_balance", "SOWIA GLOBAL PERFORMANCE & IMPACT": "monitoring",
+        "SOWIA GLOBAL PORTFOLIO CONTROL": "inventory_2", "SOWIA GLOBAL EXECUTIVE REPORTS": "analytics",
+        "Finance & investissements": "payments", "Revenus & paiements": "credit_card",
+        "Abonnement": "workspace_premium", "Centre de notifications": "notifications",
+        "SOWIA CONTROL CENTER": "tune", "Paramètres": "settings", "Aide": "help",
+    }
+    st.markdown(
+        "<div class='sowia-nav-heading'>NAVIGATION</div>",
+        unsafe_allow_html=True,
     )
+    for nav_index, page_name in enumerate(selected_pages):
+        is_active = page_name == st.session_state.get("page_nav", "Accueil")
+        st.button(
+            translate_ui(page_name, language),
+            key=f"sowia_nav_item_{nav_index}",
+            icon=f":material/{page_material_icons.get(page_name, 'apps')}:",
+            type="primary" if is_active else "secondary",
+            use_container_width=True,
+            on_click=go_to_page,
+            args=(page_name,),
+        )
+    page = st.session_state.get("page_nav", "Accueil")
+
 st.markdown(
-    '<div class="hero"><div class="hero-kicker">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>'
-    '<h1>🧠 SOW IA</h1>'
-    '<p>La technologie au service des décisions, de la productivité et des opportunités. '
-    'Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.</p>'
-    '<div class="hero-meta"><span class="hero-chip">🔐 Espaces de travail sécurisés</span>'
-    '<span class="hero-chip">🌍 Ambition internationale</span>'
-    '<span class="hero-chip">🤝 Collaboration professionnelle</span></div></div>',
+    '<h1 style="margin:.2rem 0 .35rem;font-size:2rem;font-weight:800;color:#17243a;">SOW IA</h1>'
+    '<p style="margin:0 0 1.1rem;color:#52647b;font-size:1rem;">Votre espace intelligent pour explorer, apprendre, créer et collaborer.</p>',
     unsafe_allow_html=True,
 )
 st.write("")
