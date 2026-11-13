@@ -313,3 +313,33 @@ def test_authenticated_user_does_not_refresh_when_admin_claim_is_current():
 
     assert supabase_auth.authenticated_user(client) is expected_user
     assert calls == []
+
+
+
+def test_email_magic_link_only_targets_existing_accounts():
+    calls = []
+
+    class Auth:
+        def sign_in_with_otp(self, options):
+            calls.append(options)
+            return "sent"
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    assert supabase_auth.email_magic_link(
+        client, " USER@example.com ", "https://sowia.example"
+    ) == "sent"
+    assert calls == [{
+        "email": "user@example.com",
+        "options": {
+            "should_create_user": False,
+            "email_redirect_to": "https://sowia.example",
+        },
+    }]
+
+
+def test_email_magic_link_rejects_non_https_redirect():
+    with pytest.raises(ValueError, match="HTTPS"):
+        supabase_auth.email_magic_link(
+            object(), "user@example.com", "http://sowia.example"
+        )
