@@ -658,6 +658,7 @@ def list_approved_night_exchange_apps(client, user, country=None, limit=100):
         client.table("sowia_night_exchange_apps")
         .select("id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,updated_at")
         .eq("status", "approved")
+        .eq("workspace_id", "professional")
     )
     if country:
         query = query.ilike("country", str(country).strip()[:100])
@@ -739,6 +740,106 @@ def list_night_exchange_events(client, user, workspace_id="professional",
         .limit(min(max(int(limit), 1), 1000))
         .execute().data
     )
+
+
+
+# SOWIA NIGHT EXCHANGE — guarded bilateral offer workflow.
+def create_night_exchange_offer(client, user, sender_app_id, recipient_app_id, offer_summary):
+    """Create a proposal through the SECURITY DEFINER RPC; no direct table writes."""
+    _user_id(user)
+    summary = str(offer_summary or "").strip()
+    if not 10 <= len(summary) <= 2000:
+        raise ValueError("La proposition doit contenir entre 10 et 2000 caractères.")
+    result = client.rpc("sowia_nex_create_offer", {
+        "p_sender_app_id": str(sender_app_id),
+        "p_recipient_app_id": str(recipient_app_id),
+        "p_offer_summary": summary,
+    }).execute()
+
+    # Normalize the RPC return value before claiming that the proposal was sent.
+    returned = result.data
+    if isinstance(returned, dict):
+        offer_id = returned.get("id") or returned.get("offer_id")
+    elif isinstance(returned, list):
+        first = returned[0] if returned else None
+        offer_id = (first.get("id") or first.get("offer_id")) if isinstance(first, dict) else first
+    else:
+        offer_id = returned
+    if not offer_id:
+        raise RuntimeError(
+            "La fonction Supabase n'a retourné aucun identifiant de proposition. "
+            "Aucune confirmation d'envoi ne peut être affichée."
+        )
+
+    # Read-after-write: verify that RLS exposes the new row to its sender.
+    visible_outbox = list_night_exchange_offers(
+        client, user, workspace_id="professional", direction="outbox", limit=200
+    )
+    if not any(str(row.get("id")) == str(offer_id) for row in visible_outbox):
+        raise RuntimeError(
+            "Supabase a retourné une référence de proposition, mais celle-ci "
+            "n'est pas visible dans la boîte d'envoi du compte connecté. "
+            "Vérifiez les règles RLS, l'identité du compte et l'espace professionnel."
+        )
+    return offer_id
+
+
+def respond_night_exchange_offer(client, user, offer_id, decision):
+    """Only the recipient can respond; SQL enforces ownership and state transitions."""
+    _user_id(user)
+    if decision not in {"accepted", "rejected"}:
+        raise ValueError("Décision invalide.")
+    return client.rpc("sowia_nex_respond_offer", {
+        "p_offer_id": str(offer_id),
+        "p_decision": decision,
+    }).execute()
+
+
+def list_night_exchange_offers(client, user, workspace_id="professional",
+                               direction="inbox", limit=100):
+    """Read offers involving the current user; RLS enforces participant access."""
+    uid = _user_id(user)
+    workspace = _workspace_id(workspace_id)
+    if direction not in {"inbox", "outbox"}:
+        raise ValueError("Sens de consultation invalide.")
+    column = "recipient_user_id" if direction == "inbox" else "sender_user_id"
+    return (
+        client.table("sowia_night_exchange_offers")
+        .select("id,workspace_id,sender_user_id,recipient_user_id,sender_app_id,recipient_app_id,offer_summary,status,integration_status,integration_review_note,created_at,responded_at,integration_reviewed_at")
+        .eq(column, uid)
+        .eq("workspace_id", workspace)
+        .order("created_at", desc=True)
+        .limit(min(max(int(limit), 1), 200))
+        .execute().data
+    )
+
+
+
+def list_night_exchange_integrations_for_admin(client, user, limit=200):
+    """Read pending integration reviews through the signed-admin SQL RPC."""
+    _user_id(user)
+    metadata = getattr(user, "app_metadata", None)
+    if not isinstance(metadata, dict) or not (
+        metadata.get("sowia_admin") is True or metadata.get("role") == "admin"
+    ):
+        raise PermissionError("Accès administrateur requis.")
+    rows = client.rpc("sowia_admin_list_nex_integrations", {}).execute().data or []
+    return rows[:min(max(int(limit), 1), 200)]
+
+
+
+def admin_review_night_exchange_integration(client, user, offer_id, decision, review_note=""):
+    """Submit an integration decision; SQL validates the signed administrator claim."""
+    _user_id(user)
+    if decision not in {"approved", "rejected"}:
+        raise ValueError("Décision administrative invalide.")
+    if not isinstance(review_note, str) or len(review_note) > 1000:
+        raise ValueError("Note de modération invalide.")
+    return client.rpc("sowia_admin_review_nex_integration", {
+        "p_offer_id": str(offer_id),
+        "p_decision": decision,
+        "p_review_note": review_note,
+    }).execute()
 
 
 # SOWIA GLOBAL CONNECT — consent-based professional introductions.

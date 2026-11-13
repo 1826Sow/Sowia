@@ -253,3 +253,141 @@ def test_authenticated_user_propagates_server_validation_errors():
 
     with pytest.raises(ConnectionError, match="unavailable"):
         supabase_auth.authenticated_user(client)
+
+def test_authenticated_user_refreshes_stale_admin_jwt_claims():
+    import base64
+    import json
+
+    payload = base64.urlsafe_b64encode(
+        json.dumps({"app_metadata": {}}).encode()
+    ).decode().rstrip("=")
+    access_token = "header." + payload + ".signature"
+    expected_user = type(
+        "User", (),
+        {"app_metadata": {"sowia_admin": True}},
+    )()
+    calls = []
+
+    class Auth:
+        def get_session(self):
+            return type("Session", (), {"access_token": access_token})()
+
+        def get_user(self):
+            calls.append("get_user")
+            return type("UserResponse", (), {"user": expected_user})()
+
+        def refresh_session(self):
+            calls.append("refresh_session")
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    assert supabase_auth.authenticated_user(client) is expected_user
+    assert calls == ["get_user", "refresh_session", "get_user"]
+
+
+def test_authenticated_user_does_not_refresh_when_admin_claim_is_current():
+    import base64
+    import json
+
+    payload = base64.urlsafe_b64encode(
+        json.dumps({"app_metadata": {"sowia_admin": True}}).encode()
+    ).decode().rstrip("=")
+    access_token = "header." + payload + ".signature"
+    expected_user = type(
+        "User", (),
+        {"app_metadata": {"sowia_admin": True}},
+    )()
+    calls = []
+
+    class Auth:
+        def get_session(self):
+            return type("Session", (), {"access_token": access_token})()
+
+        def get_user(self):
+            return type("UserResponse", (), {"user": expected_user})()
+
+        def refresh_session(self):
+            calls.append("refresh_session")
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    assert supabase_auth.authenticated_user(client) is expected_user
+    assert calls == []
+
+
+
+def test_email_magic_link_only_targets_existing_accounts():
+    calls = []
+
+    class Auth:
+        def sign_in_with_otp(self, options):
+            calls.append(options)
+            return "sent"
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    assert supabase_auth.email_magic_link(
+        client, " USER@example.com ", "https://sowia.example"
+    ) == "sent"
+    assert calls == [{
+        "email": "user@example.com",
+        "options": {
+            "should_create_user": False,
+            "email_redirect_to": "https://sowia.example",
+        },
+    }]
+
+
+def test_email_magic_link_rejects_non_https_redirect():
+    with pytest.raises(ValueError, match="HTTPS"):
+        supabase_auth.email_magic_link(
+            object(), "user@example.com", "http://sowia.example"
+        )
+
+
+@pytest.mark.parametrize("otp_type", ["magiclink", "email"])
+def test_email_magic_link_verification_accepts_only_supported_types(otp_type):
+    calls = []
+
+    class Auth:
+        def verify_otp(self, payload):
+            calls.append(payload)
+            return "verified"
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    assert supabase_auth.complete_email_magic_link(
+        client, "one-time-token-hash", otp_type
+    ) == "verified"
+    assert calls == [{
+        "token_hash": "one-time-token-hash",
+        "type": otp_type,
+    }]
+
+
+@pytest.mark.parametrize("otp_type", ["signup", "recovery", ""])
+def test_email_magic_link_verification_rejects_other_token_types(otp_type):
+    class Auth:
+        def verify_otp(self, _payload):
+            raise AssertionError("Unsupported token types must not reach Supabase")
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    with pytest.raises(ValueError, match="invalide ou expiré"):
+        supabase_auth.complete_email_magic_link(
+            client, "one-time-token-hash", otp_type
+        )
+
+
+@pytest.mark.parametrize("token_hash", ["", None, "x" * 4097])
+def test_email_magic_link_verification_rejects_missing_or_oversized_tokens(token_hash):
+    class Auth:
+        def verify_otp(self, _payload):
+            raise AssertionError("Invalid token hashes must not reach Supabase")
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    with pytest.raises(ValueError, match="invalide ou expiré"):
+        supabase_auth.complete_email_magic_link(
+            client, token_hash, "magiclink"
+        )

@@ -246,7 +246,7 @@ def build_morning_report(events: Iterable[dict]) -> dict:
     """Summarize explicit event records only; never infer activity or spending."""
     rows = list(events or [])
     allowed = {"match_viewed", "meeting_confirmed", "offer_accepted",
-               "integration_approved", "payment_confirmed"}
+               "integration_approved", "integration_rejected", "payment_confirmed"}
     counts = {name: 0 for name in sorted(allowed)}
     confirmed_spend = Decimal("0.00")
     currencies = set()

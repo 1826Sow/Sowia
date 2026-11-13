@@ -115,7 +115,7 @@ def browser_storage_id():
     component = st.components.v2.component(
         name="sowia_browser_scope",
         html='<span aria-hidden="true"></span>',
-        js="""
+        js=r"""
         const STORAGE_KEY = "sowia.browser_scope.v1";
         function newBrowserId() {
             const bytes = new Uint8Array(32);
@@ -206,6 +206,85 @@ def create_user_client(browser_id):
     return create_client(url, key, options=options)
 
 
+def create_email_user_client():
+    """Create a separate implicit-flow client for standard Supabase email links.
+
+    Supabase's default ConfirmationURL template returns access/refresh tokens
+    in the browser URL fragment. The Streamlit component below transfers them
+    over the authenticated HTTPS app connection; the main GitHub client keeps
+    its PKCE flow unchanged.
+    """
+    url = str(get_setting("SUPABASE_URL", "")).strip()
+    key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
+    if not url or not key:
+        raise RuntimeError("Supabase n'est pas configuré.")
+    if not url.startswith("https://"):
+        raise RuntimeError("SUPABASE_URL doit utiliser HTTPS.")
+
+    from supabase import ClientOptions, create_client
+
+    options = ClientOptions(
+        flow_type="implicit",
+        persist_session=False,
+        auto_refresh_token=False,
+    )
+    return create_client(url, key, options=options)
+
+
+def read_email_auth_fragment():
+    """Read one-time implicit-flow tokens from the top-level browser URL fragment."""
+    import streamlit as st
+
+    component = st.components.v2.component(
+        name="sowia_email_auth_fragment",
+        html='<span aria-hidden="true"></span>',
+        js="""
+        export default function({ setStateValue }) {
+            try {
+                const page = window; // Streamlit Components v2 run in the app page, not an iframe.
+                const url = new URL(page.location.href);
+                const params = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash);
+                const accessToken = params.get("access_token");
+                const refreshToken = params.get("refresh_token");
+                const type = params.get("type");
+                if (accessToken && refreshToken && type === "magiclink") {
+                    page.history.replaceState(page.history.state, "", url.pathname + url.search);
+                    setStateValue("access_token", accessToken);
+                    setStateValue("refresh_token", refreshToken);
+                    setStateValue("type", type);
+                }
+            } catch (error) {
+                setStateValue("read_error", "Impossible de lire le retour sécurisé du navigateur.");
+            }
+        }
+        """,
+    )
+    key = "sowia_email_auth_fragment"
+    result = component(
+        data={},
+        default={"access_token": None, "refresh_token": None, "type": None, "read_error": None},
+        on_access_token_change=lambda: None,
+        on_refresh_token_change=lambda: None,
+        on_type_change=lambda: None,
+        on_read_error_change=lambda: None,
+        key=key,
+        width="content",
+        height=1,
+    )
+    access_token = _component_state_value(result, "access_token")
+    refresh_token = _component_state_value(result, "refresh_token")
+    token_type = _component_state_value(result, "type")
+    if (
+        isinstance(access_token, str)
+        and 20 <= len(access_token) <= 8192
+        and isinstance(refresh_token, str)
+        and 10 <= len(refresh_token) <= 2048
+        and token_type == "magiclink"
+    ):
+        return {"access_token": access_token, "refresh_token": refresh_token}
+    return None
+
+
 def github_authorization_url(client, redirect_to):
     """Start GitHub OAuth via Supabase; redirect_to must be allow-listed."""
     if not redirect_to or not redirect_to.startswith("https://"):
@@ -224,6 +303,33 @@ def github_authorization_url(client, redirect_to):
     return url
 
 
+
+def email_magic_link(client, email, redirect_to):
+    """Send a passwordless sign-in link to an existing Supabase user only."""
+    address = str(email or "").strip().lower()
+    if not address or len(address) > 254 or "@" not in address:
+        raise ValueError("Adresse e-mail invalide.")
+    if not redirect_to or not redirect_to.startswith("https://"):
+        raise ValueError("L'adresse de retour HTTPS n'est pas configurée.")
+    # Prevent account creation: this flow can authenticate existing users only.
+    return client.auth.sign_in_with_otp({
+        "email": address,
+        "options": {
+            "should_create_user": False,
+            "email_redirect_to": redirect_to,
+        },
+    })
+
+
+def complete_email_magic_link(client, token_hash, otp_type):
+    """Verify a one-time Supabase email link; accept only email magic-link types."""
+    token = str(token_hash or "").strip()
+    kind = str(otp_type or "").strip().lower()
+    if not token or len(token) > 4096 or kind not in {"magiclink", "email"}:
+        raise ValueError("Lien de connexion invalide ou expiré.")
+    return client.auth.verify_otp({"token_hash": token, "type": kind})
+
+
 def complete_github_login(client, authorization_code):
     """Exchange the one-time PKCE code using the browser-scoped verifier."""
     if not authorization_code:
@@ -235,18 +341,56 @@ def complete_github_login(client, authorization_code):
     )
 
 
-def authenticated_user(client):
-    """Validate an existing session and return its authenticated user, if any.
+def _jwt_app_metadata(access_token):
+    """Read non-sensitive JWT claims locally; never return or log the token."""
+    import base64
+    import json
 
-    supabase-py versions expose get_session() as either a Session directly
-    or a response wrapper containing .session. Accept both shapes.
+    parts = str(access_token or "").split(".")
+    if len(parts) != 3:
+        return {}
+    try:
+        payload = parts[1] + "=" * (-len(parts[1]) % 4)
+        claims = json.loads(base64.urlsafe_b64decode(payload.encode("ascii")))
+    except (ValueError, TypeError, UnicodeError):
+        return {}
+    metadata = claims.get("app_metadata", {})
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def authenticated_user(client):
+    """Validate the session and refresh stale administrator claims when needed.
+
+    Supabase get_user() can return current database metadata while PostgREST
+    RPC authorization still uses older app_metadata embedded in the access JWT.
+    Refresh only when the validated user is an admin but the signed token lacks
+    that admin claim. Ordinary sessions are not refreshed by this helper.
     """
     session_response = client.auth.get_session()
     session = getattr(session_response, "session", session_response)
     if session is None:
         return None
+
     response = client.auth.get_user()
-    return getattr(response, "user", response)
+    user = getattr(response, "user", response)
+    user_metadata = getattr(user, "app_metadata", None)
+    token_metadata = _jwt_app_metadata(getattr(session, "access_token", None))
+
+    if isinstance(user_metadata, dict):
+        user_is_admin = (
+            user_metadata.get("sowia_admin") is True
+            or user_metadata.get("role") == "admin"
+        )
+        token_is_admin = (
+            token_metadata.get("sowia_admin") is True
+            or token_metadata.get("role") == "admin"
+        )
+        if user_is_admin and not token_is_admin:
+            client.auth.refresh_session()
+            refreshed_response = client.auth.get_user()
+            user = getattr(refreshed_response, "user", refreshed_response)
+
+    return user
 
 
 def sign_out(client):

@@ -25,9 +25,13 @@ from sowia_supabase_auth import (
     authenticated_user,
     browser_storage_id,
     complete_github_login,
+    email_magic_link,
+    complete_email_magic_link,
     configuration_ready,
+    create_email_user_client,
     create_user_client,
     github_authorization_url,
+    read_email_auth_fragment,
     sign_out,
 )
 import cloud_storage
@@ -147,7 +151,26 @@ if cloud_mode:
             st.session_state.sowia_supabase_client = create_user_client(browser_id)
         supabase_client = st.session_state.sowia_supabase_client
 
-        auth_stage = "échange du code de retour GitHub avec Supabase"
+        auth_stage = "lecture du retour de connexion par e-mail"
+        email_tokens = read_email_auth_fragment()
+        if email_tokens:
+            supabase_client.auth.set_session(
+                email_tokens["access_token"],
+                email_tokens["refresh_token"],
+            )
+            st.session_state.pop("sowia_email_login_pending", None)
+            st.session_state.pop("sowia_email_auth_fragment", None)
+            st.rerun()
+
+        auth_stage = "échange du code de retour de connexion avec Supabase"
+        email_token_hash = st.query_params.get("token_hash")
+        email_token_type = st.query_params.get("type")
+        if email_token_hash:
+            complete_email_magic_link(supabase_client, email_token_hash, email_token_type)
+            st.session_state.pop("sowia_email_login_pending", None)
+            st.query_params.clear()
+            st.rerun()
+
         authorization_code = st.query_params.get("code")
         if authorization_code:
             complete_github_login(supabase_client, authorization_code)
@@ -183,6 +206,8 @@ if cloud_mode:
         st.session_state.pop("sowia_github_login_url", None)
         if st.query_params.get("code"):
             st.query_params.pop("code", None)
+        if st.query_params.get("token_hash"):
+            st.query_params.pop("token_hash", None)
         clear_private_session_state(st.session_state)
         st.session_state.pop("sowia_authenticated_user_id", None)
         if auth_required:
@@ -191,7 +216,7 @@ if cloud_mode:
             st.error(
                 "La connexion sécurisée Supabase n'a pas abouti. "
                 "L'accès reste fermé par sécurité. Rechargez cette page pour "
-                "générer une nouvelle tentative GitHub.\n\n"
+                "relancer la connexion.\n\n"
                 f"Étape : {auth_stage}.\nCode technique : {type(exc).__name__}"
             )
             with st.expander("Détails techniques pour le diagnostic"):
@@ -212,57 +237,82 @@ if cloud_mode:
             unsafe_allow_html=True,
         )
         st.subheader(translate_ui("Connexion à SOW IA", language))
-        st.write("Connectez-vous avec votre compte GitHub pour accéder à votre mémoire et à votre historique privés.")
-        callback_code_present = bool(st.query_params.get("code"))
+        st.write("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA. Un lien sécurisé à usage unique vous sera envoyé. Aucun compte GitHub n’est nécessaire.")
+        callback_code_present = bool(st.query_params.get("code") or st.query_params.get("token_hash"))
         callback_error = str(st.query_params.get("error", "")).strip()
         callback_error_description = str(st.query_params.get("error_description", "")).strip()
         st.caption(
             "Diagnostic de retour : "
-            + ("code GitHub reçu" if callback_code_present else "aucun code GitHub reçu")
-            + (f" · erreur OAuth : {callback_error}" if callback_error else "")
+            + ("retour de connexion reçu" if callback_code_present else "aucun retour de connexion reçu")
+            + (f" · erreur de connexion : {callback_error}" if callback_error else "")
         )
         if callback_error_description:
             st.warning("Motif communiqué par le fournisseur : " + callback_error_description[:300])
-        try:
-            # Return OAuth to the exact Streamlit app currently open.
-            # This prevents redirects to an older test or production deployment.
-            from urllib.parse import urlsplit, urlunsplit
-            current_app_url = str(getattr(st.context, "url", "") or "").strip()
-            configured_public_url = str(get_setting("SOWIA_PUBLIC_URL", "") or "").strip()
-            candidate_url = current_app_url or configured_public_url
-            parts = urlsplit(candidate_url)
-            if parts.scheme != "https" or not parts.netloc:
-                st.error(
-                    "Adresse publique de SOW IA invalide. Ouvrez l'application depuis "
-                    "son adresse HTTPS Streamlit et réessayez."
-                )
-                st.stop()
+        # Resolve the exact HTTPS callback independently of either login provider.
+        from urllib.parse import urlsplit, urlunsplit
+        current_app_url = str(getattr(st.context, "url", "") or "").strip()
+        configured_public_url = str(get_setting("SOWIA_PUBLIC_URL", "") or "").strip()
+        candidate_url = current_app_url or configured_public_url
+        parts = urlsplit(candidate_url)
+        redirect_to = ""
+        if parts.scheme == "https" and parts.netloc:
             redirect_to = urlunsplit(
                 (parts.scheme, parts.netloc, parts.path.rstrip("/"), "", "")
             )
             st.caption("Adresse de retour sécurisée : " + redirect_to)
-            # Keep one OAuth URL per Streamlit session. Each call to
-            # sign_in_with_oauth creates a new PKCE verifier; generating a
-            # fresh URL on every rerun can overwrite the verifier for the
-            # GitHub redirect currently in progress.
-            login_url = st.session_state.get("sowia_github_login_url")
-            if not login_url:
-                login_url = github_authorization_url(supabase_client, redirect_to)
-                st.session_state.sowia_github_login_url = login_url
-            # Use Streamlit's native external-navigation control rather than
-            # an HTML anchor embedded in the app document.
+        else:
+            st.error("Adresse publique HTTPS invalide. Ouvrez SOW IA depuis son adresse Streamlit officielle.")
+
+        # Prefer the already-configured GitHub OAuth flow to avoid sending
+        # a login email on every sign-in. Keep email magic-link as a fallback.
+        st.markdown("#### Connexion sans e-mail")
+        github_login_url = st.session_state.get("sowia_github_login_url")
+        if not github_login_url and redirect_to:
+            try:
+                github_login_url = github_authorization_url(supabase_client, redirect_to)
+                st.session_state.sowia_github_login_url = github_login_url
+            except Exception as github_exc:
+                st.caption("La connexion GitHub n'a pas pu être préparée. Réessayez ou utilisez la connexion de secours par e-mail.")
+        if github_login_url:
             st.link_button(
                 "Continuer avec GitHub",
-                login_url,
+                github_login_url,
                 type="primary",
                 use_container_width=True,
             )
-            if st.button("Recommencer la connexion", use_container_width=True):
-                st.session_state.pop("sowia_github_login_url", None)
-                st.rerun()
-        except Exception as exc:
+
+        st.markdown("#### Connexion de secours par e-mail")
+        st.caption("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA. Un lien à usage unique sera envoyé ; aucun nouveau compte ne sera créé.")
+
+        # Streamlit preserves keyed widget values in session_state. Explicitly
+        # clear both the widget value and the remembered address before rerun,
+        # so a previous login address can be replaced on mobile as well.
+        if st.button("Changer d'adresse e-mail", key="sowia_reset_email_login", use_container_width=True):
+            st.session_state.pop("sowia_email_login_address", None)
+            st.session_state.pop("sowia_email_login_pending", None)
+            st.rerun()
+
+        email_address = st.text_input(
+            "Adresse e-mail du compte SOW IA",
+            value=st.session_state.get("sowia_email_login_pending", ""),
+            max_chars=254,
+            key="sowia_email_login_address",
+        )
+        if st.button("Envoyer mon lien de connexion", key="sowia_send_email_link", type="secondary", use_container_width=True):
+            try:
+                if not redirect_to:
+                    raise ValueError("URL HTTPS de retour invalide")
+                email_client = create_email_user_client()
+                email_magic_link(email_client, email_address, redirect_to)
+                st.session_state["sowia_email_login_pending"] = email_address.strip().lower()
+                st.success("Si cette adresse correspond à un compte existant, un lien de connexion vient d'être envoyé. Consultez aussi les courriers indésirables.")
+            except Exception as email_exc:
+                st.error("Impossible d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
+                st.caption("Diagnostic e-mail : " + type(email_exc).__name__)
+
+        if st.button("Recommencer la connexion", use_container_width=True):
             st.session_state.pop("sowia_github_login_url", None)
-            st.warning("La connexion GitHub n'a pas pu être préparée. Vérifiez la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
+            st.rerun()
         st.stop()
 
 
@@ -558,7 +608,7 @@ with st.sidebar:
         if st.session_state.get("sowia_privacy_screen", False):
             st.caption("Compte connecté · identité masquée pendant la protection d'écran")
         else:
-            st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
+            st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte SOW IA'}")
         if st.button("Se déconnecter", use_container_width=True):
             try:
                 sign_out(supabase_client)
@@ -4741,6 +4791,8 @@ elif page == "SOWIA NIGHT EXCHANGE":
         st.warning("Cet espace professionnel est réservé aux comptes Premium.")
     elif not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre compte sécurisé pour enregistrer une application partenaire. En mode local, aucune fiche ne sera conservée dans le registre mondial.")
+    elif st.session_state.get("workspace_id", "professional") != "professional":
+        st.warning("NIGHT EXCHANGE est réservé à l’espace Professionnel. Passez dans cet espace pour consulter ou inscrire des applications.")
     else:
         st.markdown(
             '<div class="partner-intro"><h3>Le marché mondial qui travaille pendant la nuit</h3>'
@@ -4748,12 +4800,12 @@ elif page == "SOWIA NIGHT EXCHANGE":
             'Chaque nouvelle fiche est privée et soumise à validation avant toute apparition dans l’annuaire public.</p></div>',
             unsafe_allow_html=True,
         )
-        nex_workspace = st.session_state.get("workspace_id", "professional")
+        nex_workspace = "professional"
         nex_metadata = getattr(current_user, "app_metadata", None) or {}
         nex_is_admin = isinstance(nex_metadata, dict) and (
             nex_metadata.get("sowia_admin") is True or nex_metadata.get("role") == "admin"
         )
-        nex_tabs = ["🌐 Annuaire approuvé", "🤝 Matching SOWIA", "🏷️ Inscrire une application", "📂 Mes applications", "🌍 Horloge mondiale", "💡 Opportunités intelligentes", "☀️ Rapport matinal"]
+        nex_tabs = ["🌐 Annuaire approuvé", "🤝 Matching SOWIA", "🏷️ Inscrire une application", "📂 Mes applications", "🌍 Horloge mondiale", "💡 Opportunités intelligentes", "☀️ Rapport matinal", "📨 Propositions d’échange"]
         if nex_is_admin:
             nex_tabs.append("🛡️ Modération")
         nex_tab_views = st.tabs(nex_tabs)
@@ -5006,6 +5058,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 report_cols[2].metric("Offres acceptées", morning_report["counts"]["offer_accepted"])
                 st.write("Consultations de matching : " + str(morning_report["counts"]["match_viewed"]))
                 st.write("Intégrations approuvées (événements de confiance) : " + str(morning_report["counts"]["integration_approved"]))
+                st.write("Intégrations refusées (événements de confiance) : " + str(morning_report["counts"]["integration_rejected"]))
                 if morning_report["spend_currencies"]:
                     st.write("Dépenses confirmées : " + " · ".join(
                         f"{currency} {amount:.2f}"
@@ -5020,6 +5073,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
                         "meeting_confirmed": "Rencontre confirmée par le membre",
                         "offer_accepted": "Offre acceptée",
                         "integration_approved": "Intégration approuvée",
+                        "integration_rejected": "Intégration refusée par SOWIA",
                         "payment_confirmed": "Paiement confirmé par serveur",
                     }
                     event_rows = [{
@@ -5035,9 +5089,176 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 st.error("Le journal d'activité n'est pas disponible. Appliquez la migration Supabase dédiée.")
                 st.caption(f"Diagnostic : {type(exc).__name__}")
 
+        with nex_tab_views[7]:
+            st.markdown("#### Propositions bilatérales sécurisées")
+            st.caption("Les propositions sont privées entre les deux participants. L’acceptation est réservée au destinataire et l’approbation d’intégration à l’administration SOWIA.")
+            try:
+                own_offer_apps = cloud_storage.list_my_night_exchange_apps(
+                    supabase_client, current_user, workspace_id=nex_workspace, limit=200
+                )
+                approved_offer_apps = cloud_storage.list_approved_night_exchange_apps(
+                    supabase_client, current_user, limit=200
+                )
+                own_approved = [row for row in own_offer_apps if row.get("status") == "approved"]
+                own_ids = {str(row.get("id")) for row in own_offer_apps}
+                external_apps = [row for row in approved_offer_apps if str(row.get("id")) not in own_ids]
+                app_labels = {
+                    f"{row.get('app_name', 'Application')} · {row.get('country', '')}": row
+                    for row in own_approved
+                }
+                partner_labels = {
+                    f"{row.get('app_name', 'Application')} · {row.get('country', '')}": row
+                    for row in external_apps
+                }
+                st.markdown("**Créer une proposition**")
+                # Keep the user's text after a failed submission. On success, clear
+                # it only on the next rerun and retain a visible confirmation.
+                nex_offer_success_ref = st.session_state.pop("nex_offer_success_notice", None)
+                if nex_offer_success_ref is not None:
+                    st.session_state.pop("nex_offer_summary", None)
+                    st.success("Proposition envoyée. Elle est visible uniquement par les deux participants.")
+                    st.caption("Référence : " + str(nex_offer_success_ref))
+                if app_labels and partner_labels:
+                    st.caption("Après avoir rempli les trois champs, appuyez sur « Envoyer la proposition » juste sous la description.")
+                    with st.form("nex_create_offer_form", clear_on_submit=False):
+                        sender_label = st.selectbox("Votre application approuvée", list(app_labels), key="nex_offer_sender")
+                        recipient_label = st.selectbox("Application partenaire", list(partner_labels), key="nex_offer_recipient")
+                        offer_summary = st.text_area(
+                            "Décrivez précisément l’échange proposé (10 à 2 000 caractères)",
+                            max_chars=2000, key="nex_offer_summary"
+                        )
+                        create_offer_clicked = st.form_submit_button("Envoyer la proposition", type="primary", use_container_width=True)
+                    if create_offer_clicked:
+                        try:
+                            offer_id = cloud_storage.create_night_exchange_offer(
+                                supabase_client, current_user,
+                                app_labels[sender_label]["id"], partner_labels[recipient_label]["id"],
+                                offer_summary
+                            )
+                            st.session_state["nex_offer_success_notice"] = str(offer_id)
+                            st.rerun()
+                        except Exception as exc:
+                            st.error("La proposition n’a pas pu être envoyée. Votre texte est conservé : corrigez le problème puis réessayez.")
+                            error_code = getattr(exc, "code", None)
+                            error_message = getattr(exc, "message", None) or str(exc)
+                            diagnostic = (str(error_code) + " · " if error_code else "") + str(error_message)
+                            st.caption("Diagnostic technique : " + type(exc).__name__ + " · " + diagnostic[:400])
+                elif not own_approved:
+                    st.info("Vous devez disposer d’au moins une application personnelle approuvée.")
+                else:
+                    st.info("Aucune application partenaire externe approuvée n’est disponible pour le moment.")
+
+                app_name_by_id = {
+                    str(row.get("id")): row.get("app_name", "Application partenaire")
+                    for row in own_offer_apps + approved_offer_apps
+                }
+                inbox = cloud_storage.list_night_exchange_offers(
+                    supabase_client, current_user, workspace_id=nex_workspace, direction="inbox"
+                )
+                outbox = cloud_storage.list_night_exchange_offers(
+                    supabase_client, current_user, workspace_id=nex_workspace, direction="outbox"
+                )
+                st.divider()
+                st.markdown("**Propositions reçues**")
+                if not inbox:
+                    st.caption("Aucune proposition reçue.")
+                for offer in inbox:
+                    with st.container(border=True):
+                        sender_name = app_name_by_id.get(str(offer.get("sender_app_id")), "Application partenaire")
+                        st.markdown(f"**{sender_name}** · {offer.get('created_at', '')}")
+                        st.write(offer.get("offer_summary", ""))
+                        st.caption("Statut : " + str(offer.get("status", "")) + " · Intégration : " + str(offer.get("integration_status", "")))
+                        if offer.get("status") == "pending":
+                            response_cols = st.columns(2)
+                            with response_cols[0]:
+                                if st.button("Accepter", key=f"nex_accept_{offer['id']}", use_container_width=True):
+                                    try:
+                                        cloud_storage.respond_night_exchange_offer(supabase_client, current_user, offer["id"], "accepted")
+                                        st.success("Proposition acceptée. L’intégration passe en attente d’examen administratif.")
+                                        st.rerun()
+                                    except Exception as exc:
+                                        st.error("Acceptation refusée par le contrôle de sécurité.")
+                                        st.caption("Diagnostic : " + type(exc).__name__)
+                            with response_cols[1]:
+                                if st.button("Refuser", key=f"nex_reject_{offer['id']}", use_container_width=True):
+                                    try:
+                                        cloud_storage.respond_night_exchange_offer(supabase_client, current_user, offer["id"], "rejected")
+                                        st.success("Proposition refusée.")
+                                        st.rerun()
+                                    except Exception as exc:
+                                        st.error("Refus impossible.")
+                                        st.caption("Diagnostic : " + type(exc).__name__)
+                        elif offer.get("integration_status") in {"pending", "approved", "rejected"}:
+                            st.caption("L’intégration suit le circuit de validation SOWIA.")
+
+                st.markdown("**Propositions envoyées**")
+                if not outbox:
+                    st.caption("Aucune proposition envoyée.")
+                for offer in outbox:
+                    with st.container(border=True):
+                        recipient_name = app_name_by_id.get(str(offer.get("recipient_app_id")), "Application partenaire")
+                        st.markdown(f"**{recipient_name}** · {offer.get('created_at', '')}")
+                        st.write(offer.get("offer_summary", ""))
+                        st.caption("Réponse : " + str(offer.get("status", "")) + " · Intégration : " + str(offer.get("integration_status", "")))
+                        if offer.get("integration_review_note"):
+                            st.info("Note SOWIA : " + str(offer["integration_review_note"]))
+            except Exception as exc:
+                st.error("Le module de propositions sécurisées n’est pas disponible.")
+                st.caption("Diagnostic : " + type(exc).__name__)
+
         if nex_is_admin:
-            with nex_tab_views[7]:
-                st.markdown("#### Console de validation SOWIA")
+            with nex_tab_views[8]:
+                st.markdown("#### Validation des intégrations NIGHT EXCHANGE")
+                try:
+                    admin_visible_apps = cloud_storage.list_approved_night_exchange_apps(
+                        supabase_client, current_user, limit=200
+                    )
+                    admin_app_name_by_id = {str(row.get("id")): row.get("app_name", "Application") for row in admin_visible_apps}
+                    pending_integrations = cloud_storage.list_night_exchange_integrations_for_admin(
+                        supabase_client, current_user, limit=200
+                    )
+                    if not pending_integrations:
+                        st.success("Aucune intégration en attente.")
+                    for offer in pending_integrations:
+                        with st.container(border=True):
+                            sender_name = admin_app_name_by_id.get(str(offer.get("sender_app_id")), "Application émettrice")
+                            recipient_name = admin_app_name_by_id.get(str(offer.get("recipient_app_id")), "Application destinataire")
+                            st.markdown(f"**{sender_name} ↔ {recipient_name}**")
+                            st.write(offer.get("offer_summary", ""))
+                            st.caption("Proposition acceptée · En attente de validation SOWIA")
+                            review_note = st.text_area(
+                                "Note de validation (facultative)",
+                                key=f"nex_integration_note_{offer['id']}", max_chars=1000
+                            )
+                            review_cols = st.columns(2)
+                            with review_cols[0]:
+                                if st.button("Approuver l’intégration", key=f"nex_integration_approve_{offer['id']}", use_container_width=True):
+                                    try:
+                                        cloud_storage.admin_review_night_exchange_integration(
+                                            supabase_client, current_user, offer["id"], "approved", review_note
+                                        )
+                                        st.success("Intégration approuvée. Les deux participants sont informés dans leur journal.")
+                                        st.rerun()
+                                    except Exception as exc:
+                                        st.error("Approbation refusée par le contrôle administratif.")
+                                        st.caption("Diagnostic : " + type(exc).__name__)
+                            with review_cols[1]:
+                                if st.button("Refuser l’intégration", key=f"nex_integration_reject_{offer['id']}", use_container_width=True):
+                                    try:
+                                        cloud_storage.admin_review_night_exchange_integration(
+                                            supabase_client, current_user, offer["id"], "rejected", review_note
+                                        )
+                                        st.success("Intégration refusée.")
+                                        st.rerun()
+                                    except Exception as exc:
+                                        st.error("Refus impossible.")
+                                        st.caption("Diagnostic : " + type(exc).__name__)
+                except Exception as exc:
+                    st.error("La file de validation des intégrations n’est pas disponible.")
+                    st.caption("Diagnostic : " + type(exc).__name__)
+
+                st.divider()
+                st.markdown("#### Console de modération des candidatures")
                 st.caption("Les décisions de modération sont contrôlées par une fonction SQL qui vérifie le rôle administrateur signé.")
                 try:
                     pending_apps = cloud_storage.list_night_exchange_apps_for_admin(
