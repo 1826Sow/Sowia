@@ -466,7 +466,8 @@ if cloud_mode and current_user is not None:
 premium_active = bool(premium_entitlement)
 
 with st.sidebar:
-    st.markdown("## 🧠 SOW IA")
+    st.image("assets/sowia-logo.webp", width=142)
+    st.markdown("<div style=\"height:1px;background:linear-gradient(90deg,transparent,#27c9ff,transparent);margin:.35rem 0 1rem;\"></div>", unsafe_allow_html=True)
     preference_owner = str(getattr(current_user, "id", "")) if cloud_mode and current_user is not None else "local"
     if st.session_state.get("sowia_language_loaded_for") != preference_owner:
         saved_language = "Français"
