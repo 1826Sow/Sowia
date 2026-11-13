@@ -5053,13 +5053,14 @@ elif page == "SOWIA NIGHT EXCHANGE":
                     supabase_client, current_user, limit=200
                 )
                 own_approved = [row for row in own_offer_apps if row.get("status") == "approved"]
-                current_user_id = str(getattr(current_user, "id", ""))
+                current_user_id = str(cloud_storage._user_id(current_user))
+                own_app_ids = {str(row.get("id")) for row in own_offer_apps}
                 if own_approved and approved_offer_apps:
                     own_labels = {f"{row['app_name']} · {row['country']}": row for row in own_approved}
                     partner_labels = {
                         f"{row['app_name']} · {row['country']}": row
                         for row in approved_offer_apps
-                        if str(row.get("user_id") or "") != current_user_id
+                        if str(row.get("id")) not in own_app_ids
                     }
                     if partner_labels:
                         with st.form("nex_create_offer_form", clear_on_submit=True):
