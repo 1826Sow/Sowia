@@ -25,6 +25,11 @@ class NightExchangeAppWiringTests(unittest.TestCase):
         self.assertIn('cloud_storage.list_night_exchange_integrations_for_admin(', self.source)
         self.assertIn('cloud_storage.admin_review_night_exchange_integration(', self.source)
 
+    def test_night_exchange_is_limited_to_professional_workspace(self):
+        self.assertIn('st.session_state.get("workspace_id", "professional") != "professional"', self.source)
+        self.assertIn('NIGHT EXCHANGE est réservé à l’espace Professionnel', self.source)
+        self.assertIn('nex_workspace = "professional"', self.source)
+
     def test_app_source_parses_as_python(self):
         self.assertIsInstance(self.tree, ast.Module)
 
