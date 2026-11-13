@@ -5139,7 +5139,10 @@ elif page == "SOWIA NIGHT EXCHANGE":
                             st.rerun()
                         except Exception as exc:
                             st.error("La proposition n’a pas pu être envoyée. Votre texte est conservé : corrigez le problème puis réessayez.")
-                            st.caption("Diagnostic technique : " + type(exc).__name__)
+                            error_code = getattr(exc, "code", None)
+                            error_message = getattr(exc, "message", None) or str(exc)
+                            diagnostic = (str(error_code) + " · " if error_code else "") + str(error_message)
+                            st.caption("Diagnostic technique : " + type(exc).__name__ + " · " + diagnostic[:400])
                 elif not own_approved:
                     st.info("Vous devez disposer d’au moins une application personnelle approuvée.")
                 else:
