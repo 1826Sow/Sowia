@@ -66,7 +66,7 @@ st.markdown(
     section[data-testid="stSidebar"] [data-testid="stRadio"] label { border-radius: 11px; padding: .38rem .55rem; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { background: #d7e5f4; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color: #15395e !important; font-weight: 750; }
-    .hero { position: relative; overflow: hidden; padding: clamp(1.35rem, 3vw, 2.25rem); border: 1px solid #d4dfec; border-radius: 24px; background: radial-gradient(circle at 88% 12%, rgba(75,153,161,.23), transparent 28%), radial-gradient(circle at 6% 100%, rgba(194,164,104,.18), transparent 30%), linear-gradient(120deg, #102a46 0%, #173d5c 58%, #1d5361 100%); box-shadow: 0 18px 42px rgba(22,49,78,.14); margin: .35rem 0 1.35rem; }
+    .hero { position: relative; isolation: isolate; overflow: hidden; padding: clamp(1.5rem, 3.4vw, 2.65rem); border: 1px solid rgba(65,203,255,.48); border-radius: 24px; background: radial-gradient(ellipse at 84% 18%, rgba(0,190,255,.25), transparent 34%), radial-gradient(ellipse at 12% 100%, rgba(155,65,255,.20), transparent 38%), linear-gradient(118deg, #020b1d 0%, #071a37 52%, #09284a 100%); box-shadow: 0 0 0 1px rgba(32,130,220,.12), 0 18px 48px rgba(1,12,31,.34), inset 0 1px rgba(255,255,255,.06); margin: .35rem 0 1.35rem; }\n    .hero::before { content: ""; position: absolute; z-index: -1; inset: auto -8% -62% 30%; height: 100%; border-radius: 50%; background: radial-gradient(ellipse, rgba(0,195,255,.18), transparent 68%); filter: blur(18px); pointer-events: none; }
     .hero-kicker { color: #b9d7d8 !important; font-size: .72rem; letter-spacing: .17em; font-weight: 800; margin-bottom: .55rem; text-transform: uppercase; }
     .hero h1 { font-size: clamp(2.15rem, 5vw, 3.25rem); line-height: 1.08; margin: 0; color: #fff !important; letter-spacing: -.045em; }
     .hero p { color: #e1ebf2 !important; margin: .65rem 0 0; font-size: clamp(1rem, 2vw, 1.12rem); line-height: 1.55; max-width: 820px; }
@@ -666,11 +666,10 @@ with st.sidebar:
     )
 st.markdown(
     '<div class="hero"><div class="hero-kicker">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>'
-    '<h1>🧠 SOW IA</h1>'
-    '<p>La technologie au service des décisions, de la productivité et des opportunités. '
-    'Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.</p>'
-    '<div class="hero-meta"><span class="hero-chip">🔐 Espaces de travail sécurisés</span>'
-    '<span class="hero-chip">🌍 Ambition internationale</span>'
+    '<h1>🧠 SOW <span style="color:#42d7ff;text-shadow:0 0 22px rgba(35,190,255,.55)">IA</span></h1>'
+    '<p>Explorez, apprenez, créez et transformez vos idées. Un environnement intelligent au service des particuliers, des entreprises et des partenaires.</p>'
+    '<div class="hero-meta"><span class="hero-chip">🔐 Espaces sécurisés</span>'
+    '<span class="hero-chip">🌍 Ouverture internationale</span>'
     '<span class="hero-chip">🤝 Collaboration professionnelle</span></div></div>',
     unsafe_allow_html=True,
 )
