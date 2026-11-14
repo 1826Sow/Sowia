@@ -186,12 +186,21 @@ def _supabase_project_url():
     parts = urlsplit(raw_url)
     if parts.scheme != "https" or not parts.netloc:
         raise RuntimeError("SUPABASE_URL doit être l'URL HTTPS du projet Supabase.")
-    if parts.path not in ("", "/") or parts.query or parts.fragment:
+    # Some dashboard/API instructions lead users to copy an endpoint URL
+    # instead of the project root. Normalize known Supabase API prefixes so
+    # the SDK does not append /auth/v1 twice (which causes HTTP 404).
+    known_api_paths = {
+        "/auth/v1", "/rest/v1", "/storage/v1", "/realtime/v1",
+        "/functions/v1", "/graphql/v1",
+    }
+    path = (parts.path or "").rstrip("/")
+    if path and path not in known_api_paths:
         raise RuntimeError(
-            "SUPABASE_URL doit être l'adresse racine du projet "
-            "(https://votre-projet.supabase.co), sans /auth/v1, /rest/v1 "
-            "ni autre chemin."
+            "SUPABASE_URL doit être l'adresse racine du projet Supabase "
+            "ou un endpoint API Supabase standard, sans autre chemin."
         )
+    if parts.query or parts.fragment:
+        raise RuntimeError("SUPABASE_URL ne doit contenir ni paramètres ni fragment.")
     return urlunsplit((parts.scheme, parts.netloc, "", "", ""))
 
 
@@ -231,7 +240,7 @@ def create_email_user_client():
     over the authenticated HTTPS app connection; the main GitHub client keeps
     its PKCE flow unchanged.
     """
-    url = str(get_setting("SUPABASE_URL", "")).strip()
+    url = _supabase_project_url()
     key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
     if not key:
         raise RuntimeError("SUPABASE_ANON_KEY est absent des secrets de l'hébergeur.")
