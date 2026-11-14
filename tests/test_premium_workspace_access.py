@@ -22,9 +22,10 @@ class Query:
 class Client:
     def __init__(self, data=None):
         self.query = Query(data)
+        self.subscription_query = Query(None)
     def table(self, name):
         self.table_name = name
-        return self.query
+        return self.query if name == "sowia_entitlements" else self.subscription_query
 
 
 class User:
@@ -40,8 +41,14 @@ def test_professional_workspace_requires_active_entitlement():
         premium_access.require_workspace_access("professional", Client(None), User())
 
 
+def test_professional_workspace_denies_active_free_entitlement():
+    free_active = {"plan": "free", "status": "active", "provider": "paypal"}
+    with pytest.raises(PermissionError, match="accès SOW IA Premium actif"):
+        premium_access.require_workspace_access("professional", Client(free_active), User())
+
+
 def test_professional_workspace_accepts_active_entitlement():
-    active = {"status": "active", "provider": "paypal"}
+    active = {"plan": "premium", "status": "active", "provider": "paypal"}
     assert premium_access.require_workspace_access(
         "professional", Client(active), User()
     ) == active
@@ -50,3 +57,16 @@ def test_professional_workspace_accepts_active_entitlement():
 def test_professional_workspace_fails_closed_without_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         premium_access.require_workspace_access("professional", Client(None), None)
+
+
+@pytest.mark.parametrize("workspace_id", ["", None, "shared", "administrator", "professional-admin"])
+def test_unknown_workspace_is_rejected_instead_of_falling_back_to_personal(workspace_id):
+    with pytest.raises(ValueError, match="Espace de travail invalide"):
+        premium_access.require_workspace_access(workspace_id, Client(None), User())
+
+
+def test_workspace_name_is_normalized_before_access_check():
+    active = {"plan": "premium", "status": "active", "provider": "paypal"}
+    assert premium_access.require_workspace_access(
+        " PROFESSIONAL ", Client(active), User()
+    ) == active

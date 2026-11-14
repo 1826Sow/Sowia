@@ -27,13 +27,20 @@ def get_entitlement(user_client, user):
         raise PermissionError("Connexion requise.")
     result = (
         user_client.table("sowia_entitlements")
-        .select("status, provider, paypal_order_id, amount, currency, updated_at")
+        .select("plan, status, provider, paypal_order_id, amount, currency, updated_at")
         .eq("user_id", str(user_id))
         .maybe_single()
         .execute()
     )
     data = getattr(result, "data", None)
-    return data if data and data.get("status") == "active" else None
+    return (
+        data
+        if data
+        and data.get("plan") == "premium"
+        and data.get("status") == "active"
+        and data.get("provider") == "paypal"
+        else None
+    )
 
 
 def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
@@ -44,9 +51,14 @@ def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
     if not normalized_user_id or not normalized_order_id or amount is None:
         raise ValueError("Informations de paiement Premium incomplètes.")
     try:
-        normalized_amount = Decimal(str(amount)).quantize(Decimal("0.01"))
+        raw_amount = Decimal(str(amount))
+        if not raw_amount.is_finite():
+            raise ValueError
+        normalized_amount = raw_amount.quantize(Decimal("0.01"))
     except (InvalidOperation, ValueError, TypeError):
-        raise ValueError("Le montant Premium doit être un montant en euros valide.")
+        raise ValueError("Le montant Premium doit être un montant en euros valide.") from None
+    if raw_amount != normalized_amount:
+        raise ValueError("Le montant Premium ne peut pas comporter plus de deux décimales.")
     if (
         not normalized_amount.is_finite()
         or normalized_amount <= 0
@@ -56,6 +68,7 @@ def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
         raise ValueError("Le montant Premium ou la devise ne sont pas valides.")
     payload = {
         "user_id": normalized_user_id,
+        "plan": "premium",
         "status": "active",
         "provider": "paypal",
         "paypal_order_id": normalized_order_id,
@@ -77,7 +90,10 @@ def require_workspace_access(workspace_id, user_client, user):
     The Personal workspace remains free. Professional access fails closed if
     the user is unauthenticated or the entitlement is missing/unreadable.
     """
-    if str(workspace_id or "").strip().lower() != "professional":
+    workspace = str(workspace_id or "").strip().lower()
+    if workspace not in {"personal", "professional"}:
+        raise ValueError("Espace de travail invalide.")
+    if workspace == "personal":
         return None
     return require_active_entitlement(user_client, user)
 

@@ -34,5 +34,9 @@ create policy "Users can read their own SOW IA subscription"
     to authenticated
     using (auth.uid() = user_id);
 
+-- Explicit privileges complement RLS: clients may read only their own row.
+revoke all on public.sowia_subscriptions from anon, authenticated;
+grant select on public.sowia_subscriptions to authenticated;
+
 -- No client INSERT/UPDATE/DELETE policies are intentionally created.
 -- Only the Supabase service-role Edge Function may write subscription state.

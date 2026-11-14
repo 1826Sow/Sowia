@@ -32,15 +32,22 @@ on public.sowia_night_exchange_events for insert to authenticated
 with check (
     user_id = auth.uid()
     and event_type in ('match_viewed', 'meeting_confirmed')
-    and (app_id is null or exists (
-        select 1 from public.sowia_night_exchange_apps a
-        where a.id = app_id and a.user_id = auth.uid()
-    ))
+    and (
+        app_id is null
+        or exists (
+            select 1
+              from public.sowia_night_exchange_apps a
+             where a.id = sowia_night_exchange_events.app_id
+               and a.workspace_id = sowia_night_exchange_events.workspace_id
+               and (a.user_id = auth.uid() or a.status = 'approved')
+        )
+    )
 );
 
 -- No UPDATE or DELETE policy: the ledger is append-only for client users.
+-- Explicitly remove mutation privileges; authenticated clients receive read/append only.
+revoke all on public.sowia_night_exchange_events from anon, authenticated;
 grant select, insert on public.sowia_night_exchange_events to authenticated;
-revoke all on public.sowia_night_exchange_events from anon;
 
 comment on table public.sowia_night_exchange_events is
 'Append-only SOWIA NIGHT EXCHANGE audit events. Authenticated clients cannot insert payment_confirmed; only trusted server-side payment webhooks/service-role processes may do so.';

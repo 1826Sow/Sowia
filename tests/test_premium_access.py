@@ -32,14 +32,16 @@ class Query:
 class Client:
     def __init__(self, data=None):
         self.query = Query(data)
+        self.subscription_query = Query(None)
     def table(self, name):
         self.table_name = name
-        return self.query
+        return self.query if name == "sowia_entitlements" else self.subscription_query
 
 
 def test_entitlement_read_is_scoped_to_authenticated_user():
-    client = Client({"status": "active"})
-    assert premium_access.get_entitlement(client, User()) == {"status": "active"}
+    active = {"plan": "premium", "status": "active", "provider": "paypal"}
+    client = Client(active)
+    assert premium_access.get_entitlement(client, User()) == active
     assert client.table_name == "sowia_entitlements"
     assert ("user_id", "user-123") in client.query.filters
 
@@ -54,6 +56,7 @@ def test_entitlement_grant_uses_admin_upsert_and_user_id():
     premium_access.grant_paypal_entitlement(client, "user-123", "ORDER-1", "12.90", "EUR")
     assert client.query.on_conflict == "user_id"
     assert client.query.payload["user_id"] == "user-123"
+    assert client.query.payload["plan"] == "premium"
     assert client.query.payload["paypal_order_id"] == "ORDER-1"
     assert client.query.payload["status"] == "active"
 
@@ -107,7 +110,9 @@ def test_entitlement_grant_rejects_blank_identity_fields(user_id, order_id):
 
 @pytest.mark.parametrize(
     "entitlement",
-    [None, {"status": "inactive"}, {"status": "pending"}],
+    [None, {"plan": "premium", "status": "inactive", "provider": "paypal"},
+     {"plan": "free", "status": "active", "provider": "paypal"},
+     {"plan": "premium", "status": "pending", "provider": "paypal"}],
 )
 def test_premium_guard_denies_missing_or_inactive_entitlement(entitlement):
     client = Client(entitlement)
@@ -115,8 +120,15 @@ def test_premium_guard_denies_missing_or_inactive_entitlement(entitlement):
         premium_access.require_active_entitlement(client, User())
 
 
+def test_active_free_entitlement_does_not_grant_premium_access():
+    free_active = {"plan": "free", "status": "active", "provider": "paypal"}
+    with pytest.raises(PermissionError, match="accès SOW IA Premium actif"):
+        premium_access.require_active_entitlement(Client(free_active), User())
+
+
 def test_premium_guard_returns_active_entitlement():
     active = {
+        "plan": "premium",
         "status": "active",
         "provider": "paypal",
         "amount": "12.90",
@@ -128,3 +140,13 @@ def test_premium_guard_returns_active_entitlement():
 def test_premium_guard_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         premium_access.require_active_entitlement(Client(), None)
+
+
+@pytest.mark.parametrize("amount", ["12.901", "0.001", "NaN", "Infinity", "-Infinity"])
+def test_entitlement_grant_rejects_fractional_cents_and_non_finite_amounts(amount):
+    client = Client([])
+    with pytest.raises(ValueError):
+        premium_access.grant_paypal_entitlement(
+            client, "user-123", "ORDER-1", amount, "EUR"
+        )
+    assert client.query.payload is None

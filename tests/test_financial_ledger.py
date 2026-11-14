@@ -107,3 +107,20 @@ def test_refund_review_rejects_untrusted_status_and_currency():
     with pytest.raises(ValueError):
         flag_paypal_refund_for_review(UnusedClient(), user_id="u1", transaction=base)
 
+@pytest.mark.parametrize("amount", ["1.001", "1.005", "NaN", "Infinity", "-1"])
+def test_paypal_capture_rejects_non_cent_or_non_finite_amounts(amount):
+    with pytest.raises(ValueError):
+        record_paypal_capture(
+            Client(), user_id="u1", order_id="ORDER123",
+            capture={"id": "CAPTURE123"}, amount=amount, currency="EUR",
+        )
+
+
+@pytest.mark.parametrize("amount", ["1.001", "1.005", "NaN", "Infinity"])
+def test_paypal_capture_accepts_exact_cent_precision_only(amount):
+    from financial_ledger import _currency_amount
+
+    with pytest.raises(ValueError):
+        _currency_amount(amount, "Montant PayPal")
+    assert _currency_amount("1.23", "Montant PayPal") == __import__("decimal").Decimal("1.23")
+    assert _currency_amount("1.230", "Montant PayPal") == __import__("decimal").Decimal("1.23")

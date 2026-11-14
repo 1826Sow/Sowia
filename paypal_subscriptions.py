@@ -7,6 +7,7 @@ SOW IA user and persisted by a separate trusted handler.
 from __future__ import annotations
 
 import re
+from decimal import Decimal, InvalidOperation
 from uuid import uuid4
 from datetime import timezone
 
@@ -248,15 +249,58 @@ def ensure_premium_plan(admin_client):
     return str(plan_id)
 
 
-def reconcile_returned_subscription(subscription_id: str, user_id: str):
-    """Validate PayPal's browser return server-side and persist an ACTIVE subscription.
 
-    The query parameter is only an identifier; ownership, plan and status are
-    re-fetched from PayPal using the server credentials before Premium is granted.
+def _validate_paypal_plan_price(config, token, plan_id: str):
+    """Fail closed unless PayPal confirms the active monthly plan is EUR 9.90."""
+    normalized_plan_id = str(plan_id or "").strip()
+    if not re.fullmatch(r"P-[A-Z0-9]+", normalized_plan_id):
+        raise ValueError("Identifiant du forfait PayPal invalide.")
+    response = requests.get(
+        f"{config['base_url']}/v1/billing/plans/{normalized_plan_id}",
+        headers=_api_headers(config, token),
+        timeout=TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    plan = response.json()
+    if plan.get("id") != normalized_plan_id or str(plan.get("status") or "").upper() != "ACTIVE":
+        raise PermissionError("Le forfait PayPal n'est pas actif ou ne correspond pas.")
+    cycles = plan.get("billing_cycles")
+    if not isinstance(cycles, list):
+        raise PermissionError("Le forfait PayPal ne contient aucun cycle de facturation valide.")
+    regular_cycles = [
+        cycle for cycle in cycles
+        if isinstance(cycle, dict) and str(cycle.get("tenure_type") or "").upper() == "REGULAR"
+    ]
+    if not regular_cycles:
+        raise PermissionError("Le forfait PayPal ne contient pas de tarif récurrent.")
+    for cycle in regular_cycles:
+        frequency = cycle.get("frequency") or {}
+        price = ((cycle.get("pricing_scheme") or {}).get("fixed_price") or {})
+        try:
+            value = Decimal(str(price.get("value"))).quantize(Decimal("0.01"))
+        except (InvalidOperation, ValueError, TypeError):
+            raise PermissionError("Le tarif du forfait PayPal est invalide.") from None
+        if (
+            str(frequency.get("interval_unit") or "").upper() != "MONTH"
+            or int(frequency.get("interval_count") or 0) != 1
+            or not value.is_finite()
+            or value != Decimal(PREMIUM_PRICE)
+            or str(price.get("currency_code") or "").upper() != PREMIUM_CURRENCY
+        ):
+            raise PermissionError("Le tarif PayPal doit être de 9,90 EUR par mois.")
+    return plan
+
+def reconcile_returned_subscription(subscription_id: str, user_id: str):
+    """Validate a browser return without granting or persisting Premium access.
+
+    A browser redirect is not an authoritative billing event. This function
+    checks PayPal ownership and plan details, but the signed PayPal webhook and
+    its atomic database RPC remain the only path that can activate a subscription.
     """
     config = paypal_subscription_configuration()
     if not config or config["mode"] != "sandbox":
         raise RuntimeError("La réconciliation du retour est limitée à PayPal Sandbox.")
+    # Read the private plan catalogue only; never write subscription state here.
     # Import lazily so the app does not initialize an admin client on ordinary page loads.
     import premium_access
     admin_client = premium_access.create_admin_client()
@@ -287,24 +331,46 @@ def reconcile_returned_subscription(subscription_id: str, user_id: str):
     if status != "ACTIVE":
         raise RuntimeError("PayPal n'a pas encore confirmé un abonnement actif.")
 
+    token = _access_token(config)
+    _validate_paypal_plan_price(config, token, expected_plan_id)
     billing = details.get("billing_info") or {}
+    try:
+        failed_payments_count = int(billing.get("failed_payments_count", 0))
+    except (TypeError, ValueError):
+        raise PermissionError("Le compteur d'échecs PayPal est invalide.") from None
+    if failed_payments_count < 0:
+        raise PermissionError("Le compteur d'échecs PayPal est invalide.")
+    if failed_payments_count > 0:
+        raise PermissionError("Un paiement PayPal est en échec ou en nouvelle tentative.")
     last_payment = billing.get("last_payment") or {}
-    amount = (last_payment.get("amount") or {})
-    payload = {
+    amount = last_payment.get("amount") or {}
+    # If PayPal reports a payment, it must match the configured recurring price.
+    # No synthetic payment amount is created when the first billing cycle is pending.
+    if amount:
+        try:
+            paid_amount = Decimal(str(amount.get("value"))).quantize(Decimal("0.01"))
+        except (InvalidOperation, ValueError, TypeError):
+            raise PermissionError("Le montant du dernier paiement PayPal est invalide.") from None
+        if (
+            not paid_amount.is_finite()
+            or paid_amount != Decimal(PREMIUM_PRICE)
+            or str(amount.get("currency_code") or "").upper() != PREMIUM_CURRENCY
+        ):
+            raise PermissionError("Le dernier paiement PayPal ne correspond pas au tarif Premium.")
+    # Deliberately do not persist ACTIVE here. The webhook performs signature
+    # verification and calls the atomic reconciliation RPC, which enforces
+    # event ordering, payment-review holds and terminal subscription states.
+    return {
         "user_id": normalized_user_id,
         "provider": "paypal",
         "paypal_subscription_id": normalized_subscription_id,
         "paypal_plan_id": expected_plan_id,
-        "status": "active",
-        "currency": amount.get("currency_code") or "EUR",
-        "amount": amount.get("value") or PREMIUM_PRICE,
+        "status": "pending_webhook",
+        "currency": PREMIUM_CURRENCY,
+        "amount": PREMIUM_PRICE,
         "next_billing_time": billing.get("next_billing_time"),
         "last_payment_at": last_payment.get("time"),
     }
-    admin_client.table("sowia_subscriptions").upsert(
-        payload, on_conflict="paypal_subscription_id"
-    ).execute()
-    return payload
 
 def create_premium_subscription(user_id: str, plan_id: str | None = None):
     """Create an approval-pending monthly subscription for the signed-in user."""

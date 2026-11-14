@@ -325,3 +325,112 @@ def test_invalid_accessibility_preferences_are_rejected_before_database_write(in
 
     with pytest.raises(ValueError):
         cloud_storage.set_accessibility_preferences(Client(), User(), invalid)
+
+
+
+def test_global_action_transition_uses_privileged_rpc_and_bounds_note():
+    class RpcClient:
+        def __init__(self):
+            self.calls = []
+
+        def rpc(self, name, payload):
+            self.calls.append((name, payload))
+            return SimpleNamespace(execute=lambda: "rpc-result")
+
+    client = RpcClient()
+    result = cloud_storage.transition_global_action_plan(
+        client, User(), "plan-123", "submitted", "N" * 1200
+    )
+
+    assert result == "rpc-result"
+    assert len(client.calls) == 1
+    name, payload = client.calls[0]
+    assert name == "sowia_action_transition"
+    assert payload == {
+        "p_plan_id": "plan-123",
+        "p_next_status": "submitted",
+        "p_note": "N" * 1000,
+    }
+
+
+def test_global_action_transition_rejects_unknown_status_before_rpc():
+    class RpcClient:
+        def rpc(self, *_args, **_kwargs):
+            raise AssertionError("RPC must not be called for an unknown status")
+
+    with pytest.raises(ValueError, match="Transition invalide"):
+        cloud_storage.transition_global_action_plan(
+            RpcClient(), User(), "plan-123", "approved_by_creator"
+        )
+
+
+def test_create_global_action_plan_uses_database_owned_draft_status():
+    client = FakeClient()
+    plan = {
+        "title": "Pilote",
+        "objective": "Tester un périmètre restreint.",
+        "country": "France",
+        "owner_label": "Équipe SOWIA",
+        "approver_id": "123e4567-e89b-12d3-a456-426614174000",
+        "budget_cap": 250,
+        "currency": "EUR",
+        "due_date": "2027-03-31",
+        "success_metric": "10 utilisateurs actifs",
+        "stop_condition": "Arrêt si le plafond est atteint.",
+    }
+
+    cloud_storage.create_global_action_plan(client, User(), plan)
+
+    payload = client.tables["sowia_global_action_plans"].inserted
+    assert payload["creator_id"] == "user-123"
+    assert "status" not in payload
+    assert "approval_note" not in payload
+    assert "approved_at" not in payload
+    assert "created_at" not in payload
+    assert "updated_at" not in payload
+
+
+def test_create_global_action_plan_rejects_self_approver_before_database_write():
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for self-approval")
+
+    creator_id = "123e4567-e89b-12d3-a456-426614174000"
+    plan = {
+        "title": "Pilote",
+        "objective": "Tester un périmètre restreint.",
+        "country": "France",
+        "owner_label": "Équipe SOWIA",
+        "approver_id": creator_id,
+        "budget_cap": 250,
+        "currency": "EUR",
+        "due_date": "2027-03-31",
+        "success_metric": "10 utilisateurs actifs",
+        "stop_condition": "Arrêt si le plafond est atteint.",
+    }
+
+    with pytest.raises(ValueError, match="différent du créateur"):
+        cloud_storage.create_global_action_plan(Client(), SimpleNamespace(id=creator_id), plan)
+
+
+def test_create_global_action_plan_rejects_unexpected_workflow_fields_before_write():
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for invalid input")
+
+    plan = {
+        "title": "Pilote",
+        "objective": "Tester un périmètre restreint.",
+        "country": "France",
+        "owner_label": "Équipe SOWIA",
+        "approver_id": "123e4567-e89b-12d3-a456-426614174000",
+        "budget_cap": 250,
+        "currency": "EUR",
+        "due_date": "2027-03-31",
+        "success_metric": "10 utilisateurs actifs",
+        "stop_condition": "Arrêt si le plafond est atteint.",
+        "status": "approved",
+    }
+
+    with pytest.raises(TypeError):
+        cloud_storage.create_global_action_plan(Client(), User(), plan)

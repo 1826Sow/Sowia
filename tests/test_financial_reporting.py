@@ -171,4 +171,3 @@ def test_subscription_status_summary_rejects_non_list_input():
     import pytest
     with pytest.raises(ValueError):
         summarize_subscription_statuses(None)
-

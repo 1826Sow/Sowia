@@ -36,7 +36,7 @@ create or replace function public.sowia_club_notify_request_event()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = ''
 as $$
 begin
  if tg_op = 'INSERT' then
@@ -64,7 +64,7 @@ create or replace function public.sowia_club_notify_meeting_event()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = ''
 as $$
 declare
  target_user uuid;

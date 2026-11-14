@@ -23,9 +23,8 @@ def test_premium_admin_client_is_created_only_inside_authenticated_paypal_flows(
         and isinstance(node.func.value, ast.Name)
         and node.func.value.id == "premium_access"
     ]
-    # Calls cover checkout validation, the authenticated subscription
-    # overview, two explicit synchronization actions, and the admin-only
-    # read-only control center. Every call must remain conditionally guarded.
+    # Calls cover checkout validation, subscription-plan setup, two explicit
+    # user-triggered sync actions, and the admin-only read-only control center.
     assert len(admin_calls) == 5
 
     for call in admin_calls:

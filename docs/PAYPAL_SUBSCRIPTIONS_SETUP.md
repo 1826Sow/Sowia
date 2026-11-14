@@ -16,11 +16,27 @@ Au premier clic de préparation, SOW IA crée automatiquement le produit et le f
 Le tarif Sandbox prévu est **9,90 EUR par mois**. Il est défini côté serveur dans `paypal_subscriptions.py`.
 
 ## Migration et fonction Edge
-1. Appliquer `supabase/migrations/20261109000200_sowia_paypal_catalog.sql`.
-2. Déployer la fonction Edge `paypal-webhook` après application de la migration.
-3. Configurer les secrets Edge : `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_SUBSCRIPTION_WEBHOOK_ID`, `PAYPAL_MODE=sandbox`.
-4. Le secret `PAYPAL_PREMIUM_PLAN_ID` n'est plus nécessaire : le webhook lit le plan attendu depuis la table privée `sowia_paypal_catalog`.
-5. Créer dans PayPal Sandbox le webhook pointant vers l'URL de la fonction Edge et sélectionner les événements d'abonnement et de paiement gérés par le code.
+Appliquer les migrations dans l'ordre chronologique du dépôt, en particulier les migrations nécessaires au parcours PayPal :
+1. `supabase/migrations/20261109000100_sowia_subscriptions.sql` — état des abonnements et droits de lecture.
+2. `supabase/migrations/20261109000200_sowia_paypal_catalog.sql` — catalogue privé des forfaits.
+3. `supabase/migrations/20261110000100_sowia_financial_ledger.sql` — registre financier.
+4. `supabase/migrations/20261111000100_paypal_billing_ledger_link.sql` — lien des échéances récurrentes.
+5. `supabase/migrations/20261111000400_paypal_capture_order_link.sql` — lien des achats ponctuels aux commandes.
+6. `supabase/migrations/20261111000500_paypal_subscription_atomic_reconciliation.sql` — réconciliation atomique, verrouillage concurrent et ordre chronologique des événements.
+7. `supabase/migrations/20261111000600_paypal_webhook_event_deduplication.sql` — registre privé des identifiants d'événements PayPal pour ignorer durablement les notifications répétées.
+8. `supabase/migrations/20261111000700_paypal_one_time_entitlement_atomic.sql` — requis pour les achats Premium ponctuels ; enregistre atomiquement la capture et le droit Premium. Cette migration dépend du grand livre et du lien commande/capture.
+
+Déployer ensuite la fonction Edge `paypal-webhook`, puis configurer les secrets Edge : `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_SUBSCRIPTION_WEBHOOK_ID`, `PAYPAL_MODE=sandbox`.
+
+Le secret `PAYPAL_PREMIUM_PLAN_ID` n'est plus nécessaire : le webhook lit le plan attendu depuis la table privée `sowia_paypal_catalog`.
+
+Créer dans PayPal Sandbox le webhook pointant vers l'URL de la fonction Edge et sélectionner les événements gérés par le code :
+   - Abonnements : `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.UPDATED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.SUSPENDED`, `BILLING.SUBSCRIPTION.EXPIRED`, `BILLING.SUBSCRIPTION.PAYMENT.FAILED`, `BILLING.SUBSCRIPTION.PAYMENT.SUCCEEDED`.
+   - Paiements récurrents : `PAYMENT.SALE.COMPLETED`, `PAYMENT.SALE.REFUNDED`, `PAYMENT.SALE.REVERSED`.
+   - Achats ponctuels (capture Orders API) : `PAYMENT.CAPTURE.REFUNDED`.
+6. Conserver l'identifiant du webhook dans `PAYPAL_SUBSCRIPTION_WEBHOOK_ID`. Il doit correspondre exactement au webhook configuré pour cette URL et ce mode Sandbox.
+
+Les événements de remboursement de capture ne sont pas interchangeables avec les événements `PAYMENT.SALE.*` des abonnements : les deux familles doivent être cochées.
 
 ## Sécurité et activation
 - La création automatique du produit et du forfait est limitée à Sandbox.

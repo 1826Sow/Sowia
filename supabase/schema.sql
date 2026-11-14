@@ -67,6 +67,7 @@ grant usage, select on all sequences in schema public to authenticated;
 -- read only their own entitlement; they cannot grant or edit their own access.
 create table if not exists public.sowia_entitlements (
     user_id uuid primary key references auth.users(id) on delete cascade,
+    plan text not null default 'free' check (plan in ('free', 'premium')),
     status text not null check (status in ('active', 'inactive')),
     provider text not null check (provider in ('paypal')),
     paypal_order_id text not null unique,

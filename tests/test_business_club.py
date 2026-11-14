@@ -106,3 +106,40 @@ def test_meeting_invitation_rejects_unsupported_language():
     from business_club import build_meeting_invitation
     with pytest.raises(ValueError, match="Langue"):
         build_meeting_invitation({}, "Klingon")
+
+
+def test_business_club_request_and_meeting_updates_are_status_only_in_database():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    sql = (root / "supabase_business_club.sql").read_text(encoding="utf-8").lower()
+    assert "grant update (status) on public.sowia_business_club_requests to authenticated" in sql
+    assert "grant update (status) on public.sowia_business_club_meetings to authenticated" in sql
+    assert "grant select,insert,update on public.sowia_business_club_requests to authenticated" not in sql
+    assert "grant update (status, updated_at) on public.sowia_business_club_meetings to authenticated" not in sql
+    assert "create trigger sowia_business_club_touch_request" in sql
+    assert "create trigger sowia_business_club_touch_meeting" in sql
+    assert sql.count("new.updated_at := pg_catalog.now();") == 2
+
+
+def test_business_club_storage_helpers_do_not_write_client_timestamps():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "cloud_storage.py").read_text(encoding="utf-8")
+    request_start = source.index("def update_business_club_request(")
+    meeting_start = source.index("def update_business_club_meeting(")
+    request_body = source[request_start:meeting_start]
+    meeting_body = source[meeting_start:source.index("def list_business_club_notifications(", meeting_start)]
+    assert '"updated_at"' not in request_body
+    assert '"updated_at"' not in meeting_body
+
+
+def test_business_club_notification_definer_triggers_use_empty_search_path():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    sql = (root / "supabase_business_club_notifications.sql").read_text(encoding="utf-8").lower()
+    assert sql.count("security definer") == 2
+    assert sql.count("set search_path = ''") == 2
+    assert "set search_path = public" not in sql

@@ -1,6 +1,6 @@
--- SOW IA: READ-ONLY deployment diagnostic.
--- Inventory based on the SQL migrations and persistence modules currently in the repository.
--- Run only after the corresponding feature migrations have been applied in Supabase.
+-- SOW IA: READ-ONLY preflight and post-installation diagnostic.
+-- Run before installing or changing modules to inventory existing objects, then run again after installation.
+-- MISSING results are expected for modules not yet installed; compare them with the features actually required.
 -- This script reads PostgreSQL catalog and Storage metadata only; it changes no data or schema.
 
 with expected_tables(table_name, is_optional) as (
