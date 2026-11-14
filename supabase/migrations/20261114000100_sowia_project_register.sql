@@ -29,18 +29,30 @@ alter table public.sowia_projects enable row level security;
 drop policy if exists "Users can read own SOW IA projects" on public.sowia_projects;
 create policy "Users can read own SOW IA projects"
     on public.sowia_projects for select to authenticated
-    using ((select auth.uid()) = user_id);
+    using (
+        (select auth.uid()) = user_id
+        and (workspace_id = 'personal' or public.sowia_has_professional_access())
+    );
 
 drop policy if exists "Users can create own SOW IA projects" on public.sowia_projects;
 create policy "Users can create own SOW IA projects"
     on public.sowia_projects for insert to authenticated
-    with check ((select auth.uid()) = user_id);
+    with check (
+        (select auth.uid()) = user_id
+        and (workspace_id = 'personal' or public.sowia_has_professional_access())
+    );
 
 drop policy if exists "Users can update own SOW IA projects" on public.sowia_projects;
 create policy "Users can update own SOW IA projects"
     on public.sowia_projects for update to authenticated
-    using ((select auth.uid()) = user_id)
-    with check ((select auth.uid()) = user_id);
+    using (
+        (select auth.uid()) = user_id
+        and (workspace_id = 'personal' or public.sowia_has_professional_access())
+    )
+    with check (
+        (select auth.uid()) = user_id
+        and (workspace_id = 'personal' or public.sowia_has_professional_access())
+    );
 
 grant select, insert, update on public.sowia_projects to authenticated;
 grant usage, select on sequence public.sowia_projects_id_seq to authenticated;
