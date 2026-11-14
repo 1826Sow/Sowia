@@ -254,23 +254,58 @@ Deno.serve(async (request: Request) => {
     const billing = subscription.billing_info || {};
     const lastPayment = billing.last_payment || {};
     const paymentAmount = lastPayment.amount || {};
+    const paypalStatus = String(subscription.status || "UNKNOWN").toUpperCase();
+    const blockedEvent = [
+      "BILLING.SUBSCRIPTION.CANCELLED",
+      "BILLING.SUBSCRIPTION.SUSPENDED",
+      "BILLING.SUBSCRIPTION.EXPIRED",
+      "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
+      "PAYMENT.SALE.REFUNDED",
+      "PAYMENT.SALE.REVERSED",
+    ].includes(eventType);
+    const recoveryEvent = [
+      "BILLING.SUBSCRIPTION.ACTIVATED",
+      "PAYMENT.SALE.COMPLETED",
+    ].includes(eventType);
+    const existingSubscriptionResponse = await fetch(
+      supabaseUrl + "/rest/v1/sowia_subscriptions?paypal_subscription_id=eq." +
+        encodeURIComponent(subscriptionId) + "&select=paypal_access_blocked&limit=1",
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: "Bearer " + serviceRoleKey,
+        },
+      },
+    );
+    if (!existingSubscriptionResponse.ok) {
+      throw new Error("Unable to inspect existing subscription access state");
+    }
+    const existingSubscriptionRows = await existingSubscriptionResponse.json();
+    const previouslyBlocked = Array.isArray(existingSubscriptionRows) &&
+      Boolean(existingSubscriptionRows[0]?.paypal_access_blocked);
+    const existingBlockResponse = await fetch(
+      supabaseUrl + "/rest/v1/sowia_paypal_subscription_blocks?paypal_subscription_id=eq." +
+        encodeURIComponent(subscriptionId) + "&select=paypal_subscription_id&limit=1",
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: "Bearer " + serviceRoleKey,
+        },
+      },
+    );
+    if (!existingBlockResponse.ok) throw new Error("Unable to inspect subscription block ledger");
+    const existingBlockRows = await existingBlockResponse.json();
+    const hasBlockLedgerEntry = Array.isArray(existingBlockRows) &&
+      existingBlockRows.length > 0;
+    const accessBlocked = paypalStatus !== "ACTIVE" || blockedEvent ||
+      (!recoveryEvent && (previouslyBlocked || hasBlockLedgerEntry));
     const payload = {
       user_id: userId,
       provider: "paypal",
       paypal_subscription_id: subscriptionId,
       paypal_plan_id: planId,
-      status: String(subscription.status || "UNKNOWN").toLowerCase(),
-      paypal_access_blocked: (
-        String(subscription.status || "").toUpperCase() !== "ACTIVE" ||
-        [
-          "BILLING.SUBSCRIPTION.CANCELLED",
-          "BILLING.SUBSCRIPTION.SUSPENDED",
-          "BILLING.SUBSCRIPTION.EXPIRED",
-          "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
-          "PAYMENT.SALE.REFUNDED",
-          "PAYMENT.SALE.REVERSED",
-        ].includes(eventType)
-      ),
+      status: paypalStatus.toLowerCase(),
+      paypal_access_blocked: accessBlocked,
       currency: paymentAmount.currency_code || null,
       amount: paymentAmount.value || null,
       next_billing_time: billing.next_billing_time || null,
@@ -300,7 +335,6 @@ Deno.serve(async (request: Request) => {
       throw new Error("Unable to persist subscription state");
     }
 
-    const accessBlocked = Boolean(payload.paypal_access_blocked);
     if (accessBlocked) {
       const blockResponse = await fetch(
         supabaseUrl + "/rest/v1/sowia_paypal_subscription_blocks?on_conflict=paypal_subscription_id",
