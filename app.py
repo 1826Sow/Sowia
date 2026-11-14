@@ -49,6 +49,7 @@ import sowia_global_connect
 import sowia_global_messenger
 import sowia_global_alerts
 import sowia_business_card
+import project_registry_ui
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -504,7 +505,7 @@ def delete_app_memory(memory_id):
 
 NAV_GROUPS = {
     "👤 Personnel & documents": [
-        "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
+        "Hub SOWIA", "Accueil", "Mes échanges & projets", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
     ],
     "🌐 Écosystème mondial": [
@@ -977,7 +978,8 @@ elif page == "Hub SOWIA":
     st.caption("Repères de suivi des projets. Le registre persistant des projets et de leurs statuts est une étape d’intégration dédiée ; aucun statut n’est inventé.")
     st.markdown("#### Accès rapides")
     hub_quick_access = [
-        ("💬 Reprendre mes échanges", "Historique", "Retrouver les conversations disponibles."),
+        ("💬 Mes échanges & projets", "Mes échanges & projets", "Gérer vos projets, leurs statuts et les livrables associés."),
+        ("↩ Reprendre mes échanges", "Historique", "Retrouver les conversations disponibles."),
         ("🧠 Continuer avec SOW IA", "Assistant IA", "Reprendre le travail avec l’assistant."),
         ("📄 Mes livrables & documents", "Mes documents", "Consulter les PDF et fichiers enregistrés."),
         ("🧪 Laboratoire PDF", "Analyse PDF", "Analyser un document ou poursuivre son traitement."),
@@ -1387,6 +1389,15 @@ elif page == "Hub SOWIA":
                             on_click=go_to_page,
                             args=(destination,),
                         )
+
+elif page == "Mes échanges & projets":
+    project_registry_ui.render(
+        supabase_client,
+        current_user,
+        st.session_state.get("workspace_id", "personal"),
+        cloud_mode,
+        premium_active,
+    )
 
 elif page == "Assistant IA":
     st.subheader(translate_ui("💬 Mon Assistant IA", language))
