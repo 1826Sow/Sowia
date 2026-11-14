@@ -87,3 +87,47 @@ def test_restore_project_is_scoped_and_clears_archive_timestamp():
     assert ("eq", "workspace_id", "professional") in client.query.filters
     assert client.query.payload["archived_at"] is None
     assert client.query.payload["updated_at"]
+
+
+
+@pytest.mark.parametrize("bad_url", [
+    "http://example.com/file.pdf",
+    "https://",
+    "https:///missing-host",
+    "https://user:pass@example.com/file.pdf",
+    "https://example.com:invalid/file.pdf",
+    "https://example.com/has space",
+])
+def test_deliverables_reject_unsafe_or_malformed_urls(bad_url):
+    client = Client()
+    with pytest.raises(ValueError):
+        create_project(
+            client, User(), "Projet avec lien",
+            deliverables=[{"title": "Document", "url": bad_url}],
+        )
+
+
+def test_deliverables_accept_valid_https_and_optional_url():
+    client = Client()
+    result = create_project(
+        client, User(), "Projet avec liens",
+        deliverables=[
+            {"title": "PDF", "url": "https://example.com/files/report.pdf"},
+            {"title": "Document à ajouter", "url": ""},
+        ],
+    )
+    assert len(result[0]["deliverables"]) == 2
+
+
+def test_deliverables_validate_on_update_and_enforce_limit():
+    client = Client()
+    with pytest.raises(ValueError):
+        update_project(
+            client, User(), 1,
+            deliverables=[{"title": "Lien non sécurisé", "url": "javascript:alert(1)"}],
+        )
+    with pytest.raises(ValueError):
+        create_project(
+            client, User(), "Trop de livrables",
+            deliverables=[{"title": f"Fichier {index}", "url": ""} for index in range(101)],
+        )
