@@ -176,21 +176,38 @@ def _browser_storage_id(browser_id):
     return hashlib.sha256(browser_id.encode("ascii")).hexdigest()
 
 
+def _supabase_project_url():
+    """Return the Supabase project root URL; API endpoint paths are not accepted."""
+    from urllib.parse import urlsplit, urlunsplit
+
+    raw_url = str(get_setting("SUPABASE_URL", "")).strip()
+    if not raw_url:
+        raise RuntimeError("SUPABASE_URL est absent des secrets de l'hébergeur.")
+    parts = urlsplit(raw_url)
+    if parts.scheme != "https" or not parts.netloc:
+        raise RuntimeError("SUPABASE_URL doit être l'URL HTTPS du projet Supabase.")
+    if parts.path not in ("", "/") or parts.query or parts.fragment:
+        raise RuntimeError(
+            "SUPABASE_URL doit être l'adresse racine du projet "
+            "(https://votre-projet.supabase.co), sans /auth/v1, /rest/v1 "
+            "ni autre chemin."
+        )
+    return urlunsplit((parts.scheme, parts.netloc, "", "", ""))
+
+
 def configuration_ready():
     return bool(get_setting("SUPABASE_URL") and get_setting("SUPABASE_ANON_KEY"))
 
 
 def create_user_client(browser_id):
     """Create a per-session PKCE client; service-role keys are never accepted."""
-    url = str(get_setting("SUPABASE_URL", "")).strip()
+    url = _supabase_project_url()
     key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
-    if not url or not key:
+    if not key:
         raise RuntimeError(
-            "Supabase n'est pas configuré. Renseignez SUPABASE_URL et "
-            "SUPABASE_ANON_KEY dans les secrets de l'hébergeur."
+            "Supabase n'est pas configuré. Renseignez SUPABASE_ANON_KEY "
+            "dans les secrets de l'hébergeur."
         )
-    if not url.startswith("https://"):
-        raise RuntimeError("SUPABASE_URL doit utiliser HTTPS.")
 
     # Persist only the one-time PKCE verifier across the external GitHub
     # redirect. Session tokens remain in memory in this browser session.
@@ -216,10 +233,8 @@ def create_email_user_client():
     """
     url = str(get_setting("SUPABASE_URL", "")).strip()
     key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
-    if not url or not key:
-        raise RuntimeError("Supabase n'est pas configuré.")
-    if not url.startswith("https://"):
-        raise RuntimeError("SUPABASE_URL doit utiliser HTTPS.")
+    if not key:
+        raise RuntimeError("SUPABASE_ANON_KEY est absent des secrets de l'hébergeur.")
 
     from supabase import ClientOptions, create_client
 
