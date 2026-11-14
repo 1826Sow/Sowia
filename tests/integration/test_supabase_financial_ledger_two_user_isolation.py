@@ -1,8 +1,9 @@
 """Live two-user RLS/privilege checks for the SOWIA financial ledger.
 
 Run only against a dedicated Supabase test project with two dedicated accounts.
-The test uses the public anon key and user JWTs only; it never uses service_role
-and never writes, updates, or deletes financial rows.
+The test uses the public anon key and user JWTs only; it never uses service_role.
+It sends INSERT/UPDATE/DELETE probes to a dedicated test project. If RLS is
+misconfigured, those probes can change test data; never run against production.
 """
 import os
 
