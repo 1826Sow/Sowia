@@ -57,46 +57,54 @@ from session_security import clear_private_session_state, clear_workspace_sessio
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
     """<style>
-    :root { color-scheme: light; }
-    .stApp { background: linear-gradient(180deg, #f5f8fc 0%, #edf2f8 100%) !important; color: #17243a !important; }
-    [data-testid="stAppViewContainer"], [data-testid="stMain"] { background: transparent !important; color: #17243a !important; }
+    :root { color-scheme: dark; }
+    .stApp { background: radial-gradient(circle at 85% 0%, rgba(0,210,230,.10), transparent 30%), linear-gradient(180deg, #071426 0%, #0a1b31 58%, #0c2038 100%) !important; color: #e8f3ff !important; }
+    [data-testid="stAppViewContainer"], [data-testid="stMain"] { background: transparent !important; color: #e8f3ff !important; }
     [data-testid="stMainBlockContainer"] { max-width: 1240px; padding-top: 1.2rem; padding-bottom: 3.2rem; }
-    section[data-testid="stSidebar"] { background: #e8eef6 !important; border-right: 1px solid #d6e0ed !important; }
-    section[data-testid="stSidebar"] * { color: #23364f !important; }
+    section[data-testid="stSidebar"] { background: linear-gradient(180deg, #08172b 0%, #0b2038 100%) !important; border-right: 1px solid rgba(0,214,230,.24) !important; }
+    section[data-testid="stSidebar"] * { color: #d8e9f8 !important; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label { border-radius: 11px; padding: .38rem .55rem; }
-    section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { background: #d7e5f4; }
-    section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color: #15395e !important; font-weight: 750; }
-    .hero { position: relative; overflow: hidden; padding: clamp(1.35rem, 3vw, 2.25rem); border: 1px solid #d4dfec; border-radius: 24px; background: radial-gradient(circle at 88% 12%, rgba(75,153,161,.23), transparent 28%), radial-gradient(circle at 6% 100%, rgba(194,164,104,.18), transparent 30%), linear-gradient(120deg, #102a46 0%, #173d5c 58%, #1d5361 100%); box-shadow: 0 18px 42px rgba(22,49,78,.14); margin: .35rem 0 1.35rem; }
+    section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { background: rgba(0,205,225,.16); border: 1px solid rgba(0,220,235,.45); }
+    section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color: #75f2ff !important; font-weight: 750; }
+    .hero { position: relative; overflow: hidden; padding: clamp(1.35rem, 3vw, 2.25rem); border: 1px solid rgba(0,220,235,.30); border-radius: 24px; background: radial-gradient(circle at 88% 12%, rgba(0,220,235,.22), transparent 30%), radial-gradient(circle at 6% 100%, rgba(40,95,160,.24), transparent 32%), linear-gradient(120deg, #07172b 0%, #102b4a 58%, #10465a 100%); box-shadow: 0 18px 42px rgba(0,0,0,.28); margin: .35rem 0 1.35rem; }
     .hero-kicker { color: #b9d7d8 !important; font-size: .72rem; letter-spacing: .17em; font-weight: 800; margin-bottom: .55rem; text-transform: uppercase; }
     .hero h1 { font-size: clamp(2.15rem, 5vw, 3.25rem); line-height: 1.08; margin: 0; color: #fff !important; letter-spacing: -.045em; }
     .hero p { color: #e1ebf2 !important; margin: .65rem 0 0; font-size: clamp(1rem, 2vw, 1.12rem); line-height: 1.55; max-width: 820px; }
     .hero-meta { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.15rem; }
     .hero-chip { display: inline-flex; align-items: center; border: 1px solid rgba(226,239,245,.25); background: rgba(255,255,255,.09); color: #f0f6f8; padding: .42rem .72rem; border-radius: 999px; font-size: .78rem; font-weight: 650; }
-    .partner-intro { padding: 1.25rem 1.35rem; border: 1px solid #d7e2ec; border-radius: 18px; background: linear-gradient(135deg,#fff 0%,#f4f8fb 100%); box-shadow: 0 8px 22px rgba(24,54,83,.055); margin: .4rem 0 1.1rem; }
-    .partner-intro h3 { color: #173b5c !important; margin: 0 0 .45rem; font-size: 1.18rem; }
-    .partner-intro p { color: #50647b !important; line-height: 1.6; margin: .25rem 0; }
+    .partner-intro { padding: 1.25rem 1.35rem; border: 1px solid rgba(0,210,230,.25); border-radius: 18px; background: linear-gradient(135deg,rgba(16,42,70,.96) 0%,rgba(10,29,51,.98) 100%); box-shadow: 0 8px 26px rgba(0,0,0,.20); margin: .4rem 0 1.1rem; }
+    .partner-intro h3 { color: #78efff !important; margin: 0 0 .45rem; font-size: 1.18rem; }
+    .partner-intro p { color: #c2d7ea !important; line-height: 1.6; margin: .25rem 0; }
     .trust-row { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .75rem; margin: .9rem 0 1.25rem; }
-    .trust-item { border: 1px solid #d9e3ed; border-radius: 15px; padding: .9rem 1rem; background: rgba(255,255,255,.88); min-height: 100px; }
-    .trust-item strong { display:block; color:#183c5c; font-size:.94rem; margin-bottom:.25rem; }
-    .trust-item span { display:block; color:#607188; font-size:.84rem; line-height:1.45; }
+    .trust-item { border: 1px solid rgba(0,210,230,.20); border-radius: 15px; padding: .9rem 1rem; background: rgba(15,39,66,.92); min-height: 100px; }
+    .trust-item strong { display:block; color:#7defff; font-size:.94rem; margin-bottom:.25rem; }
+    .trust-item span { display:block; color:#c0d3e6; font-size:.84rem; line-height:1.45; }
     div[role="radiogroup"] { gap: .4rem .5rem; }
-    div[role="radiogroup"] label { border: 1px solid #d6e1ed; border-radius: 999px; background: #fff; padding: .42rem .8rem; margin: 0 !important; box-shadow: 0 2px 7px rgba(37,75,125,.04); }
-    div[role="radiogroup"] label:has(input:checked) { background: #173f61; border-color: #173f61; }
+    div[role="radiogroup"] label { border: 1px solid rgba(135,175,210,.28); border-radius: 999px; background: #102842; padding: .42rem .8rem; margin: 0 !important; box-shadow: 0 2px 7px rgba(0,0,0,.12); }
+    div[role="radiogroup"] label:has(input:checked) { background: #087b91; border-color: #22d8e8; }
     div[role="radiogroup"] label:has(input:checked) p { color: #fff !important; }
     [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] { gap: 1rem; }
-    [data-testid="stButton"] button, [data-testid="stLinkButton"] a { border-radius: 12px !important; min-height: 2.85rem; font-weight: 680 !important; border-color: #c8d6e4 !important; }
-    [data-testid="stButton"] button[kind="primary"], [data-testid="stLinkButton"] a[kind="primary"] { background: #174b67 !important; border-color: #174b67 !important; color: white !important; }
-    [data-testid="stMetric"] { background: #fff; border: 1px solid #dce5ef; border-radius: 16px; padding: .9rem 1rem; box-shadow: 0 4px 14px rgba(32,64,105,.045); }
+    [data-testid="stButton"] button, [data-testid="stLinkButton"] a { border-radius: 12px !important; min-height: 2.85rem; font-weight: 680 !important; border: 1px solid rgba(91,190,220,.38) !important; background: #102943 !important; color: #e8f6ff !important; }
+    [data-testid="stButton"] button[kind="primary"], [data-testid="stLinkButton"] a[kind="primary"] { background: linear-gradient(110deg,#087e96,#12648a) !important; border-color: #22d8e8 !important; color: white !important; }
+    [data-testid="stMetric"] { background: rgba(15,39,66,.94); border: 1px solid rgba(0,210,230,.22); border-radius: 16px; padding: .9rem 1rem; box-shadow: 0 4px 14px rgba(0,0,0,.16); }
     [data-testid="stAlert"] { border-radius: 14px; }
-    [data-testid="stExpander"] { border: 1px solid #dce5ef; border-radius: 14px; background: #fff; }
-    [data-testid="stDataFrame"] { border: 1px solid #dce5ef; border-radius: 13px; overflow: hidden; }
-    [data-testid="stChatMessage"] { background: #fff !important; border: 1px solid #dce5ef !important; border-radius: 16px !important; padding: 1rem !important; box-shadow: 0 3px 12px rgba(32,64,105,.05); color: #17243a !important; }
-    [data-testid="stChatMessage"] [data-testid="stMarkdownContainer"], [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] li { color: #17243a !important; }
+    [data-testid="stExpander"] { border: 1px solid rgba(0,210,230,.20); border-radius: 14px; background: rgba(12,31,53,.92); }
+    [data-testid="stDataFrame"] { border: 1px solid rgba(0,210,230,.20); border-radius: 13px; overflow: hidden; }
+    [data-testid="stChatMessage"] { background: #102943 !important; border: 1px solid rgba(0,210,230,.20) !important; border-radius: 16px !important; padding: 1rem !important; box-shadow: 0 3px 12px rgba(0,0,0,.16); color: #e8f3ff !important; }
+    [data-testid="stChatMessage"] [data-testid="stMarkdownContainer"], [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] li { color: #e8f3ff !important; }
     div[data-testid="stChatInput"] { background: #fff !important; border: 1px solid #b9cbe0 !important; border-radius: 14px !important; box-shadow: 0 4px 14px rgba(32,64,105,.07) !important; }
     div[data-testid="stChatInput"]:focus-within { border-color: #4f83a0 !important; box-shadow: 0 0 0 2px rgba(79,131,160,.18) !important; }
     div[data-testid="stChatInput"] textarea, div[data-testid="stTextArea"] textarea, div[data-testid="stTextInput"] input, textarea, input:not([type="file"]) { color: #17243a !important; -webkit-text-fill-color: #17243a !important; caret-color: #174b67 !important; background-color: #fff !important; opacity: 1 !important; border-color: #b9cbe0 !important; }
     div[data-testid="stChatInput"] textarea::placeholder, div[data-testid="stTextArea"] textarea::placeholder, div[data-testid="stTextInput"] input::placeholder, textarea::placeholder, input::placeholder { color: #718198 !important; -webkit-text-fill-color: #718198 !important; opacity: 1 !important; }
-    [data-testid="stMarkdownContainer"], .stMarkdown, p, label { color: #263a52; }
+    [data-testid="stMarkdownContainer"], .stMarkdown, p, label { color: #d5e5f5; }
+    h1, h2, h3, h4, h5, h6 { color: #eff9ff !important; }
+    [data-testid="stVerticalBlockBorderWrapper"] { border-color: rgba(0,210,230,.22) !important; background: rgba(12,31,53,.58) !important; border-radius: 16px !important; }
+    .sowia-command-center { padding: 1.35rem 1.45rem; border: 1px solid rgba(0,220,235,.36); border-radius: 20px; background: radial-gradient(circle at 92% 5%,rgba(0,220,235,.18),transparent 30%),linear-gradient(125deg,#0b1d34,#102f50 72%,#0d4054); box-shadow: 0 14px 36px rgba(0,0,0,.24); margin: .6rem 0 1.15rem; }
+    .sowia-command-kicker { color:#72efff; font-size:.72rem; letter-spacing:.16em; font-weight:800; text-transform:uppercase; }
+    .sowia-command-center h2 { color:#f2fbff !important; margin:.35rem 0 .45rem; font-size:clamp(1.45rem,3vw,2rem); }
+    .sowia-command-center p { color:#c3d9eb !important; margin:0; line-height:1.55; }
+    .sowia-status-legend { display:flex; flex-wrap:wrap; gap:.45rem; margin-top:1rem; }
+    .sowia-status-legend span { border:1px solid rgba(120,210,230,.28); background:rgba(255,255,255,.06); color:#dff8ff; border-radius:999px; padding:.34rem .65rem; font-size:.75rem; font-weight:700; }
     [data-testid="stFileUploader"], [data-testid="stFileUploader"] * { pointer-events: auto !important; }
     [data-testid="stFileUploader"] button { min-height: 44px !important; touch-action: manipulation !important; }
     @media (max-width: 760px) {
@@ -756,7 +764,7 @@ if privacy_screen:
     )
 
 with st.sidebar:
-    active_page = st.session_state.get("page_nav", "Accueil")
+    active_page = st.session_state.get("page_nav", "Hub SOWIA")
     if "nav_category" not in st.session_state:
         st.session_state.nav_category = category_for_page(active_page)
     else:
@@ -955,6 +963,42 @@ elif page == "Hub SOWIA":
         st.metric("Compte", "Connecté" if cloud_mode and current_user is not None else "Mode local")
     with top_metrics[2]:
         st.metric("Accès administration", "Autorisé" if is_sowia_admin else "Non attribué")
+    st.markdown(
+        '<section class="sowia-command-center">'
+        '<div class="sowia-command-kicker">CENTRE DE PILOTAGE PERSONNEL</div>'
+        '<h2>💬 Mes échanges &amp; projets</h2>'
+        '<p>Retrouvez vos conversations, reprenez vos travaux, accédez à vos documents et gardez vos projets au même endroit. '
+        'Les données restent isolées entre vos espaces Personnel et Professionnel.</p>'
+        '<div class="sowia-status-legend">'
+        '<span>En cours</span><span>À tester</span><span>Validé</span><span>Terminé</span>'
+        '</div></section>',
+        unsafe_allow_html=True,
+    )
+    st.caption("Repères de suivi des projets. Le registre persistant des projets et de leurs statuts est une étape d’intégration dédiée ; aucun statut n’est inventé.")
+    st.markdown("#### Accès rapides")
+    hub_quick_access = [
+        ("💬 Reprendre mes échanges", "Historique", "Retrouver les conversations disponibles."),
+        ("🧠 Continuer avec SOW IA", "Assistant IA", "Reprendre le travail avec l’assistant."),
+        ("📄 Mes livrables & documents", "Mes documents", "Consulter les PDF et fichiers enregistrés."),
+        ("🧪 Laboratoire PDF", "Analyse PDF", "Analyser un document ou poursuivre son traitement."),
+        ("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "Accéder à l’espace d’échanges de l’écosystème."),
+    ]
+    quick_cols = st.columns(2)
+    for index, (label, destination, description) in enumerate(hub_quick_access):
+        with quick_cols[index % 2]:
+            with st.container(border=True):
+                st.markdown(f"**{label}**")
+                st.caption(description)
+                st.button("Ouvrir", key=f"hub_quick_{index}", use_container_width=True,
+                          on_click=go_to_page, args=(destination,))
+    st.markdown("#### Protocoles & gouvernance")
+    st.caption("Documentation de référence FINAL TEC — protocole de double approbation et contrôles associés.")
+    st.link_button(
+        "Consulter la documentation FINAL TEC",
+        "https://github.com/1826Sow/Sowia/blob/main/docs/FINAL_TEC_DUAL_APPROVAL_PROTOCOL.md",
+        use_container_width=True,
+    )
+    st.divider()
     st.markdown("### 👤 Espace Personnel")
     st.caption("Vos outils quotidiens, votre mémoire et vos documents privés.")
     personal_items = [
