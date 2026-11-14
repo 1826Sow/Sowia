@@ -24,6 +24,7 @@ def summarize_action_plans(plans):
     """Count only persisted plans; keep workflow states distinct and explicit."""
     rows = [row for row in (plans or []) if isinstance(row, dict)]
     statuses = [str(row.get("status") or "unknown") for row in rows]
+    known_statuses = {"draft", "submitted", "approved", "completed", "rejected", "cancelled"}
     return {
         "total": len(rows),
         "active": sum(status in {"draft", "submitted", "approved"} for status in statuses),
@@ -31,7 +32,7 @@ def summarize_action_plans(plans):
         "completed": statuses.count("completed"),
         "rejected": statuses.count("rejected"),
         "cancelled": statuses.count("cancelled"),
-        "unknown": statuses.count("unknown"),
+        "unknown": sum(status not in known_statuses for status in statuses),
     }
 
 
