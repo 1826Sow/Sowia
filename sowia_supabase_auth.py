@@ -214,7 +214,7 @@ def email_is_allowed(email, allowed_emails):
     if not address:
         return False
     if isinstance(allowed_emails, str):
-        entries = re.split(r"[,;\\s]+", allowed_emails)
+        entries = re.split(r"[,;\s]+", allowed_emails)
     else:
         entries = allowed_emails or []
     allowed = {str(item or "").strip().casefold() for item in entries if str(item or "").strip()}
