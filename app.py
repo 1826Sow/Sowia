@@ -249,7 +249,14 @@ if cloud_mode:
         # Resolve the exact HTTPS callback independently of either login provider.
         from urllib.parse import urlsplit, urlunsplit
         current_app_url = str(getattr(st.context, "url", "") or "").strip()
-        # Keep the official Streamlit callback available even when the runtime context URL is unavailable.\n        configured_public_url = str(\n            get_setting(\n                "SOWIA_PUBLIC_URL",\n                "https://fm5aczcvvj5jgkhpxwqtcr.streamlit.app/",\n            )\n            or ""\n        ).strip()
+        # Keep the official Streamlit callback available even when the runtime context URL is unavailable.
+        configured_public_url = str(
+            get_setting(
+                "SOWIA_PUBLIC_URL",
+                "https://fm5aczcvvj5jgkhpxwqtcr.streamlit.app/",
+            )
+            or ""
+        ).strip()
         candidate_url = current_app_url or configured_public_url
         parts = urlsplit(candidate_url)
         redirect_to = ""
