@@ -205,7 +205,7 @@ if cloud_mode:
             # The expected address is cleared only after the identity matches.
             st.session_state.pop("sowia_email_login_pending", None)
         if current_user is not None:
-            allowed_emails = get_setting("SOWIA_ALLOWED_EMAILS", "")
+            allowed_emails = get_setting("SOWIA_ALLOWED_EMAILS", "sowkeys7@gmail.com")
             authenticated_email = str(getattr(current_user, "email", "") or "").strip().lower()
             if not email_is_allowed(authenticated_email, allowed_emails):
                 try:
