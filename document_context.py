@@ -3,7 +3,7 @@ import re
 import unicodedata
 
 
-_PAGE_MARKER = re.compile(r"(?m)^--- Page (\d+) ---\s*$")
+_PAGE_MARKER = re.compile(r"(?m)^--- Page (\d+)(?: \(OCR\))? ---\s*$")
 _WORDS = re.compile(r"[a-z0-9]{2,}", re.IGNORECASE)
 _STOP_WORDS = {
     "avec", "dans", "pour", "plus", "sans", "sous", "chez", "elle", "elles",
