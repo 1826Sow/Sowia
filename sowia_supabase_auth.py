@@ -182,7 +182,7 @@ def _supabase_project_url():
 
     raw_url = str(get_setting("SUPABASE_URL", "")).strip()
     if not raw_url:
-        raise RuntimeError("SUPABASE_URL est absent des secrets de l'hébergeur.")
+        raise RuntimeError("Supabase n'est pas configuré : SUPABASE_URL est absent des secrets de l'hébergeur.")
     parts = urlsplit(raw_url)
     if parts.scheme != "https" or not parts.netloc:
         raise RuntimeError("SUPABASE_URL doit être l'URL HTTPS du projet Supabase.")
