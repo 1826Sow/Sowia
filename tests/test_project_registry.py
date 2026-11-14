@@ -131,3 +131,22 @@ def test_deliverables_validate_on_update_and_enforce_limit():
             client, User(), "Trop de livrables",
             deliverables=[{"title": f"Fichier {index}", "url": ""} for index in range(101)],
         )
+
+
+class EmptyInsertQuery(Query):
+    def execute(self):
+        return Response([])
+
+
+class EmptyInsertClient(Client):
+    def table(self, name):
+        self.query = EmptyInsertQuery(name)
+        return self.query
+
+
+def test_create_project_requires_a_returned_database_row():
+    client = EmptyInsertClient()
+    with pytest.raises(RuntimeError, match="aucune ligne"):
+        create_project(client, User(), "Projet non confirmé")
+    assert ("insert",) in client.query.operations
+    assert any(operation[0] == "select" for operation in client.query.operations)
