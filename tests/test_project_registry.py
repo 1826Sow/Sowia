@@ -41,7 +41,7 @@ def test_create_project_is_scoped_to_owner_and_workspace():
     result = create_project(client, User(), " Projet test ", workspace_id="professional")
     assert result[0]["user_id"] == "user-123"
     assert result[0]["workspace_id"] == "professional"
-    assert result[0]["title"] == "Projet test"
+    assert result[0]["title"] == "Projet test"\n    assert ("select", "id, user_id, workspace_id, title, description, status, created_at, updated_at") in client.query.operations
 
 
 def test_list_projects_filters_owner_workspace_and_archives():
@@ -131,3 +131,16 @@ def test_deliverables_validate_on_update_and_enforce_limit():
             client, User(), "Trop de livrables",
             deliverables=[{"title": f"Fichier {index}", "url": ""} for index in range(101)],
         )
+
+
+def test_create_project_rejects_empty_insert_representation():
+    class EmptyQuery(Query):
+        def execute(self):
+            return Response([])
+
+    class EmptyClient:
+        def table(self, name):
+            return EmptyQuery(name)
+
+    with pytest.raises(RuntimeError, match="Supabase n’a confirmé aucune ligne créée"):
+        create_project(EmptyClient(), User(), "Projet sans confirmation")
