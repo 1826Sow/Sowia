@@ -27,6 +27,7 @@ from sowia_supabase_auth import (
     complete_github_login,
     complete_email_magic_link,
     email_magic_link,
+    email_is_allowed,
     configuration_ready,
     create_email_user_client,
     create_user_client,
@@ -203,6 +204,20 @@ if cloud_mode:
                 st.stop()
             # The expected address is cleared only after the identity matches.
             st.session_state.pop("sowia_email_login_pending", None)
+        if current_user is not None:
+            allowed_emails = get_setting("SOWIA_ALLOWED_EMAILS", "")
+            authenticated_email = str(getattr(current_user, "email", "") or "").strip().lower()
+            if not email_is_allowed(authenticated_email, allowed_emails):
+                try:
+                    sign_out(supabase_client)
+                except Exception:
+                    pass
+                clear_authenticated_session_state(st.session_state)
+                st.error(
+                    "Accès refusé : cette adresse e-mail n’est pas autorisée à ouvrir SOW IA. "
+                    "Contactez l’administrateur pour demander un accès."
+                )
+                st.stop()
         if current_user is None:
             # Never keep the previous account's private PDF or payment cache after
             # a missing/expired login.
