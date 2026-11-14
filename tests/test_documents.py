@@ -128,3 +128,25 @@ def test_ocr_releases_native_resources_when_recognition_fails(monkeypatch):
         documents._ocr_pdf_pages(b"%PDF-test", max_chars=1000, max_pages=1)
 
     assert released == {"image": True, "bitmap": True, "page": True, "pdf": True}
+
+
+def test_pdf_source_stream_is_closed_after_text_extraction(monkeypatch):
+    captured = {}
+
+    class Page:
+        def extract_text(self):
+            return "Contenu du document"
+
+    class Reader:
+        is_encrypted = False
+        pages = [Page()]
+
+    def make_reader(stream, **_kwargs):
+        captured["stream"] = stream
+        return Reader()
+
+    monkeypatch.setattr(documents, "PdfReader", make_reader)
+    result = extract_pdf_text(_blank_pdf())
+
+    assert "Contenu du document" in result
+    assert captured["stream"].closed
