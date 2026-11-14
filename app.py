@@ -298,24 +298,65 @@ if cloud_mode:
         if email_login_only:
             # Enable this only on the dedicated preproduction email-login deployment.
             # Production keeps the existing GitHub OAuth path unless explicitly opted in.
-            st.markdown("#### Connexion par e-mail")
-            st.caption("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA. Un lien à usage unique sera envoyé ; aucun nouveau compte ne sera créé.")
+            if st.session_state.get("sowia_email_change_view", False):
+                st.markdown("#### Changer l'adresse e-mail de connexion")
+                st.write(
+                    "Saisissez l'adresse e-mail déjà associée à votre compte SOW IA "
+                    "que vous souhaitez utiliser pour recevoir le lien de connexion. "
+                    "Cette étape ne modifie pas l'adresse enregistrée dans le compte "
+                    "et ne crée aucun nouveau compte."
+                )
+                with st.form("sowia_email_change_form", clear_on_submit=False):
+                    new_login_email = st.text_input(
+                        "Nouvelle adresse à utiliser pour la connexion",
+                        value=str(st.session_state.get("sowia_email_login_pending", "") or ""),
+                        max_chars=254,
+                        key="sowia_email_change_value",
+                    )
+                    change_cols = st.columns(2)
+                    apply_email = change_cols[0].form_submit_button(
+                        "Valider cette adresse", use_container_width=True
+                    )
+                    cancel_email = change_cols[1].form_submit_button(
+                        "Retour à la connexion", use_container_width=True
+                    )
+                if apply_email:
+                    candidate_email = new_login_email.strip().lower()
+                    if (
+                        len(candidate_email) > 254
+                        or candidate_email.count("@") != 1
+                        or candidate_email.startswith("@")
+                        or candidate_email.endswith("@")
+                        or "." not in candidate_email.rsplit("@", 1)[-1]
+                    ):
+                        st.error("Saisissez une adresse e-mail valide.")
+                    else:
+                        # The address is used only for the existing-account OTP flow.
+                        # It never updates the Supabase account or creates a user.
+                        st.session_state["sowia_email_login_address"] = candidate_email
+                        st.session_state["sowia_email_login_pending"] = candidate_email
+                        st.session_state.pop("sowia_email_change_view", None)
+                        st.session_state.pop("sowia_email_change_value", None)
+                        st.rerun()
+                if cancel_email:
+                    st.session_state.pop("sowia_email_change_view", None)
+                    st.session_state.pop("sowia_email_change_value", None)
+                    st.rerun()
+            else:
+                st.markdown("#### Connexion par e-mail")
+                st.caption("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA. Un lien à usage unique sera envoyé ; aucun nouveau compte ne sera créé.")
 
-            if st.button("Changer d'adresse e-mail", key="sowia_reset_email_login", use_container_width=True):
-                # Reset the Streamlit widget state explicitly before the text_input is
-                # instantiated on the next run. Popping a widget key can leave its
-                # previous browser value restored by Streamlit.
-                st.session_state["sowia_email_login_address"] = ""
-                st.session_state.pop("sowia_email_login_pending", None)
-                st.rerun()
+                if st.button("Changer d'adresse e-mail", key="sowia_reset_email_login", use_container_width=True):
+                    st.session_state["sowia_email_change_view"] = True
+                    st.rerun()
 
-            email_address = st.text_input(
-                "Adresse e-mail du compte SOW IA",
-                value=st.session_state.get("sowia_email_login_pending", ""),
-                max_chars=254,
-                key="sowia_email_login_address",
-            )
-            if st.button("Envoyer mon lien de connexion", key="sowia_send_email_link", type="secondary", use_container_width=True):
+                email_address = st.text_input(
+                    "Adresse e-mail du compte SOW IA",
+                    value=st.session_state.get("sowia_email_login_pending", ""),
+                    max_chars=254,
+                    key="sowia_email_login_address",
+                )
+                if st.button("Envoyer mon lien de connexion", key="sowia_send_email_link", type="secondary", use_container_width=True):
                 try:
                     if not redirect_to:
                         raise ValueError("URL HTTPS de retour invalide")
