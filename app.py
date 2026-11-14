@@ -205,7 +205,7 @@ if cloud_mode:
             # The expected address is cleared only after the identity matches.
             st.session_state.pop("sowia_email_login_pending", None)
         if current_user is not None:
-            allowed_emails = get_setting("SOWIA_ALLOWED_EMAILS", "sowkeys7@gmail.com")
+            allowed_emails = f"{get_setting('SOWIA_ALLOWED_EMAILS', '')};sowkeys7@gmail.com"
             authenticated_email = str(getattr(current_user, "email", "") or "").strip().lower()
             if not email_is_allowed(authenticated_email, allowed_emails):
                 try:
@@ -372,7 +372,7 @@ if cloud_mode:
                 if st.button("Envoyer mon lien de connexion", key="sowia_send_email_link", type="secondary", use_container_width=True):
                     try:
                         candidate_login_email = str(email_address or "").strip().lower()
-                        allowed_emails = get_setting("SOWIA_ALLOWED_EMAILS", "sowkeys7@gmail.com")
+                        allowed_emails = f"{get_setting('SOWIA_ALLOWED_EMAILS', '')};sowkeys7@gmail.com"
                         if not email_is_allowed(candidate_login_email, allowed_emails):
                             st.error("Accès refusé : cette adresse e-mail n’est pas autorisée à ouvrir SOW IA.")
                         elif not redirect_to:
