@@ -357,29 +357,29 @@ if cloud_mode:
                     key="sowia_email_login_address",
                 )
                 if st.button("Envoyer mon lien de connexion", key="sowia_send_email_link", type="secondary", use_container_width=True):
-                try:
-                    if not redirect_to:
-                        raise ValueError("URL HTTPS de retour invalide")
-                    email_client = create_email_user_client()
-                    email_magic_link(email_client, email_address, redirect_to)
-                    st.session_state["sowia_email_login_pending"] = email_address.strip().lower()
-                    st.success("Si cette adresse correspond à un compte existant, un lien de connexion vient d'être envoyé. Consultez aussi les courriers indésirables.")
-                except Exception as email_exc:
-                    st.error("Impossible d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
-                    # Expose only bounded provider metadata; never show request headers,
-                    # credentials, tokens or full tracebacks.
-                    safe_message = str(getattr(email_exc, "message", "") or str(email_exc)).strip()
-                    safe_message = " ".join(safe_message.split())[:240]
-                    safe_code = str(getattr(email_exc, "code", "") or "").strip()[:80]
-                    safe_status = getattr(email_exc, "status", None)
-                    diagnostic_parts = [type(email_exc).__name__]
-                    if safe_code:
-                        diagnostic_parts.append("code=" + safe_code)
-                    if safe_status is not None:
-                        diagnostic_parts.append("status=" + str(safe_status)[:12])
-                    if safe_message:
-                        diagnostic_parts.append("message=" + safe_message)
-                    st.caption("Diagnostic e-mail : " + " · ".join(diagnostic_parts))
+                    try:
+                        if not redirect_to:
+                            raise ValueError("URL HTTPS de retour invalide")
+                        email_client = create_email_user_client()
+                        email_magic_link(email_client, email_address, redirect_to)
+                        st.session_state["sowia_email_login_pending"] = email_address.strip().lower()
+                        st.success("Si cette adresse correspond à un compte existant, un lien de connexion vient d'être envoyé. Consultez aussi les courriers indésirables.")
+                    except Exception as email_exc:
+                        st.error("Impossible d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
+                        # Expose only bounded provider metadata; never show request headers,
+                        # credentials, tokens or full tracebacks.
+                        safe_message = str(getattr(email_exc, "message", "") or str(email_exc)).strip()
+                        safe_message = " ".join(safe_message.split())[:240]
+                        safe_code = str(getattr(email_exc, "code", "") or "").strip()[:80]
+                        safe_status = getattr(email_exc, "status", None)
+                        diagnostic_parts = [type(email_exc).__name__]
+                        if safe_code:
+                            diagnostic_parts.append("code=" + safe_code)
+                        if safe_status is not None:
+                            diagnostic_parts.append("status=" + str(safe_status)[:12])
+                        if safe_message:
+                            diagnostic_parts.append("message=" + safe_message)
+                        st.caption("Diagnostic e-mail : " + " · ".join(diagnostic_parts))
         else:
             # Preserve the established production sign-in method by default.
             try:
