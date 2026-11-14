@@ -13,7 +13,7 @@ def test_hub_exposes_existing_workspaces_and_honest_project_status_scope():
     source = Path("app.py").read_text(encoding="utf-8")
     assert '"Hub SOWIA", "Accueil", "Assistant IA"' in source
     assert 'active_page = st.session_state.get("page_nav", "Hub SOWIA")' in source
-    assert '("💬 Reprendre mes échanges", "Historique"' in source
+    assert '("↩ Reprendre mes échanges", "Historique"' in source
     assert '("📄 Mes livrables & documents", "Mes documents"' in source
     assert '("🧪 Laboratoire PDF", "Analyse PDF"' in source
     assert '("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE"' in source
