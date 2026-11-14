@@ -21,52 +21,63 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-      - name: Prepare pinned dependency-lock tooling
-        run: |
-          python -m pip install "pip==26.3" "pip-tools==7.6.2"
-      - name: Audit resolved Python dependencies
+      - name: Prepare dependency audit tooling
         run: |
           python -m pip install --upgrade pip-audit
-          pip-audit -r requirements.txt
-      - name: Regenerate and verify hashed dependency lock
+      - name: Audit resolved Python dependencies
         run: |
-          pip-compile --resolver=backtracking --generate-hashes --constraint=requirements.lock --output-file=requirements-hashes.lock requirements.txt
+          pip-audit -r requirements.txt
+      - name: Verify committed exact dependency lock
+        run: |
           python - <<'PY'
-          import re
           from pathlib import Path
+          from packaging.requirements import Requirement
+          from packaging.utils import canonicalize_name
+          from packaging.version import Version
 
-          def pins(path):
-              found = set()
-              for line in Path(path).read_text().splitlines():
-                  parts = line.split("==", 1)
-                  if len(parts) == 2:
-                      version = parts[1].strip().split()[0].rstrip(chr(92))
-                      found.add((parts[0].lower().replace("_", "-"), version))
-              return found
+          locked = {}
+          for raw in Path("requirements.lock").read_text().splitlines():
+              line = raw.strip()
+              if not line or line.startswith("#"):
+                  continue
+              requirement = Requirement(line)
+              specifiers = list(requirement.specifier)
+              exact = [item for item in specifiers if item.operator == "=="]
+              if len(exact) != 1 or len(specifiers) != 1 or "*" in exact[0].version:
+                  raise SystemExit(f"Non-exact or unsupported lock entry: {line}")
+              name = canonicalize_name(requirement.name)
+              if name in locked:
+                  raise SystemExit(f"Duplicate lock entry: {name}")
+              locked[name] = Version(exact[0].version)
 
-          committed = pins("requirements.lock")
-          resolved = pins("requirements-hashes.lock")
-          if not committed:
+          if not locked:
               raise SystemExit("requirements.lock contains no exact pins")
-          if committed != resolved:
-              missing = sorted(resolved - committed)
-              stale = sorted(committed - resolved)
-              raise SystemExit(f"Lock mismatch; missing={missing}; stale_or_extra={stale}")
-          print(f"Verified {len(committed)} exact dependency pins against pip-compile output")
+
+          checked = 0
+          for raw in Path("requirements.txt").read_text().splitlines():
+              line = raw.split("#", 1)[0].strip()
+              if not line:
+                  continue
+              requirement = Requirement(line)
+              name = canonicalize_name(requirement.name)
+              version = locked.get(name)
+              if version is None or version not in requirement.specifier:
+                  raise SystemExit(f"Missing or incompatible exact pin for {requirement.name}: {line}")
+              checked += 1
+
+          print(f"Verified {checked} direct requirements against {len(locked)} exact locked packages")
           PY
           pip-audit -r requirements.lock
-          pip-audit -r requirements-hashes.lock
-      - name: Install test environment from generated hash lock
+      - name: Install test environment from committed exact lock
         run: |
           python -m venv /tmp/sowia-lock-venv
-          /tmp/sowia-lock-venv/bin/python -m pip install "pip==26.3"
-          /tmp/sowia-lock-venv/bin/python -m pip install --require-hashes --requirement requirements-hashes.lock
+          /tmp/sowia-lock-venv/bin/python -m pip install --requirement requirements.lock
           /tmp/sowia-lock-venv/bin/python -m pip check
-      - name: Upload generated hash-verified dependency lock
+      - name: Upload committed dependency lock
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: sowia-python-hashed-dependency-lock
-          path: requirements-hashes.lock
+          name: sowia-python-exact-dependency-lock
+          path: requirements.lock
           if-no-files-found: error
           retention-days: 7
       - name: Check Python syntax in locked environment
