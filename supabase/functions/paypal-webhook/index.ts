@@ -316,6 +316,28 @@ Deno.serve(async (request: Request) => {
       subscription.plan_id !== planId ||
       !uuidPattern.test(userId)
     ) {
+      // This is a permanent validation rejection, not a transient failure.
+      // Mark it processed so PayPal retries cannot leave it stuck in "processing".
+      const rejectedEventResponse = await fetch(
+        supabaseUrl + "/rest/v1/sowia_paypal_webhook_events?event_id=eq." +
+          encodeURIComponent(eventId),
+        {
+          method: "PATCH",
+          headers: {
+            apikey: serviceRoleKey,
+            Authorization: "Bearer " + serviceRoleKey,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({
+            processing_status: "processed",
+            processed_at: new Date().toISOString(),
+          }),
+        },
+      );
+      if (!rejectedEventResponse.ok) {
+        throw new Error("Unable to finalize rejected PayPal event");
+      }
       return json(
         { error: "Subscription ownership or plan validation failed" },
         403,
