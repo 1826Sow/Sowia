@@ -19,6 +19,18 @@ def _uploaded_size(uploaded_file):
     return None
 
 
+def _close_quietly(resource):
+    """Best-effort cleanup that never masks the original extraction error."""
+    if resource is None:
+        return
+    close = getattr(resource, "close", None)
+    if callable(close):
+        try:
+            close()
+        except Exception:
+            pass
+
+
 def _ocr_pdf_pages(pdf_bytes, max_chars, max_pages):
     """Recognize scanned page images. OCR is deliberately page-limited."""
     try:
@@ -52,15 +64,11 @@ def _ocr_pdf_pages(pdf_bytes, max_chars, max_pages):
             finally:
                 # OCR can fail while rendering, converting or recognizing a page.
                 # Release every native/PIL resource even on those error paths.
-                if image is not None:
-                    image.close()
-                if bitmap is not None:
-                    close_bitmap = getattr(bitmap, "close", None)
-                    if callable(close_bitmap):
-                        close_bitmap()
-                page.close()
+                _close_quietly(image)
+                _close_quietly(bitmap)
+                _close_quietly(page)
     finally:
-        pdf.close()
+        _close_quietly(pdf)
     return "".join(pages).strip()
 
 
@@ -90,25 +98,28 @@ def extract_pdf_text(uploaded_file, max_chars=100000, max_pages=MAX_PDF_PAGES):
     if not pdf_bytes or b"%PDF-" not in pdf_bytes[:1024]:
         raise ValueError("Le fichier sélectionné ne semble pas être un PDF valide.")
 
-    reader = PdfReader(BytesIO(pdf_bytes), strict=False)
-    if reader.is_encrypted:
-        raise ValueError("Ce PDF est protégé par mot de passe et ne peut pas être analysé.")
-    if len(reader.pages) > max_pages:
-        raise ValueError(f"Le PDF dépasse la limite de {max_pages} pages.")
+    # Keep the in-memory source stream scoped to parsing/extraction. PdfReader
+    # retains this stream, so close it deterministically before any OCR fallback.
+    with BytesIO(pdf_bytes) as pdf_stream:
+        reader = PdfReader(pdf_stream, strict=False)
+        if reader.is_encrypted:
+            raise ValueError("Ce PDF est protégé par mot de passe et ne peut pas être analysé.")
+        if len(reader.pages) > max_pages:
+            raise ValueError(f"Le PDF dépasse la limite de {max_pages} pages.")
 
-    pages = []
-    total = 0
-    for number, page in enumerate(reader.pages, start=1):
-        remaining = max_chars - total
-        if remaining <= 0:
-            break
-        page_text = (page.extract_text() or "").strip()
-        if page_text:
-            chunk = f"\n--- Page {number} ---\n{page_text}"
-            pages.append(chunk[:remaining])
-            total += min(len(chunk), remaining)
+        pages = []
+        total = 0
+        for number, page in enumerate(reader.pages, start=1):
+            remaining = max_chars - total
+            if remaining <= 0:
+                break
+            page_text = (page.extract_text() or "").strip()
+            if page_text:
+                chunk = f"\\n--- Page {number} ---\\n{page_text}"
+                pages.append(chunk[:remaining])
+                total += min(len(chunk), remaining)
 
-    result = "".join(pages).strip()
+        result = "".join(pages).strip()
     if result:
         return result
 
