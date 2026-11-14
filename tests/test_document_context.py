@@ -27,7 +27,7 @@ def test_saved_memories_are_preserved_with_document_context():
 def test_ocr_page_markers_are_preserved_in_selected_context():
     from document_context import select_relevant_pdf_context
 
-    extracted = "--- Page 1 (OCR) ---\\nFacture numéro 123\\n--- Page 2 (OCR) ---\\nTotal 45 euros"
+    extracted = "--- Page 1 (OCR) ---\nFacture numéro 123\n--- Page 2 (OCR) ---\nTotal 45 euros"
     selected = select_relevant_pdf_context(extracted, "facture numéro")
     assert "--- Page 1 ---" in selected
     assert "Facture numéro 123" in selected
@@ -36,6 +36,6 @@ def test_ocr_page_markers_are_preserved_in_selected_context():
 def test_scanned_pdf_summary_keeps_ocr_page_numbers():
     from document_context import select_relevant_pdf_context
 
-    extracted = "--- Page 4 (OCR) ---\\nRésumé du contrat"
+    extracted = "--- Page 4 (OCR) ---\nRésumé du contrat"
     selected = select_relevant_pdf_context(extracted, "résumé contrat")
     assert "--- Page 4 ---" in selected
