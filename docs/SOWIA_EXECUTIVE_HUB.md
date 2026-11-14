@@ -58,3 +58,9 @@ The radar findings can be saved into a per-user, professional-workspace opportun
 The Supabase migration is `supabase_opportunity_register.sql`. It creates user-scoped row-level security policies; records are isolated by authenticated user and professional workspace. Until the migration is applied, the UI may keep entries in Streamlit session state only, with an explicit warning that this is temporary.
 
 Deadline indicators are shown when the user opens the application. They are not push notifications, emails or background monitoring. No opportunity is submitted and no partner is contacted automatically. The register currently supports up to 200 records per user view; a future stage can add pagination, reminders and partner CRM linking.
+
+## Visual command center — November 2026
+
+The Hub landing view now uses the approved midnight-blue and cyan visual identity and foregrounds the "Mes échanges & projets" entry point. It links to the existing conversation history, assistant, private document library, PDF analysis workspace and SOWIA NIGHT EXCHANGE. It also exposes the existing FINAL TEC protocol documentation.
+
+The four project states (En cours, À tester, Validé, Terminé) are presented as the agreed tracking vocabulary only. They are not yet attached to persistent project records. The next implementation stage must add a user- and workspace-scoped project register, conversation/session discovery, project resumption metadata and a deliverables index. Until that work is implemented and tested, the Hub must not claim to show all conversations or project statuses.
