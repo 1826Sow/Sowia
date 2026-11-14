@@ -19,10 +19,10 @@ from websearch import search_web
 from sowia_supabase_auth import (
     authenticated_user,
     browser_storage_id,
-    complete_github_login,
+    complete_email_login,
     configuration_ready,
     create_user_client,
-    github_authorization_url,
+    email_magic_link,
     sign_out,
 )
 import cloud_storage
@@ -85,10 +85,10 @@ if cloud_mode:
             st.session_state.sowia_supabase_client = create_user_client(browser_id)
         supabase_client = st.session_state.sowia_supabase_client
 
-        auth_stage = "échange du code de retour GitHub avec Supabase"
+        auth_stage = "validation du lien e-mail avec Supabase"
         authorization_code = st.query_params.get("code")
         if authorization_code:
-            complete_github_login(supabase_client, authorization_code)
+            complete_email_login(supabase_client, authorization_code)
             st.session_state.pop("sowia_github_login_url", None)
             st.query_params.clear()
             st.rerun()
@@ -143,31 +143,21 @@ if cloud_mode:
             unsafe_allow_html=True,
         )
         st.subheader("Connexion à SOW IA")
-        st.write("Connectez-vous avec votre compte GitHub pour accéder à votre mémoire et à votre historique privés.")
-        try:
-            redirect_to = str(get_setting("SOWIA_PUBLIC_URL", "")).strip()
-            # Keep one OAuth URL per Streamlit session. Each call to
-            # sign_in_with_oauth creates a new PKCE verifier; generating a
-            # fresh URL on every rerun can overwrite the verifier for the
-            # GitHub redirect currently in progress.
-            login_url = st.session_state.get("sowia_github_login_url")
-            if not login_url:
-                login_url = github_authorization_url(supabase_client, redirect_to)
-                st.session_state.sowia_github_login_url = login_url
-            # Use Streamlit's native external-navigation control rather than
-            # an HTML anchor embedded in the app document.
-            st.link_button(
-                "Continuer avec GitHub",
-                login_url,
-                type="primary",
-                use_container_width=True,
-            )
-            if st.button("Recommencer la connexion", use_container_width=True):
-                st.session_state.pop("sowia_github_login_url", None)
-                st.rerun()
-        except Exception as exc:
-            st.session_state.pop("sowia_github_login_url", None)
-            st.warning("La connexion GitHub n'a pas pu être préparée. Vérifiez la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.")
+        st.write("Saisissez l’adresse e-mail de votre compte SOW IA. Un lien sécurisé à usage unique sera envoyé. Aucun compte GitHub n’est nécessaire.")
+        redirect_to = "https://sowia-test-email.streamlit.app"
+        email_address = st.text_input(
+            "Adresse e-mail du compte SOW IA",
+            key="sowia_email_login_address",
+            max_chars=254,
+        )
+        if st.button("Envoyer mon lien de connexion", type="primary", use_container_width=True):
+            try:
+                email_magic_link(supabase_client, email_address, redirect_to)
+                st.success("Si cette adresse correspond à un compte existant, un lien de connexion vient d’être envoyé. Consultez votre boîte de réception et vos courriers indésirables.")
+            except Exception as exc:
+                st.error("Impossible d’envoyer le lien. Vérifiez l’adresse et la configuration e-mail de Supabase.")
+                safe_code = str(getattr(exc, "code", "") or type(exc).__name__)[:80]
+                st.caption("Diagnostic : " + safe_code)
         st.stop()
 
 
