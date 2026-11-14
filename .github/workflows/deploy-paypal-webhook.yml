@@ -17,10 +17,18 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ inputs.confirm_deploy == 'DEPLOY' }}
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Validate deployment confirmation
+        env:
+          CONFIRM_DEPLOY: ${{ inputs.confirm_deploy }}
+        run: |
+          if [ "$CONFIRM_DEPLOY" != "DEPLOY" ]; then
+            echo "::error::Confirmation must be exactly DEPLOY. No deployment was performed."
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
