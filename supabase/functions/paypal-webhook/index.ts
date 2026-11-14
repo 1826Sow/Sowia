@@ -74,6 +74,9 @@ async function verifyWebhook(
 }
 
 Deno.serve(async (request: Request) => {
+  let retrySupabaseUrl = "";
+  let retryServiceRoleKey = "";
+  let retryEventId = "";
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -82,6 +85,8 @@ Deno.serve(async (request: Request) => {
   try {
     const supabaseUrl = requiredEnv("SUPABASE_URL").replace(/\/$/, "");
     const serviceRoleKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+    retrySupabaseUrl = supabaseUrl;
+    retryServiceRoleKey = serviceRoleKey;
     const clientId = requiredEnv("PAYPAL_CLIENT_ID");
     const clientSecret = requiredEnv("PAYPAL_CLIENT_SECRET");
     const webhookId = requiredEnv("PAYPAL_SUBSCRIPTION_WEBHOOK_ID");
@@ -133,6 +138,7 @@ Deno.serve(async (request: Request) => {
     if (!verified) return json({ error: "Webhook signature verification failed" }, 401);
 
     const eventId = String(event.id || "").trim();
+    retryEventId = eventId;
     if (!eventId || eventId.length > 200) {
       return json({ error: "Webhook event ID is missing or invalid" }, 400);
     }
@@ -465,6 +471,28 @@ Deno.serve(async (request: Request) => {
     });
   } catch (error) {
     console.error("PayPal webhook handler error", error);
+    // Release a claimed event after a transient failure so PayPal's retry can
+    // safely claim it again. Never expose the underlying error to the caller.
+    if (retrySupabaseUrl && retryServiceRoleKey && retryEventId) {
+      try {
+        await fetch(
+          retrySupabaseUrl + "/rest/v1/sowia_paypal_webhook_events?event_id=eq." +
+            encodeURIComponent(retryEventId) + "&processing_status=eq.processing",
+          {
+            method: "PATCH",
+            headers: {
+              apikey: retryServiceRoleKey,
+              Authorization: "Bearer " + retryServiceRoleKey,
+              "Content-Type": "application/json",
+              Prefer: "return=minimal",
+            },
+            body: JSON.stringify({ processing_status: "received" }),
+          },
+        );
+      } catch (releaseError) {
+        console.error("Unable to release failed PayPal event for retry", releaseError);
+      }
+    }
     return json({ error: "Webhook processing failed" }, 500);
   }
 });
