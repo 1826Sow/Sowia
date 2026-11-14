@@ -360,9 +360,6 @@ if cloud_mode:
                     "La connexion GitHub n'a pas pu être préparée. Vérifiez la "
                     "configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase."
                 )
-        if st.button("Recommencer la connexion", key="sowia_restart_login", use_container_width=True):
-            st.session_state.pop("sowia_github_login_url", None)
-            st.rerun()
         st.stop()
 
 
