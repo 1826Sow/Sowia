@@ -302,7 +302,10 @@ if cloud_mode:
             st.caption("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA. Un lien à usage unique sera envoyé ; aucun nouveau compte ne sera créé.")
 
             if st.button("Changer d'adresse e-mail", key="sowia_reset_email_login", use_container_width=True):
-                st.session_state.pop("sowia_email_login_address", None)
+                # Reset the Streamlit widget state explicitly before the text_input is
+                # instantiated on the next run. Popping a widget key can leave its
+                # previous browser value restored by Streamlit.
+                st.session_state["sowia_email_login_address"] = ""
                 st.session_state.pop("sowia_email_login_pending", None)
                 st.rerun()
 
