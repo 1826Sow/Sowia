@@ -336,11 +336,9 @@ if cloud_mode:
                         st.session_state["sowia_email_login_address"] = candidate_email
                         st.session_state["sowia_email_login_pending"] = candidate_email
                         st.session_state.pop("sowia_email_change_view", None)
-                        st.session_state.pop("sowia_email_change_value", None)
                         st.rerun()
                 if cancel_email:
                     st.session_state.pop("sowia_email_change_view", None)
-                    st.session_state.pop("sowia_email_change_value", None)
                     st.rerun()
             else:
                 st.markdown("#### Connexion par e-mail")
