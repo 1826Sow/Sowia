@@ -1,5 +1,4 @@
 """Streamlit interface for the persistent SOW IA project register."""
-import json
 from datetime import datetime, timezone
 
 import streamlit as st
@@ -44,7 +43,8 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
         with st.form("sowia_create_project_form", clear_on_submit=True):
             title = st.text_input("Nom du projet", max_chars=project_registry.MAX_TITLE_LENGTH)
             description = st.text_area("Description / point de reprise", max_chars=project_registry.MAX_DESCRIPTION_LENGTH)
-            status = st.selectbox("Statut initial", sorted(project_registry.PROJECT_STATUSES))
+            status_options = sorted(project_registry.PROJECT_STATUSES)
+            status = st.selectbox("Statut initial", status_options, index=status_options.index("En cours"))
             session_id = st.text_input(
                 "Identifiant de conversation (facultatif)",
                 help="À renseigner uniquement si vous connaissez l'identifiant exact de la session à reprendre.",
@@ -84,10 +84,9 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
                     if isinstance(item, dict):
                         label = str(item.get("title") or "Livrable")
                         url = str(item.get("url") or "").strip()
-                        if url.startswith(("https://", "http://")):
-                            st.markdown(f"- [{label}]({url})")
-                        else:
-                            st.markdown(f"- {label}")
+                        st.write(f"- {label}")
+                        if url.startswith("https://"):
+                            st.link_button("Ouvrir le livrable", url, key=f"open_deliverable_{project_id}_{len(label)}")
                     else:
                         st.markdown(f"- {str(item)}")
 
