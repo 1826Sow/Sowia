@@ -66,6 +66,12 @@ st.markdown(
     .hero h1 { font-size: clamp(2.15rem, 5vw, 3.25rem); line-height: 1.08; margin: 0; color: #fff !important; letter-spacing: -.045em; }
     .hero p { color: #e1ebf2 !important; margin: .65rem 0 0; font-size: clamp(1rem, 2vw, 1.12rem); line-height: 1.55; max-width: 820px; }
     .hero-meta { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.15rem; }
+    .sowia-project-hub { position: relative; overflow: hidden; margin: .35rem 0 1.35rem; padding: clamp(1.15rem, 2.6vw, 1.8rem); border: 1px solid rgba(68,214,232,.42); border-radius: 22px; background: radial-gradient(circle at 92% 8%, rgba(24,190,214,.22), transparent 32%), linear-gradient(125deg,#071629 0%,#0b2340 62%,#103b56 100%); box-shadow: 0 16px 38px rgba(5,24,45,.18); }
+    .sowia-project-hub .hub-kicker { color:#73e5f1 !important; font-size:.72rem; letter-spacing:.15em; font-weight:800; text-transform:uppercase; margin:0 0 .5rem; }
+    .sowia-project-hub h2 { color:#fff !important; font-size:clamp(1.35rem,3vw,1.9rem); line-height:1.15; margin:0; }
+    .sowia-project-hub p { color:#d5e7f1 !important; margin:.55rem 0 0; line-height:1.55; max-width:850px; }
+    .sowia-project-hub .hub-note { color:#8feaf2 !important; font-size:.82rem; margin-top:.8rem; }
+    @media (max-width:760px) { .sowia-project-hub { padding:1.1rem; border-radius:17px; } }
     .hero-chip { display: inline-flex; align-items: center; border: 1px solid rgba(226,239,245,.25); background: rgba(255,255,255,.09); color: #f0f6f8; padding: .42rem .72rem; border-radius: 999px; font-size: .78rem; font-weight: 650; }
     .partner-intro { padding: 1.25rem 1.35rem; border: 1px solid #d7e2ec; border-radius: 18px; background: linear-gradient(135deg,#fff 0%,#f4f8fb 100%); box-shadow: 0 8px 22px rgba(24,54,83,.055); margin: .4rem 0 1.1rem; }
     .partner-intro h3 { color: #173b5c !important; margin: 0 0 .45rem; font-size: 1.18rem; }
@@ -653,6 +659,36 @@ st.markdown(
 st.write("")
 
 if page == "Accueil":
+    st.markdown(
+        '<section class="sowia-project-hub">'
+        '<div class="hub-kicker">Votre espace central · SOW IA</div>'
+        '<h2>🗂️ Mes échanges & projets</h2>'
+        '<p>Retrouvez vos conversations, reprenez vos projets, consultez vos bilans et accédez à vos documents finaux depuis un seul endroit.</p>'
+        '<p class="hub-note">Accès direct dès votre arrivée · Vos données restent liées à votre espace sécurisé.</p>'
+        '</section>',
+        unsafe_allow_html=True,
+    )
+    project_access_rows = [
+        (("💬 Tous nos échanges", "Historique", "Conversations et échanges précédents"),
+         ("🚀 Projets en cours", "SOWIA GLOBAL PORTFOLIO CONTROL", "Suivi et pilotage du portefeuille")),
+        (("📊 Bilans & projets terminés", "SOWIA GLOBAL EXECUTIVE REPORTS", "Consulter les rapports et bilans disponibles"),
+         ("📁 Livrables finaux", "Mes documents", "Retrouver et télécharger vos fichiers")),
+        (("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "Accéder directement à l’écosystème nocturne"),),
+    ]
+    for row_index, access_items in enumerate(project_access_rows):
+        access_cols = st.columns(2)
+        for access_col, item in zip(access_cols, access_items):
+            label, destination, description = item
+            with access_col:
+                with st.container(border=True):
+                    st.markdown(f"**{label}**")
+                    st.caption(description)
+                    st.button(
+                        "Ouvrir", key=f"home_project_hub_{row_index}_{destination}",
+                        use_container_width=True, on_click=go_to_page, args=(destination,),
+                    )
+    st.caption("Les rapports et fichiers affichés dépendent des données réellement enregistrées. Les statuts de projet ne sont pas simulés.")
+    st.divider()
     st.subheader("Bienvenue dans SOWIA")
     st.caption("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.")
     workspace_title = "Professionnel" if st.session_state.get("workspace_id") == "professional" else "Personnel"
