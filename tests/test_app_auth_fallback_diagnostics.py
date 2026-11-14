@@ -36,7 +36,7 @@ def test_email_access_requires_explicit_allowlist():
 def test_authenticated_app_session_checks_the_email_allowlist():
     source = Path("app.py").read_text(encoding="utf-8")
 
-    assert 'get_setting("SOWIA_ALLOWED_EMAILS", "sowkeys7@gmail.com")' in source
+    assert source.count(`f"{get_setting('SOWIA_ALLOWED_EMAILS', '')};sowkeys7@gmail.com"`) == 2
     assert "email_is_allowed(authenticated_email, allowed_emails)" in source
     assert "email_is_allowed(candidate_login_email, allowed_emails)" in source
     assert "cette adresse e-mail n’est pas autorisée à ouvrir SOW IA" in source
