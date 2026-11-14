@@ -253,3 +253,39 @@ def test_authenticated_user_propagates_server_validation_errors():
 
     with pytest.raises(ConnectionError, match="unavailable"):
         supabase_auth.authenticated_user(client)
+
+
+def test_email_magic_link_targets_existing_account_only():
+    calls = []
+
+    class Auth:
+        def sign_in_with_otp(self, payload):
+            calls.append(payload)
+            return "sent"
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    assert supabase_auth.email_magic_link(
+        client, "  SOWKEYS7@GMAIL.COM  ", "https://sowia-test-email.streamlit.app"
+    ) == "sent"
+    assert calls == [{
+        "email": "sowkeys7@gmail.com",
+        "options": {
+            "should_create_user": False,
+            "email_redirect_to": "https://sowia-test-email.streamlit.app",
+        },
+    }]
+
+
+def test_email_callback_exchanges_authorization_code():
+    calls = []
+
+    class Auth:
+        def exchange_code_for_session(self, credentials):
+            calls.append(credentials)
+            return "authenticated-session"
+
+    client = type("Client", (), {"auth": Auth()})()
+
+    assert supabase_auth.complete_email_login(client, "email-one-time-code") == "authenticated-session"
+    assert calls == [{"auth_code": "email-one-time-code"}]
