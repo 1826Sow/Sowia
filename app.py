@@ -505,8 +505,8 @@ def delete_app_memory(memory_id):
 
 NAV_GROUPS = {
     "👤 Personnel & documents": [
-        "Hub SOWIA", "Accueil", "Mes échanges & projets", "Assistant IA", "Ma mémoire", "Recherche Web",
-        "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
+        "Hub SOWIA", "Accueil", "Assistant IA", "Mes échanges & projets", "Ma mémoire", "Recherche Web",
+        "Analyse PDF", "Créer un PDF", "Mes documents",
     ],
     "🌐 Écosystème mondial": [
         "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID",
