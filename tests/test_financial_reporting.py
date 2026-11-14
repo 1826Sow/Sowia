@@ -1,6 +1,11 @@
 import pytest
 
-from financial_reporting import load_user_financial_transactions, summarize_financial_transactions
+from financial_reporting import (
+    load_user_financial_transactions,
+    summarize_financial_transactions,
+    summarize_subscription_statuses,
+)
+
 
 
 def test_reports_confirmed_crypto_and_keeps_unknown_fees_unknown():
@@ -99,20 +104,20 @@ def test_user_ledger_read_includes_paypal_subscription_reference():
 
 
 def test_fee_and_net_amounts_keep_their_own_currencies():
-    rows = [{'provider': 'example', 'gross_currency': 'USD', 'gross_amount': '20', 'transaction_type': 'payment', 'status': 'confirmed', 'fee_amount': '1.25', 'fee_currency': 'EUR', 'net_amount': '18.75', 'net_currency': 'USD'}]
+    rows = [{"provider": "example", "gross_currency": "USD", "gross_amount": "20", "transaction_type": "payment", "status": "confirmed", "fee_amount": "1.25", "fee_currency": "EUR", "net_amount": "18.75", "net_currency": "USD"}]
     result = summarize_financial_transactions(rows)[0]
-    assert result['fees_reported'] == '1.25' and result['fees_currency'] == 'EUR'
-    assert result['net_reported'] == '18.75' and result['net_currency'] == 'USD'
+    assert result["fees_reported"] == "1.25" and result["fees_currency"] == "EUR"
+    assert result["net_reported"] == "18.75" and result["net_currency"] == "USD"
 
 
 def test_fee_and_net_are_unknown_when_currency_is_missing_or_mixed():
     rows = [
-        {'provider': 'example', 'gross_currency': 'USD', 'gross_amount': '20', 'transaction_type': 'payment', 'status': 'confirmed', 'fee_amount': '1', 'fee_currency': 'EUR', 'net_amount': '19', 'net_currency': 'USD'},
-        {'provider': 'example', 'gross_currency': 'USD', 'gross_amount': '10', 'transaction_type': 'payment', 'status': 'confirmed', 'fee_amount': '0.5', 'fee_currency': 'USD', 'net_amount': '9.5', 'net_currency': None},
+        {"provider": "example", "gross_currency": "USD", "gross_amount": "20", "transaction_type": "payment", "status": "confirmed", "fee_amount": "1", "fee_currency": "EUR", "net_amount": "19", "net_currency": "USD"},
+        {"provider": "example", "gross_currency": "USD", "gross_amount": "10", "transaction_type": "payment", "status": "confirmed", "fee_amount": "0.5", "fee_currency": "USD", "net_amount": "9.5", "net_currency": None},
     ]
     result = summarize_financial_transactions(rows)[0]
-    assert result['fees_reported'] is None and result['fees_currency'] is None
-    assert result['net_reported'] is None and result['net_currency'] is None
+    assert result["fees_reported"] is None and result["fees_currency"] is None
+    assert result["net_reported"] is None and result["net_currency"] is None
 
 def test_manual_review_rows_never_enter_recognized_totals():
     rows = [
@@ -164,6 +169,5 @@ def test_subscription_status_summary_keeps_unknown_states_separate():
 
 
 def test_subscription_status_summary_rejects_non_list_input():
-    import pytest
     with pytest.raises(ValueError):
         summarize_subscription_statuses(None)
