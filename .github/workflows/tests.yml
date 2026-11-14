@@ -123,4 +123,4 @@ jobs:
       - name: Verify real two-user RLS isolation
         if: steps.credentials.outputs.configured == 'true'
         run: >-
-          pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py
+          pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py tests/integration/test_sowia_project_register_rls.py
