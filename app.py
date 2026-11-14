@@ -313,7 +313,20 @@ if cloud_mode:
                 st.success("Si cette adresse correspond à un compte existant, un lien de connexion vient d'être envoyé. Consultez aussi les courriers indésirables.")
             except Exception as email_exc:
                 st.error("Impossible d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
-                st.caption("Diagnostic e-mail : " + type(email_exc).__name__)
+                # Expose only the provider's human-readable error metadata; never
+                # display request headers, tokens, credentials, or full tracebacks.
+                safe_message = str(getattr(email_exc, "message", "") or str(email_exc)).strip()
+                safe_message = " ".join(safe_message.split())[:240]
+                safe_code = str(getattr(email_exc, "code", "") or "").strip()[:80]
+                safe_status = getattr(email_exc, "status", None)
+                diagnostic_parts = [type(email_exc).__name__]
+                if safe_code:
+                    diagnostic_parts.append("code=" + safe_code)
+                if safe_status is not None:
+                    diagnostic_parts.append("status=" + str(safe_status)[:12])
+                if safe_message:
+                    diagnostic_parts.append("message=" + safe_message)
+                st.caption("Diagnostic e-mail : " + " · ".join(diagnostic_parts))
 
         if st.button("Recommencer la connexion", use_container_width=True):
             st.session_state.pop("sowia_github_login_url", None)
