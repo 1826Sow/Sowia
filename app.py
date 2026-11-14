@@ -2656,7 +2656,7 @@ elif page == "Analyse PDF":
             st.markdown("**Document chargé**")
             st.write(st.session_state.get("analysis_pdf_name") or "document.pdf")
             st.caption(
-                f"{len(pdf_page_numbers)} page(s) détectée(s) · "
+                f"{len(pdf_page_numbers)} page(s) avec texte extrait · "
                 f"{len(pdf_text):,} caractères extraits".replace(",", " ")
             )
         with st.expander("Afficher le texte intégral extrait"):
