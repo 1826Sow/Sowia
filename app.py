@@ -74,21 +74,30 @@ supabase_client = None
 if cloud_mode:
     auth_stage = "initialisation du client Supabase"
     try:
-        if "sowia_supabase_client" not in st.session_state:
-            # Streamlit Cloud WebSocket requests may not expose browser cookies.
-            # Obtain a persistent random browser scope through a v2 component.
-            browser_id = browser_storage_id()
-            if not browser_id:
-                st.info("Initialisation sécurisée du navigateur…")
-                st.stop()
-            # Keep this PKCE client in this browser session; never use a global cache.
-            st.session_state.sowia_supabase_client = create_user_client(browser_id)
-        supabase_client = st.session_state.sowia_supabase_client
+        # The browser scope is stable across Streamlit reruns and is used only
+        # to recover the short-lived PKCE verifier, never an authenticated session.
+        browser_id = browser_storage_id()
+        if not browser_id:
+            st.info("Initialisation sécurisée du navigateur…")
+            st.stop()
 
         auth_stage = "validation du lien e-mail avec Supabase"
         authorization_code = st.query_params.get("code")
         if authorization_code:
+            # Always exchange an email callback with a fresh client. A client
+            # retained by Streamlit may still contain a previous GitHub/email
+            # identity; reusing it can make the old account appear authenticated.
+            # The PKCE verifier is recovered from browser-scoped server storage.
+            supabase_client = create_user_client(browser_id)
+            st.session_state.sowia_supabase_client = supabase_client
             complete_email_login(supabase_client, authorization_code)
+        else:
+            if "sowia_supabase_client" not in st.session_state:
+                # Keep the client scoped to this Streamlit browser session.
+                st.session_state.sowia_supabase_client = create_user_client(browser_id)
+            supabase_client = st.session_state.sowia_supabase_client
+
+        if authorization_code:
             st.session_state.pop("sowia_github_login_url", None)
             st.query_params.clear()
             st.rerun()
