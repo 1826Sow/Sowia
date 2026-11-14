@@ -183,20 +183,21 @@ Deno.serve(async (request: Request) => {
       const priorStatus = Array.isArray(priorRows)
         ? String(priorRows[0]?.processing_status || "")
         : "";
-      if (priorStatus === "processed" || priorStatus === "processing") {
-        return json({
-          received: true,
-          duplicate: true,
-          processed: priorStatus === "processed",
-        }, 202);
+      if (priorStatus === "processed") {
+        return json({ received: true, duplicate: true, processed: true }, 202);
       }
     }
 
-    // Atomically claim only events still marked "received". This prevents
-    // simultaneous PayPal retries from processing the same event twice.
+    // Claim new events or reclaim a processing lease older than 10 minutes.
+    // The conditional PATCH is atomic, so only one concurrent retry can win.
+    const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const claimFilter = encodeURIComponent(
+      "(processing_status.eq.received,and(processing_status.eq.processing,processing_started_at.lt." +
+        staleBefore + "))",
+    );
     const claimResponse = await fetch(
       supabaseUrl + "/rest/v1/sowia_paypal_webhook_events?event_id=eq." +
-        encodeURIComponent(eventId) + "&processing_status=eq.received",
+        encodeURIComponent(eventId) + "&or=" + claimFilter,
       {
         method: "PATCH",
         headers: {
@@ -205,7 +206,10 @@ Deno.serve(async (request: Request) => {
           "Content-Type": "application/json",
           Prefer: "return=representation",
         },
-        body: JSON.stringify({ processing_status: "processing" }),
+        body: JSON.stringify({
+          processing_status: "processing",
+          processing_started_at: new Date().toISOString(),
+        }),
       },
     );
     if (!claimResponse.ok) throw new Error("Unable to claim PayPal webhook event");
@@ -508,7 +512,10 @@ Deno.serve(async (request: Request) => {
               "Content-Type": "application/json",
               Prefer: "return=minimal",
             },
-            body: JSON.stringify({ processing_status: "received" }),
+            body: JSON.stringify({
+              processing_status: "received",
+              processing_started_at: null,
+            }),
           },
         );
       } catch (releaseError) {
