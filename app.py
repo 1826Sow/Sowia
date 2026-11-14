@@ -65,6 +65,12 @@ st.markdown(
     .hero-kicker { color: #b9d7d8 !important; font-size: .72rem; letter-spacing: .17em; font-weight: 800; margin-bottom: .55rem; text-transform: uppercase; }
     .hero h1 { font-size: clamp(2.15rem, 5vw, 3.25rem); line-height: 1.08; margin: 0; color: #fff !important; letter-spacing: -.045em; }
     .hero p { color: #e1ebf2 !important; margin: .65rem 0 0; font-size: clamp(1rem, 2vw, 1.12rem); line-height: 1.55; max-width: 820px; }
+    .sowia-project-hub { position: relative; overflow: hidden; margin: .35rem 0 1.35rem; padding: clamp(1.15rem, 2.6vw, 1.8rem); border: 1px solid rgba(68,214,232,.42); border-radius: 22px; background: radial-gradient(circle at 92% 8%, rgba(24,190,214,.22), transparent 32%), linear-gradient(125deg,#071629 0%,#0b2340 62%,#103b56 100%); box-shadow: 0 16px 38px rgba(5,24,45,.18); }
+    .sowia-project-hub .hub-kicker { color:#73e5f1 !important; font-size:.72rem; letter-spacing:.15em; font-weight:800; text-transform:uppercase; margin:0 0 .5rem; }
+    .sowia-project-hub h2 { color:#fff !important; font-size:clamp(1.35rem,3vw,1.9rem); line-height:1.15; margin:0; }
+    .sowia-project-hub p { color:#d5e7f1 !important; margin:.55rem 0 0; line-height:1.55; max-width:850px; }
+    .sowia-project-hub .hub-note { color:#8feaf2 !important; font-size:.82rem; margin-top:.8rem; }
+    @media (max-width:760px) { .sowia-project-hub { padding:1.1rem; border-radius:17px; } }
     .hero-meta { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.15rem; }
     .hero-chip { display: inline-flex; align-items: center; border: 1px solid rgba(226,239,245,.25); background: rgba(255,255,255,.09); color: #f0f6f8; padding: .42rem .72rem; border-radius: 999px; font-size: .78rem; font-weight: 650; }
     .partner-intro { padding: 1.25rem 1.35rem; border: 1px solid #d7e2ec; border-radius: 18px; background: linear-gradient(135deg,#fff 0%,#f4f8fb 100%); box-shadow: 0 8px 22px rgba(24,54,83,.055); margin: .4rem 0 1.1rem; }
@@ -373,8 +379,8 @@ NAV_GROUPS = {
         "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION",
     ],
     "🤝 Entreprises & opportunités": [
-        "SOW IA Business Club", "Opportunités et revenus", "Technologies & fournisseurs",
-        "SOWIA GLOBAL COLLABORATION HUB",
+        "Financement & partenariats", "SOW IA Business Club", "Opportunités et revenus",
+        "Technologies & fournisseurs", "SOWIA GLOBAL COLLABORATION HUB",
     ],
     "🧠 Intelligence & décisions": [
         "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE",
@@ -653,7 +659,73 @@ st.markdown(
 st.write("")
 
 if page == "Accueil":
-    st.subheader("Bienvenue dans SOWIA")
+    st.markdown(
+        '<section class="sowia-project-hub">'
+        '<div class="hub-kicker">Votre espace central · SOW IA</div>'
+        '<h2>🗂️ Mes échanges & projets</h2>'
+        '<p>Retrouvez vos conversations, reprenez vos projets, consultez vos bilans et accédez à vos documents finaux depuis un seul endroit.</p>'
+        '<p class="hub-note">Accès direct dès votre arrivée · Vos données restent liées à votre espace sécurisé.</p>'
+        '</section>',
+        unsafe_allow_html=True,
+    )
+    project_access_rows = [
+        (("💬 Tous nos échanges", "Historique", "Conversations et échanges précédents"),
+         ("🚀 Projets en cours", "SOWIA GLOBAL PORTFOLIO CONTROL", "Suivi et pilotage du portefeuille")),
+        (("📊 Bilans & projets terminés", "SOWIA GLOBAL EXECUTIVE REPORTS", "Consulter les rapports et bilans disponibles"),
+         ("📁 Livrables finaux", "Mes documents", "Retrouver et télécharger vos fichiers")),
+        (("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "Accéder directement à l’écosystème nocturne"),),
+    ]
+    for row_index, access_items in enumerate(project_access_rows):
+        access_cols = st.columns(2)
+        for access_col, item in zip(access_cols, access_items):
+            label, destination, description = item
+            with access_col:
+                with st.container(border=True):
+                    st.markdown(f"**{label}**")
+                    st.caption(description)
+                    st.button(
+                        "Ouvrir", key=f"home_project_hub_{row_index}_{destination}",
+                        use_container_width=True, on_click=go_to_page, args=(destination,),
+                    )
+    if cloud_mode and current_user is not None:
+        home_stats = {"plans_active": None, "plans_completed": None, "documents": None}
+        try:
+            import sowia_global_portfolio_control as home_portfolio_engine
+            home_all_plans = cloud_storage.list_global_action_plans(
+                supabase_client, current_user, limit=200
+            )
+            home_owned_plans = [
+                row for row in home_all_plans
+                if str(row.get("creator_id")) == str(current_user.id)
+            ]
+            home_plan_summary = home_portfolio_engine.summarize_action_plans(home_owned_plans)
+            home_stats["plans_active"] = home_plan_summary["active"]
+            home_stats["plans_completed"] = home_plan_summary["completed"]
+        except Exception:
+            pass
+        try:
+            home_documents = list_documents(
+                supabase_client, current_user,
+                st.session_state.get("workspace_id", "personal"),
+            )
+            home_stats["documents"] = len(home_documents)
+        except Exception:
+            pass
+        st.markdown("#### Vos données enregistrées")
+        home_metric_cols = st.columns(3)
+        home_metric_cols[0].metric(
+            "Plans actifs", home_stats["plans_active"] if home_stats["plans_active"] is not None else "—"
+        )
+        home_metric_cols[1].metric(
+            "Plans terminés", home_stats["plans_completed"] if home_stats["plans_completed"] is not None else "—"
+        )
+        home_metric_cols[2].metric(
+            "PDF dans cet espace",
+            home_stats["documents"] if home_stats["documents"] is not None else "—",
+        )
+        st.caption("Les plans sont comptés pour leur créateur. Les PDF sont comptés dans l’espace de travail actuellement sélectionné.")
+    st.caption("Les rapports et fichiers affichés dépendent des données réellement enregistrées. Les statuts de projet ne sont pas simulés.")
+    st.divider()
     st.caption("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.")
     workspace_title = "Professionnel" if st.session_state.get("workspace_id") == "professional" else "Personnel"
     account_status = "Connecté" if cloud_mode and current_user is not None else "Mode local"
@@ -5804,6 +5876,114 @@ elif page == "SOW IA Business Club":
         except Exception:
             st.error("Le Club Entreprises n'est pas encore initialisé dans Supabase. La migration supabase_business_club.sql doit être exécutée une fois.")
 
+
+elif page == "Financement & partenariats":
+    st.subheader("💶 Financement & partenariats de SOW IA")
+    st.caption(
+        "Un point d'entrée unique pour développer des revenus, trouver des partenaires "
+        "et repérer des financements, sans modifier le socle technique de SOW IA."
+    )
+    from funding_hub import safe_external_url
+
+    support_url = safe_external_url(get_setting("SOWIA_SUPPORT_URL", ""))
+    crowdfunding_url = safe_external_url(get_setting("SOWIA_CROWDFUNDING_URL", ""))
+    sponsor_url = safe_external_url(get_setting("SOWIA_SPONSOR_URL", ""))
+
+    st.info(
+        "Les prévisions commerciales, les paiements confirmés et les financements recherchés "
+        "restent trois notions distinctes. Aucun revenu potentiel n'est présenté comme encaissé."
+    )
+
+    funding_cols = st.columns(2)
+    with funding_cols[0]:
+        with st.container(border=True):
+            st.markdown("### 👑 1. Abonnements Premium")
+            st.write("Revenus récurrents via les formules existantes et le parcours PayPal.")
+            st.button(
+                "Gérer les formules Premium",
+                key="funding_open_subscription",
+                on_click=go_to_page,
+                args=("Abonnement",),
+                use_container_width=True,
+            )
+        with st.container(border=True):
+            st.markdown("### 🧩 2. Services et offres professionnelles")
+            st.write("Suivre les niches, offres B2B, coûts et prévisions dans le pipeline existant.")
+            st.button(
+                "Ouvrir le pipeline commercial",
+                key="funding_open_pipeline",
+                on_click=go_to_page,
+                args=("Opportunités et revenus",),
+                use_container_width=True,
+            )
+    with funding_cols[1]:
+        with st.container(border=True):
+            st.markdown("### 🤝 3. Partenariats, affiliation et sponsoring")
+            st.write("Prospection internationale, distributeurs, intégrateurs et réseau professionnel.")
+            st.button(
+                "Développer les partenariats",
+                key="funding_open_growth",
+                on_click=go_to_page,
+                args=("Développement mondial",),
+                use_container_width=True,
+            )
+            st.button(
+                "Accéder au Business Club",
+                key="funding_open_club",
+                on_click=go_to_page,
+                args=("SOW IA Business Club",),
+                use_container_width=True,
+            )
+            if sponsor_url:
+                st.link_button("Contacter un partenaire / sponsor", sponsor_url, use_container_width=True)
+            else:
+                st.caption("Contact sponsor externe : à configurer avant publication.")
+        with st.container(border=True):
+            st.markdown("### 🏛️ 4. Aides, appels à projets et marchés")
+            st.write("Repérer les programmes d'innovation, appels d'offres, accélérateurs et dispositifs publics.")
+            st.button(
+                "Ouvrir le radar mondial",
+                key="funding_open_radar",
+                on_click=go_to_page,
+                args=("Développement mondial",),
+                use_container_width=True,
+            )
+
+    st.divider()
+    st.markdown("### ❤️ 5. Soutien volontaire et financement participatif")
+    support_cols = st.columns(2)
+    with support_cols[0]:
+        if support_url:
+            st.link_button("Soutenir SOW IA", support_url, type="primary", use_container_width=True)
+            st.caption("Lien de soutien externe configuré côté serveur.")
+        else:
+            st.info("Le lien de soutien n'est pas encore configuré. Aucun paiement de don n'est activé.")
+    with support_cols[1]:
+        if crowdfunding_url:
+            st.link_button("Découvrir la campagne de financement", crowdfunding_url, use_container_width=True)
+            st.caption("Campagne externe configurée côté serveur.")
+        else:
+            st.info("Aucune campagne participative n'est encore reliée à SOW IA.")
+
+    st.divider()
+    st.markdown("### 📊 6. Suivi des sommes réellement encaissées")
+    st.write(
+        "Le registre financier existant reste la référence pour les paiements confirmés. "
+        "Les opportunités, partenariats en discussion et subventions recherchées ne sont pas comptés comme recettes."
+    )
+    st.button(
+        "Consulter les revenus & paiements",
+        key="funding_open_ledger",
+        on_click=go_to_page,
+        args=("Revenus & paiements",),
+        use_container_width=True,
+    )
+    st.caption(
+        "Configuration externe attendue : SOWIA_SUPPORT_URL, SOWIA_CROWDFUNDING_URL et "
+        "SOWIA_SPONSOR_URL. Seules les adresses HTTPS valides sont affichées. "
+        "Aucune nouvelle table Supabase, aucun nouveau fournisseur de paiement et aucune collecte "
+        "automatique ne sont ajoutés par cette page."
+    )
 
 elif page == "Opportunités et revenus":
     st.subheader("📈 Opportunités et revenus de SOW IA")
