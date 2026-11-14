@@ -179,7 +179,6 @@ Deno.serve(async (request: Request) => {
       }
     }
 
-    const eventType = String(event.event_type || "");
     const supportedEvents = new Set([
       "BILLING.SUBSCRIPTION.ACTIVATED",
       "BILLING.SUBSCRIPTION.UPDATED",
