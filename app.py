@@ -2646,29 +2646,83 @@ elif page == "Analyse PDF":
                 st.rerun()
 
     if st.session_state.pdf_text:
-        st.text_area("Contenu extrait", st.session_state.pdf_text, height=350)
-        st.download_button("Télécharger le texte", st.session_state.pdf_text, file_name="sowia_extraction.txt")
-        st.markdown("#### Poser une question sur ce PDF")
-        st.caption("SOW IA répond à partir du texte extrait. Le document temporaire est supprimé après vérification.")
+        pdf_text = st.session_state.pdf_text
+        pdf_page_numbers = [
+            line.removeprefix("--- Page ").removesuffix(" ---")
+            for line in pdf_text.splitlines()
+            if line.startswith("--- Page ") and line.endswith(" ---")
+        ]
+        with st.container(border=True):
+            st.markdown("**Document chargé**")
+            st.write(st.session_state.get("analysis_pdf_name") or "document.pdf")
+            st.caption(
+                f"{len(pdf_page_numbers)} page(s) détectée(s) · "
+                f"{len(pdf_text):,} caractères extraits".replace(",", " ")
+            )
+        with st.expander("Afficher le texte intégral extrait"):
+            st.text_area("Contenu extrait", pdf_text, height=350, key="analysis_pdf_extracted_text")
+        st.download_button(
+            "Télécharger le texte extrait",
+            pdf_text,
+            file_name="sowia_extraction.txt",
+            key="download_analysis_pdf_text",
+        )
+        st.markdown("#### Comprendre votre document")
+        st.caption(
+            "Le PDF original est supprimé du stockage temporaire après vérification. "
+            "L'analyse utilise le texte extrait et peut indiquer les pages disponibles."
+        )
         pdf_question = st.text_input(
             "Votre question sur le document",
             placeholder="Ex. : Résume les points essentiels de ce document.",
             key="pdf_question",
         )
-        if st.button("Analyser le document", type="primary", disabled=not pdf_question.strip()):
+        pdf_action_cols = st.columns(2)
+        with pdf_action_cols[0]:
+            pdf_summary_clicked = st.button(
+                "Générer un résumé",
+                type="primary",
+                key="summarize_analysis_pdf",
+                use_container_width=True,
+            )
+        with pdf_action_cols[1]:
+            pdf_analyze_clicked = st.button(
+                "Analyser ma question",
+                disabled=not pdf_question.strip(),
+                key="analyze_question_pdf",
+                use_container_width=True,
+            )
+        if pdf_summary_clicked or pdf_analyze_clicked:
+            task = (
+                "Rédige un résumé structuré de ce document en français. Présente son sujet, "
+                "les idées principales, les faits ou chiffres importants, les conclusions "
+                "et les éventuels points de vigilance. N'invente aucune information."
+                if pdf_summary_clicked else pdf_question.strip()
+            )
             if not API_KEY:
                 st.warning("Ajoutez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit pour activer l'analyse IA.")
             else:
                 with st.spinner("Analyse du document en cours..."):
                     try:
+                        relevant_context = select_relevant_pdf_context(pdf_text, task)
                         response = answer(
-                            [{"role": "user", "content": pdf_question.strip()}],
-                            document_context=select_relevant_pdf_context(
-                                st.session_state.pdf_text, pdf_question.strip()
-                            ),
+                            [{"role": "user", "content": task}],
+                            document_context=relevant_context,
                         )
                         st.markdown("**Réponse de SOW IA**")
                         st.write(response)
+                        cited_pages = [
+                            line.removeprefix("--- Page ").removesuffix(" ---")
+                            for line in relevant_context.splitlines()
+                            if line.startswith("--- Page ") and line.endswith(" ---")
+                        ]
+                        if cited_pages:
+                            st.caption("Pages transmises au modèle : " + ", ".join(cited_pages))
+                        elif pdf_page_numbers:
+                            st.caption(
+                                "Les numéros de page n'étaient pas présents dans le texte extrait ; "
+                                "les références précises aux pages ne sont donc pas disponibles."
+                            )
                     except Exception:
                         st.error("L'analyse du document a échoué. Vérifiez le service IA et réessayez.")
 
