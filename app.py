@@ -49,6 +49,7 @@ import sowia_global_connect
 import sowia_global_messenger
 import sowia_global_alerts
 import sowia_business_card
+import project_registry_ui
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -505,7 +506,10 @@ def delete_app_memory(memory_id):
 NAV_GROUPS = {
     "👤 Personnel & documents": [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
-        "Analyse PDF", "Créer un PDF", "Mes documents", "Historique",
+        "Analyse PDF", "Créer un PDF", "Mes documents",
+    ],
+    "📚 Échanges & projets": [
+        "Mes échanges & projets", "Historique",
     ],
     "🌐 Écosystème mondial": [
         "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID",
@@ -701,7 +705,13 @@ with st.sidebar:
         clear_workspace_session_state(st.session_state)
     st.session_state.active_workspace_id = workspace_id
     if cloud_mode and current_user is not None:
-        st.session_state.session_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}:{workspace_id}"))
+        # A project resume request is consumed once, after the active workspace
+        # is known, so the normal account/workspace default does not overwrite it.
+        resume_session_id = st.session_state.pop("sowia_resume_session_id", None)
+        st.session_state.session_id = str(
+            resume_session_id
+            or uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}:{workspace_id}")
+        )
     st.session_state.workspace_id = workspace_id
     if cloud_mode:
         st.success(f"Espace {workspace_choice.lower()} sécurisé")
@@ -974,10 +984,11 @@ elif page == "Hub SOWIA":
         '</div></section>',
         unsafe_allow_html=True,
     )
-    st.caption("Repères de suivi des projets. Le registre persistant des projets et de leurs statuts est une étape d’intégration dédiée ; aucun statut n’est inventé.")
+    st.caption("Le registre persistant est accessible dans « Mes échanges & projets ». Les conversations anciennes et les fichiers existants ne sont pas importés automatiquement.")
     st.markdown("#### Accès rapides")
     hub_quick_access = [
-        ("💬 Reprendre mes échanges", "Historique", "Retrouver les conversations disponibles."),
+        ("💬 Mes échanges & projets", "Mes échanges & projets", "Gérer vos projets, leurs statuts et les livrables associés."),
+        ("↩ Reprendre mes échanges", "Historique", "Retrouver les conversations disponibles."),
         ("🧠 Continuer avec SOW IA", "Assistant IA", "Reprendre le travail avec l’assistant."),
         ("📄 Mes livrables & documents", "Mes documents", "Consulter les PDF et fichiers enregistrés."),
         ("🧪 Laboratoire PDF", "Analyse PDF", "Analyser un document ou poursuivre son traitement."),
@@ -1387,6 +1398,15 @@ elif page == "Hub SOWIA":
                             on_click=go_to_page,
                             args=(destination,),
                         )
+
+elif page == "Mes échanges & projets":
+    project_registry_ui.render(
+        supabase_client,
+        current_user,
+        st.session_state.get("workspace_id", "personal"),
+        cloud_mode,
+        premium_active,
+    )
 
 elif page == "Assistant IA":
     st.subheader(translate_ui("💬 Mon Assistant IA", language))
