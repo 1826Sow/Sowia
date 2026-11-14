@@ -174,9 +174,38 @@ Deno.serve(async (request: Request) => {
       );
       if (!priorResponse.ok) throw new Error("Unable to inspect duplicate PayPal event");
       const priorRows = await priorResponse.json();
-      if (Array.isArray(priorRows) && priorRows[0]?.processing_status === "processed") {
-        return json({ received: true, duplicate: true, processed: true });
+      const priorStatus = Array.isArray(priorRows)
+        ? String(priorRows[0]?.processing_status || "")
+        : "";
+      if (priorStatus === "processed" || priorStatus === "processing") {
+        return json({
+          received: true,
+          duplicate: true,
+          processed: priorStatus === "processed",
+        }, 202);
       }
+    }
+
+    // Atomically claim only events still marked "received". This prevents
+    // simultaneous PayPal retries from processing the same event twice.
+    const claimResponse = await fetch(
+      supabaseUrl + "/rest/v1/sowia_paypal_webhook_events?event_id=eq." +
+        encodeURIComponent(eventId) + "&processing_status=eq.received",
+      {
+        method: "PATCH",
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: "Bearer " + serviceRoleKey,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify({ processing_status: "processing" }),
+      },
+    );
+    if (!claimResponse.ok) throw new Error("Unable to claim PayPal webhook event");
+    const claimedRows = await claimResponse.json();
+    if (!Array.isArray(claimedRows) || claimedRows.length === 0) {
+      return json({ received: true, duplicate: true, processing: true }, 202);
     }
 
     const supportedEvents = new Set([
@@ -191,6 +220,24 @@ Deno.serve(async (request: Request) => {
       "PAYMENT.SALE.REVERSED",
     ]);
     if (!supportedEvents.has(eventType)) {
+      const ignoredResponse = await fetch(
+        supabaseUrl + "/rest/v1/sowia_paypal_webhook_events?event_id=eq." +
+          encodeURIComponent(eventId),
+        {
+          method: "PATCH",
+          headers: {
+            apikey: serviceRoleKey,
+            Authorization: "Bearer " + serviceRoleKey,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({
+            processing_status: "processed",
+            processed_at: new Date().toISOString(),
+          }),
+        },
+      );
+      if (!ignoredResponse.ok) throw new Error("Unable to mark ignored PayPal event processed");
       return json({ received: true, ignored: true });
     }
 
@@ -215,6 +262,24 @@ Deno.serve(async (request: Request) => {
         "",
     ).trim();
     if (!/^I-[A-Z0-9-]{5,64}$/.test(subscriptionId)) {
+      const ignoredResponse = await fetch(
+        supabaseUrl + "/rest/v1/sowia_paypal_webhook_events?event_id=eq." +
+          encodeURIComponent(eventId),
+        {
+          method: "PATCH",
+          headers: {
+            apikey: serviceRoleKey,
+            Authorization: "Bearer " + serviceRoleKey,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({
+            processing_status: "processed",
+            processed_at: new Date().toISOString(),
+          }),
+        },
+      );
+      if (!ignoredResponse.ok) throw new Error("Unable to mark unmatched PayPal event processed");
       return json({
         received: true,
         ignored: true,
