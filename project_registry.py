@@ -4,6 +4,7 @@ All reads and writes are scoped to the authenticated owner and active workspace.
 The database RLS policies remain the final authorization boundary.
 """
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 
 WORKSPACES = {"personal", "professional"}
 PROJECT_STATUSES = {"En cours", "À tester", "Validé", "Terminé"}
@@ -40,6 +41,39 @@ def _validate_status(status):
     if value not in PROJECT_STATUSES:
         raise ValueError("Statut de projet invalide.")
     return value
+
+
+def _validate_deliverables(items):
+    """Validate deliverable metadata before it reaches the JSONB column."""
+    items = _validate_deliverables(items)
+    for item in items:
+        if isinstance(item, str):
+            if len(item) > 2048:
+                raise ValueError("Référence de livrable trop longue.")
+            continue
+        if not isinstance(item, dict):
+            raise ValueError("Chaque livrable doit être un objet ou un libellé texte.")
+        _clean_text(item.get("title"), "Le nom du livrable", 160, required=True)
+        raw_url = item.get("url", "")
+        if not isinstance(raw_url, str) or len(raw_url) > 2048:
+            raise ValueError("Lien de livrable invalide.")
+        if raw_url:
+            if any(character.isspace() or ord(character) < 32 for character in raw_url):
+                raise ValueError("Le lien du livrable contient des caractères interdits.")
+            try:
+                parsed = urlsplit(raw_url)
+                hostname = parsed.hostname
+                parsed.port  # Force validation of malformed port syntax.
+            except ValueError as exc:
+                raise ValueError("Lien HTTPS invalide.") from exc
+            if (
+                parsed.scheme.lower() != "https"
+                or not hostname
+                or parsed.username is not None
+                or parsed.password is not None
+            ):
+                raise ValueError("Le lien du livrable doit être une URL HTTPS valide.")
+    return items
 
 
 def list_projects(client, user, workspace_id="personal", include_archived=False, limit=200):
@@ -98,9 +132,7 @@ def update_project(client, user, project_id, workspace_id="personal", **changes)
         payload["conversation_session_id"] = str(value).strip() if value else None
     if "deliverables" in changes:
         value = changes["deliverables"]
-        if not isinstance(value, list) or len(value) > MAX_DELIVERABLES:
-            raise ValueError("Liste de livrables invalide (100 maximum).")
-        payload["deliverables"] = value
+        payload["deliverables"] = _validate_deliverables(value)
     if "metadata" in changes:
         value = changes["metadata"]
         if not isinstance(value, dict):
