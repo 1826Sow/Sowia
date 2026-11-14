@@ -60,7 +60,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
                 st.rerun()
             except Exception as exc:
                 st.error("Le projet n'a pas été enregistré. Vérifiez les champs et la connexion.")
-                st.caption(f"Diagnostic : {type(exc).__name__}")
+                st.caption(f"Diagnostic : {type(exc).__name__} — {str(exc)[:300]}")
 
     st.divider()
     st.markdown("### Vos projets enregistrés")
