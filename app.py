@@ -67,13 +67,8 @@ st.markdown(
     section[data-testid="stSidebar"] [data-testid="stRadio"] label { border-radius: 11px; padding: .38rem .55rem; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { background: rgba(0,205,225,.16); border: 1px solid rgba(0,220,235,.45); }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color: #75f2ff !important; font-weight: 750; }
-    /* Keep the native sidebar toggle reachable on the right, with a clear Menu label. */
+    /* Keep the native sidebar toggle in its original Streamlit position; add only the Menu label and styling. */
     :is([data-testid="stSidebarCollapseButton"], [data-testid="stExpandSidebarButton"], button[data-testid="stSidebarCollapseButton"], button[data-testid="stExpandSidebarButton"]) {
-      position: fixed !important;
-      top: .65rem !important;
-      right: .8rem !important;
-      left: auto !important;
-      z-index: 100000 !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
@@ -96,8 +91,6 @@ st.markdown(
     }
     @media (max-width: 760px) {
       :is([data-testid="stSidebarCollapseButton"], [data-testid="stExpandSidebarButton"], button[data-testid="stSidebarCollapseButton"], button[data-testid="stExpandSidebarButton"]) {
-        top: .45rem !important;
-        right: .55rem !important;
         min-width: 5.35rem !important;
         min-height: 2.45rem !important;
       }
