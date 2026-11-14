@@ -130,3 +130,16 @@ def archive_project(client, user, project_id, workspace_id="personal"):
         .is_("archived_at", "null")
         .execute().data or []
     )
+
+
+def restore_project(client, user, project_id, workspace_id="personal"):
+    """Restore a soft-archived project without changing its owner or workspace."""
+    now = datetime.now(timezone.utc).isoformat()
+    return (
+        client.table("sowia_projects")
+        .update({"archived_at": None, "updated_at": now})
+        .eq("id", project_id)
+        .eq("user_id", _owner_id(user))
+        .eq("workspace_id", _workspace(workspace_id))
+        .execute().data or []
+    )
