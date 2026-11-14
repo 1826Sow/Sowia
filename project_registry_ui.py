@@ -52,15 +52,17 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
             submitted = st.form_submit_button("Enregistrer le projet", type="primary", use_container_width=True)
         if submitted:
             try:
-                project_registry.create_project(
+                created = project_registry.create_project(
                     client, user, title, description, status, workspace_id,
                     conversation_session_id=session_id or None,
                 )
-                st.success("Projet enregistré.")
+                if not created or not created[0].get("id"):
+                    raise RuntimeError("Aucune confirmation de création reçue depuis Supabase.")
+                st.success(f"Projet enregistré et confirmé (référence {created[0]['id']}).")
                 st.rerun()
             except Exception as exc:
-                st.error("Le projet n'a pas été enregistré. Vérifiez les champs et la connexion.")
-                st.caption(f"Diagnostic : {type(exc).__name__}")
+                st.error("ÉCHEC : le projet n’a pas été confirmé comme enregistré.")
+                st.caption(f"Diagnostic : {type(exc).__name__} — {str(exc)[:300]}")
 
     st.divider()
     st.markdown("### Vos projets enregistrés")
