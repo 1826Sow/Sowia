@@ -371,12 +371,17 @@ if cloud_mode:
                 )
                 if st.button("Envoyer mon lien de connexion", key="sowia_send_email_link", type="secondary", use_container_width=True):
                     try:
-                        if not redirect_to:
+                        candidate_login_email = str(email_address or "").strip().lower()
+                        allowed_emails = get_setting("SOWIA_ALLOWED_EMAILS", "sowkeys7@gmail.com")
+                        if not email_is_allowed(candidate_login_email, allowed_emails):
+                            st.error("Accès refusé : cette adresse e-mail n’est pas autorisée à ouvrir SOW IA.")
+                        elif not redirect_to:
                             raise ValueError("URL HTTPS de retour invalide")
-                        email_client = create_email_user_client()
-                        email_magic_link(email_client, email_address, redirect_to)
-                        st.session_state["sowia_email_login_pending"] = email_address.strip().lower()
-                        st.success("Si cette adresse correspond à un compte existant, un lien de connexion vient d'être envoyé. Consultez aussi les courriers indésirables.")
+                        else:
+                            email_client = create_email_user_client()
+                            email_magic_link(email_client, candidate_login_email, redirect_to)
+                            st.session_state["sowia_email_login_pending"] = candidate_login_email
+                            st.success("Si cette adresse correspond à un compte existant, un lien de connexion vient d'être envoyé. Consultez aussi les courriers indésirables.")
                     except Exception as email_exc:
                         st.error("Impossible d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
                         # Expose only bounded provider metadata; never show request headers,
