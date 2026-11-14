@@ -3,7 +3,7 @@
 ## Ce que cette étape ajoute
 - Une table `public.sowia_projects` par utilisateur et espace Personnel/Professionnel.
 - Les statuts contrôlés : En cours, À tester, Validé, Terminé.
-- Création, modification, archivage réversible et consultation des projets archivés.
+- Création, modification, archivage réversible, restauration et consultation des projets archivés.
 - Un rattachement facultatif à un identifiant de session de conversation, avec raccourci de reprise.
 - Un index de références de livrables (titre et lien HTTPS) et des métadonnées de reprise.
 - Une entrée de navigation et un écran dédié dans le Hub SOW IA.
