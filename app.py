@@ -373,8 +373,8 @@ NAV_GROUPS = {
         "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION",
     ],
     "🤝 Entreprises & opportunités": [
-        "SOW IA Business Club", "Opportunités et revenus", "Technologies & fournisseurs",
-        "SOWIA GLOBAL COLLABORATION HUB",
+        "Financement & partenariats", "SOW IA Business Club", "Opportunités et revenus",
+        "Technologies & fournisseurs", "SOWIA GLOBAL COLLABORATION HUB",
     ],
     "🧠 Intelligence & décisions": [
         "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE",
@@ -5804,6 +5804,114 @@ elif page == "SOW IA Business Club":
         except Exception:
             st.error("Le Club Entreprises n'est pas encore initialisé dans Supabase. La migration supabase_business_club.sql doit être exécutée une fois.")
 
+
+elif page == "Financement & partenariats":
+    st.subheader("💶 Financement & partenariats de SOW IA")
+    st.caption(
+        "Un point d'entrée unique pour développer des revenus, trouver des partenaires "
+        "et repérer des financements, sans modifier le socle technique de SOW IA."
+    )
+    from funding_hub import safe_external_url
+
+    support_url = safe_external_url(get_setting("SOWIA_SUPPORT_URL", ""))
+    crowdfunding_url = safe_external_url(get_setting("SOWIA_CROWDFUNDING_URL", ""))
+    sponsor_url = safe_external_url(get_setting("SOWIA_SPONSOR_URL", ""))
+
+    st.info(
+        "Les prévisions commerciales, les paiements confirmés et les financements recherchés "
+        "restent trois notions distinctes. Aucun revenu potentiel n'est présenté comme encaissé."
+    )
+
+    funding_cols = st.columns(2)
+    with funding_cols[0]:
+        with st.container(border=True):
+            st.markdown("### 👑 1. Abonnements Premium")
+            st.write("Revenus récurrents via les formules existantes et le parcours PayPal.")
+            st.button(
+                "Gérer les formules Premium",
+                key="funding_open_subscription",
+                on_click=go_to_page,
+                args=("Abonnement",),
+                use_container_width=True,
+            )
+        with st.container(border=True):
+            st.markdown("### 🧩 2. Services et offres professionnelles")
+            st.write("Suivre les niches, offres B2B, coûts et prévisions dans le pipeline existant.")
+            st.button(
+                "Ouvrir le pipeline commercial",
+                key="funding_open_pipeline",
+                on_click=go_to_page,
+                args=("Opportunités et revenus",),
+                use_container_width=True,
+            )
+    with funding_cols[1]:
+        with st.container(border=True):
+            st.markdown("### 🤝 3. Partenariats, affiliation et sponsoring")
+            st.write("Prospection internationale, distributeurs, intégrateurs et réseau professionnel.")
+            st.button(
+                "Développer les partenariats",
+                key="funding_open_growth",
+                on_click=go_to_page,
+                args=("Développement mondial",),
+                use_container_width=True,
+            )
+            st.button(
+                "Accéder au Business Club",
+                key="funding_open_club",
+                on_click=go_to_page,
+                args=("SOW IA Business Club",),
+                use_container_width=True,
+            )
+            if sponsor_url:
+                st.link_button("Contacter un partenaire / sponsor", sponsor_url, use_container_width=True)
+            else:
+                st.caption("Contact sponsor externe : à configurer avant publication.")
+        with st.container(border=True):
+            st.markdown("### 🏛️ 4. Aides, appels à projets et marchés")
+            st.write("Repérer les programmes d'innovation, appels d'offres, accélérateurs et dispositifs publics.")
+            st.button(
+                "Ouvrir le radar mondial",
+                key="funding_open_radar",
+                on_click=go_to_page,
+                args=("Développement mondial",),
+                use_container_width=True,
+            )
+
+    st.divider()
+    st.markdown("### ❤️ 5. Soutien volontaire et financement participatif")
+    support_cols = st.columns(2)
+    with support_cols[0]:
+        if support_url:
+            st.link_button("Soutenir SOW IA", support_url, type="primary", use_container_width=True)
+            st.caption("Lien de soutien externe configuré côté serveur.")
+        else:
+            st.info("Le lien de soutien n'est pas encore configuré. Aucun paiement de don n'est activé.")
+    with support_cols[1]:
+        if crowdfunding_url:
+            st.link_button("Découvrir la campagne de financement", crowdfunding_url, use_container_width=True)
+            st.caption("Campagne externe configurée côté serveur.")
+        else:
+            st.info("Aucune campagne participative n'est encore reliée à SOW IA.")
+
+    st.divider()
+    st.markdown("### 📊 6. Suivi des sommes réellement encaissées")
+    st.write(
+        "Le registre financier existant reste la référence pour les paiements confirmés. "
+        "Les opportunités, partenariats en discussion et subventions recherchées ne sont pas comptés comme recettes."
+    )
+    st.button(
+        "Consulter les revenus & paiements",
+        key="funding_open_ledger",
+        on_click=go_to_page,
+        args=("Revenus & paiements",),
+        use_container_width=True,
+    )
+    st.caption(
+        "Configuration externe attendue : SOWIA_SUPPORT_URL, SOWIA_CROWDFUNDING_URL et "
+        "SOWIA_SPONSOR_URL. Seules les adresses HTTPS valides sont affichées. "
+        "Aucune nouvelle table Supabase, aucun nouveau fournisseur de paiement et aucune collecte "
+        "automatique ne sont ajoutés par cette page."
+    )
 
 elif page == "Opportunités et revenus":
     st.subheader("📈 Opportunités et revenus de SOW IA")
