@@ -173,7 +173,18 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
             if not archived:
                 st.caption("Aucun projet archivé.")
             for item in archived:
-                st.markdown(f"- **{item.get('title', 'Projet')}** · {item.get('status', '')} · archivé le {item.get('archived_at')}")
+                archived_cols = st.columns([4, 1])
+                with archived_cols[0]:
+                    st.markdown(f"**{item.get('title', 'Projet')}** · {item.get('status', '')} · archivé le {item.get('archived_at')}")
+                with archived_cols[1]:
+                    if st.button("Restaurer", key=f"restore_project_{item['id']}", use_container_width=True):
+                        try:
+                            project_registry.restore_project(client, user, item["id"], workspace_id)
+                            st.success("Projet restauré.")
+                            st.rerun()
+                        except Exception as exc:
+                            st.error("La restauration n'a pas abouti.")
+                            st.caption(f"Diagnostic : {type(exc).__name__}")
         except Exception as exc:
             st.caption(f"Archives indisponibles : {type(exc).__name__}")
 
