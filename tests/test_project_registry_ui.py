@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_project_register_is_reachable_from_navigation_and_hub():
     source = (ROOT / "app.py").read_text(encoding="utf-8")
     assert "import project_registry_ui" in source
-    assert '"Hub SOWIA", "Accueil", "Mes échanges & projets", "Assistant IA"' in source
+    assert '"Hub SOWIA", "Accueil", "Assistant IA", "Mes échanges & projets"' in source
     assert '("💬 Mes échanges & projets", "Mes échanges & projets"' in source
     assert 'elif page == "Mes échanges & projets":' in source
     assert "project_registry_ui.render(" in source
