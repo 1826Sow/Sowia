@@ -148,7 +148,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
             with action_cols[0]:
                 if session_id:
                     if st.button("↩ Reprendre cette conversation", key=f"resume_project_{project_id}", use_container_width=True):
-                        st.session_state.session_id = session_id
+                        st.session_state["sowia_resume_session_id"] = session_id
                         st.session_state.page_nav = "Assistant IA"
                         st.session_state.nav_category = "👤 Personnel & documents"
                         st.rerun()
