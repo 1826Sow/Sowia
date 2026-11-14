@@ -599,6 +599,13 @@ def go_to_page(page_name):
     st.session_state.nav_category = category_for_page(page_name)
 
 
+def resume_project_session(session_id):
+    """Resume a project-linked conversation from the home dashboard."""
+    st.session_state["sowia_resume_session_id"] = str(session_id)
+    st.session_state.page_nav = "Assistant IA"
+    st.session_state.nav_category = category_for_page("Assistant IA")
+
+
 def go_to_professional_page(page_name):
     st.session_state.workspace_choice = "Professionnel"
     st.session_state.page_nav = page_name
@@ -844,6 +851,88 @@ st.write("")
 if page == "Accueil":
     st.subheader("Bienvenue dans SOWIA")
     st.caption("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.")
+
+    # The project hub is deliberately the first major block on the home page.
+    st.markdown(
+        '<section class="sowia-command-center">'
+        '<div class="sowia-command-kicker">VOTRE ESPACE CENTRAL</div>'
+        '<h2>💬 Mes échanges & projets</h2>'
+        '<p>Retrouvez vos projets en cours ou terminés, reprenez une conversation associée '
+        'et ouvrez directement les livrables enregistrés dans votre espace.</p>'
+        '<div class="sowia-status-legend"><span>En cours</span><span>À tester</span>'
+        '<span>Validé</span><span>Terminé</span></div></section>',
+        unsafe_allow_html=True,
+    )
+    hub_projects = []
+    hub_registry_error = False
+    if cloud_mode and current_user is not None:
+        try:
+            import project_registry
+            hub_projects = project_registry.list_projects(
+                supabase_client, current_user,
+                st.session_state.get("workspace_id", "personal"),
+                limit=200,
+            )
+        except Exception:
+            hub_registry_error = True
+    if cloud_mode and current_user is not None and not hub_registry_error:
+        hub_statuses = ("En cours", "À tester", "Validé", "Terminé")
+        hub_status_cols = st.columns(4)
+        for hub_col, hub_status in zip(hub_status_cols, hub_statuses):
+            hub_col.metric(
+                hub_status,
+                sum(1 for item in hub_projects if item.get("status") == hub_status),
+            )
+        if hub_projects:
+            st.markdown("**Projets récemment mis à jour**")
+            for hub_index, hub_project in enumerate(hub_projects[:3]):
+                with st.container(border=True):
+                    hub_cols = st.columns([3, 1])
+                    with hub_cols[0]:
+                        st.markdown(f"**{hub_project.get('title', 'Projet sans titre')}**")
+                        if hub_project.get("description"):
+                            st.caption(hub_project["description"][:240])
+                    with hub_cols[1]:
+                        st.caption(hub_project.get("status", "En cours"))
+                    hub_session = str(hub_project.get("conversation_session_id") or "").strip()
+                    if hub_session:
+                        st.button(
+                            "↩ Reprendre la conversation",
+                            key=f"home_resume_project_{hub_project['id']}",
+                            on_click=resume_project_session,
+                            args=(hub_session,),
+                            use_container_width=True,
+                        )
+                    hub_deliverables = hub_project.get("deliverables") or []
+                    valid_hub_links = [
+                        item for item in hub_deliverables
+                        if isinstance(item, dict)
+                        and str(item.get("url") or "").startswith("https://")
+                    ]
+                    if valid_hub_links:
+                        st.caption("Livrables accessibles")
+                        for hub_deliverable_index, hub_deliverable in enumerate(valid_hub_links[:3]):
+                            st.link_button(
+                                str(hub_deliverable.get("title") or "Ouvrir le livrable"),
+                                str(hub_deliverable["url"]),
+                                key=f"home_deliverable_{hub_project['id']}_{hub_deliverable_index}",
+                                use_container_width=True,
+                            )
+        else:
+            st.info("Aucun projet actif pour le moment. Vous pourrez créer le premier depuis cet espace central.")
+    elif hub_registry_error:
+        st.warning("Le registre des projets est momentanément indisponible. Vos données ne sont pas modifiées.")
+    else:
+        st.info("Connectez-vous à votre compte SOW IA pour retrouver vos projets et leurs livrables enregistrés. Le mode local ne synchronise pas ces données.")
+    st.button(
+        "Ouvrir tous mes échanges & projets",
+        key="home_open_project_hub",
+        type="primary",
+        use_container_width=True,
+        on_click=go_to_page,
+        args=("Mes échanges & projets",),
+    )
+
     workspace_title = "Professionnel" if st.session_state.get("workspace_id") == "professional" else "Personnel"
     account_status = "Connecté" if cloud_mode and current_user is not None else "Mode local"
     session_status = "Authentifiée" if cloud_mode and current_user is not None else "Non connectée"
