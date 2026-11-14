@@ -171,3 +171,8 @@ def test_subscription_status_summary_keeps_unknown_states_separate():
 def test_subscription_status_summary_rejects_non_list_input():
     with pytest.raises(ValueError):
         summarize_subscription_statuses(None)
+
+
+def test_subscription_status_summary_rejects_invalid_rows():
+    with pytest.raises(ValueError):
+        summarize_subscription_statuses([None])
