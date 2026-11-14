@@ -30,7 +30,7 @@ jobs:
           pip-audit -r requirements.txt
       - name: Regenerate and verify hashed dependency lock
         run: |
-          pip-compile --resolver=backtracking --generate-hashes --output-file=requirements-hashes.lock requirements.txt
+          pip-compile --resolver=backtracking --generate-hashes --constraint=requirements.lock --output-file=requirements-hashes.lock requirements.txt
           python - <<'PY'
           import re
           from pathlib import Path
