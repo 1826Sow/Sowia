@@ -6,6 +6,7 @@ soft-archived and can be removed later by an administrator in the test project.
 """
 import os
 import uuid
+from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
 import pytest
@@ -175,13 +176,9 @@ def test_project_register_is_owner_scoped_and_professional_access_is_gated():
             archived = account_a.request(
                 "PATCH",
                 params={"id": f"eq.{inserted_id}"},
-                payload={"archived_at": "now()", "updated_at": "now()"},
+                payload={
+                    "archived_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                },
             )
-            # PostgREST expects timestamp strings, not SQL expressions. If this
-            # archival attempt fails, the synthetic row remains clearly marked.
-            if archived.status_code >= 400:
-                account_a.request(
-                    "PATCH",
-                    params={"id": f"eq.{inserted_id}"},
-                    payload={"archived_at": "2026-11-14T00:00:00+00:00"},
-                )
+            archived.raise_for_status()
