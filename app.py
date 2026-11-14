@@ -291,52 +291,76 @@ if cloud_mode:
         else:
             st.error("Adresse publique HTTPS invalide. Ouvrez SOW IA depuis son adresse Streamlit officielle.")
 
-        # This test deployment is dedicated to email sign-in. Do not expose
-        # GitHub OAuth here: it can silently authenticate the browser's other
-        # GitHub identity instead of the requested SOW IA email account.
-        st.markdown("#### Connexion par e-mail")
-        st.caption("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA. Un lien à usage unique sera envoyé ; aucun nouveau compte ne sera créé.")
+        email_login_only = str(
+            get_setting("SOWIA_EMAIL_LOGIN_ONLY", "false")
+        ).strip().lower() in {"1", "true", "yes"}
 
-        # Streamlit preserves keyed widget values in session_state. Explicitly
-        # clear both the widget value and the remembered address before rerun,
-        # so a previous login address can be replaced on mobile as well.
-        if st.button("Changer d'adresse e-mail", key="sowia_reset_email_login", use_container_width=True):
-            st.session_state.pop("sowia_email_login_address", None)
-            st.session_state.pop("sowia_email_login_pending", None)
-            st.rerun()
+        if email_login_only:
+            # Enable this only on the dedicated preproduction email-login deployment.
+            # Production keeps the existing GitHub OAuth path unless explicitly opted in.
+            st.markdown("#### Connexion par e-mail")
+            st.caption("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA. Un lien à usage unique sera envoyé ; aucun nouveau compte ne sera créé.")
 
-        email_address = st.text_input(
-            "Adresse e-mail du compte SOW IA",
-            value=st.session_state.get("sowia_email_login_pending", ""),
-            max_chars=254,
-            key="sowia_email_login_address",
-        )
-        if st.button("Envoyer mon lien de connexion", key="sowia_send_email_link", type="secondary", use_container_width=True):
+            if st.button("Changer d'adresse e-mail", key="sowia_reset_email_login", use_container_width=True):
+                st.session_state.pop("sowia_email_login_address", None)
+                st.session_state.pop("sowia_email_login_pending", None)
+                st.rerun()
+
+            email_address = st.text_input(
+                "Adresse e-mail du compte SOW IA",
+                value=st.session_state.get("sowia_email_login_pending", ""),
+                max_chars=254,
+                key="sowia_email_login_address",
+            )
+            if st.button("Envoyer mon lien de connexion", key="sowia_send_email_link", type="secondary", use_container_width=True):
+                try:
+                    if not redirect_to:
+                        raise ValueError("URL HTTPS de retour invalide")
+                    email_client = create_email_user_client()
+                    email_magic_link(email_client, email_address, redirect_to)
+                    st.session_state["sowia_email_login_pending"] = email_address.strip().lower()
+                    st.success("Si cette adresse correspond à un compte existant, un lien de connexion vient d'être envoyé. Consultez aussi les courriers indésirables.")
+                except Exception as email_exc:
+                    st.error("Impossible d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
+                    # Expose only bounded provider metadata; never show request headers,
+                    # credentials, tokens or full tracebacks.
+                    safe_message = str(getattr(email_exc, "message", "") or str(email_exc)).strip()
+                    safe_message = " ".join(safe_message.split())[:240]
+                    safe_code = str(getattr(email_exc, "code", "") or "").strip()[:80]
+                    safe_status = getattr(email_exc, "status", None)
+                    diagnostic_parts = [type(email_exc).__name__]
+                    if safe_code:
+                        diagnostic_parts.append("code=" + safe_code)
+                    if safe_status is not None:
+                        diagnostic_parts.append("status=" + str(safe_status)[:12])
+                    if safe_message:
+                        diagnostic_parts.append("message=" + safe_message)
+                    st.caption("Diagnostic e-mail : " + " · ".join(diagnostic_parts))
+        else:
+            # Preserve the established production sign-in method by default.
             try:
                 if not redirect_to:
-                    raise ValueError("URL HTTPS de retour invalide")
-                email_client = create_email_user_client()
-                email_magic_link(email_client, email_address, redirect_to)
-                st.session_state["sowia_email_login_pending"] = email_address.strip().lower()
-                st.success("Si cette adresse correspond à un compte existant, un lien de connexion vient d'être envoyé. Consultez aussi les courriers indésirables.")
-            except Exception as email_exc:
-                st.error("Impossible d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
-                # Expose only the provider's human-readable error metadata; never
-                # display request headers, tokens, credentials, or full tracebacks.
-                safe_message = str(getattr(email_exc, "message", "") or str(email_exc)).strip()
-                safe_message = " ".join(safe_message.split())[:240]
-                safe_code = str(getattr(email_exc, "code", "") or "").strip()[:80]
-                safe_status = getattr(email_exc, "status", None)
-                diagnostic_parts = [type(email_exc).__name__]
-                if safe_code:
-                    diagnostic_parts.append("code=" + safe_code)
-                if safe_status is not None:
-                    diagnostic_parts.append("status=" + str(safe_status)[:12])
-                if safe_message:
-                    diagnostic_parts.append("message=" + safe_message)
-                st.caption("Diagnostic e-mail : " + " · ".join(diagnostic_parts))
-
-        if st.button("Recommencer la connexion", use_container_width=True):
+                    raise ValueError("Adresse publique HTTPS invalide")
+                login_url = st.session_state.get("sowia_github_login_url")
+                if not login_url:
+                    login_url = github_authorization_url(supabase_client, redirect_to)
+                    st.session_state.sowia_github_login_url = login_url
+                st.link_button(
+                    "Continuer avec GitHub",
+                    login_url,
+                    type="primary",
+                    use_container_width=True,
+                )
+                if st.button("Recommencer la connexion", use_container_width=True):
+                    st.session_state.pop("sowia_github_login_url", None)
+                    st.rerun()
+            except Exception:
+                st.session_state.pop("sowia_github_login_url", None)
+                st.warning(
+                    "La connexion GitHub n'a pas pu être préparée. Vérifiez la "
+                    "configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase."
+                )
+        if st.button("Recommencer la connexion", key="sowia_restart_login", use_container_width=True):
             st.session_state.pop("sowia_github_login_url", None)
             st.rerun()
         st.stop()
