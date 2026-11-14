@@ -207,6 +207,29 @@ def create_user_client(browser_id):
     return create_client(url, key, options=options)
 
 
+def email_magic_link(client, email, redirect_to):
+    """Send a passwordless sign-in link to an existing Supabase user only."""
+    address = str(email or "").strip().lower()
+    if not address or len(address) > 254 or "@" not in address:
+        raise ValueError("Adresse e-mail invalide.")
+    if not redirect_to or not redirect_to.startswith("https://"):
+        raise ValueError("L'adresse de retour HTTPS n'est pas configurée.")
+    return client.auth.sign_in_with_otp({
+        "email": address,
+        "options": {
+            "should_create_user": False,
+            "email_redirect_to": redirect_to,
+        },
+    })
+
+
+def complete_email_login(client, authorization_code):
+    """Exchange the one-time email PKCE code using the browser-scoped verifier."""
+    if not authorization_code:
+        raise ValueError("Code de connexion manquant.")
+    return client.auth.exchange_code_for_session({"auth_code": str(authorization_code)})
+
+
 def github_authorization_url(client, redirect_to):
     """Start GitHub OAuth via Supabase; redirect_to must be allow-listed."""
     if not redirect_to or not redirect_to.startswith("https://"):
