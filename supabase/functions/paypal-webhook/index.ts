@@ -132,7 +132,53 @@ Deno.serve(async (request: Request) => {
     );
     if (!verified) return json({ error: "Webhook signature verification failed" }, 401);
 
+    const eventId = String(event.id || "").trim();
+    if (!eventId || eventId.length > 200) {
+      return json({ error: "Webhook event ID is missing or invalid" }, 400);
+    }
     const eventType = String(event.event_type || "");
+    const eventResource = event.resource && typeof event.resource === "object"
+      ? event.resource as Record<string, unknown>
+      : {};
+    const eventInsert = await fetch(
+      supabaseUrl + "/rest/v1/sowia_paypal_webhook_events?on_conflict=event_id",
+      {
+        method: "POST",
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: "Bearer " + serviceRoleKey,
+          "Content-Type": "application/json",
+          Prefer: "resolution=ignore-duplicates,return=representation",
+        },
+        body: JSON.stringify({
+          event_id: eventId,
+          event_type: eventType,
+          resource_id: String(eventResource.id || "") || null,
+          received_at: new Date().toISOString(),
+          processing_status: "received",
+        }),
+      },
+    );
+    if (!eventInsert.ok) throw new Error("Unable to register PayPal webhook event");
+    const insertedEvents = await eventInsert.json();
+    if (!Array.isArray(insertedEvents) || insertedEvents.length === 0) {
+      const priorResponse = await fetch(
+        supabaseUrl + "/rest/v1/sowia_paypal_webhook_events?event_id=eq." +
+          encodeURIComponent(eventId) + "&select=processing_status&limit=1",
+        {
+          headers: {
+            apikey: serviceRoleKey,
+            Authorization: "Bearer " + serviceRoleKey,
+          },
+        },
+      );
+      if (!priorResponse.ok) throw new Error("Unable to inspect duplicate PayPal event");
+      const priorRows = await priorResponse.json();
+      if (Array.isArray(priorRows) && priorRows[0]?.processing_status === "processed") {
+        return json({ received: true, duplicate: true, processed: true });
+      }
+    }
+
     const supportedEvents = new Set([
       "BILLING.SUBSCRIPTION.ACTIVATED",
       "BILLING.SUBSCRIPTION.UPDATED",
@@ -208,12 +254,58 @@ Deno.serve(async (request: Request) => {
     const billing = subscription.billing_info || {};
     const lastPayment = billing.last_payment || {};
     const paymentAmount = lastPayment.amount || {};
+    const paypalStatus = String(subscription.status || "UNKNOWN").toUpperCase();
+    const blockedEvent = [
+      "BILLING.SUBSCRIPTION.CANCELLED",
+      "BILLING.SUBSCRIPTION.SUSPENDED",
+      "BILLING.SUBSCRIPTION.EXPIRED",
+      "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
+      "PAYMENT.SALE.REFUNDED",
+      "PAYMENT.SALE.REVERSED",
+    ].includes(eventType);
+    const recoveryEvent = [
+      "BILLING.SUBSCRIPTION.ACTIVATED",
+      "PAYMENT.SALE.COMPLETED",
+    ].includes(eventType);
+    const existingSubscriptionResponse = await fetch(
+      supabaseUrl + "/rest/v1/sowia_subscriptions?paypal_subscription_id=eq." +
+        encodeURIComponent(subscriptionId) + "&select=paypal_access_blocked&limit=1",
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: "Bearer " + serviceRoleKey,
+        },
+      },
+    );
+    if (!existingSubscriptionResponse.ok) {
+      throw new Error("Unable to inspect existing subscription access state");
+    }
+    const existingSubscriptionRows = await existingSubscriptionResponse.json();
+    const previouslyBlocked = Array.isArray(existingSubscriptionRows) &&
+      Boolean(existingSubscriptionRows[0]?.paypal_access_blocked);
+    const existingBlockResponse = await fetch(
+      supabaseUrl + "/rest/v1/sowia_paypal_subscription_blocks?paypal_subscription_id=eq." +
+        encodeURIComponent(subscriptionId) + "&select=paypal_subscription_id&limit=1",
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: "Bearer " + serviceRoleKey,
+        },
+      },
+    );
+    if (!existingBlockResponse.ok) throw new Error("Unable to inspect subscription block ledger");
+    const existingBlockRows = await existingBlockResponse.json();
+    const hasBlockLedgerEntry = Array.isArray(existingBlockRows) &&
+      existingBlockRows.length > 0;
+    const accessBlocked = paypalStatus !== "ACTIVE" || blockedEvent ||
+      (!recoveryEvent && (previouslyBlocked || hasBlockLedgerEntry));
     const payload = {
       user_id: userId,
       provider: "paypal",
       paypal_subscription_id: subscriptionId,
       paypal_plan_id: planId,
-      status: String(subscription.status || "UNKNOWN").toLowerCase(),
+      status: paypalStatus.toLowerCase(),
+      paypal_access_blocked: accessBlocked,
       currency: paymentAmount.currency_code || null,
       amount: paymentAmount.value || null,
       next_billing_time: billing.next_billing_time || null,
@@ -243,7 +335,69 @@ Deno.serve(async (request: Request) => {
       throw new Error("Unable to persist subscription state");
     }
 
-    return json({ received: true, reconciled: true });
+    if (accessBlocked) {
+      const blockResponse = await fetch(
+        supabaseUrl + "/rest/v1/sowia_paypal_subscription_blocks?on_conflict=paypal_subscription_id",
+        {
+          method: "POST",
+          headers: {
+            apikey: serviceRoleKey,
+            Authorization: "Bearer " + serviceRoleKey,
+            "Content-Type": "application/json",
+            Prefer: "resolution=merge-duplicates,return=minimal",
+          },
+          body: JSON.stringify({
+            paypal_subscription_id: subscriptionId,
+            user_id: userId,
+            source_event_id: eventId,
+            blocked_at: new Date().toISOString(),
+          }),
+        },
+      );
+      if (!blockResponse.ok) throw new Error("Unable to persist subscription access block");
+    } else if (
+      eventType === "BILLING.SUBSCRIPTION.ACTIVATED" ||
+      eventType === "PAYMENT.SALE.COMPLETED"
+    ) {
+      const unblockResponse = await fetch(
+        supabaseUrl + "/rest/v1/sowia_paypal_subscription_blocks?paypal_subscription_id=eq." +
+          encodeURIComponent(subscriptionId),
+        {
+          method: "DELETE",
+          headers: {
+            apikey: serviceRoleKey,
+            Authorization: "Bearer " + serviceRoleKey,
+            Prefer: "return=minimal",
+          },
+        },
+      );
+      if (!unblockResponse.ok) throw new Error("Unable to clear subscription access block");
+    }
+
+    const eventStatusResponse = await fetch(
+      supabaseUrl + "/rest/v1/sowia_paypal_webhook_events?event_id=eq." +
+        encodeURIComponent(eventId),
+      {
+        method: "PATCH",
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: "Bearer " + serviceRoleKey,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          processing_status: "processed",
+          processed_at: new Date().toISOString(),
+        }),
+      },
+    );
+    if (!eventStatusResponse.ok) throw new Error("Unable to mark PayPal event processed");
+
+    return json({
+      received: true,
+      reconciled: true,
+      access_blocked: accessBlocked,
+    });
   } catch (error) {
     console.error("PayPal webhook handler error", error);
     return json({ error: "Webhook processing failed" }, 500);
