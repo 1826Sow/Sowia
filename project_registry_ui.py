@@ -80,13 +80,13 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
                 st.write(project["description"])
             if deliverables:
                 st.markdown("**Livrables associés**")
-                for item in deliverables:
+                for item_index, item in enumerate(deliverables):
                     if isinstance(item, dict):
                         label = str(item.get("title") or "Livrable")
                         url = str(item.get("url") or "").strip()
                         st.write(f"- {label}")
                         if url.startswith("https://"):
-                            st.link_button("Ouvrir le livrable", url, key=f"open_deliverable_{project_id}_{len(label)}")
+                            st.link_button("Ouvrir le livrable", url, key=f"open_deliverable_{project_id}_{item_index}")
                     else:
                         st.markdown(f"- {str(item)}")
 
