@@ -24,6 +24,7 @@ Consulter le [guide de l’espace Professionnel](docs/GUIDE_ESPACE_PROFESSIONNEL
 3. Dans Supabase > SQL Editor, exécuter les scripts du dépôt dans cet ordre :
    - `supabase/schema.sql`
    - `supabase_workspaces.sql`
+   - `supabase/migrations/20261114000100_sowia_project_register.sql` (registre « Mes échanges & projets »)
    - `supabase_storage_policies.sql`
    - `supabase_growth_crm.sql` (carnet de partenaires international)
    - `supabase_language_preferences.sql` (préférence de langue par compte)
