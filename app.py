@@ -67,6 +67,41 @@ st.markdown(
     section[data-testid="stSidebar"] [data-testid="stRadio"] label { border-radius: 11px; padding: .38rem .55rem; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { background: rgba(0,205,225,.16); border: 1px solid rgba(0,220,235,.45); }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color: #75f2ff !important; font-weight: 750; }
+    /* Keep the native sidebar toggle reachable on the right, with a clear Menu label. */
+    :is([data-testid="stSidebarCollapseButton"], [data-testid="stExpandSidebarButton"], button[data-testid="stSidebarCollapseButton"], button[data-testid="stExpandSidebarButton"]) {
+      position: fixed !important;
+      top: .65rem !important;
+      right: .8rem !important;
+      left: auto !important;
+      z-index: 100000 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: .4rem !important;
+      min-width: 5.8rem !important;
+      min-height: 2.55rem !important;
+      padding: .35rem .75rem !important;
+      border: 1px solid rgba(0,220,235,.58) !important;
+      border-radius: 12px !important;
+      background: #0b2943 !important;
+      color: #e8f6ff !important;
+      box-shadow: 0 5px 18px rgba(0,0,0,.24) !important;
+    }
+    :is([data-testid="stSidebarCollapseButton"], [data-testid="stExpandSidebarButton"], button[data-testid="stSidebarCollapseButton"], button[data-testid="stExpandSidebarButton"])::after {
+      content: "Menu";
+      color: #75f2ff !important;
+      font-size: .88rem;
+      font-weight: 750;
+      letter-spacing: .02em;
+    }
+    @media (max-width: 760px) {
+      :is([data-testid="stSidebarCollapseButton"], [data-testid="stExpandSidebarButton"], button[data-testid="stSidebarCollapseButton"], button[data-testid="stExpandSidebarButton"]) {
+        top: .45rem !important;
+        right: .55rem !important;
+        min-width: 5.35rem !important;
+        min-height: 2.45rem !important;
+      }
+    }
     .hero { position: relative; overflow: hidden; padding: clamp(1.35rem, 3vw, 2.25rem); border: 1px solid rgba(0,220,235,.30); border-radius: 24px; background: radial-gradient(circle at 88% 12%, rgba(0,220,235,.22), transparent 30%), radial-gradient(circle at 6% 100%, rgba(40,95,160,.24), transparent 32%), linear-gradient(120deg, #07172b 0%, #102b4a 58%, #10465a 100%); box-shadow: 0 18px 42px rgba(0,0,0,.28); margin: .35rem 0 1.35rem; }
     .hero-kicker { color: #b9d7d8 !important; font-size: .72rem; letter-spacing: .17em; font-weight: 800; margin-bottom: .55rem; text-transform: uppercase; }
     .hero h1 { font-size: clamp(2.15rem, 5vw, 3.25rem); line-height: 1.08; margin: 0; color: #fff !important; letter-spacing: -.045em; }
