@@ -687,6 +687,43 @@ if page == "Accueil":
                         "Ouvrir", key=f"home_project_hub_{row_index}_{destination}",
                         use_container_width=True, on_click=go_to_page, args=(destination,),
                     )
+    if cloud_mode and current_user is not None:
+        home_stats = {"plans_active": None, "plans_completed": None, "documents": None}
+        try:
+            import sowia_global_portfolio_control as home_portfolio_engine
+            home_all_plans = cloud_storage.list_global_action_plans(
+                supabase_client, current_user, limit=200
+            )
+            home_owned_plans = [
+                row for row in home_all_plans
+                if str(row.get("creator_id")) == str(current_user.id)
+            ]
+            home_plan_summary = home_portfolio_engine.summarize_action_plans(home_owned_plans)
+            home_stats["plans_active"] = home_plan_summary["active"]
+            home_stats["plans_completed"] = home_plan_summary["completed"]
+        except Exception:
+            pass
+        try:
+            home_documents = list_documents(
+                supabase_client, current_user,
+                st.session_state.get("workspace_id", "personal"),
+            )
+            home_stats["documents"] = len(home_documents)
+        except Exception:
+            pass
+        st.markdown("#### Vos données enregistrées")
+        home_metric_cols = st.columns(3)
+        home_metric_cols[0].metric(
+            "Plans actifs", home_stats["plans_active"] if home_stats["plans_active"] is not None else "—"
+        )
+        home_metric_cols[1].metric(
+            "Plans terminés", home_stats["plans_completed"] if home_stats["plans_completed"] is not None else "—"
+        )
+        home_metric_cols[2].metric(
+            "PDF dans cet espace",
+            home_stats["documents"] if home_stats["documents"] is not None else "—",
+        )
+        st.caption("Les plans sont comptés pour leur créateur. Les PDF sont comptés dans l’espace de travail actuellement sélectionné.")
     st.caption("Les rapports et fichiers affichés dépendent des données réellement enregistrées. Les statuts de projet ne sont pas simulés.")
     st.divider()
     st.subheader("Bienvenue dans SOWIA")
