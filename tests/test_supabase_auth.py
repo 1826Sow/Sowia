@@ -253,3 +253,64 @@ def test_authenticated_user_propagates_server_validation_errors():
 
     with pytest.raises(ConnectionError, match="unavailable"):
         supabase_auth.authenticated_user(client)
+
+def test_email_magic_link_only_targets_existing_account_and_uses_https_redirect():
+    calls = []
+
+    class Auth:
+        def sign_in_with_otp(self, options):
+            calls.append(options)
+            return "sent"
+
+    client = type("Client", (), {"auth": Auth()})()
+    result = supabase_auth.email_magic_link(
+        client,
+        "  SOWKEYS7@GMAIL.COM ",
+        "https://sowia.example/",
+    )
+
+    assert result == "sent"
+    assert calls == [{
+        "email": "sowkeys7@gmail.com",
+        "options": {
+            "should_create_user": False,
+            "email_redirect_to": "https://sowia.example/",
+        },
+    }]
+
+
+@pytest.mark.parametrize("email", ["", "not-an-email", "x" * 255])
+def test_email_magic_link_rejects_invalid_email(email):
+    with pytest.raises(ValueError, match="Adresse e-mail invalide"):
+        supabase_auth.email_magic_link(object(), email, "https://sowia.example")
+
+
+def test_email_magic_link_rejects_non_https_redirect():
+    with pytest.raises(ValueError, match="HTTPS"):
+        supabase_auth.email_magic_link(object(), "user@example.com", "http://sowia.example")
+
+
+def test_complete_email_magic_link_verifies_only_allowed_email_types():
+    calls = []
+
+    class Auth:
+        def verify_otp(self, payload):
+            calls.append(payload)
+            return "verified"
+
+    client = type("Client", (), {"auth": Auth()})()
+    result = supabase_auth.complete_email_magic_link(
+        client, "one-time-token-hash", "magiclink"
+    )
+
+    assert result == "verified"
+    assert calls == [{
+        "token_hash": "one-time-token-hash",
+        "type": "magiclink",
+    }]
+
+
+@pytest.mark.parametrize("token,kind", [("", "magiclink"), ("x", "recovery"), ("x" * 4097, "magiclink")])
+def test_complete_email_magic_link_rejects_invalid_or_unsupported_tokens(token, kind):
+    with pytest.raises(ValueError, match="Lien de connexion invalide"):
+        supabase_auth.complete_email_magic_link(object(), token, kind)

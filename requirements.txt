@@ -1,5 +1,5 @@
 streamlit>=1.51
-openai>=1.50
+openai==3.50.0
 pypdf>=5.0
 pypdfium2>=4.30
 pytesseract>=0.3.13

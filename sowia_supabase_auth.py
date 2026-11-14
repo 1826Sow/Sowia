@@ -176,21 +176,60 @@ def _browser_storage_id(browser_id):
     return hashlib.sha256(browser_id.encode("ascii")).hexdigest()
 
 
+def _supabase_project_url():
+    """Return the Supabase project root URL; API endpoint paths are not accepted."""
+    from urllib.parse import urlsplit, urlunsplit
+
+    raw_url = str(get_setting("SUPABASE_URL", "")).strip()
+    if not raw_url:
+        raise RuntimeError("Supabase n'est pas configuré : SUPABASE_URL est absent des secrets de l'hébergeur.")
+    parts = urlsplit(raw_url)
+    if parts.scheme != "https" or not parts.netloc:
+        raise RuntimeError("SUPABASE_URL doit être l'URL HTTPS du projet Supabase.")
+    # Some dashboard/API instructions lead users to copy an endpoint URL
+    # instead of the project root. Normalize known Supabase API prefixes so
+    # the SDK does not append /auth/v1 twice (which causes HTTP 404).
+    known_api_paths = {
+        "/auth/v1", "/rest/v1", "/storage/v1", "/realtime/v1",
+        "/functions/v1", "/graphql/v1",
+    }
+    path = (parts.path or "").rstrip("/")
+    if path and path not in known_api_paths:
+        raise RuntimeError(
+            "SUPABASE_URL doit être l'adresse racine du projet Supabase "
+            "ou un endpoint API Supabase standard, sans autre chemin."
+        )
+    if parts.query or parts.fragment:
+        raise RuntimeError("SUPABASE_URL ne doit contenir ni paramètres ni fragment.")
+    return urlunsplit((parts.scheme, parts.netloc, "", "", ""))
+
+
 def configuration_ready():
     return bool(get_setting("SUPABASE_URL") and get_setting("SUPABASE_ANON_KEY"))
 
 
+def email_is_allowed(email, allowed_emails):
+    """Return true only when the authenticated email is explicitly allow-listed."""
+    address = str(email or "").strip().casefold()
+    if not address:
+        return False
+    if isinstance(allowed_emails, str):
+        entries = re.split(r"[,;\s]+", allowed_emails)
+    else:
+        entries = allowed_emails or []
+    allowed = {str(item or "").strip().casefold() for item in entries if str(item or "").strip()}
+    return address in allowed
+
+
 def create_user_client(browser_id):
     """Create a per-session PKCE client; service-role keys are never accepted."""
-    url = str(get_setting("SUPABASE_URL", "")).strip()
+    url = _supabase_project_url()
     key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
-    if not url or not key:
+    if not key:
         raise RuntimeError(
-            "Supabase n'est pas configuré. Renseignez SUPABASE_URL et "
-            "SUPABASE_ANON_KEY dans les secrets de l'hébergeur."
+            "Supabase n'est pas configuré. Renseignez SUPABASE_ANON_KEY "
+            "dans les secrets de l'hébergeur."
         )
-    if not url.startswith("https://"):
-        raise RuntimeError("SUPABASE_URL doit utiliser HTTPS.")
 
     # Persist only the one-time PKCE verifier across the external GitHub
     # redirect. Session tokens remain in memory in this browser session.
@@ -204,6 +243,109 @@ def create_user_client(browser_id):
         auto_refresh_token=True,
     )
     return create_client(url, key, options=options)
+
+
+def create_email_user_client():
+    """Create a separate implicit-flow client for standard Supabase email links.
+
+    Supabase's default ConfirmationURL template returns access/refresh tokens
+    in the browser URL fragment. The Streamlit component below transfers them
+    over the authenticated HTTPS app connection; the main GitHub client keeps
+    its PKCE flow unchanged.
+    """
+    url = _supabase_project_url()
+    key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
+    if not key:
+        raise RuntimeError("SUPABASE_ANON_KEY est absent des secrets de l'hébergeur.")
+
+    from supabase import ClientOptions, create_client
+
+    options = ClientOptions(
+        flow_type="implicit",
+        persist_session=False,
+        auto_refresh_token=False,
+    )
+    return create_client(url, key, options=options)
+
+
+def read_email_auth_fragment():
+    """Read one-time implicit-flow tokens from the top-level browser URL fragment."""
+    import streamlit as st
+
+    component = st.components.v2.component(
+        name="sowia_email_auth_fragment",
+        html='<span aria-hidden="true"></span>',
+        js="""
+        export default function({ setStateValue }) {
+            try {
+                const page = window; // Streamlit Components v2 run in the app page, not an iframe.
+                const url = new URL(page.location.href);
+                const params = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash);
+                const accessToken = params.get("access_token");
+                const refreshToken = params.get("refresh_token");
+                const type = params.get("type");
+                if (accessToken && refreshToken && type === "magiclink") {
+                    page.history.replaceState(page.history.state, "", url.pathname + url.search);
+                    setStateValue("access_token", accessToken);
+                    setStateValue("refresh_token", refreshToken);
+                    setStateValue("type", type);
+                }
+            } catch (error) {
+                setStateValue("read_error", "Impossible de lire le retour sécurisé du navigateur.");
+            }
+        }
+        """,
+    )
+    key = "sowia_email_auth_fragment"
+    result = component(
+        data={},
+        default={"access_token": None, "refresh_token": None, "type": None, "read_error": None},
+        on_access_token_change=lambda: None,
+        on_refresh_token_change=lambda: None,
+        on_type_change=lambda: None,
+        on_read_error_change=lambda: None,
+        key=key,
+        width="content",
+        height=1,
+    )
+    access_token = _component_state_value(result, "access_token")
+    refresh_token = _component_state_value(result, "refresh_token")
+    token_type = _component_state_value(result, "type")
+    if (
+        isinstance(access_token, str)
+        and 20 <= len(access_token) <= 8192
+        and isinstance(refresh_token, str)
+        and 10 <= len(refresh_token) <= 2048
+        and token_type == "magiclink"
+    ):
+        return {"access_token": access_token, "refresh_token": refresh_token}
+    return None
+
+
+def email_magic_link(client, email, redirect_to):
+    """Send a passwordless sign-in link to an existing Supabase user only."""
+    address = str(email or "").strip().lower()
+    if not address or len(address) > 254 or "@" not in address:
+        raise ValueError("Adresse e-mail invalide.")
+    if not redirect_to or not redirect_to.startswith("https://"):
+        raise ValueError("L'adresse de retour HTTPS n'est pas configurée.")
+    # Prevent account creation: this flow can authenticate existing users only.
+    return client.auth.sign_in_with_otp({
+        "email": address,
+        "options": {
+            "should_create_user": False,
+            "email_redirect_to": redirect_to,
+        },
+    })
+
+
+def complete_email_magic_link(client, token_hash, otp_type):
+    """Verify a one-time Supabase email link; accept only email magic-link types."""
+    token = str(token_hash or "").strip()
+    kind = str(otp_type or "").strip().lower()
+    if not token or len(token) > 4096 or kind not in {"magiclink", "email"}:
+        raise ValueError("Lien de connexion invalide ou expiré.")
+    return client.auth.verify_otp({"token_hash": token, "type": kind})
 
 
 def github_authorization_url(client, redirect_to):
