@@ -78,3 +78,53 @@ def test_invalid_text_limit_is_rejected(value):
 def test_invalid_page_limit_is_rejected():
     with pytest.raises(ValueError, match="entier positif"):
         extract_pdf_text(_blank_pdf(), max_pages=0)
+
+
+
+def test_ocr_releases_native_resources_when_recognition_fails(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    released = {"image": False, "bitmap": False, "page": False, "pdf": False}
+
+    class Image:
+        def close(self):
+            released["image"] = True
+
+    class Bitmap:
+        def to_pil(self):
+            return Image()
+
+        def close(self):
+            released["bitmap"] = True
+
+    class Page:
+        def render(self, scale):
+            assert scale == 2
+            return Bitmap()
+
+        def close(self):
+            released["page"] = True
+
+    class Pdf:
+        def __len__(self):
+            return 1
+
+        def __getitem__(self, index):
+            assert index == 0
+            return Page()
+
+        def close(self):
+            released["pdf"] = True
+
+    monkeypatch.setitem(sys.modules, "pypdfium2", SimpleNamespace(PdfDocument=lambda _data: Pdf()))
+    monkeypatch.setitem(
+        sys.modules,
+        "pytesseract",
+        SimpleNamespace(image_to_string=lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("OCR failed"))),
+    )
+
+    with pytest.raises(RuntimeError, match="OCR failed"):
+        documents._ocr_pdf_pages(b"%PDF-test", max_chars=1000, max_pages=1)
+
+    assert released == {"image": True, "bitmap": True, "page": True, "pdf": True}
