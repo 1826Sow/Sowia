@@ -112,7 +112,20 @@ def create_project(client, user, title, description="", status="En cours",
         "deliverables": items,
         "metadata": details,
     }
-    return client.table("sowia_projects").insert(payload).execute().data or []
+    # Request the inserted row explicitly: an empty representation must never
+    # be treated by the UI as a confirmed save.
+    response = (
+        client.table("sowia_projects")
+        .insert(payload)
+        .select("id, user_id, workspace_id, title, description, status, created_at, updated_at")
+        .execute()
+    )
+    rows = response.data or []
+    if len(rows) != 1 or not rows[0].get("id"):
+        raise RuntimeError(
+            "Supabase n’a confirmé aucune ligne créée. Vérifiez la réponse INSERT/RETURNING et les droits du compte."
+        )
+    return rows
 
 
 def update_project(client, user, project_id, workspace_id="personal", **changes):
