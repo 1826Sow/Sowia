@@ -702,7 +702,13 @@ with st.sidebar:
         clear_workspace_session_state(st.session_state)
     st.session_state.active_workspace_id = workspace_id
     if cloud_mode and current_user is not None:
-        st.session_state.session_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}:{workspace_id}"))
+        # A project resume request is consumed once, after the active workspace
+        # is known, so the normal account/workspace default does not overwrite it.
+        resume_session_id = st.session_state.pop("sowia_resume_session_id", None)
+        st.session_state.session_id = str(
+            resume_session_id
+            or uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}:{workspace_id}")
+        )
     st.session_state.workspace_id = workspace_id
     if cloud_mode:
         st.success(f"Espace {workspace_choice.lower()} sécurisé")
