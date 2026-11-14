@@ -2,7 +2,7 @@
 import pytest
 
 from project_registry import (
-    PROJECT_STATUSES, archive_project, create_project, list_projects, update_project,
+    PROJECT_STATUSES, archive_project, create_project, list_projects, restore_project, update_project,
 )
 
 
@@ -77,3 +77,13 @@ def test_invalid_workspace_and_missing_identity_are_rejected():
     class Anonymous: id = None
     with pytest.raises(PermissionError):
         create_project(client, Anonymous(), "Test")
+
+
+def test_restore_project_is_scoped_and_clears_archive_timestamp():
+    client = Client()
+    restore_project(client, User(), 9, workspace_id="professional")
+    assert ("eq", "id", 9) in client.query.filters
+    assert ("eq", "user_id", "user-123") in client.query.filters
+    assert ("eq", "workspace_id", "professional") in client.query.filters
+    assert client.query.payload["archived_at"] is None
+    assert client.query.payload["updated_at"]
