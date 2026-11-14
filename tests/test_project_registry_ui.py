@@ -21,4 +21,5 @@ def test_project_register_ui_enforces_premium_and_reports_import_limits():
     assert "workspace_id = 'personal' or public.sowia_has_professional_access()" in migration
     assert "Aucun projet ne sera enregistré dans un espace local non synchronisé" in source
     assert "Les conversations anciennes et les fichiers déjà présents ne sont pas importés automatiquement" in source
-    assert 'st.session_state.page_nav = "Assistant IA"' in source
+    assert 'st.session_state["sowia_resume_session_id"] = session_id' in source
+    assert 'resume_session_id = st.session_state.pop("sowia_resume_session_id", None)' in source
