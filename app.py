@@ -975,7 +975,7 @@ elif page == "Hub SOWIA":
         '</div></section>',
         unsafe_allow_html=True,
     )
-    st.caption("Repères de suivi des projets. Le registre persistant des projets et de leurs statuts est une étape d’intégration dédiée ; aucun statut n’est inventé.")
+    st.caption("Le registre persistant est accessible dans « Mes échanges & projets ». Les conversations anciennes et les fichiers existants ne sont pas importés automatiquement.")
     st.markdown("#### Accès rapides")
     hub_quick_access = [
         ("💬 Mes échanges & projets", "Mes échanges & projets", "Gérer vos projets, leurs statuts et les livrables associés."),
