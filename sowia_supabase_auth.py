@@ -208,6 +208,19 @@ def configuration_ready():
     return bool(get_setting("SUPABASE_URL") and get_setting("SUPABASE_ANON_KEY"))
 
 
+def email_is_allowed(email, allowed_emails):
+    """Return true only when the authenticated email is explicitly allow-listed."""
+    address = str(email or "").strip().casefold()
+    if not address:
+        return False
+    if isinstance(allowed_emails, str):
+        entries = re.split(r"[,;\\s]+", allowed_emails)
+    else:
+        entries = allowed_emails or []
+    allowed = {str(item or "").strip().casefold() for item in entries if str(item or "").strip()}
+    return address in allowed
+
+
 def create_user_client(browser_id):
     """Create a per-session PKCE client; service-role keys are never accepted."""
     url = _supabase_project_url()
