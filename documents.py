@@ -39,15 +39,26 @@ def _ocr_pdf_pages(pdf_bytes, max_chars, max_pages):
             if remaining <= 0:
                 break
             page = pdf[index]
-            bitmap = page.render(scale=2)
-            image = bitmap.to_pil()
-            text = (pytesseract.image_to_string(image, lang="fra+eng") or "").strip()
-            if text:
-                chunk = f"\n--- Page {index + 1} (OCR) ---\n{text}"
-                pages.append(chunk[:remaining])
-                total += min(len(chunk), remaining)
-            image.close()
-            page.close()
+            bitmap = None
+            image = None
+            try:
+                bitmap = page.render(scale=2)
+                image = bitmap.to_pil()
+                text = (pytesseract.image_to_string(image, lang="fra+eng") or "").strip()
+                if text:
+                    chunk = f"\n--- Page {index + 1} (OCR) ---\n{text}"
+                    pages.append(chunk[:remaining])
+                    total += min(len(chunk), remaining)
+            finally:
+                # OCR can fail while rendering, converting or recognizing a page.
+                # Release every native/PIL resource even on those error paths.
+                if image is not None:
+                    image.close()
+                if bitmap is not None:
+                    close_bitmap = getattr(bitmap, "close", None)
+                    if callable(close_bitmap):
+                        close_bitmap()
+                page.close()
     finally:
         pdf.close()
     return "".join(pages).strip()
