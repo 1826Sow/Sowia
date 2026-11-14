@@ -618,7 +618,12 @@ with st.sidebar:
             st.caption("Compte connecté · identité masquée pendant la protection d'écran")
         else:
             st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
-        if st.button("Se déconnecter", use_container_width=True):
+        change_account = st.button(
+            "Se connecter avec une autre adresse e-mail",
+            use_container_width=True,
+        )
+        logout = st.button("Se déconnecter", use_container_width=True)
+        if change_account or logout:
             try:
                 sign_out(supabase_client)
             except Exception:
