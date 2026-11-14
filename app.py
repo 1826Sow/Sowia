@@ -2723,8 +2723,12 @@ elif page == "Analyse PDF":
                                 "Les numéros de page n'étaient pas présents dans le texte extrait ; "
                                 "les références précises aux pages ne sont donc pas disponibles."
                             )
-                    except Exception:
+                    except (RuntimeError, ValueError) as exc:
+                        st.error("L'analyse du document n'a pas abouti.")
+                        st.info(str(exc))
+                    except Exception as exc:
                         st.error("L'analyse du document a échoué. Vérifiez le service IA et réessayez.")
+                        st.caption("Diagnostic technique : " + type(exc).__name__)
 
 elif page == "Créer un PDF":
     st.subheader(translate_ui("🪄 Créer un PDF", language))
