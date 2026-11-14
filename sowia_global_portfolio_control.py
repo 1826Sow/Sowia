@@ -20,6 +20,21 @@ def _latest_observations(rows):
     return {key: value[1] for key, value in latest.items()}
 
 
+def summarize_action_plans(plans):
+    """Count only persisted plans; keep workflow states distinct and explicit."""
+    rows = [row for row in (plans or []) if isinstance(row, dict)]
+    statuses = [str(row.get("status") or "unknown") for row in rows]
+    return {
+        "total": len(rows),
+        "active": sum(status in {"draft", "submitted", "approved"} for status in statuses),
+        "awaiting_approval": statuses.count("submitted"),
+        "completed": statuses.count("completed"),
+        "rejected": statuses.count("rejected"),
+        "cancelled": statuses.count("cancelled"),
+        "unknown": statuses.count("unknown"),
+    }
+
+
 def build_portfolio(plans, performance_observations, alerts, assessments, today=None):
     """Aggregate only supplied, already-authorized rows; never infer a global score."""
     today = today or date.today()
