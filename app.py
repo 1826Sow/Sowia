@@ -2945,8 +2945,12 @@ elif page == "Mes documents":
                             st.session_state.pop("saved_pdf_answer_path", None)
                             st.session_state["selected_saved_pdf_question"] = ""
                             st.rerun()
-                        except Exception:
+                        except (RuntimeError, ValueError) as exc:
+                            st.error("Impossible de préparer l'analyse de ce PDF.")
+                            st.info(str(exc))
+                        except Exception as exc:
                             st.error("Impossible de préparer l'analyse de ce PDF. Vérifiez que le document est lisible.")
+                            st.caption("Diagnostic technique : " + type(exc).__name__)
                     if st.session_state.get("selected_saved_pdf_path") == stored_path:
                         st.markdown("##### Poser une question sur ce document")
                         st.caption("Le PDF est lu depuis votre espace privé. Son texte reste dans la session et n'est pas ajouté à l'historique.")
@@ -2974,8 +2978,12 @@ elif page == "Mes documents":
                                         )
                                         st.session_state["saved_pdf_answer"] = response
                                         st.session_state["saved_pdf_answer_path"] = stored_path
-                                    except Exception:
+                                    except (RuntimeError, ValueError) as exc:
+                                        st.error("L'analyse du document n'a pas pu aboutir.")
+                                        st.info(str(exc))
+                                    except Exception as exc:
                                         st.error("L'analyse du document a échoué. Vérifiez la disponibilité du service IA.")
+                                        st.caption("Diagnostic technique : " + type(exc).__name__)
                         if (
                             st.session_state.get("saved_pdf_answer_path") == stored_path
                             and st.session_state.get("saved_pdf_answer")
