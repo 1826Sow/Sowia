@@ -20,4 +20,4 @@ def test_email_login_change_has_a_separate_existing_account_screen():
     assert "Valider cette adresse" in source
     assert "Retour à la connexion" in source
     assert "ne crée aucun nouveau compte" in source
-    assert "should_create_user=False" in Path("sowia_supabase_auth.py").read_text(encoding="utf-8")
+    assert '"should_create_user": False' in Path("sowia_supabase_auth.py").read_text(encoding="utf-8")
