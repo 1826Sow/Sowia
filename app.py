@@ -306,13 +306,13 @@ if cloud_mode:
         else:
             st.error("Adresse publique HTTPS invalide. Ouvrez SOW IA depuis son adresse Streamlit officielle.")
 
+        # Email login is the standard production path. Set SOWIA_EMAIL_LOGIN_ONLY=false
+        # only when an operator intentionally wants to restore GitHub OAuth instead.
         email_login_only = str(
-            get_setting("SOWIA_EMAIL_LOGIN_ONLY", "false")
+            get_setting("SOWIA_EMAIL_LOGIN_ONLY", "true")
         ).strip().lower() in {"1", "true", "yes"}
 
         if email_login_only:
-            # Enable this only on the dedicated preproduction email-login deployment.
-            # Production keeps the existing GitHub OAuth path unless explicitly opted in.
             if st.session_state.get("sowia_email_change_view", False):
                 st.markdown("#### Changer l'adresse e-mail de connexion")
                 st.write(
