@@ -158,7 +158,8 @@ if cloud_mode:
                 email_tokens["access_token"],
                 email_tokens["refresh_token"],
             )
-            st.session_state.pop("sowia_email_login_pending", None)
+            # Keep the requested address until the authenticated identity is
+            # checked below. Never silently accept a previously active account.
             st.session_state.pop("sowia_email_auth_fragment", None)
             st.rerun()
 
@@ -166,7 +167,8 @@ if cloud_mode:
         email_token_type = st.query_params.get("type")
         if email_token_hash:
             complete_email_magic_link(supabase_client, email_token_hash, email_token_type)
-            st.session_state.pop("sowia_email_login_pending", None)
+            # Keep the requested address until the authenticated identity is
+            # checked below. Never silently accept a previously active account.
             st.query_params.clear()
             st.rerun()
 
@@ -180,6 +182,27 @@ if cloud_mode:
 
         auth_stage = "vérification de la session Supabase"
         current_user = authenticated_user(supabase_client)
+        expected_email = str(
+            st.session_state.get("sowia_email_login_pending", "") or ""
+        ).strip().lower()
+        if current_user is not None and expected_email:
+            authenticated_email = str(getattr(current_user, "email", "") or "").strip().lower()
+            if not authenticated_email or authenticated_email != expected_email:
+                # A link requested for one address must never leave another
+                # account authenticated in this browser session.
+                try:
+                    sign_out(supabase_client)
+                except Exception:
+                    pass
+                clear_authenticated_session_state(st.session_state)
+                st.error(
+                    "Connexion refusée : le compte authentifié ne correspond pas "
+                    "à l'adresse e-mail qui a demandé le lien. Recommencez avec "
+                    "l'adresse du compte SOW IA souhaité."
+                )
+                st.stop()
+            # The expected address is cleared only after the identity matches.
+            st.session_state.pop("sowia_email_login_pending", None)
         if current_user is None:
             # Never keep the previous account's private PDF or payment cache after
             # a missing/expired login.
