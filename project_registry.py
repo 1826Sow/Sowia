@@ -45,7 +45,8 @@ def _validate_status(status):
 
 def _validate_deliverables(items):
     """Validate deliverable metadata before it reaches the JSONB column."""
-    items = _validate_deliverables(items)
+    if not isinstance(items, list) or len(items) > MAX_DELIVERABLES:
+        raise ValueError("Liste de livrables invalide (100 maximum).")
     for item in items:
         if isinstance(item, str):
             if len(item) > 2048:
@@ -98,8 +99,7 @@ def create_project(client, user, title, description="", status="En cours",
     clean_description = _clean_text(description, "La description", MAX_DESCRIPTION_LENGTH)
     items = deliverables if deliverables is not None else []
     details = metadata if metadata is not None else {}
-    if not isinstance(items, list) or len(items) > MAX_DELIVERABLES:
-        raise ValueError("Liste de livrables invalide (100 maximum).")
+    items = _validate_deliverables(items)
     if not isinstance(details, dict):
         raise ValueError("Les métadonnées doivent être un objet.")
     payload = {
