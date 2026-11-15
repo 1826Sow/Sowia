@@ -105,8 +105,9 @@ def test_live_paypal_mode_is_blocked_in_subscription_ui():
         '\\n# Messages de diagnostic protégés', 1
     )[0]
     live_branch, sandbox_branch = guarded_section.split("else:", 1)
-    assert 'st.button("Préparer mon abonnement Premium"' not in live_branch
-    assert 'st.button("Préparer mon abonnement Premium"' in sandbox_branch
+    prepare_control = 'st.form_submit_button(\\n                            "Préparer mon abonnement Premium"'
+    assert prepare_control not in live_branch
+    assert prepare_control in sandbox_branch
 
 
 def test_automatic_plan_creation_is_sandbox_only(monkeypatch):
