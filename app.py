@@ -1732,20 +1732,41 @@ elif page == "Assistant IA":
     memories = get_app_memories()
     if memories:
         st.caption(f"{len(memories)} note(s) mémoire seront disponibles à l'assistant.")
-    for item in get_app_history():
+    conversation_history = get_app_history()
+    for item in conversation_history:
         render_accessible_message(item["role"], item["content"])
     prompt = st.chat_input("Écrivez votre message...")
     if prompt:
-        save_app_message("user", prompt)
+        # Display the user's message immediately. A Supabase insert failure must
+        # not make the submitted text disappear or prevent an AI response.
         render_accessible_message("user", prompt)
+        try:
+            save_app_message("user", prompt)
+        except Exception as save_error:
+            st.warning(
+                "Votre message est visible dans cette session, mais son "
+                "enregistrement dans l'historique a échoué. "
+                "Diagnostic : " + type(save_error).__name__
+            )
+
+        # Use the already-loaded history plus the current prompt. This avoids
+        # losing the request if the cloud insert failed.
+        request_history = conversation_history + [{"role": "user", "content": prompt}]
         with st.chat_message("assistant"):
             try:
                 reply = answer(
-                    get_app_history(),
+                    request_history,
                     memories=[item["content"] for item in memories],
                 )
                 st.markdown(reply)
-                save_app_message("assistant", reply)
+                try:
+                    save_app_message("assistant", reply)
+                except Exception as save_error:
+                    st.warning(
+                        "La réponse est affichée, mais n'a pas pu être "
+                        "enregistrée dans l'historique. Diagnostic : "
+                        + type(save_error).__name__
+                    )
             except Exception as exc:
                 error_text = str(exc)
                 if "429" in error_text or "insufficient_quota" in error_text or "quota" in error_text.lower():
