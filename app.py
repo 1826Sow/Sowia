@@ -114,6 +114,9 @@ st.markdown(
     div[role="radiogroup"] label:has(input:checked) p { color: #fff !important; }
     [data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] { gap: 1rem; }
     [data-testid="stButton"] button, [data-testid="stLinkButton"] a { border-radius: 12px !important; min-height: 2.85rem; font-weight: 680 !important; border: 1px solid rgba(91,190,220,.38) !important; background: #102943 !important; color: #e8f6ff !important; }
+    /* Streamlit form submit controls need the same dark/cyan treatment as ordinary buttons. */
+    [data-testid="stFormSubmitButton"] button { border-radius: 12px !important; min-height: 2.85rem !important; width: 100% !important; font-weight: 700 !important; border: 1px solid #22d8e8 !important; background: linear-gradient(110deg,#087e96,#12648a) !important; color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; opacity: 1 !important; box-shadow: 0 5px 16px rgba(0,0,0,.20) !important; }
+    [data-testid="stFormSubmitButton"] button p, [data-testid="stFormSubmitButton"] button span { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; opacity: 1 !important; }
     [data-testid="stButton"] button[kind="primary"], [data-testid="stLinkButton"] a[kind="primary"] { background: linear-gradient(110deg,#087e96,#12648a) !important; border-color: #22d8e8 !important; color: white !important; }
     [data-testid="stMetric"] { background: rgba(15,39,66,.94); border: 1px solid rgba(0,210,230,.22); border-radius: 16px; padding: .9rem 1rem; box-shadow: 0 4px 14px rgba(0,0,0,.16); }
     /* Premium notices: force an opaque dark surface so Streamlit's default light alert
