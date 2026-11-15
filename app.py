@@ -55,6 +55,15 @@ from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
 from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_authenticated_session_state
 
+def queue_chat_submission():
+    """Capture the mobile chat draft before Streamlit reruns the page."""
+    from chat_submission import normalize_chat_prompt
+    prompt = normalize_chat_prompt(st.session_state.get("sowia_chat_prompt", ""))
+    if prompt:
+        st.session_state["sowia_pending_chat_prompt"] = prompt
+    st.session_state["sowia_chat_prompt"] = ""
+
+
 st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
 st.markdown(
     """<style>
@@ -1735,17 +1744,23 @@ elif page == "Assistant IA":
     conversation_history = get_app_history()
     for item in conversation_history:
         render_accessible_message(item["role"], item["content"])
-    # Use an explicit form instead of the floating chat_input control.
-    # This provides a reliable submit action on mobile browsers as well as desktop.
-    with st.form("sowia_chat_submit_form", clear_on_submit=False):
-        prompt = st.text_area(
-            "Écrivez votre message...",
-            key="sowia_chat_prompt",
-            height=100,
-            placeholder="Votre message à SOW IA…",
-        )
-        submitted = st.form_submit_button("Envoyer", type="primary", use_container_width=True)
-    if submitted and prompt and prompt.strip():
+    # A standard button with a callback is more reliable on mobile than a form
+    # submit event. The callback copies the draft before Streamlit reruns the page.
+    st.text_area(
+        "Écrivez votre message...",
+        key="sowia_chat_prompt",
+        height=100,
+        placeholder="Votre message à SOW IA…",
+    )
+    st.button(
+        "Envoyer",
+        key="sowia_chat_send_button",
+        on_click=queue_chat_submission,
+        type="primary",
+        use_container_width=True,
+    )
+    prompt = st.session_state.pop("sowia_pending_chat_prompt", None)
+    if prompt:
         # Display the user's message immediately. A Supabase insert failure must
         # not make the submitted text disappear or prevent an AI response.
         render_accessible_message("user", prompt)
