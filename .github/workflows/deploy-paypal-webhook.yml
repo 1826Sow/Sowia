@@ -46,5 +46,6 @@ jobs:
             exit 1
           fi
           supabase functions deploy paypal-webhook \
-            --remote=qegcopordeqjiechmbhg \
+            --project-ref qegcopordeqjiechmbhg \
+            --use-api \
             --yes
