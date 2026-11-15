@@ -70,16 +70,19 @@ class Account:
             "Content-Type": "application/json",
         }
 
-    def request(self, method, params=None, payload=None):
+    def request_resource(self, resource, method, params=None, payload=None):
         return self.http.request(
             method,
-            f"{self.url}/rest/v1/sowia_projects",
+            f"{self.url}/rest/v1/{resource}",
             headers={**self.headers, "Prefer": "return=representation"},
             params=params,
             json=payload,
             timeout=20,
             allow_redirects=False,
         )
+
+    def request(self, method, params=None, payload=None):
+        return self.request_resource("sowia_projects", method, params, payload)
 
 
 def test_project_register_is_owner_scoped_and_professional_access_is_gated():
@@ -96,6 +99,27 @@ def test_project_register_is_owner_scoped_and_professional_access_is_gated():
         os.environ["SOWIA_TEST_USER_B_PASSWORD"],
     )
     assert account_a.user_id != account_b.user_id
+
+    # Verify the fixture premise against Supabase itself before testing the
+    # Professional gate. A mislabeled Premium account must not create a false
+    # RLS vulnerability report.
+    for label, account in (("A", account_a), ("B", account_b)):
+        entitlements = account.request_resource(
+            "sowia_entitlements", "GET", params={"select": "status"}
+        )
+        entitlements.raise_for_status()
+        active_entitlements = [
+            row for row in entitlements.json() if row.get("status") == "active"
+        ]
+        subscriptions = account.request_resource(
+            "sowia_subscriptions", "GET",
+            params={"select": "status", "status": "eq.active"},
+        )
+        subscriptions.raise_for_status()
+        assert not active_entitlements and not subscriptions.json(), (
+            f"Test fixture account {label} is Premium; use a dedicated "
+            "non-Premium test account before testing Professional denial."
+        )
 
     marker = "SOWIA RLS TEST " + uuid.uuid4().hex
     inserted_id = None
