@@ -37,7 +37,7 @@ Ne jamais utiliser les comptes de production, ni inscrire les secrets dans Git, 
 Depuis la racine du dépôt :
 
 ```bash
-pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py tests/integration/test_sowia_project_register_rls.py tests/integration/test_sowia_project_register_rls.py
+pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py tests/integration/test_sowia_project_register_rls.py
 ```
 
 ## Exécution automatique dans GitHub Actions
