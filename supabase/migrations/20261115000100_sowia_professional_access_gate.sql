@@ -29,4 +29,5 @@ $function$;
 
 revoke all on function public.sowia_has_professional_access() from public;
 revoke all on function public.sowia_has_professional_access() from anon;
+grant select on public.sowia_subscriptions to authenticated;
 grant execute on function public.sowia_has_professional_access() to authenticated;
