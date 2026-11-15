@@ -1746,7 +1746,6 @@ elif page == "Assistant IA":
         )
         submitted = st.form_submit_button("Envoyer", type="primary", use_container_width=True)
     if submitted and prompt and prompt.strip():
-    if prompt:
         # Display the user's message immediately. A Supabase insert failure must
         # not make the submitted text disappear or prevent an AI response.
         render_accessible_message("user", prompt)
