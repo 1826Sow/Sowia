@@ -114,11 +114,6 @@ begin
     values
         (test_user_id, marker, 'personal');
 
-    insert into public.sowia_projects
-        (user_id, workspace_id, title, description, status)
-    values
-        (test_user_id, 'personal', marker, 'Temporary rollback-only test', 'À tester');
-
     -- Each Professional INSERT must fail specifically because of RLS.
     begin
         insert into public.sowia_messages
@@ -140,20 +135,8 @@ begin
         null;
     end;
 
-    begin
-        insert into public.sowia_projects
-            (user_id, workspace_id, title, description, status)
-        values
-            (test_user_id, 'professional', marker || ' professional project',
-             'Must be denied by RLS', 'À tester');
-        raise exception 'FAIL: free account inserted a Professional project';
-    exception when insufficient_privilege then
-        null;
-    end;
 
-
-
-    raise notice 'PASS: Personal inserts allowed; Professional message, memory, and project inserts denied.';
+    raise notice 'PASS: Personal message and memory inserts allowed; Professional message and memory inserts denied. sowia_projects is not part of this database schema and is intentionally excluded.';
 end;
 $assertions$;
 
