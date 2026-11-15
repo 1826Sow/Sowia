@@ -14,7 +14,7 @@ STORAGE_POLICIES = Path("supabase_storage_policies.sql")
 
 def _policy_block(sql: str, policy_name: str) -> str:
     match = re.search(
-        rf'create\\s+policy\\s+"{re.escape(policy_name)}".*?;',
+        rf'create\s+policy\s+"{re.escape(policy_name)}".*?;',
         sql,
         flags=re.IGNORECASE | re.DOTALL,
     )
