@@ -18,8 +18,6 @@ _REQUIRED = (
     "SOWIA_TEST_USER_A_PASSWORD",
     "SOWIA_TEST_USER_B_EMAIL",
     "SOWIA_TEST_USER_B_PASSWORD",
-    "SOWIA_TEST_USER_C_EMAIL",
-    "SOWIA_TEST_USER_C_PASSWORD",
     "SOWIA_TEST_PROJECT_CONFIRMATION",
 )
 _MISSING = [name for name in _REQUIRED if not os.getenv(name)]
@@ -107,12 +105,7 @@ def test_pdf_objects_are_private_to_their_authenticated_owner():
         os.environ["SOWIA_TEST_USER_B_EMAIL"],
         os.environ["SOWIA_TEST_USER_B_PASSWORD"],
     )
-    account_c = StorageTestSession(
-        url, anon_key,
-        os.environ["SOWIA_TEST_USER_C_EMAIL"],
-        os.environ["SOWIA_TEST_USER_C_PASSWORD"],
-    )
-    assert len({account_a.user_id, account_b.user_id, account_c.user_id}) == 3
+    assert account_a.user_id != account_b.user_id
 
     object_name = "sowia-rls-" + uuid.uuid4().hex + ".pdf"
     path = f"{account_a.user_id}/personal/{object_name}"
@@ -154,19 +147,8 @@ def test_pdf_objects_are_private_to_their_authenticated_owner():
             "Account B unexpectedly uploaded an object under Account A's user folder"
         )
 
-        # Dedicated non-Premium account C must be denied Professional storage.
-        professional_upload = account_c.object_request(
-            "POST",
-            f"{account_c.user_id}/professional/sowia-professional-{uuid.uuid4().hex}.pdf",
-            data=PDF_FIXTURE,
-            headers={
-                "Content-Type": "application/pdf",
-                "x-upsert": "false",
-            },
-        )
-        assert not professional_upload.ok, (
-            "Non-Premium account C unexpectedly uploaded a Professional PDF"
-        )
+        # Professional storage denial is covered by the rollback-only SQL
+        # test, which temporarily removes A entitlement in one transaction.
 
         # Storage APIs may report a policy error or a no-op for an unauthorized
         # delete. The decisive check is that A can still retrieve the exact bytes.
