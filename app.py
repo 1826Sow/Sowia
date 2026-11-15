@@ -3129,7 +3129,7 @@ elif page == "Abonnement":
                 if subscription_config["mode"] != "sandbox":
                     st.warning("Le mode PayPal réel est bloqué dans cette version. Aucun abonnement ne peut être créé avant validation explicite du lancement.")
                 else:
-                    st.write("L’abonnement récurrent sera préparé dans PayPal Sandbox uniquement.")
+                    st.info("Pour l’instant, aucun paiement réel n’est activé sur SOW IA. Cette étape sert uniquement à préparer un test PayPal Sandbox : aucun paiement réel ni accès Premium ne sera déclenché par cette préparation.")
                     st.caption("Diagnostic de déploiement Premium : SOWIA-PREMIUM-2026-11-15-B")
                     if st.button("Préparer mon abonnement Premium", key="create_paypal_subscription"):
                         diagnostic_stage = "initialisation"
