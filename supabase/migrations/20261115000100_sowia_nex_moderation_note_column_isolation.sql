@@ -27,9 +27,43 @@ GRANT SELECT (
 ON TABLE public.sowia_night_exchange_apps
 TO authenticated;
 
-COMMIT;
+-- Fail atomically if the intended privilege boundary was not achieved.
+DO $verification$
+BEGIN
+    IF has_table_privilege(
+        'authenticated',
+        'public.sowia_night_exchange_apps',
+        'SELECT'
+    ) THEN
+        RAISE EXCEPTION 'authenticated still has table-level SELECT';
+    END IF;
 
--- Expected after applying in TEST:
--- has_table_privilege('authenticated', ..., 'SELECT') = false
--- has_column_privilege('authenticated', ..., 'moderation_note', 'SELECT') = false
--- has_column_privilege('authenticated', ..., 'status', 'SELECT') = true
+    IF has_column_privilege(
+        'authenticated',
+        'public.sowia_night_exchange_apps',
+        'moderation_note',
+        'SELECT'
+    ) THEN
+        RAISE EXCEPTION 'authenticated can still read moderation_note';
+    END IF;
+
+    IF NOT has_column_privilege(
+        'authenticated',
+        'public.sowia_night_exchange_apps',
+        'status',
+        'SELECT'
+    ) THEN
+        RAISE EXCEPTION 'authenticated lost required SELECT on status';
+    END IF;
+
+    IF has_any_column_privilege(
+        'anon',
+        'public.sowia_night_exchange_apps',
+        'SELECT'
+    ) THEN
+        RAISE EXCEPTION 'anon unexpectedly has SELECT on NIGHT EXCHANGE apps';
+    END IF;
+END;
+$verification$;
+
+COMMIT;
