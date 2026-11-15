@@ -82,7 +82,7 @@ def paypal_subscription_configuration_status():
     return missing
 
 def paypal_subscription_configuration():
-    """Return configuration only when recurring billing is explicitly enabled."""
+    """Return validated configuration; Sandbox is test-only, live requires explicit enablement."""
     mode = _setting("PAYPAL_MODE", "sandbox").lower()
     # Keep Sandbox available for controlled testing even while the public
     # subscription feature toggle is off. Sandbox never grants Premium access;
