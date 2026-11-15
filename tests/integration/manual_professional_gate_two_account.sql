@@ -13,13 +13,13 @@ begin;
 -- Replace this placeholder with the UUID of Premium test account A.
 select set_config(
     'request.jwt.claim.sub',
-    'REPLACE_WITH_TEST_ACCOUNT_A_UUID',
+    'f1792829-ca68-4815-b173-79bd13ce0ed3',
     true
 );
 select set_config(
     'request.jwt.claims',
     jsonb_build_object(
-        'sub', 'REPLACE_WITH_TEST_ACCOUNT_A_UUID',
+        'sub', 'f1792829-ca68-4815-b173-79bd13ce0ed3',
         'role', 'authenticated',
         'aud', 'authenticated'
     )::text,
