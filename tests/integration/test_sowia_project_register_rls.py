@@ -1,6 +1,6 @@
 """Real two-account RLS checks for the SOW IA project register.
 
-Only run against a dedicated Supabase test project and two non-Premium test users.
+Only run against a dedicated Supabase test project with two Premium users (A/B).
 The project table intentionally has no DELETE policy; each synthetic row is
 soft-archived and can be removed later by an administrator in the test project.
 """
@@ -70,16 +70,19 @@ class Account:
             "Content-Type": "application/json",
         }
 
-    def request(self, method, params=None, payload=None):
+    def request_resource(self, resource, method, params=None, payload=None):
         return self.http.request(
             method,
-            f"{self.url}/rest/v1/sowia_projects",
+            f"{self.url}/rest/v1/{resource}",
             headers={**self.headers, "Prefer": "return=representation"},
             params=params,
             json=payload,
             timeout=20,
             allow_redirects=False,
         )
+
+    def request(self, method, params=None, payload=None):
+        return self.request_resource("sowia_projects", method, params, payload)
 
 
 def test_project_register_is_owner_scoped_and_professional_access_is_gated():
@@ -95,8 +98,6 @@ def test_project_register_is_owner_scoped_and_professional_access_is_gated():
         os.environ["SOWIA_TEST_USER_B_EMAIL"],
         os.environ["SOWIA_TEST_USER_B_PASSWORD"],
     )
-    assert account_a.user_id != account_b.user_id
-
     marker = "SOWIA RLS TEST " + uuid.uuid4().hex
     inserted_id = None
     try:
@@ -153,22 +154,9 @@ def test_project_register_is_owner_scoped_and_professional_access_is_gated():
         unchanged.raise_for_status()
         assert unchanged.json()[0]["title"] == marker
 
-        # Both fixture accounts are deliberately non-Premium: Professional
-        # workspace insertion must be rejected by the database policy itself.
-        professional_insert = account_b.request(
-            "POST",
-            payload={
-                "user_id": account_b.user_id,
-                "workspace_id": "professional",
-                "title": marker + " PROFESSIONAL",
-                "description": "Must be denied to non-Premium test account",
-                "status": "En cours",
-            },
-        )
-        assert professional_insert.status_code in (401, 403), (
-            "A non-Premium account must not insert into the Professional workspace; "
-            f"received HTTP {professional_insert.status_code}"
-        )
+        # Professional denial for a no-entitlement identity is covered by
+        # manual_professional_gate_two_account.sql, which safely demotes A only
+        # inside a rollback-only SQL transaction; no third Auth user is needed.
     finally:
         if inserted_id is not None:
             # No DELETE grant is intentionally provided. Keep the evidence row

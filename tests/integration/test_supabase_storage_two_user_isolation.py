@@ -1,7 +1,7 @@
 """Opt-in live tests for per-user Supabase PDF Storage isolation.
 
 Run only against a dedicated Supabase test project and two dedicated test users.
-The tests use the public anon key and authenticated JWTs, never service_role.
+The tests use the public anon key and authenticated user JWTs, never service_role.
 """
 import os
 import uuid
@@ -146,6 +146,9 @@ def test_pdf_objects_are_private_to_their_authenticated_owner():
         assert not forged_upload.ok, (
             "Account B unexpectedly uploaded an object under Account A's user folder"
         )
+
+        # Professional storage denial is covered by the rollback-only SQL
+        # test, which temporarily removes A entitlement in one transaction.
 
         # Storage APIs may report a policy error or a no-op for an unauthorized
         # delete. The decisive check is that A can still retrieve the exact bytes.

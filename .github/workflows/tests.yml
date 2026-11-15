@@ -89,8 +89,9 @@ jobs:
     name: Supabase real-account RLS tests
     timeout-minutes: 15
     # Never expose Supabase test credentials to code from a pull request.
-    # Live two-account tests run only after trusted code is pushed to main.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Secrets are never exposed to pull_request code. Live tests run only on
+    # trusted pushes to main or this reviewed security branch.
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/security/professional-access-gate')
     runs-on: ubuntu-latest
     env:
       SOWIA_TEST_SUPABASE_URL: ${{ secrets.SOWIA_TEST_SUPABASE_URL }}
@@ -119,7 +120,7 @@ jobs:
       - name: Report safely that live RLS tests are not configured
         if: steps.credentials.outputs.configured != 'true'
         run: |
-          echo "Live Supabase RLS tests skipped: configure the six dedicated test-project credentials and the explicit test-project confirmation secret described in tests/integration/README.md."
+          echo "Live Supabase RLS tests skipped: configure the six test-project connection/account values and the explicit test-project confirmation secret described in tests/integration/README.md."
       - name: Check out repository
         if: steps.credentials.outputs.configured == 'true'
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -131,7 +132,7 @@ jobs:
       - name: Install integration-test dependencies
         if: steps.credentials.outputs.configured == 'true'
         run: python -m pip install --upgrade pytest requests
-      - name: Verify real two-user RLS isolation
+      - name: Verify real multi-user RLS isolation
         if: steps.credentials.outputs.configured == 'true'
         run: >-
           pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py tests/integration/test_sowia_project_register_rls.py

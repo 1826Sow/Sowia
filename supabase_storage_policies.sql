@@ -9,16 +9,11 @@ set public = false,
     file_size_limit = 10485760,
     allowed_mime_types = array['application/pdf'];
 
--- Remove both current policy names and names from the earlier compatibility
--- script. PostgreSQL permissive policies are combined with OR, so leaving an
--- older broader policy in place would weaken the workspace restrictions below.
-
--- Remove legacy per-user policies detected by the production diagnostics.
--- Leaving permissive policies in place would OR them with workspace rules.
+-- PostgreSQL permissive policies are combined with OR. Remove legacy policies
+-- so no broader rule can bypass the owner and Professional Premium checks.
 drop policy if exists "sowia_users_read_own_files" on storage.objects;
 drop policy if exists "sowia_users_upload_own_files" on storage.objects;
 drop policy if exists "sowia_users_delete_own_files" on storage.objects;
-
 drop policy if exists "SOW IA users read own documents" on storage.objects;
 drop policy if exists "SOW IA users upload own documents" on storage.objects;
 drop policy if exists "SOW IA users delete own documents" on storage.objects;
@@ -34,6 +29,10 @@ using (
         or (
             array_length(storage.foldername(name), 1) = 2
             and (storage.foldername(name))[2] in ('personal', 'professional')
+            and (
+                (storage.foldername(name))[2] = 'personal'
+                or public.sowia_has_professional_access()
+            )
         )
     )
 );
@@ -46,6 +45,10 @@ with check (
     and (storage.foldername(name))[1] = (select auth.uid())::text
     and array_length(storage.foldername(name), 1) = 2
     and (storage.foldername(name))[2] in ('personal', 'professional')
+    and (
+        (storage.foldername(name))[2] = 'personal'
+        or public.sowia_has_professional_access()
+    )
 );
 
 drop policy if exists "SOW IA users can delete own workspace PDFs" on storage.objects;
@@ -59,6 +62,10 @@ using (
         or (
             array_length(storage.foldername(name), 1) = 2
             and (storage.foldername(name))[2] in ('personal', 'professional')
+            and (
+                (storage.foldername(name))[2] = 'personal'
+                or public.sowia_has_professional_access()
+            )
         )
     )
 );
