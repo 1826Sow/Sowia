@@ -19,9 +19,12 @@ GROQ_MODEL = _clean_secret(get_setting("GROQ_MODEL", "openai/gpt-oss-20b")) or "
 OPENAI_MODEL = _clean_secret(get_setting("OPENAI_MODEL", "gpt-4o-mini")) or "gpt-4o-mini"
 DEFAULT_MODEL = GROQ_MODEL if GROQ_API_KEY else OPENAI_MODEL
 MODEL = DEFAULT_MODEL
+
+# Provider endpoints must follow the selected key. In particular, an old
+# OPENAI_BASE_URL secret must never redirect a Groq key to the OpenAI endpoint.
 DEFAULT_BASE_URL = "https://api.groq.com/openai/v1" if GROQ_API_KEY else ""
 OPENAI_BASE_URL = _clean_secret(get_setting("OPENAI_BASE_URL", "")) or None
-BASE_URL = _clean_secret(get_setting("OPENAI_BASE_URL", DEFAULT_BASE_URL)) or None
+BASE_URL = DEFAULT_BASE_URL if GROQ_API_KEY else OPENAI_BASE_URL
 TAVILY_API_KEY = _clean_secret(get_setting("TAVILY_API_KEY", ""))
 SYSTEM_PROMPT = (
     "Tu es SOW IA, un assistant intelligent, clair et fiable. "
