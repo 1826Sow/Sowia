@@ -18,6 +18,8 @@ _REQUIRED = (
     "SOWIA_TEST_USER_A_PASSWORD",
     "SOWIA_TEST_USER_B_EMAIL",
     "SOWIA_TEST_USER_B_PASSWORD",
+    "SOWIA_TEST_USER_C_EMAIL",
+    "SOWIA_TEST_USER_C_PASSWORD",
     "SOWIA_TEST_PROJECT_CONFIRMATION",
 )
 _MISSING = [name for name in _REQUIRED if not os.getenv(name)]
@@ -105,7 +107,12 @@ def test_pdf_objects_are_private_to_their_authenticated_owner():
         os.environ["SOWIA_TEST_USER_B_EMAIL"],
         os.environ["SOWIA_TEST_USER_B_PASSWORD"],
     )
-    assert account_a.user_id != account_b.user_id
+    account_c = StorageTestSession(
+        url, anon_key,
+        os.environ["SOWIA_TEST_USER_C_EMAIL"],
+        os.environ["SOWIA_TEST_USER_C_PASSWORD"],
+    )
+    assert len({account_a.user_id, account_b.user_id, account_c.user_id}) == 3
 
     object_name = "sowia-rls-" + uuid.uuid4().hex + ".pdf"
     path = f"{account_a.user_id}/personal/{object_name}"
@@ -147,11 +154,10 @@ def test_pdf_objects_are_private_to_their_authenticated_owner():
             "Account B unexpectedly uploaded an object under Account A's user folder"
         )
 
-        # A non-Premium owner may use Personal storage but must be denied
-        # when attempting to upload into their own Professional workspace.
-        professional_upload = account_b.object_request(
+        # Dedicated non-Premium account C must be denied Professional storage.
+        professional_upload = account_c.object_request(
             "POST",
-            f"{account_b.user_id}/professional/sowia-professional-{uuid.uuid4().hex}.pdf",
+            f"{account_c.user_id}/professional/sowia-professional-{uuid.uuid4().hex}.pdf",
             data=PDF_FIXTURE,
             headers={
                 "Content-Type": "application/pdf",
@@ -159,7 +165,7 @@ def test_pdf_objects_are_private_to_their_authenticated_owner():
             },
         )
         assert not professional_upload.ok, (
-            "A non-Premium account unexpectedly uploaded a Professional PDF"
+            "Non-Premium account C unexpectedly uploaded a Professional PDF"
         )
 
         # Storage APIs may report a policy error or a no-op for an unauthorized
