@@ -712,6 +712,10 @@ def go_to_page(page_name):
     st.session_state.page_nav = page_name
     st.session_state.nav_category = category_for_page(page_name)
 
+def request_paypal_subscription_navigation():
+    """Defer navigation until immediately before sidebar widgets are created."""
+    st.session_state["_sowia_pending_navigation_page"] = "Abonnement"
+
 
 def resume_project_session(session_id):
     """Resume a project-linked conversation from the home dashboard."""
@@ -928,6 +932,13 @@ if privacy_screen:
         </style>""",
         unsafe_allow_html=True,
     )
+
+# Apply callback-requested navigation before creating the sidebar widgets.
+# A separate pending key avoids a form callback racing with selectbox widget state.
+pending_navigation_page = st.session_state.pop("_sowia_pending_navigation_page", None)
+if pending_navigation_page in {item for pages in NAV_GROUPS.values() for item in pages}:
+    st.session_state["page_nav"] = pending_navigation_page
+    st.session_state["nav_category"] = category_for_page(pending_navigation_page)
 
 with st.sidebar:
     active_page = st.session_state.get("page_nav", "Hub SOWIA")
@@ -3256,8 +3267,7 @@ elif page == "Abonnement":
                         prepare_subscription_clicked = st.form_submit_button(
                             "Préparer mon abonnement Premium",
                             use_container_width=True,
-                            on_click=go_to_page,
-                            args=("Abonnement",),
+                            on_click=request_paypal_subscription_navigation,
                         )
                     if prepare_subscription_clicked:
                             diagnostic_stage = "initialisation"
