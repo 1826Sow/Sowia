@@ -10,7 +10,7 @@ Les tests d'intégration vérifient les politiques RLS réellement appliquées a
    - `supabase/schema.sql` (tables de base, RLS et lecture de son propre droit Premium).
    - `supabase_workspaces.sql` (ajout des colonnes d'espace Personnel/Professionnel aux conversations et mémoires).
    - Facultatif : `supabase/migrations/20261109000100_sowia_subscriptions.sql`, uniquement si le module d'abonnements récurrents PayPal est utilisé dans ce projet.
-   - `supabase/migrations/20261115000100_sowia_professional_access_gate.sql` (fonction SQL en SECURITY INVOKER ; la table d'abonnements récurrents est détectée et utilisée uniquement si elle existe).
+   - `supabase/migrations/20261113000100_sowia_professional_access_gate.sql` (fonction SQL en SECURITY INVOKER ; la table d'abonnements récurrents est détectée et utilisée uniquement si elle existe).
    - `supabase/migrations/20261114000100_sowia_project_register.sql` (registre des projets et politiques RLS qui utilisent la fonction créée à l'étape précédente).
    - `supabase_storage_policies.sql` (création du bucket privé `sowia-files` et règles d'accès PDF).
 
@@ -37,14 +37,14 @@ Ne jamais utiliser les comptes de production, ni inscrire les secrets dans Git, 
 Depuis la racine du dépôt :
 
 ```bash
-pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py tests/integration/test_sowia_project_register_rls.py
+pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py tests/integration/test_sowia_project_register_rls.py tests/integration/test_sowia_project_register_rls.py
 ```
 
 ## Exécution automatique dans GitHub Actions
 
 Dans GitHub, ouvrir **Settings → Secrets and variables → Actions**, puis créer les sept secrets portant exactement les noms listés plus haut. Leurs valeurs doivent provenir exclusivement du projet Supabase de test et des deux comptes dédiés.
 
-**Protection des secrets :** le job des tests RLS réels est conditionné aux seuls événements `push` sur la branche `main`. Il ne reçoit donc aucun secret pendant les événements `pull_request`, où le code proposé peut être non fiable. Les tests automatisés ordinaires continuent de s'exécuter sur les PR sans secrets. En conséquence, une PR ne valide pas l'isolation Supabase réelle ; celle-ci ne sera testée qu'après un push fiable sur `main`, si les sept secrets sont configurés.
+**Protection des secrets :** le job des tests RLS réels est conditionné aux événements `push` sur `main` ou sur la branche de sécurité examinée `security/professional-access-gate`. Il ne reçoit jamais de secret pendant les événements `pull_request`, où le code proposé peut être non fiable. Les tests automatisés ordinaires continuent de s'exécuter sur les PR sans secrets. Le résultat du job RLS sur un événement `pull_request` est donc volontairement `skipped` ; la validation réelle exige un push fiable sur l'une des deux branches autorisées et les sept secrets correctement configurés.
 
 Si l'une des six valeurs d'accès ou la confirmation dédiée manque ou est incorrecte, le job indique explicitement que les tests réels sont ignorés ; il ne prétend jamais avoir validé la RLS. Ne jamais renseigner les identifiants d'un compte réel ni ceux du projet de production.
 

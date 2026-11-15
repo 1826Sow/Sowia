@@ -7,7 +7,7 @@ import re
 
 
 MIGRATION = Path(
-    "supabase/migrations/20261115000100_sowia_professional_access_gate.sql"
+    "supabase/migrations/20261113000100_sowia_professional_access_gate.sql"
 )
 STORAGE_POLICIES = Path("supabase_storage_policies.sql")
 
@@ -90,3 +90,11 @@ def test_storage_policies_enforce_the_professional_premium_gate():
             f"{name} must enforce Premium for Professional PDFs"
         )
         assert "'personal'" in block and "'professional'" in block
+
+
+def test_professional_gate_migration_precedes_project_register_migration():
+    gate = Path("supabase/migrations/20261113000100_sowia_professional_access_gate.sql")
+    projects = Path("supabase/migrations/20261114000100_sowia_project_register.sql")
+    assert gate.exists()
+    assert projects.exists()
+    assert gate.name < projects.name, "The access function must exist before project RLS policies are created"

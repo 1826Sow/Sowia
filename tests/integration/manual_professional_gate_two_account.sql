@@ -119,6 +119,12 @@ begin
     values
         (test_user_id, marker, 'personal');
 
+    -- Personal project creation must remain available.
+    insert into public.sowia_projects
+        (user_id, workspace_id, title, description, status)
+    values
+        (test_user_id, 'personal', marker || ' personal project', 'Rollback-only test row', 'À tester');
+
     -- Each Professional INSERT must fail specifically because of RLS.
     begin
         insert into public.sowia_messages
@@ -141,12 +147,22 @@ begin
     end;
 
 
+    begin
+        insert into public.sowia_projects
+            (user_id, workspace_id, title, description, status)
+        values
+            (test_user_id, 'professional', marker || ' professional project', 'Must be denied', 'À tester');
+        raise exception 'FAIL: free account inserted a Professional project';
+    exception when insufficient_privilege then
+        null;
+    end;
+
     -- Assertions completed. The visible PASS row is emitted after this block.
 end;
 $assertions$;
 
 -- Return a visible result row in Supabase's Results grid (easier to find on mobile).
-select 'PASS: Personal message and memory inserts allowed; Professional message and memory inserts denied.' as validation_result;
+select 'PASS: Personal message, memory and project inserts allowed; Professional message, memory and project inserts denied.' as validation_result;
 
 -- Mandatory: restore account A's Premium records and remove all test rows.
 rollback;
