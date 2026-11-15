@@ -188,7 +188,7 @@ bucket_checks as (
     from expected_buckets e
     left join storage.buckets b on b.id = e.bucket_id
 )
-all_checks as (
+, all_checks as (
     select check_type, object_name, status, detail from table_checks
     union all
     select check_type, object_name, status, detail from rls_checks
