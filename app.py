@@ -1737,7 +1737,7 @@ elif page == "Assistant IA":
         render_accessible_message(item["role"], item["content"])
     # Use an explicit form instead of the floating chat_input control.
     # This provides a reliable submit action on mobile browsers as well as desktop.
-    with st.form("sowia_chat_submit_form", clear_on_submit=True):
+    with st.form("sowia_chat_submit_form", clear_on_submit=False):
         prompt = st.text_area(
             "Écrivez votre message...",
             key="sowia_chat_prompt",
