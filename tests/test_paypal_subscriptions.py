@@ -153,3 +153,53 @@ def test_paypal_pagination_url_requires_exact_https_authority(url, expected):
         url, "https://api-m.sandbox.paypal.com"
     ) is expected
 
+
+
+def test_sandbox_configuration_remains_available_when_public_toggle_is_off(monkeypatch):
+    values = {
+        "PAYPAL_CLIENT_ID": "sandbox-client",
+        "PAYPAL_CLIENT_SECRET": "sandbox-secret",
+        "PAYPAL_MODE": "sandbox",
+        "PAYPAL_SUBSCRIPTION_RETURN_URL": "https://example.com/return",
+        "PAYPAL_SUBSCRIPTION_CANCEL_URL": "https://example.com/cancel",
+    }
+    monkeypatch.setattr(paypal, "_subscriptions_enabled", lambda: False)
+    monkeypatch.setattr(paypal, "_setting", lambda name, default="": values.get(name, default))
+
+    config = paypal.paypal_subscription_configuration()
+
+    assert config is not None
+    assert config["mode"] == "sandbox"
+    assert config["base_url"] == "https://api-m.sandbox.paypal.com"
+
+
+def test_live_configuration_stays_blocked_when_public_toggle_is_off(monkeypatch):
+    values = {
+        "PAYPAL_CLIENT_ID": "live-client",
+        "PAYPAL_CLIENT_SECRET": "live-secret",
+        "PAYPAL_MODE": "live",
+        "PAYPAL_SUBSCRIPTION_RETURN_URL": "https://example.com/return",
+        "PAYPAL_SUBSCRIPTION_CANCEL_URL": "https://example.com/cancel",
+    }
+    monkeypatch.setattr(paypal, "_subscriptions_enabled", lambda: False)
+    monkeypatch.setattr(paypal, "_setting", lambda name, default="": values.get(name, default))
+
+    assert paypal.paypal_subscription_configuration() is None
+
+
+def test_live_configuration_requires_explicit_public_toggle(monkeypatch):
+    values = {
+        "PAYPAL_CLIENT_ID": "live-client",
+        "PAYPAL_CLIENT_SECRET": "live-secret",
+        "PAYPAL_MODE": "live",
+        "PAYPAL_SUBSCRIPTION_RETURN_URL": "https://example.com/return",
+        "PAYPAL_SUBSCRIPTION_CANCEL_URL": "https://example.com/cancel",
+    }
+    monkeypatch.setattr(paypal, "_subscriptions_enabled", lambda: True)
+    monkeypatch.setattr(paypal, "_setting", lambda name, default="": values.get(name, default))
+
+    config = paypal.paypal_subscription_configuration()
+
+    assert config is not None
+    assert config["mode"] == "live"
+    assert config["base_url"] == "https://api-m.paypal.com"
