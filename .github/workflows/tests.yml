@@ -89,7 +89,7 @@ jobs:
     name: Supabase real-account RLS tests
     timeout-minutes: 15
     # Never expose Supabase test credentials to code from a pull request.
-    # Live two-account tests run only after trusted code is pushed to main.
+    # Live three-account tests run only after trusted code is pushed to main.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
@@ -135,7 +135,7 @@ jobs:
       - name: Install integration-test dependencies
         if: steps.credentials.outputs.configured == 'true'
         run: python -m pip install --upgrade pytest requests
-      - name: Verify real two-user RLS isolation
+      - name: Verify real multi-user RLS isolation
         if: steps.credentials.outputs.configured == 'true'
         run: >-
           pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integration/test_supabase_storage_two_user_isolation.py tests/integration/test_sowia_project_register_rls.py
