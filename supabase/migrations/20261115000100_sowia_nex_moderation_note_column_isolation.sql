@@ -8,6 +8,11 @@ REVOKE SELECT
 ON TABLE public.sowia_night_exchange_apps
 FROM authenticated;
 
+-- Also remove any earlier column-level grant that survives a table-level revoke.
+REVOKE SELECT (moderation_note)
+ON TABLE public.sowia_night_exchange_apps
+FROM authenticated;
+
 GRANT SELECT (
     id,
     user_id,
