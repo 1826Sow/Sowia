@@ -14,7 +14,7 @@ STORAGE_POLICIES = Path("supabase_storage_policies.sql")
 
 def _policy_block(sql: str, policy_name: str) -> str:
     match = re.search(
-        rf'create\s+policy\s+"{re.escape(policy_name)}".*?;',
+        rf'create\\s+policy\\s+"{re.escape(policy_name)}".*?;',
         sql,
         flags=re.IGNORECASE | re.DOTALL,
     )
@@ -29,12 +29,25 @@ def test_professional_access_function_is_invoker_scoped_and_not_public():
     assert "security invoker" in sql
     assert "set search_path = ''" in sql
     assert "auth.uid()" in function
+    assert "entitlement.plan = 'premium'" in function
     assert "entitlement.status = 'active'" in function
-    assert "subscription.status = 'active'" in function
-    assert "subscription.provider = 'paypal'" in function
+    assert "entitlement.provider = 'paypal'" in function
+    assert "subscription.status = ''active''" in function
+    assert "subscription.provider = ''paypal''" in function
+    assert "to_regclass('public.sowia_subscriptions')" in function
+    assert "execute" in function
     assert "revoke all on function public.sowia_has_professional_access() from public" in sql
     assert "revoke all on function public.sowia_has_professional_access() from anon" in sql
     assert "grant execute on function public.sowia_has_professional_access() to authenticated" in sql
+    assert "grant select on public.sowia_entitlements to authenticated" in sql
+    assert "security definer" not in sql
+
+
+def test_optional_subscription_table_is_not_required_by_migration():
+    sql = MIGRATION.read_text(encoding="utf-8").lower()
+    assert "if to_regclass('public.sowia_subscriptions') is not null then" in sql
+    assert "execute 'grant select on public.sowia_subscriptions to authenticated'" in sql
+    assert "grant select on public.sowia_subscriptions to authenticated;" not in sql
 
 
 def test_messages_and_memory_gate_every_existing_operation():
@@ -58,12 +71,6 @@ def test_messages_and_memory_gate_every_existing_operation():
             f"{name} must enforce Premium for Professional rows"
         )
         assert "auth.uid()" in block, f"{name} must enforce row ownership"
-
-
-def test_subscription_visibility_is_granted_only_through_owner_rls():
-    sql = MIGRATION.read_text(encoding="utf-8").lower()
-    assert "grant select on public.sowia_subscriptions to authenticated" in sql
-    assert "security definer" not in sql
 
 
 def test_storage_policies_enforce_the_professional_premium_gate():
