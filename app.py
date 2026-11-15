@@ -661,6 +661,32 @@ def delete_app_memory(memory_id):
         return cloud_storage.delete_memory(supabase_client, current_user, memory_id, st.session_state.get("workspace_id", "personal"))
     return local_delete_memory(memory_id, st.session_state.get("workspace_id", "personal"))
 
+def extract_explicit_memory_request(message):
+    """Return text only when the user explicitly asks SOW IA to remember it."""
+    text = str(message or "").strip()
+    markers = (
+        "retiens que", "retiens :", "mémorise que", "memorise que",
+        "souviens-toi que", "souviens toi que", "enregistre dans ma mémoire",
+        "enregistre dans ma memoire", "enregistre durablement",
+        "remember that", "please remember",
+    )
+    lowered = text.casefold()
+    matches = [(lowered.find(marker), marker) for marker in markers if lowered.find(marker) >= 0]
+    if not matches:
+        return None
+    position, marker = min(matches, key=lambda item: item[0])
+    content = text[position + len(marker):].strip(" \t\r\n:;,.—-")
+    if not content or len(content) > 1000:
+        return None
+    sensitive_markers = (
+        "mot de passe", "password", "api_key", "api key", "clé secrète",
+        "cle secrete", "secret key", "numéro de carte", "numero de carte",
+        "cvv", "code bancaire", "private key",
+    )
+    if any(term in content.casefold() for term in sensitive_markers):
+        return None
+    return content
+
 NAV_GROUPS = {
     "👤 Personnel & documents": [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
@@ -1761,51 +1787,85 @@ elif page == "Assistant IA":
     )
     prompt = st.session_state.pop("sowia_pending_chat_prompt", None)
     if prompt:
-        # Display the user's message immediately. A Supabase insert failure must
-        # not make the submitted text disappear or prevent an AI response.
-        render_accessible_message("user", prompt)
-        try:
-            save_app_message("user", prompt)
-        except Exception as save_error:
-            st.warning(
-                "Votre message est visible dans cette session, mais son "
-                "enregistrement dans l'historique a échoué. "
-                "Diagnostic : " + type(save_error).__name__
-            )
-
-        # Use the already-loaded history plus the current prompt. This avoids
-        # losing the request if the cloud insert failed.
-        request_history = conversation_history + [{"role": "user", "content": prompt}]
-        with st.chat_message("assistant"):
+        # Explicit memory commands use the existing account-scoped storage layer.
+        # Never claim persistence unless the Supabase insert and read-back succeed.
+        explicit_memory = extract_explicit_memory_request(prompt)
+        if explicit_memory is not None:
+            render_accessible_message("user", prompt)
             try:
-                reply = answer(
-                    request_history,
-                    memories=[item["content"] for item in memories],
-                )
-                st.markdown(reply)
+                if not cloud_mode or current_user is None:
+                    raise RuntimeError("Connexion Supabase requise pour une mémoire persistante.")
+                inserted_memory = add_app_memory(explicit_memory)
+                if not inserted_memory:
+                    raise RuntimeError("Supabase n'a retourné aucune ligne enregistrée.")
+                saved_memories = get_app_memories()
+                if not any(item.get("content") == explicit_memory for item in saved_memories):
+                    raise RuntimeError("La note a été écrite mais sa relecture de vérification a échoué.")
+                memory_reply = "C'est enregistré dans votre mémoire SOW IA sur votre compte Supabase. J'ai vérifié que la note peut être relue. Vous pourrez la retrouver dans « Ma mémoire » et la réutiliser dans une nouvelle conversation."
+                render_accessible_message("assistant", memory_reply)
                 try:
-                    save_app_message("assistant", reply)
-                except Exception as save_error:
-                    st.warning(
-                        "La réponse est affichée, mais n'a pas pu être "
-                        "enregistrée dans l'historique. Diagnostic : "
-                        + type(save_error).__name__
+                    save_app_message("user", prompt)
+                    save_app_message("assistant", memory_reply)
+                except Exception:
+                    st.caption("La mémoire a bien été vérifiée ; l'historique de cette conversation n'a pas pu être entièrement enregistré.")
+            except Exception as memory_error:
+                memory_reply = (
+                    "Je n'ai pas pu confirmer l'enregistrement persistant. "
+                    "Aucune confirmation de sauvegarde ne peut être donnée. "
+                    "Diagnostic : " + type(memory_error).__name__
+                )
+                render_accessible_message("assistant", memory_reply)
+                try:
+                    save_app_message("user", prompt)
+                    save_app_message("assistant", memory_reply)
+                except Exception:
+                    pass
+        else:
+            # Display the user's message immediately. A Supabase insert failure must
+            # not make the submitted text disappear or prevent an AI response.
+            render_accessible_message("user", prompt)
+        try:
+                save_app_message("user", prompt)
+            except Exception as save_error:
+                st.warning(
+                    "Votre message est visible dans cette session, mais son "
+                    "enregistrement dans l'historique a échoué. "
+                    "Diagnostic : " + type(save_error).__name__
+                )
+    
+            # Use the already-loaded history plus the current prompt. This avoids
+            # losing the request if the cloud insert failed.
+            request_history = conversation_history + [{"role": "user", "content": prompt}]
+            with st.chat_message("assistant"):
+                try:
+                    reply = answer(
+                        request_history,
+                        memories=[item["content"] for item in memories],
                     )
-            except Exception as exc:
-                error_text = str(exc)
-                if "429" in error_text or "insufficient_quota" in error_text or "quota" in error_text.lower():
-                    st.warning("Le service IA est temporairement indisponible : le crédit API OpenAI est épuisé ou le quota est atteint. Vous pouvez continuer à créer et télécharger des PDF sans utiliser l'IA.")
-                elif "401" in error_text or "invalid_api_key" in error_text:
-                    st.error("La clé API du fournisseur IA n'est pas reconnue. Vérifiez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit.")
-                else:
-                    st.error(
-                        "Une erreur inattendue est survenue pendant la réponse de l'assistant. "
-                        "Réessayez dans quelques instants."
-                    )
-    if st.button("Effacer cette conversation"):
-        clear_app_history()
-        st.rerun()
-
+                    st.markdown(reply)
+                    try:
+                        save_app_message("assistant", reply)
+                    except Exception as save_error:
+                        st.warning(
+                            "La réponse est affichée, mais n'a pas pu être "
+                            "enregistrée dans l'historique. Diagnostic : "
+                            + type(save_error).__name__
+                        )
+                except Exception as exc:
+                    error_text = str(exc)
+                    if "429" in error_text or "insufficient_quota" in error_text or "quota" in error_text.lower():
+                        st.warning("Le service IA est temporairement indisponible : le crédit API OpenAI est épuisé ou le quota est atteint. Vous pouvez continuer à créer et télécharger des PDF sans utiliser l'IA.")
+                    elif "401" in error_text or "invalid_api_key" in error_text:
+                        st.error("La clé API du fournisseur IA n'est pas reconnue. Vérifiez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit.")
+                    else:
+                        st.error(
+                            "Une erreur inattendue est survenue pendant la réponse de l'assistant. "
+                            "Réessayez dans quelques instants."
+                        )
+        if st.button("Effacer cette conversation"):
+            clear_app_history()
+            st.rerun()
+    
 elif page == "Ma mémoire":
     workspace_label = (
         "professionnel"
