@@ -6,13 +6,15 @@ Les tests d'intégration vérifient les politiques RLS réellement appliquées a
 
 1. Utiliser un projet Supabase de test dédié, jamais la base de production.
 2. Dans **Authentication → Users**, créer deux comptes de test distincts (A et B) avec des adresses et mots de passe dédiés. Vérifier que les deux comptes peuvent se connecter.
-3. Dans le **SQL Editor** de ce projet de test, exécuter dans cet ordre :
+3. Dans le **SQL Editor** de ce projet de test, exécuter les migrations nécessaires dans cet ordre :
    - `supabase/schema.sql` (tables de base, RLS et lecture de son propre droit Premium).
    - `supabase_workspaces.sql` (ajout des colonnes d'espace Personnel/Professionnel aux conversations et mémoires).
-   - `supabase/migrations/20261109000100_sowia_subscriptions.sql` (table des abonnements récurrents PayPal).
-   - `supabase/migrations/20261115000100_sowia_professional_access_gate.sql` (fonction SQL sécurisée qui vérifie le droit Premium de l'utilisateur connecté ; lecture des abonnements limitée par RLS et exécution autorisée uniquement à `authenticated`).
+   - Facultatif : `supabase/migrations/20261109000100_sowia_subscriptions.sql`, uniquement si le module d'abonnements récurrents PayPal est utilisé dans ce projet.
+   - `supabase/migrations/20261115000100_sowia_professional_access_gate.sql` (fonction SQL en SECURITY INVOKER ; la table d'abonnements récurrents est détectée et utilisée uniquement si elle existe).
    - `supabase/migrations/20261114000100_sowia_project_register.sql` (registre des projets et politiques RLS qui utilisent la fonction créée à l'étape précédente).
    - `supabase_storage_policies.sql` (création du bucket privé `sowia-files` et règles d'accès PDF).
+
+   La migration de sécurisation exige que `sowia_entitlements` expose les colonnes `user_id`, `plan`, `status` et `provider`. Elle accorde uniquement SELECT à `authenticated` ; la politique RLS propriétaire de cette table doit rester active. Si le module récurrent est installé, `sowia_subscriptions` doit également conserver RLS activé et sa politique SELECT limitée à `auth.uid() = user_id`.
 4. Dans les paramètres API du projet de test, récupérer l'URL du projet et la clé publique **anon/publishable**. Ne pas utiliser la clé `service_role` ou une clé secrète.
 5. Fournir les sept variables ci-dessous uniquement dans l'environnement d'exécution sécurisé :
 
@@ -48,7 +50,7 @@ Si l'un des six identifiants ou la confirmation dédiée manque ou est incorrect
 
 Avec les sept variables, deux sessions authentifiées vérifient pour chaque table que le compte A peut lire ses propres lignes, que le compte B ne peut pas les lire, qu'il ne peut pas insérer une ligne au nom de A et qu'il ne peut pas supprimer la ligne de A. Les lignes témoins des tables messages et mémoire sont supprimées par le compte A dans un bloc `finally`. Le test `sowia_projects` vérifie également l'isolation propriétaire, le refus d'une insertion usurpant un autre propriétaire, le refus d'une modification inter-compte et le refus d'accès Professionnel pour les deux comptes de test non-Premium. Comme la table projets n'accorde volontairement aucun droit DELETE, sa ligne synthétique est archivée en fin de test ; elle peut être supprimée manuellement depuis le SQL Editor du projet de test après vérification.
 
-Le test Storage utilise les mêmes sept secrets, vérifie que le compte A peut déposer et télécharger son PDF, que B ne peut ni le télécharger, ni déposer un fichier dans le dossier de A, ni supprimer le PDF de A. Le propriétaire supprime le fichier temporaire dans un bloc `finally`. Il cible le bucket `sowia-files` et les chemins `<user_id>/personal/<fichier>`.
+Le test Storage utilise les mêmes sept secrets, vérifie que le compte A peut déposer et télécharger son PDF, que B ne peut ni le télécharger, ni déposer un fichier dans le dossier de A, ni supprimer le PDF de A. Il vérifie également qu'un compte non-Premium ne peut pas déposer dans son propre dossier `professional`. Le propriétaire supprime le fichier temporaire dans un bloc `finally`.
 
 Un test ignoré ne constitue pas une validation RLS réelle. La validation exige un projet de test configuré et un résultat d'exécution réussi.
 
@@ -58,4 +60,6 @@ Avant de configurer les sept secrets CI, exécuter `supabase_security_diagnostic
 
 Examiner chaque politique Storage, quel que soit son nom : les politiques permissives sont combinées par OR. Toute politique trop large doit être comprise et corrigée dans le projet de test avant d'exécuter les tests à deux comptes. Vérifier également que `sowia_entitlements` n'accorde pas d'écriture à `authenticated`, que `anon` n'a aucun accès aux données privées et que le bucket reste privé.
 
-Le test du registre projets exige que les deux comptes de test ne possèdent aucun droit Premium Professionnel ; ne jamais réutiliser des comptes de production. Le test crée une ligne synthétique archivée dans le projet de test, sans suppression physique. Après conservation des résultats, un administrateur peut nettoyer ces seules lignes de test depuis le SQL Editor du projet de test avec une requête ciblée sur le préfixe `SOWIA RLS TEST ` et après vérification du projet.\n\nLe script de diagnostic ne modifie rien et ne certifie pas automatiquement la sécurité. Conserver les résultats de diagnostic sans y inclure de secrets ni de données personnelles ; faire vérifier les expressions de politiques et les privilèges avant de poursuivre.
+Le test du registre projets exige que les deux comptes de test ne possèdent aucun droit Premium Professionnel ; ne jamais réutiliser des comptes de production. Le test crée une ligne synthétique archivée dans le projet de test, sans suppression physique. Après conservation des résultats, un administrateur peut nettoyer ces seules lignes de test depuis le SQL Editor du projet de test avec une requête ciblée sur le préfixe `SOWIA RLS TEST ` et après vérification du projet.
+
+Le script de diagnostic ne modifie rien et ne certifie pas automatiquement la sécurité. Conserver les résultats de diagnostic sans y inclure de secrets ni de données personnelles ; faire vérifier les expressions de politiques et les privilèges avant de poursuivre.
