@@ -271,7 +271,7 @@ def create_email_user_client():
     its PKCE flow unchanged.
     """
     url = _supabase_project_url()
-    key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
+    key = _supabase_anon_key()
     if not key:
         raise RuntimeError("SUPABASE_ANON_KEY est absent des secrets de l'hébergeur.")
 
