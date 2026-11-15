@@ -116,7 +116,31 @@ st.markdown(
     [data-testid="stButton"] button, [data-testid="stLinkButton"] a { border-radius: 12px !important; min-height: 2.85rem; font-weight: 680 !important; border: 1px solid rgba(91,190,220,.38) !important; background: #102943 !important; color: #e8f6ff !important; }
     [data-testid="stButton"] button[kind="primary"], [data-testid="stLinkButton"] a[kind="primary"] { background: linear-gradient(110deg,#087e96,#12648a) !important; border-color: #22d8e8 !important; color: white !important; }
     [data-testid="stMetric"] { background: rgba(15,39,66,.94); border: 1px solid rgba(0,210,230,.22); border-radius: 16px; padding: .9rem 1rem; box-shadow: 0 4px 14px rgba(0,0,0,.16); }
-    [data-testid="stAlert"] { border-radius: 14px; }
+    /* Premium notices: force an opaque dark surface so Streamlit's default light alert
+       cannot wash out the text on mobile or under browser theme overrides. */
+    [data-testid="stAlert"] {
+      border-radius: 14px !important;
+      background: #102943 !important;
+      border: 1px solid rgba(0,220,235,.42) !important;
+      color: #eff9ff !important;
+      opacity: 1 !important;
+      box-shadow: 0 6px 18px rgba(0,0,0,.22) !important;
+    }
+    [data-testid="stAlert"] > div,
+    [data-testid="stAlert"] [data-testid="stMarkdownContainer"],
+    [data-testid="stAlert"] p,
+    [data-testid="stAlert"] span,
+    [data-testid="stAlert"] li {
+      background: transparent !important;
+      color: #eff9ff !important;
+      -webkit-text-fill-color: #eff9ff !important;
+      opacity: 1 !important;
+    }
+    [data-testid="stAlert"] svg { color: #75f2ff !important; fill: #75f2ff !important; }
+    [data-testid="stAlert"] [data-testid="stAlertContent"] {
+      background: transparent !important;
+      color: #eff9ff !important;
+    }
     [data-testid="stExpander"] { border: 1px solid rgba(0,210,230,.20); border-radius: 14px; background: rgba(12,31,53,.92); }
     [data-testid="stDataFrame"] { border: 1px solid rgba(0,210,230,.20); border-radius: 13px; overflow: hidden; }
     [data-testid="stChatMessage"] { background: #102943 !important; border: 1px solid rgba(0,210,230,.20) !important; border-radius: 16px !important; padding: 1rem !important; box-shadow: 0 3px 12px rgba(0,0,0,.16); color: #e8f3ff !important; }
