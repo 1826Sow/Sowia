@@ -1735,8 +1735,17 @@ elif page == "Assistant IA":
     conversation_history = get_app_history()
     for item in conversation_history:
         render_accessible_message(item["role"], item["content"])
-    prompt = st.chat_input("Écrivez votre message...")
-    if prompt:
+    # Use an explicit form instead of the floating chat_input control.
+    # This provides a reliable submit action on mobile browsers as well as desktop.
+    with st.form("sowia_chat_submit_form", clear_on_submit=True):
+        prompt = st.text_area(
+            "Écrivez votre message...",
+            key="sowia_chat_prompt",
+            height=100,
+            placeholder="Votre message à SOW IA…",
+        )
+        submitted = st.form_submit_button("Envoyer", type="primary", use_container_width=True)
+    if submitted and prompt and prompt.strip():
         # Display the user's message immediately. A Supabase insert failure must
         # not make the submitted text disappear or prevent an AI response.
         render_accessible_message("user", prompt)
