@@ -1,6 +1,6 @@
 """Real two-account RLS checks for the SOW IA project register.
 
-Only run against a dedicated Supabase test project with two Premium users (A/B) and one non-Premium user (C).
+Only run against a dedicated Supabase test project with two Premium users (A/B).
 The project table intentionally has no DELETE policy; each synthetic row is
 soft-archived and can be removed later by an administrator in the test project.
 """
@@ -19,8 +19,6 @@ _REQUIRED = (
     "SOWIA_TEST_USER_A_PASSWORD",
     "SOWIA_TEST_USER_B_EMAIL",
     "SOWIA_TEST_USER_B_PASSWORD",
-    "SOWIA_TEST_USER_C_EMAIL",
-    "SOWIA_TEST_USER_C_PASSWORD",
     "SOWIA_TEST_PROJECT_CONFIRMATION",
 )
 _MISSING = [name for name in _REQUIRED if not os.getenv(name)]
@@ -100,27 +98,6 @@ def test_project_register_is_owner_scoped_and_professional_access_is_gated():
         os.environ["SOWIA_TEST_USER_B_EMAIL"],
         os.environ["SOWIA_TEST_USER_B_PASSWORD"],
     )
-    account_c = Account(
-        url, anon_key,
-        os.environ["SOWIA_TEST_USER_C_EMAIL"],
-        os.environ["SOWIA_TEST_USER_C_PASSWORD"],
-    )
-    assert len({account_a.user_id, account_b.user_id, account_c.user_id}) == 3
-
-    # Check C's fixture directly. The optional sowia_subscriptions table may
-    # not exist in this project, so do not query it from the test.
-    entitlements = account_c.request_resource(
-        "sowia_entitlements", "GET", params={"select": "status,plan"}
-    )
-    entitlements.raise_for_status()
-    active_entitlements = [
-        row for row in entitlements.json() if row.get("status") == "active"
-    ]
-    assert not active_entitlements, (
-        "Test fixture account C has an active Premium entitlement; "
-        "use a dedicated non-Premium test account."
-    )
-
     marker = "SOWIA RLS TEST " + uuid.uuid4().hex
     inserted_id = None
     try:
@@ -177,56 +154,9 @@ def test_project_register_is_owner_scoped_and_professional_access_is_gated():
         unchanged.raise_for_status()
         assert unchanged.json()[0]["title"] == marker
 
-        # The dedicated C fixture is deliberately non-Premium: Professional
-        # workspace insertion must be rejected by the database policy itself.
-        professional_insert = account_c.request(
-            "POST",
-            payload={
-                "user_id": account_c.user_id,
-                "workspace_id": "professional",
-                "title": marker + " PROFESSIONAL",
-                "description": "Must be denied to non-Premium test account",
-                "status": "En cours",
-            },
-        )
-        assert professional_insert.status_code in (401, 403), (
-            "The non-Premium account C must not insert into the Professional workspace; "
-            f"received HTTP {professional_insert.status_code}"
-        )
-
-        # The Professional gate must cover conversations and memory too,
-        # not only the project registry and UI navigation.
-        professional_message = account_c.request_resource(
-            "sowia_messages",
-            "POST",
-            params={"select": "id"},
-            payload={
-                "user_id": account_c.user_id,
-                "session_id": marker,
-                "role": "user",
-                "content": "Synthetic Professional access-denial test",
-                "workspace_id": "professional",
-            },
-        )
-        assert professional_message.status_code in (401, 403), (
-            "The non-Premium account C must not insert a Professional message; "
-            f"received HTTP {professional_message.status_code}"
-        )
-
-        professional_memory = account_c.request_resource(
-            "sowia_memory_items",
-            "POST",
-            params={"select": "id"},
-            payload={
-                "user_id": account_c.user_id,
-                "content": "Synthetic Professional memory access-denial test",
-                "workspace_id": "professional",
-            },
-        )
-        assert professional_memory.status_code in (401, 403), (
-            "The non-Premium account C must not insert Professional memory; "
-            f"received HTTP {professional_memory.status_code}"
-        )
+        # Professional denial for a no-entitlement identity is covered by
+        # manual_professional_gate_two_account.sql, which safely demotes A only
+        # inside a rollback-only SQL transaction; no third Auth user is needed.
     finally:
         if inserted_id is not None:
             # No DELETE grant is intentionally provided. Keep the evidence row
