@@ -99,6 +99,8 @@ jobs:
       SOWIA_TEST_USER_A_PASSWORD: ${{ secrets.SOWIA_TEST_USER_A_PASSWORD }}
       SOWIA_TEST_USER_B_EMAIL: ${{ secrets.SOWIA_TEST_USER_B_EMAIL }}
       SOWIA_TEST_USER_B_PASSWORD: ${{ secrets.SOWIA_TEST_USER_B_PASSWORD }}
+      SOWIA_TEST_USER_C_EMAIL: ${{ secrets.SOWIA_TEST_USER_C_EMAIL }}
+      SOWIA_TEST_USER_C_PASSWORD: ${{ secrets.SOWIA_TEST_USER_C_PASSWORD }}
       SOWIA_TEST_PROJECT_CONFIRMATION: ${{ secrets.SOWIA_TEST_PROJECT_CONFIRMATION }}
     steps:
       - name: Check integration-test configuration
@@ -111,6 +113,8 @@ jobs:
                 -n "$SOWIA_TEST_USER_A_PASSWORD" &&
                 -n "$SOWIA_TEST_USER_B_EMAIL" &&
                 -n "$SOWIA_TEST_USER_B_PASSWORD" &&
+                -n "$SOWIA_TEST_USER_C_EMAIL" &&
+                -n "$SOWIA_TEST_USER_C_PASSWORD" &&
                 "$SOWIA_TEST_PROJECT_CONFIRMATION" == "I_CONFIRM_THIS_IS_A_DEDICATED_SOWIA_TEST_PROJECT" ]]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
@@ -119,7 +123,7 @@ jobs:
       - name: Report safely that live RLS tests are not configured
         if: steps.credentials.outputs.configured != 'true'
         run: |
-          echo "Live Supabase RLS tests skipped: configure the six dedicated test-project credentials and the explicit test-project confirmation secret described in tests/integration/README.md."
+          echo "Live Supabase RLS tests skipped: configure the eight dedicated test-project credentials and the explicit test-project confirmation secret described in tests/integration/README.md."
       - name: Check out repository
         if: steps.credentials.outputs.configured == 'true'
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
