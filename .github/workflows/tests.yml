@@ -89,7 +89,7 @@ jobs:
     name: Supabase real-account RLS tests
     timeout-minutes: 15
     # Never expose Supabase test credentials to code from a pull request.
-    # Live three-account tests run only after trusted code is pushed to main.
+    # Live two-account tests run only after trusted code is pushed to main.
     # Secrets are available only on trusted pushes to main or the reviewed
     # security branch; never on pull_request events.
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/security/professional-access-gate')
