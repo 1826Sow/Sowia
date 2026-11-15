@@ -10,8 +10,8 @@ Les tests d'intégration vérifient les politiques RLS réellement appliquées a
    - `supabase/schema.sql` (tables de base, RLS et lecture de son propre droit Premium).
    - `supabase_workspaces.sql` (ajout des colonnes d'espace Personnel/Professionnel aux conversations et mémoires).
    - `supabase/migrations/20261109000100_sowia_subscriptions.sql` (table des abonnements récurrents PayPal).
-   - `supabase/migrations/20261114000100_sowia_project_register.sql` (registre des projets et politiques RLS).
-   - `supabase/migrations/20261115000100_sowia_professional_access_gate.sql` (fonction SQL sécurisée qui vérifie le droit Premium de l'utilisateur connecté ; exécution autorisée uniquement à `authenticated`).
+   - `supabase/migrations/20261115000100_sowia_professional_access_gate.sql` (fonction SQL sécurisée qui vérifie le droit Premium de l'utilisateur connecté ; lecture des abonnements limitée par RLS et exécution autorisée uniquement à `authenticated`).
+   - `supabase/migrations/20261114000100_sowia_project_register.sql` (registre des projets et politiques RLS qui utilisent la fonction créée à l'étape précédente).
    - `supabase_storage_policies.sql` (création du bucket privé `sowia-files` et règles d'accès PDF).
 4. Dans les paramètres API du projet de test, récupérer l'URL du projet et la clé publique **anon/publishable**. Ne pas utiliser la clé `service_role` ou une clé secrète.
 5. Fournir les sept variables ci-dessous uniquement dans l'environnement d'exécution sécurisé :
