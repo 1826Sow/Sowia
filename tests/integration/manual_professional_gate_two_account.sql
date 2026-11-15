@@ -11,20 +11,25 @@
 begin;
 
 -- Replace this placeholder with the UUID of Premium test account A.
-select set_config(
-    'request.jwt.claim.sub',
-    'f1792829-ca68-4815-b173-79bd13ce0ed3',
-    true
-);
-select set_config(
-    'request.jwt.claims',
-    jsonb_build_object(
-        'sub', 'f1792829-ca68-4815-b173-79bd13ce0ed3',
-        'role', 'authenticated',
-        'aud', 'authenticated'
-    )::text,
-    true
-);
+-- Set the authenticated JWT context without returning intermediate result grids.
+do $claims$
+begin
+    perform set_config(
+        'request.jwt.claim.sub',
+        'f1792829-ca68-4815-b173-79bd13ce0ed3',
+        true
+    );
+    perform set_config(
+        'request.jwt.claims',
+        jsonb_build_object(
+            'sub', 'f1792829-ca68-4815-b173-79bd13ce0ed3',
+            'role', 'authenticated',
+            'aud', 'authenticated'
+        )::text,
+        true
+    );
+end;
+$claims$;
 
 -- Verify that A is currently Premium, then temporarily remove only A's
 -- entitlement records. The final ROLLBACK restores them exactly.
