@@ -1678,7 +1678,7 @@ elif page == "Assistant IA":
     if large_text:
         st.markdown("<style>[data-testid='stChatMessage'] p,[data-testid='stChatMessage'] li{font-size:1.2rem!important;line-height:1.7!important}</style>", unsafe_allow_html=True)
     if high_contrast:
-        st.markdown("<style>[data-testid='stChatMessage']{border:2px solid #111!important;background:#fff!important}[data-testid='stChatMessage'] p,[data-testid='stChatMessage'] li{color:#000!important;font-weight:600!important}</style>", unsafe_allow_html=True)
+        st.markdown("<style>[data-testid='stChatMessage']{border:2px solid #22d8e8!important;background:#071426!important;color:#fff!important}[data-testid='stChatMessage'] [data-testid='stMarkdownContainer'],[data-testid='stChatMessage'] p,[data-testid='stChatMessage'] li,[data-testid='stChatMessage'] span{color:#fff!important;-webkit-text-fill-color:#fff!important;font-weight:650!important}</style>", unsafe_allow_html=True)
     speech_language = {
         "Français": "fr-FR",
         "English": "en-US",
@@ -1700,8 +1700,8 @@ elif page == "Assistant IA":
                 safe_message = html.escape(str(message), quote=True)
                 st.components.v1.html(
                     """<div style="font-family:Arial,sans-serif;padding:4px 0">
-                    <button id="sowiaSpeak" style="padding:10px 16px;border:2px solid #174b67;border-radius:10px;background:#fff;color:#123;font-weight:700;min-height:44px">🔊 Écouter cette réponse</button>
-                    <button id="sowiaStop" style="padding:10px 16px;border:2px solid #555;border-radius:10px;background:#fff;color:#123;font-weight:700;min-height:44px">■ Arrêter</button>
+                    <button id="sowiaSpeak" style="padding:10px 16px;border:2px solid #174b67;border-radius:10px;background:#102943;color:#eff9ff;font-weight:700;min-height:44px">🔊 Écouter cette réponse</button>
+                    <button id="sowiaStop" style="padding:10px 16px;border:2px solid #555;border-radius:10px;background:#102943;color:#eff9ff;font-weight:700;min-height:44px">■ Arrêter</button>
                     <span id="sowiaVoiceStatus" role="status" aria-live="polite"></span>
                     <div id="sowiaVoiceText" style="display:none">""" + safe_message + """</div>
                     <script>
