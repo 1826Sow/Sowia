@@ -38,19 +38,30 @@ begin
         raise exception 'STOP: replace the UUID placeholder with account A auth.users.id';
     end if;
 
-    select exists (
-        select 1
-        from public.sowia_entitlements e
-        where e.user_id = test_user_id
-          and e.status = 'active'
-          and e.provider = 'paypal'
-          and (not exists (
-              select 1 from pg_attribute
-              where attrelid = 'public.sowia_entitlements'::regclass
-                and attname = 'plan'
-                and not attisdropped
-          ) or e.plan = 'premium')
-    ) into had_active_entitlement;
+    if exists (
+        select 1 from pg_attribute
+        where attrelid = 'public.sowia_entitlements'::regclass
+          and attname = 'plan'
+          and not attisdropped
+    ) then
+        execute
+            'select exists (
+                select 1 from public.sowia_entitlements
+                where user_id = $1
+                  and plan = ''premium''
+                  and status = ''active''
+                  and provider = ''paypal''
+            )'
+        into had_active_entitlement
+        using test_user_id;
+    else
+        select exists (
+            select 1 from public.sowia_entitlements
+            where user_id = test_user_id
+              and status = 'active'
+              and provider = 'paypal'
+        ) into had_active_entitlement;
+    end if;
 
     if to_regclass('public.sowia_subscriptions') is not null then
         execute
