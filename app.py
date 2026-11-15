@@ -141,6 +141,100 @@ st.markdown(
       background: transparent !important;
       color: #eff9ff !important;
     }
+
+    /* Global mobile contrast baseline: keep every Streamlit notice readable across all rubriques. */
+    .stApp [data-testid="stAlert"],
+    .stApp div.stAlert,
+    .stApp [data-baseweb="notification"] {
+      background-color: #102943 !important;
+      background-image: none !important;
+      color: #eff9ff !important;
+      opacity: 1 !important;
+      isolation: isolate !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+    .stApp [data-testid="stAlert"] *,
+    .stApp div.stAlert *,
+    .stApp [data-baseweb="notification"] * {
+      opacity: 1 !important;
+      -webkit-text-fill-color: currentColor;
+    }
+    .stApp [data-testid="stAlert"] > div,
+    .stApp [data-testid="stAlert"] [data-testid="stMarkdownContainer"],
+    .stApp [data-testid="stAlert"] [data-testid="stAlertContent"],
+    .stApp div.stAlert > div,
+    .stApp [data-baseweb="notification"] > div {
+      background: transparent !important;
+      background-color: transparent !important;
+      color: #eff9ff !important;
+    }
+    .stApp [data-testid="stAlert"]::before,
+    .stApp [data-testid="stAlert"]::after,
+    .stApp div.stAlert::before,
+    .stApp div.stAlert::after,
+    .stApp [data-baseweb="notification"]::before,
+    .stApp [data-baseweb="notification"]::after {
+      background: transparent !important;
+      opacity: 1 !important;
+      pointer-events: none !important;
+    }
+    .stApp [data-testid="stAlert"] p,
+    .stApp [data-testid="stAlert"] span,
+    .stApp [data-testid="stAlert"] li,
+    .stApp div.stAlert p,
+    .stApp div.stAlert span,
+    .stApp [data-baseweb="notification"] p,
+    .stApp [data-baseweb="notification"] span {
+      color: #eff9ff !important;
+      -webkit-text-fill-color: #eff9ff !important;
+    }
+    /* Common panels used throughout the app. Avoid translucent pale surfaces on mobile. */
+    .stApp [data-testid="stExpander"] details,
+    .stApp [data-testid="stExpander"] summary,
+    .stApp [data-testid="stVerticalBlockBorderWrapper"],
+    .stApp [data-testid="stForm"],
+    .stApp [data-testid="stTabs"] [data-baseweb="tab-panel"] {
+      background-color: #0c1f35 !important;
+      color: #e8f3ff !important;
+    }
+    .stApp [data-testid="stExpander"] summary *,
+    .stApp [data-testid="stForm"] label,
+    .stApp [data-testid="stTabs"] [data-baseweb="tab"] {
+      color: #e8f3ff !important;
+    }
+    .stApp [data-testid="stTabs"] [aria-selected="true"] {
+      color: #75f2ff !important;
+      border-bottom-color: #22d8e8 !important;
+    }
+    .stApp [data-testid="stFileUploader"] section,
+    .stApp [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"] {
+      background-color: #102943 !important;
+      border-color: rgba(0,220,235,.48) !important;
+      color: #eff9ff !important;
+    }
+    .stApp [data-testid="stFileUploader"] p,
+    .stApp [data-testid="stFileUploader"] small,
+    .stApp [data-testid="stFileUploader"] span {
+      color: #e8f3ff !important;
+    }
+    .stApp [data-testid="stSelectbox"] [data-baseweb="select"] > div,
+    .stApp [data-testid="stMultiSelect"] [data-baseweb="select"] > div,
+    .stApp [data-testid="stDateInput"] input,
+    .stApp [data-testid="stTimeInput"] input {
+      border-color: #4a718d !important;
+    }
+    @media (max-width: 760px) {
+      .stApp [data-testid="stAlert"],
+      .stApp div.stAlert,
+      .stApp [data-baseweb="notification"],
+      .stApp [data-testid="stVerticalBlockBorderWrapper"],
+      .stApp [data-testid="stExpander"] details {
+        opacity: 1 !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+      }
+    }
     [data-testid="stExpander"] { border: 1px solid rgba(0,210,230,.20); border-radius: 14px; background: rgba(12,31,53,.92); }
     [data-testid="stDataFrame"] { border: 1px solid rgba(0,210,230,.20); border-radius: 13px; overflow: hidden; }
     [data-testid="stChatMessage"] { background: #102943 !important; border: 1px solid rgba(0,210,230,.20) !important; border-radius: 16px !important; padding: 1rem !important; box-shadow: 0 3px 12px rgba(0,0,0,.16); color: #e8f3ff !important; }
