@@ -1,29 +1,37 @@
 """Read configuration from environment variables or Streamlit Cloud secrets."""
 import os
-from collections.abc import Mapping
 
 
 def _normalise_name(value):
     return str(value).strip().upper().replace("-", "_").replace(" ", "_")
 
 
-def _find_secret(mapping, wanted):
-    """Find a setting at the top level or inside a named TOML section."""
-    if not isinstance(mapping, Mapping):
+def _find_secret(container, wanted, depth=0):
+    """Find a setting in Streamlit's mapping-like secrets object or TOML sections."""
+    if container is None or depth > 5:
         return None
-    if wanted in mapping:
-        value = mapping.get(wanted)
-        if value not in (None, ""):
-            return value
+    getter = getattr(container, "get", None)
+    if callable(getter):
+        try:
+            value = getter(wanted)
+            if value not in (None, ""):
+                return value
+        except Exception:
+            pass
+    items = getattr(container, "items", None)
+    if not callable(items):
+        return None
     target = _normalise_name(wanted)
-    for key, value in mapping.items():
+    try:
+        entries = list(items())
+    except Exception:
+        return None
+    for key, value in entries:
         if _normalise_name(key) == target and value not in (None, ""):
             return value
-    # Streamlit secrets may be grouped in TOML sections such as [supabase].
-    # Search nested sections by leaf key, without ever exposing secret values.
-    for value in mapping.values():
-        if isinstance(value, Mapping):
-            found = _find_secret(value, wanted)
+    for _key, value in entries:
+        if callable(getattr(value, "items", None)):
+            found = _find_secret(value, wanted, depth + 1)
             if found not in (None, ""):
                 return found
     return None
