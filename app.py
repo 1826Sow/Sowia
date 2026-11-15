@@ -3256,6 +3256,8 @@ elif page == "Abonnement":
                         prepare_subscription_clicked = st.form_submit_button(
                             "Préparer mon abonnement Premium",
                             use_container_width=True,
+                            on_click=go_to_page,
+                            args=("Abonnement",),
                         )
                     if prepare_subscription_clicked:
                             diagnostic_stage = "initialisation"
