@@ -712,11 +712,6 @@ def go_to_page(page_name):
     st.session_state.page_nav = page_name
     st.session_state.nav_category = category_for_page(page_name)
 
-def request_paypal_subscription_navigation():
-    """Defer navigation until immediately before sidebar widgets are created."""
-    st.session_state["_sowia_pending_navigation_page"] = "Abonnement"
-
-
 def resume_project_session(session_id):
     """Resume a project-linked conversation from the home dashboard."""
     st.session_state["sowia_resume_session_id"] = str(session_id)
@@ -932,13 +927,6 @@ if privacy_screen:
         </style>""",
         unsafe_allow_html=True,
     )
-
-# Apply callback-requested navigation before creating the sidebar widgets.
-# A separate pending key avoids a form callback racing with selectbox widget state.
-pending_navigation_page = st.session_state.pop("_sowia_pending_navigation_page", None)
-if pending_navigation_page in {item for pages in NAV_GROUPS.values() for item in pages}:
-    st.session_state["page_nav"] = pending_navigation_page
-    st.session_state["nav_category"] = category_for_page(pending_navigation_page)
 
 with st.sidebar:
     active_page = st.session_state.get("page_nav", "Hub SOWIA")
@@ -3263,12 +3251,12 @@ elif page == "Abonnement":
                 else:
                     st.info("Pour l’instant, aucun paiement réel n’est activé sur SOW IA. Cette étape sert uniquement à préparer un test PayPal Sandbox : aucun paiement réel ni accès Premium ne sera déclenché par cette préparation.")
                     st.caption("Diagnostic de déploiement Premium : SOWIA-PREMIUM-2026-11-15-B")
-                    with st.form("paypal_subscription_prepare_form", clear_on_submit=False):
-                        prepare_subscription_clicked = st.form_submit_button(
-                            "Préparer mon abonnement Premium",
-                            use_container_width=True,
-                            on_click=request_paypal_subscription_navigation,
-                        )
+                    prepare_subscription_clicked = st.button(
+                        "Préparer mon abonnement Premium",
+                        key="prepare_paypal_subscription",
+                        type="primary",
+                        use_container_width=True,
+                    )
                     if prepare_subscription_clicked:
                             diagnostic_stage = "initialisation"
                             st.session_state.pop("paypal_subscription_preparation_diagnostic", None)
