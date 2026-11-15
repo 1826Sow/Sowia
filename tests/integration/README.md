@@ -7,9 +7,11 @@ Les tests d'intégration vérifient les politiques RLS réellement appliquées a
 1. Utiliser un projet Supabase de test dédié, jamais la base de production.
 2. Dans **Authentication → Users**, créer deux comptes de test distincts (A et B) avec des adresses et mots de passe dédiés. Vérifier que les deux comptes peuvent se connecter.
 3. Dans le **SQL Editor** de ce projet de test, exécuter dans cet ordre :
-   - `supabase/schema.sql` (tables, RLS et droits de lecture Premium).
-   - `supabase_workspaces.sql` (ajout des espaces Personnel et Professionnel et fonction d'accès Premium utilisée par les politiques).
-   - `supabase/migrations/20261114000100_sowia_project_register.sql` (création de `sowia_projects`, de ses index et de ses politiques RLS). Exécuter cette migration dans le projet de test avant de lancer `test_sowia_project_register_rls.py`.
+   - `supabase/schema.sql` (tables de base, RLS et lecture de son propre droit Premium).
+   - `supabase_workspaces.sql` (ajout des colonnes d'espace Personnel/Professionnel aux conversations et mémoires).
+   - `supabase/migrations/20261109000100_sowia_subscriptions.sql` (table des abonnements récurrents PayPal).
+   - `supabase/migrations/20261114000100_sowia_project_register.sql` (registre des projets et politiques RLS).
+   - `supabase/migrations/20261115000100_sowia_professional_access_gate.sql` (fonction SQL sécurisée qui vérifie le droit Premium de l'utilisateur connecté ; exécution autorisée uniquement à `authenticated`).
    - `supabase_storage_policies.sql` (création du bucket privé `sowia-files` et règles d'accès PDF).
 4. Dans les paramètres API du projet de test, récupérer l'URL du projet et la clé publique **anon/publishable**. Ne pas utiliser la clé `service_role` ou une clé secrète.
 5. Fournir les sept variables ci-dessous uniquement dans l'environnement d'exécution sécurisé :
