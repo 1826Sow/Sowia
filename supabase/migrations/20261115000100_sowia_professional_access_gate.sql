@@ -21,15 +21,37 @@ begin
         return false;
     end if;
 
-    select exists (
+    -- Some deployed schemas have a plan column; the repository's base
+    -- schema identifies the entitlement by provider and active status only.
+    -- Preserve the Premium plan check where that column is present.
+    if exists (
         select 1
-        from public.sowia_entitlements as entitlement
-        where entitlement.user_id = current_user_id
-          and entitlement.plan = 'premium'
-          and entitlement.status = 'active'
-          and entitlement.provider = 'paypal'
-    )
-    into has_one_time_entitlement;
+        from pg_attribute
+        where attrelid = 'public.sowia_entitlements'::regclass
+          and attname = 'plan'
+          and not attisdropped
+    ) then
+        execute
+            'select exists (
+                select 1
+                from public.sowia_entitlements as entitlement
+                where entitlement.user_id = $1
+                  and entitlement.plan = ''premium''
+                  and entitlement.status = ''active''
+                  and entitlement.provider = ''paypal''
+            )'
+        into has_one_time_entitlement
+        using current_user_id;
+    else
+        select exists (
+            select 1
+            from public.sowia_entitlements as entitlement
+            where entitlement.user_id = current_user_id
+              and entitlement.status = 'active'
+              and entitlement.provider = 'paypal'
+        )
+        into has_one_time_entitlement;
+    end if;
 
     -- The recurring module is optional. Use dynamic SQL only after confirming
     -- the table exists, so this migration also works without that module.
