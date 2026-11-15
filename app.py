@@ -1824,7 +1824,7 @@ elif page == "Assistant IA":
             # Display the user's message immediately. A Supabase insert failure must
             # not make the submitted text disappear or prevent an AI response.
             render_accessible_message("user", prompt)
-        try:
+            try:
                 save_app_message("user", prompt)
             except Exception as save_error:
                 st.warning(
@@ -1832,7 +1832,7 @@ elif page == "Assistant IA":
                     "enregistrement dans l'historique a échoué. "
                     "Diagnostic : " + type(save_error).__name__
                 )
-    
+
             # Use the already-loaded history plus the current prompt. This avoids
             # losing the request if the cloud insert failed.
             request_history = conversation_history + [{"role": "user", "content": prompt}]
