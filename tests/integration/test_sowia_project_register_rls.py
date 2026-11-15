@@ -19,6 +19,8 @@ _REQUIRED = (
     "SOWIA_TEST_USER_A_PASSWORD",
     "SOWIA_TEST_USER_B_EMAIL",
     "SOWIA_TEST_USER_B_PASSWORD",
+    "SOWIA_TEST_USER_C_EMAIL",
+    "SOWIA_TEST_USER_C_PASSWORD",
     "SOWIA_TEST_PROJECT_CONFIRMATION",
 )
 _MISSING = [name for name in _REQUIRED if not os.getenv(name)]
@@ -98,28 +100,26 @@ def test_project_register_is_owner_scoped_and_professional_access_is_gated():
         os.environ["SOWIA_TEST_USER_B_EMAIL"],
         os.environ["SOWIA_TEST_USER_B_PASSWORD"],
     )
-    assert account_a.user_id != account_b.user_id
+    account_c = Account(
+        url, anon_key,
+        os.environ["SOWIA_TEST_USER_C_EMAIL"],
+        os.environ["SOWIA_TEST_USER_C_PASSWORD"],
+    )
+    assert len({account_a.user_id, account_b.user_id, account_c.user_id}) == 3
 
-    # Verify the fixture premise against Supabase itself before testing the
-    # Professional gate. A mislabeled Premium account must not create a false
-    # RLS vulnerability report.
-    for label, account in (("A", account_a), ("B", account_b)):
-        entitlements = account.request_resource(
-            "sowia_entitlements", "GET", params={"select": "status"}
-        )
-        entitlements.raise_for_status()
-        active_entitlements = [
-            row for row in entitlements.json() if row.get("status") == "active"
-        ]
-        subscriptions = account.request_resource(
-            "sowia_subscriptions", "GET",
-            params={"select": "status", "status": "eq.active"},
-        )
-        subscriptions.raise_for_status()
-        assert not active_entitlements and not subscriptions.json(), (
-            f"Test fixture account {label} is Premium; use a dedicated "
-            "non-Premium test account before testing Professional denial."
-        )
+    # Check C's fixture directly. The optional sowia_subscriptions table may
+    # not exist in this project, so do not query it from the test.
+    entitlements = account_c.request_resource(
+        "sowia_entitlements", "GET", params={"select": "status,plan"}
+    )
+    entitlements.raise_for_status()
+    active_entitlements = [
+        row for row in entitlements.json() if row.get("status") == "active"
+    ]
+    assert not active_entitlements, (
+        "Test fixture account C has an active Premium entitlement; "
+        "use a dedicated non-Premium test account."
+    )
 
     marker = "SOWIA RLS TEST " + uuid.uuid4().hex
     inserted_id = None
@@ -177,12 +177,12 @@ def test_project_register_is_owner_scoped_and_professional_access_is_gated():
         unchanged.raise_for_status()
         assert unchanged.json()[0]["title"] == marker
 
-        # Both fixture accounts are deliberately non-Premium: Professional
+        # The dedicated C fixture is deliberately non-Premium: Professional
         # workspace insertion must be rejected by the database policy itself.
-        professional_insert = account_b.request(
+        professional_insert = account_c.request(
             "POST",
             payload={
-                "user_id": account_b.user_id,
+                "user_id": account_c.user_id,
                 "workspace_id": "professional",
                 "title": marker + " PROFESSIONAL",
                 "description": "Must be denied to non-Premium test account",
@@ -190,18 +190,18 @@ def test_project_register_is_owner_scoped_and_professional_access_is_gated():
             },
         )
         assert professional_insert.status_code in (401, 403), (
-            "A non-Premium account must not insert into the Professional workspace; "
+            "The non-Premium account C must not insert into the Professional workspace; "
             f"received HTTP {professional_insert.status_code}"
         )
 
         # The Professional gate must cover conversations and memory too,
         # not only the project registry and UI navigation.
-        professional_message = account_b.request_resource(
+        professional_message = account_c.request_resource(
             "sowia_messages",
             "POST",
             params={"select": "id"},
             payload={
-                "user_id": account_b.user_id,
+                "user_id": account_c.user_id,
                 "session_id": marker,
                 "role": "user",
                 "content": "Synthetic Professional access-denial test",
@@ -213,12 +213,12 @@ def test_project_register_is_owner_scoped_and_professional_access_is_gated():
             f"received HTTP {professional_message.status_code}"
         )
 
-        professional_memory = account_b.request_resource(
+        professional_memory = account_c.request_resource(
             "sowia_memory_items",
             "POST",
             params={"select": "id"},
             payload={
-                "user_id": account_b.user_id,
+                "user_id": account_c.user_id,
                 "content": "Synthetic Professional memory access-denial test",
                 "workspace_id": "professional",
             },
