@@ -14,7 +14,7 @@ Les tests d'intégration vérifient les politiques RLS réellement appliquées a
    - `supabase/migrations/20261114000100_sowia_project_register.sql` (registre des projets et politiques RLS qui utilisent la fonction créée à l'étape précédente).
    - `supabase_storage_policies.sql` (création du bucket privé `sowia-files` et règles d'accès PDF).
 
-   La migration de sécurisation exige que `sowia_entitlements` expose les colonnes `user_id`, `plan`, `status` et `provider`. Elle accorde uniquement SELECT à `authenticated` ; la politique RLS propriétaire de cette table doit rester active. Si le module récurrent est installé, `sowia_subscriptions` doit également conserver RLS activé et sa politique SELECT limitée à `auth.uid() = user_id`.
+   La migration de sécurisation exige que `sowia_entitlements` expose les colonnes `user_id`, `status` et `provider`. Si la colonne `plan` existe, elle vérifie également `plan = 'premium'` ; sinon, elle suit le schéma de base du dépôt, où le droit Premium est représenté par un entitlement PayPal actif. Elle accorde uniquement SELECT à `authenticated` ; la politique RLS propriétaire de cette table doit rester active. Si le module récurrent est installé, `sowia_subscriptions` doit également conserver RLS activé et sa politique SELECT limitée à `auth.uid() = user_id`.
 4. Dans les paramètres API du projet de test, récupérer l'URL du projet et la clé publique **anon/publishable**. Ne pas utiliser la clé `service_role` ou une clé secrète.
 5. Fournir les sept variables ci-dessous uniquement dans l'environnement d'exécution sécurisé :
 
