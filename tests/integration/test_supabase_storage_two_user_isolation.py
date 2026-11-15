@@ -1,7 +1,7 @@
 """Opt-in live tests for per-user Supabase PDF Storage isolation.
 
 Run only against a dedicated Supabase test project and two dedicated test users.
-The tests use the public anon key and authenticated JWTs, never service_role.
+The tests use the public anon key and authenticated user JWTs, never service_role.
 """
 import os
 import uuid
@@ -145,6 +145,21 @@ def test_pdf_objects_are_private_to_their_authenticated_owner():
         )
         assert not forged_upload.ok, (
             "Account B unexpectedly uploaded an object under Account A's user folder"
+        )
+
+        # A non-Premium owner may use Personal storage but must be denied
+        # when attempting to upload into their own Professional workspace.
+        professional_upload = account_b.object_request(
+            "POST",
+            f"{account_b.user_id}/professional/sowia-professional-{uuid.uuid4().hex}.pdf",
+            data=PDF_FIXTURE,
+            headers={
+                "Content-Type": "application/pdf",
+                "x-upsert": "false",
+            },
+        )
+        assert not professional_upload.ok, (
+            "A non-Premium account unexpectedly uploaded a Professional PDF"
         )
 
         # Storage APIs may report a policy error or a no-op for an unauthorized
