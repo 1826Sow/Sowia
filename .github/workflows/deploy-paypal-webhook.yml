@@ -47,4 +47,5 @@ jobs:
           fi
           supabase functions deploy paypal-webhook \
             --project-ref qegcopordeqjiechmbhg \
-            --use-api
+            --use-api \
+            --yes
