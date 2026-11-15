@@ -9,11 +9,12 @@ import re
 MIGRATION = Path(
     "supabase/migrations/20261115000100_sowia_professional_access_gate.sql"
 )
+STORAGE_POLICIES = Path("supabase_storage_policies.sql")
 
 
 def _policy_block(sql: str, policy_name: str) -> str:
     match = re.search(
-        rf'create\s+policy\s+"{re.escape(policy_name)}".*?;',
+        rf'create\\s+policy\\s+"{re.escape(policy_name)}".*?;',
         sql,
         flags=re.IGNORECASE | re.DOTALL,
     )
@@ -63,3 +64,20 @@ def test_subscription_visibility_is_granted_only_through_owner_rls():
     sql = MIGRATION.read_text(encoding="utf-8").lower()
     assert "grant select on public.sowia_subscriptions to authenticated" in sql
     assert "security definer" not in sql
+
+
+def test_storage_policies_enforce_the_professional_premium_gate():
+    sql = STORAGE_POLICIES.read_text(encoding="utf-8").lower()
+    expected = {
+        "SOW IA users can read own workspace PDFs": "for select",
+        "SOW IA users can upload own workspace PDFs": "for insert",
+        "SOW IA users can delete own workspace PDFs": "for delete",
+    }
+
+    for name, operation in expected.items():
+        block = _policy_block(sql, name)
+        assert operation in block
+        assert "public.sowia_has_professional_access()" in block, (
+            f"{name} must enforce Premium for Professional PDFs"
+        )
+        assert "'personal'" in block and "'professional'" in block
