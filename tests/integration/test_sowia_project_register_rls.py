@@ -193,6 +193,40 @@ def test_project_register_is_owner_scoped_and_professional_access_is_gated():
             "A non-Premium account must not insert into the Professional workspace; "
             f"received HTTP {professional_insert.status_code}"
         )
+
+        # The Professional gate must cover conversations and memory too,
+        # not only the project registry and UI navigation.
+        professional_message = account_b.request_resource(
+            "sowia_messages",
+            "POST",
+            params={"select": "id"},
+            payload={
+                "user_id": account_b.user_id,
+                "session_id": marker,
+                "role": "user",
+                "content": "Synthetic Professional access-denial test",
+                "workspace_id": "professional",
+            },
+        )
+        assert professional_message.status_code in (401, 403), (
+            "A non-Premium account must not insert a Professional message; "
+            f"received HTTP {professional_message.status_code}"
+        )
+
+        professional_memory = account_b.request_resource(
+            "sowia_memory_items",
+            "POST",
+            params={"select": "id"},
+            payload={
+                "user_id": account_b.user_id,
+                "content": "Synthetic Professional memory access-denial test",
+                "workspace_id": "professional",
+            },
+        )
+        assert professional_memory.status_code in (401, 403), (
+            "A non-Premium account must not insert Professional memory; "
+            f"received HTTP {professional_memory.status_code}"
+        )
     finally:
         if inserted_id is not None:
             # No DELETE grant is intentionally provided. Keep the evidence row
