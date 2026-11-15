@@ -639,16 +639,33 @@ def create_night_exchange_app(client, user, app_name, country, timezone, categor
 
 
 def list_my_night_exchange_apps(client, user, workspace_id="professional", limit=100):
-    """List only the authenticated user's records, including moderation status."""
-    return (
+    """List own applications and retrieve moderation notes through an owner-scoped RPC."""
+    uid = _user_id(user)
+    rows = (
         client.table("sowia_night_exchange_apps")
-        .select("id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,status,moderation_note,created_at,updated_at")
-        .eq("user_id", _user_id(user))
+        .select("id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,status,created_at,updated_at")
+        .eq("user_id", uid)
         .eq("workspace_id", _workspace_id(workspace_id))
         .order("updated_at", desc=True)
         .limit(min(max(int(limit), 1), 200))
         .execute().data
     )
+    if not rows:
+        return rows
+
+    # moderation_note is intentionally excluded from table SELECT privileges.
+    # The RPC independently scopes results to auth.uid() and only these own IDs.
+    note_rows = client.rpc(
+        "sowia_get_my_nex_moderation_notes",
+        {"p_app_ids": [row["id"] for row in rows]},
+    ).execute().data or []
+    notes_by_app_id = {
+        str(item["app_id"]): item.get("moderation_note")
+        for item in note_rows
+    }
+    for row in rows:
+        row["moderation_note"] = notes_by_app_id.get(str(row["id"]))
+    return rows
 
 
 def list_approved_night_exchange_apps(client, user, country=None, limit=100):
