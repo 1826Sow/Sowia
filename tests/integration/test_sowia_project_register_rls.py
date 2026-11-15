@@ -1,6 +1,6 @@
 """Real two-account RLS checks for the SOW IA project register.
 
-Only run against a dedicated Supabase test project and two non-Premium test users.
+Only run against a dedicated Supabase test project with two Premium users (A/B) and one non-Premium user (C).
 The project table intentionally has no DELETE policy; each synthetic row is
 soft-archived and can be removed later by an administrator in the test project.
 """
@@ -209,7 +209,7 @@ def test_project_register_is_owner_scoped_and_professional_access_is_gated():
             },
         )
         assert professional_message.status_code in (401, 403), (
-            "A non-Premium account must not insert a Professional message; "
+            "The non-Premium account C must not insert a Professional message; "
             f"received HTTP {professional_message.status_code}"
         )
 
@@ -224,7 +224,7 @@ def test_project_register_is_owner_scoped_and_professional_access_is_gated():
             },
         )
         assert professional_memory.status_code in (401, 403), (
-            "A non-Premium account must not insert Professional memory; "
+            "The non-Premium account C must not insert Professional memory; "
             f"received HTTP {professional_memory.status_code}"
         )
     finally:
