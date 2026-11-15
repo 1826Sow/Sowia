@@ -3249,41 +3249,46 @@ elif page == "Abonnement":
                 else:
                     st.info("Pour l’instant, aucun paiement réel n’est activé sur SOW IA. Cette étape sert uniquement à préparer un test PayPal Sandbox : aucun paiement réel ni accès Premium ne sera déclenché par cette préparation.")
                     st.caption("Diagnostic de déploiement Premium : SOWIA-PREMIUM-2026-11-15-B")
-                    if st.button("Préparer mon abonnement Premium", key="create_paypal_subscription"):
-                        diagnostic_stage = "initialisation"
-                        st.session_state.pop("paypal_subscription_preparation_diagnostic", None)
-                        with st.status("Préparation de votre abonnement Premium…", expanded=True) as preparation_status:
-                            try:
-                                diagnostic_stage = "connexion admin Supabase"
-                                preparation_status.update(label="Étape 1/3 · Connexion sécurisée à Supabase…", state="running")
-                                admin_client_factory = premium_access.create_admin_client
-                                admin_client = admin_client_factory()
-                                if admin_client is None:
-                                    raise RuntimeError("Le stockage serveur Supabase n'est pas configuré.")
-                                diagnostic_stage = "création ou lecture du forfait PayPal"
-                                preparation_status.update(label="Étape 2/3 · Vérification du forfait PayPal…", state="running")
-                                plan_id = paypal_subscriptions.ensure_premium_plan(admin_client)
-                                diagnostic_stage = "création de l'abonnement PayPal"
-                                preparation_status.update(label="Étape 3/3 · Création de la demande d’abonnement…", state="running")
-                                created = paypal_subscriptions.create_premium_subscription(
-                                    str(current_user.id), plan_id=plan_id
-                                )
-                                st.session_state["paypal_subscription_approval_url"] = created["approval_url"]
-                                st.session_state.pop("paypal_subscription_preparation_diagnostic", None)
-                                preparation_status.update(label="Préparation terminée · Continuer vers PayPal Sandbox", state="complete", expanded=True)
-                                st.success("Votre demande Sandbox a été préparée. Aucun accès n’est accordé avant la confirmation du webhook.")
-                            except Exception as exc:
-                                preparation_status.update(label="La préparation a échoué · aucun accès Premium accordé", state="error", expanded=True)
-                                st.session_state.pop("paypal_subscription_approval_url", None)
-                                # Safe diagnostic: persist only the stage, exception class and HTTP status.
-                                # Never expose request headers, credentials, tokens, or response bodies.
-                                response = getattr(exc, "response", None)
-                                status_code = getattr(response, "status_code", None)
-                                diagnostic = diagnostic_stage + " · " + type(exc).__name__
-                                if status_code is not None:
-                                    diagnostic += f" · HTTP {status_code}"
-                                st.session_state["paypal_subscription_preparation_diagnostic"] = diagnostic
-                                st.error("Impossible de préparer l’abonnement PayPal. Aucun accès Premium n’a été accordé.")
+                    with st.form("paypal_subscription_prepare_form", clear_on_submit=False):
+                        prepare_subscription_clicked = st.form_submit_button(
+                            "Préparer mon abonnement Premium",
+                            use_container_width=True,
+                        )
+                    if prepare_subscription_clicked:
+                            diagnostic_stage = "initialisation"
+                            st.session_state.pop("paypal_subscription_preparation_diagnostic", None)
+                            with st.status("Préparation de votre abonnement Premium…", expanded=True) as preparation_status:
+                                try:
+                                    diagnostic_stage = "connexion admin Supabase"
+                                    preparation_status.update(label="Étape 1/3 · Connexion sécurisée à Supabase…", state="running")
+                                    admin_client_factory = premium_access.create_admin_client
+                                    admin_client = admin_client_factory()
+                                    if admin_client is None:
+                                        raise RuntimeError("Le stockage serveur Supabase n'est pas configuré.")
+                                    diagnostic_stage = "création ou lecture du forfait PayPal"
+                                    preparation_status.update(label="Étape 2/3 · Vérification du forfait PayPal…", state="running")
+                                    plan_id = paypal_subscriptions.ensure_premium_plan(admin_client)
+                                    diagnostic_stage = "création de l'abonnement PayPal"
+                                    preparation_status.update(label="Étape 3/3 · Création de la demande d’abonnement…", state="running")
+                                    created = paypal_subscriptions.create_premium_subscription(
+                                        str(current_user.id), plan_id=plan_id
+                                    )
+                                    st.session_state["paypal_subscription_approval_url"] = created["approval_url"]
+                                    st.session_state.pop("paypal_subscription_preparation_diagnostic", None)
+                                    preparation_status.update(label="Préparation terminée · Continuer vers PayPal Sandbox", state="complete", expanded=True)
+                                    st.success("Votre demande Sandbox a été préparée. Aucun accès n’est accordé avant la confirmation du webhook.")
+                                except Exception as exc:
+                                    preparation_status.update(label="La préparation a échoué · aucun accès Premium accordé", state="error", expanded=True)
+                                    st.session_state.pop("paypal_subscription_approval_url", None)
+                                    # Safe diagnostic: persist only the stage, exception class and HTTP status.
+                                    # Never expose request headers, credentials, tokens, or response bodies.
+                                    response = getattr(exc, "response", None)
+                                    status_code = getattr(response, "status_code", None)
+                                    diagnostic = diagnostic_stage + " · " + type(exc).__name__
+                                    if status_code is not None:
+                                        diagnostic += f" · HTTP {status_code}"
+                                    st.session_state["paypal_subscription_preparation_diagnostic"] = diagnostic
+                                    st.error("Impossible de préparer l’abonnement PayPal. Aucun accès Premium n’a été accordé.")
                     saved_diagnostic = st.session_state.get("paypal_subscription_preparation_diagnostic")
                     if saved_diagnostic:
                         st.warning("La préparation s’est arrêtée avant l’ouverture de PayPal.")
