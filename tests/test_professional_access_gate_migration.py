@@ -29,12 +29,14 @@ def test_professional_access_function_is_invoker_scoped_and_not_public():
     assert "security invoker" in sql
     assert "set search_path = ''" in sql
     assert "auth.uid()" in function
-    assert "entitlement.plan = 'premium'" in function
+    assert "entitlement.plan = ''premium''" in function
     assert "entitlement.status = 'active'" in function
     assert "entitlement.provider = 'paypal'" in function
     assert "subscription.status = ''active''" in function
     assert "subscription.provider = ''paypal''" in function
     assert "to_regclass('public.sowia_subscriptions')" in function
+    assert "pg_attribute" in function
+    assert "attname = 'plan'" in function
     assert "execute" in function
     assert "revoke all on function public.sowia_has_professional_access() from public" in sql
     assert "revoke all on function public.sowia_has_professional_access() from anon" in sql
