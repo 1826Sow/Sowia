@@ -325,3 +325,65 @@ def test_invalid_accessibility_preferences_are_rejected_before_database_write(in
 
     with pytest.raises(ValueError):
         cloud_storage.set_accessibility_preferences(Client(), User(), invalid)
+
+
+def test_night_exchange_moderation_notes_are_loaded_through_owner_scoped_rpc():
+    app_rows = [
+        {"id": "app-1", "app_name": "One", "status": "rejected"},
+        {"id": "app-2", "app_name": "Two", "status": "approved"},
+    ]
+
+    class AppQuery(FakeQuery):
+        def execute(self):
+            return SimpleNamespace(data=[dict(row) for row in app_rows])
+
+    class RpcQuery:
+        def execute(self):
+            return SimpleNamespace(data=[
+                {"app_id": "app-1", "moderation_note": "À compléter"}
+            ])
+
+    class Client:
+        def __init__(self):
+            self.query = AppQuery()
+            self.rpc_call = None
+
+        def table(self, name):
+            assert name == "sowia_night_exchange_apps"
+            return self.query
+
+        def rpc(self, name, params):
+            self.rpc_call = (name, params)
+            return RpcQuery()
+
+    client = Client()
+    rows = cloud_storage.list_my_night_exchange_apps(
+        client, User(), workspace_id="professional"
+    )
+
+    selected_columns = client.query.operations[0][1]
+    assert "moderation_note" not in selected_columns
+    assert ("user_id", "user-123") in client.query.filters
+    assert ("workspace_id", "professional") in client.query.filters
+    assert client.rpc_call == (
+        "sowia_get_my_nex_moderation_notes",
+        {"p_app_ids": ["app-1", "app-2"]},
+    )
+    assert rows[0]["moderation_note"] == "À compléter"
+    assert rows[1]["moderation_note"] is None
+
+
+def test_night_exchange_empty_owner_list_skips_moderation_rpc():
+    class EmptyQuery(FakeQuery):
+        def execute(self):
+            return SimpleNamespace(data=[])
+
+    class Client:
+        def table(self, name):
+            assert name == "sowia_night_exchange_apps"
+            return EmptyQuery()
+
+        def rpc(self, *_args, **_kwargs):
+            raise AssertionError("RPC must be skipped when there are no own applications")
+
+    assert cloud_storage.list_my_night_exchange_apps(Client(), User()) == []
