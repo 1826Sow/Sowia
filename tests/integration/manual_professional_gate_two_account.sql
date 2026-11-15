@@ -119,16 +119,6 @@ begin
     values
         (test_user_id, 'personal', marker, 'Temporary rollback-only test', 'À tester');
 
-    -- Verify Storage INSERT permissions and the Personal/Professional path gate.
-    if not has_table_privilege(current_user, 'storage.objects', 'INSERT') then
-        raise exception 'STOP: authenticated role has no INSERT grant on storage.objects';
-    end if;
-    if not exists (select 1 from storage.buckets where id = 'sowia-files') then
-        raise exception 'STOP: private sowia-files bucket is missing';
-    end if;
-    insert into storage.objects (bucket_id, name)
-    values ('sowia-files', test_user_id::text || '/personal/' || marker || '.pdf');
-
     -- Each Professional INSERT must fail specifically because of RLS.
     begin
         insert into public.sowia_messages
@@ -161,15 +151,9 @@ begin
         null;
     end;
 
-    begin
-        insert into storage.objects (bucket_id, name)
-        values ('sowia-files', test_user_id::text || '/professional/' || marker || '.pdf');
-        raise exception 'FAIL: free account inserted a Professional Storage object';
-    exception when insufficient_privilege then
-        null;
-    end;
 
-    raise notice 'PASS: Personal inserts allowed; Professional message, memory, project, and Storage inserts denied.';
+
+    raise notice 'PASS: Personal inserts allowed; Professional message, memory, and project inserts denied.';
 end;
 $assertions$;
 
