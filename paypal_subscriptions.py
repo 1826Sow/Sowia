@@ -63,8 +63,11 @@ def paypal_subscription_toggle_diagnostic() -> str:
 def paypal_subscription_configuration_status():
     """Return safe names of missing settings without exposing secret values."""
     missing = []
+    mode = _setting("PAYPAL_MODE", "sandbox").lower()
+    # Sandbox preparation is a test-only path and does not grant Premium access.
+    # The explicit feature toggle remains mandatory for any future live mode.
     enabled = _subscriptions_enabled()
-    if not enabled:
+    if mode == "live" and not enabled:
         missing.append("SOWIA_SUBSCRIPTIONS_ENABLED=true")
     for name in (
         "PAYPAL_CLIENT_ID",
@@ -74,21 +77,22 @@ def paypal_subscription_configuration_status():
     ):
         if not _setting(name):
             missing.append(name)
-    mode = _setting("PAYPAL_MODE", "sandbox").lower()
     if mode not in {"sandbox", "live"}:
         missing.append("PAYPAL_MODE (sandbox)")
     return missing
 
 def paypal_subscription_configuration():
     """Return configuration only when recurring billing is explicitly enabled."""
-    enabled = _subscriptions_enabled()
-    if not enabled:
+    mode = _setting("PAYPAL_MODE", "sandbox").lower()
+    # Keep Sandbox available for controlled testing even while the public
+    # subscription feature toggle is off. Sandbox never grants Premium access;
+    # the verified PayPal webhook remains the only entitlement authority.
+    if mode == "live" and not _subscriptions_enabled():
         return None
 
     client_id = _setting("PAYPAL_CLIENT_ID")
     client_secret = _setting("PAYPAL_CLIENT_SECRET")
     plan_id = _setting("PAYPAL_PREMIUM_PLAN_ID")
-    mode = _setting("PAYPAL_MODE", "sandbox").lower()
     return_url = _setting("PAYPAL_SUBSCRIPTION_RETURN_URL")
     cancel_url = _setting("PAYPAL_SUBSCRIPTION_CANCEL_URL")
     webhook_id = _setting("PAYPAL_SUBSCRIPTION_WEBHOOK_ID")
