@@ -204,8 +204,25 @@ def _supabase_project_url():
     return urlunsplit((parts.scheme, parts.netloc, "", "", ""))
 
 
+def _supabase_anon_key():
+    """Read a legacy anon key or the current Supabase publishable-key name."""
+    return str(
+        get_setting("SUPABASE_ANON_KEY", "")
+        or get_setting("SUPABASE_PUBLISHABLE_KEY", "")
+    ).strip()
+
+
+def configuration_status():
+    """Expose presence flags only; never return or log secret values."""
+    return {
+        "url_present": bool(str(get_setting("SUPABASE_URL", "")).strip()),
+        "key_present": bool(_supabase_anon_key()),
+    }
+
+
 def configuration_ready():
-    return bool(get_setting("SUPABASE_URL") and get_setting("SUPABASE_ANON_KEY"))
+    status = configuration_status()
+    return status["url_present"] and status["key_present"]
 
 
 def email_is_allowed(email, allowed_emails):
@@ -224,7 +241,7 @@ def email_is_allowed(email, allowed_emails):
 def create_user_client(browser_id):
     """Create a per-session PKCE client; service-role keys are never accepted."""
     url = _supabase_project_url()
-    key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
+    key = _supabase_anon_key()
     if not key:
         raise RuntimeError(
             "Supabase n'est pas configuré. Renseignez SUPABASE_ANON_KEY "
