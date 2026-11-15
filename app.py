@@ -29,7 +29,6 @@ from sowia_supabase_auth import (
     email_magic_link,
     email_is_allowed,
     configuration_ready,
-    create_email_user_client,
     create_user_client,
     github_authorization_url,
     read_email_auth_fragment,
@@ -506,8 +505,10 @@ if cloud_mode:
                         elif not redirect_to:
                             raise ValueError("URL HTTPS de retour invalide")
                         else:
-                            email_client = create_email_user_client()
-                            email_magic_link(email_client, candidate_login_email, redirect_to)
+                            # Use the same browser-scoped PKCE client for email sign-in and callback.
+                            # Supabase then returns a one-time ?code= value, which is exchanged
+                            # by the existing server-side PKCE verifier after Gmail/Android returns.
+                            email_magic_link(supabase_client, candidate_login_email, redirect_to)
                             st.session_state["sowia_email_login_pending"] = candidate_login_email
                             st.success(
                                 "Adresse validée. Si elle correspond à un compte existant, "
