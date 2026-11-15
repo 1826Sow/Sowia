@@ -29,6 +29,7 @@ from sowia_supabase_auth import (
     email_magic_link,
     email_is_allowed,
     configuration_ready,
+    configuration_status,
     create_email_user_client,
     create_user_client,
     github_authorization_url,
@@ -297,7 +298,23 @@ language = "Français"
 auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "true")).strip().lower() in {"1", "true", "yes"}
 supabase_enabled = configuration_ready()
 if auth_required and not supabase_enabled:
-    st.error("SOW IA est en mode protégé, mais Supabase n'est pas encore configuré. L'accès est fermé jusqu'à la configuration de l'authentification.")
+    status = configuration_status()
+    missing = []
+    if not status["url_present"]:
+        missing.append("SUPABASE_URL")
+    if not status["key_present"]:
+        missing.append("SUPABASE_ANON_KEY ou SUPABASE_PUBLISHABLE_KEY")
+    st.error(
+        "SOW IA est en mode protégé. La configuration Supabase n'est pas détectée par cette version de l'application."
+    )
+    st.warning(
+        "Diagnostic automatique (valeurs secrètes masquées) : "
+        + ("; ".join(missing) if missing else "les deux paramètres sont détectés, mais la configuration reste indisponible.")
+    )
+    st.caption(
+        "Aucune clé n'est affichée. Les clés publiques SUPABASE_ANON_KEY "
+        "et SUPABASE_PUBLISHABLE_KEY sont prises en charge."
+    )
     st.stop()
 
 # Supabase ne doit être utilisé que si l'authentification obligatoire est activée.
