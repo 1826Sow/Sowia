@@ -1740,11 +1740,9 @@ elif page == "Assistant IA":
         # Display the user's message immediately. A Supabase insert failure must
         # not make the submitted text disappear or prevent an AI response.
         render_accessible_message("user", prompt)
-        message_saved = True
         try:
             save_app_message("user", prompt)
         except Exception as save_error:
-            message_saved = False
             st.warning(
                 "Votre message est visible dans cette session, mais son "
                 "enregistrement dans l'historique a échoué. "
