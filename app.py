@@ -3251,6 +3251,7 @@ elif page == "Abonnement":
                     st.caption("Diagnostic de déploiement Premium : SOWIA-PREMIUM-2026-11-15-B")
                     if st.button("Préparer mon abonnement Premium", key="create_paypal_subscription"):
                         diagnostic_stage = "initialisation"
+                        st.session_state.pop("paypal_subscription_preparation_diagnostic", None)
                         with st.status("Préparation de votre abonnement Premium…", expanded=True) as preparation_status:
                             try:
                                 diagnostic_stage = "connexion admin Supabase"
@@ -3268,19 +3269,26 @@ elif page == "Abonnement":
                                     str(current_user.id), plan_id=plan_id
                                 )
                                 st.session_state["paypal_subscription_approval_url"] = created["approval_url"]
+                                st.session_state.pop("paypal_subscription_preparation_diagnostic", None)
                                 preparation_status.update(label="Préparation terminée · Continuer vers PayPal Sandbox", state="complete", expanded=True)
                                 st.success("Votre demande Sandbox a été préparée. Aucun accès n’est accordé avant la confirmation du webhook.")
                             except Exception as exc:
                                 preparation_status.update(label="La préparation a échoué · aucun accès Premium accordé", state="error", expanded=True)
-                                st.error("Impossible de préparer l’abonnement PayPal. Aucun accès Premium n’a été accordé.")
-                                # Safe diagnostic: expose only the stage, exception class and HTTP status.
+                                st.session_state.pop("paypal_subscription_approval_url", None)
+                                # Safe diagnostic: persist only the stage, exception class and HTTP status.
                                 # Never expose request headers, credentials, tokens, or response bodies.
                                 response = getattr(exc, "response", None)
                                 status_code = getattr(response, "status_code", None)
                                 diagnostic = diagnostic_stage + " · " + type(exc).__name__
                                 if status_code is not None:
                                     diagnostic += f" · HTTP {status_code}"
-                                st.caption("Diagnostic technique (sans identifiants) : " + diagnostic)
+                                st.session_state["paypal_subscription_preparation_diagnostic"] = diagnostic
+                                st.error("Impossible de préparer l’abonnement PayPal. Aucun accès Premium n’a été accordé.")
+                    saved_diagnostic = st.session_state.get("paypal_subscription_preparation_diagnostic")
+                    if saved_diagnostic:
+                        st.warning("La préparation s’est arrêtée avant l’ouverture de PayPal.")
+                        st.code("Diagnostic technique (sans identifiants) : " + saved_diagnostic)
+                        st.caption("Ce diagnostic reste affiché après le clic. Il ne contient aucune clé ni aucun jeton.")
                     approval_url = st.session_state.get("paypal_subscription_approval_url")
                     if approval_url:
                         st.link_button("Continuer sur PayPal Sandbox", approval_url, use_container_width=True)
