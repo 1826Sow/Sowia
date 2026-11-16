@@ -4459,6 +4459,52 @@ elif page == "SOWIA GLOBAL PERFORMANCE & IMPACT":
                             st.error("Mesure non enregistrée : " + type(performance_save_error).__name__)
             with performance_tabs[1]:
                 summary = performance_engine.summarize_performance(performance_rows)
+                st.markdown("#### 📈 Courbe d'évolution de l'avancement")
+                trend_points = []
+                for trend_row in performance_rows:
+                    raw_stamp = trend_row.get("observed_at") or trend_row.get("created_at")
+                    try:
+                        trend_date = datetime.fromisoformat(
+                            str(raw_stamp).replace("Z", "+00:00")
+                        ).date().isoformat()
+                        plan_id = str(trend_row.get("action_plan_id") or "")
+                        plan_title = str(trend_row.get("plan_title_snapshot") or "Plan sans titre")
+                        if not plan_id:
+                            continue
+                        trend_points.append({
+                            "Date": trend_date,
+                            "Plan": f"{plan_title} · {plan_id[:8]}",
+                            "Plan ID": plan_id,
+                            "Avancement (%)": float(trend_row.get("progress_percent") or 0),
+                        })
+                    except (TypeError, ValueError):
+                        continue
+                import pandas as pd
+                trend_frame = pd.DataFrame(trend_points) if trend_points else None
+                repeat_measurement = (
+                    trend_frame.groupby("Plan ID").size().max()
+                    if trend_frame is not None and not trend_frame.empty else 0
+                )
+                if repeat_measurement >= 2:
+                    trend_chart = (
+                        trend_frame.pivot_table(
+                            index="Date", columns="Plan",
+                            values="Avancement (%)", aggfunc="last",
+                        )
+                        .sort_index()
+                    )
+                    trend_chart.columns.name = None
+                    st.line_chart(trend_chart, y_label="Avancement (%)")
+                    st.caption(
+                        "Chaque courbe suit les mesures successives enregistrées pour un plan. "
+                        "Une courbe n'apparaît qu'après plusieurs relevés ; aucune progression "
+                        "n'est extrapolée entre deux mesures."
+                    )
+                else:
+                    st.info(
+                        "La courbe apparaîtra après l'enregistrement d'au moins deux mesures "
+                        "datées. Les données existantes restent inchangées."
+                    )
                 p1, p2, p3 = st.columns(3)
                 p1.metric("Plans mesurés", summary["measured_plans"])
                 p2.metric("Avancement moyen", (
@@ -6555,6 +6601,60 @@ elif page == "Opportunités et revenus":
             opportunities = list_opportunities(supabase_client, current_user, business_workspace)
             metrics = opportunity_metrics(opportunities)
 
+            st.markdown("#### 📊 Répartition du pipeline commercial")
+            if opportunities:
+                import pandas as pd
+                stage_counts = {
+                    stage: sum(1 for item in opportunities if item.get("stage") == stage)
+                    for stage in STAGES
+                }
+                st.bar_chart(
+                    pd.DataFrame({"Opportunités": stage_counts}),
+                    y_label="Nombre d'offres",
+                )
+                for chart_currency in sorted({
+                    str(item.get("currency") or "EUR") for item in opportunities
+                }):
+                    currency_rows = [
+                        item for item in opportunities
+                        if str(item.get("currency") or "EUR") == chart_currency
+                    ]
+                    stage_forecasts = {
+                        stage: round(sum(
+                            float(item.get("expected_monthly_revenue") or 0)
+                            for item in currency_rows if item.get("stage") == stage
+                        ), 2)
+                        for stage in STAGES
+                    }
+                    stage_net_forecasts = {
+                        stage: round(sum(
+                            float(item.get("expected_monthly_revenue") or 0)
+                            - float(item.get("estimated_monthly_cost") or 0)
+                            for item in currency_rows if item.get("stage") == stage
+                        ), 2)
+                        for stage in STAGES
+                    }
+                    st.markdown(f"**Revenu mensuel potentiel par étape — {chart_currency}**")
+                    st.bar_chart(
+                        pd.DataFrame({
+                            f"Revenu potentiel ({chart_currency})": stage_forecasts
+                        }),
+                        y_label=f"Montant ({chart_currency})",
+                    )
+                    st.markdown(f"**Marge mensuelle estimée après coûts — {chart_currency}**")
+                    st.bar_chart(
+                        pd.DataFrame({
+                            f"Marge estimée ({chart_currency})": stage_net_forecasts
+                        }),
+                        y_label=f"Montant ({chart_currency})",
+                    )
+                st.caption(
+                    "Ces graphiques décrivent l'état actuel du pipeline et les prévisions saisies. "
+                    "Ils ne représentent ni un historique des ventes ni des revenus encaissés."
+                )
+            else:
+                st.info("Le graphique du pipeline apparaîtra après l'enregistrement d'une première opportunité.")
+
             metric_cols = st.columns(3)
             metric_cols[0].metric("Niches / offres suivies", metrics["total"])
             metric_cols[1].metric("Offres actives", metrics["active"])
@@ -6577,6 +6677,43 @@ elif page == "Opportunités et revenus":
                 st.dataframe(forecast_rows, use_container_width=True, hide_index=True)
             else:
                 st.caption("Aucune prévision enregistrée pour le moment.")
+
+            if opportunities:
+                st.markdown("#### 🧭 Priorité économique des opportunités")
+                st.caption(
+                    "Classement indicatif par marge mensuelle estimée (revenu potentiel moins coût estimé). "
+                    "Il ne tient pas lieu de probabilité de réussite ni de revenu encaissé."
+                )
+                for ranking_currency in sorted({
+                    str(item.get("currency") or "EUR") for item in opportunities
+                }):
+                    ranking_rows = []
+                    for item in opportunities:
+                        currency_value = str(item.get("currency") or "EUR")
+                        if currency_value != ranking_currency:
+                            continue
+                        revenue_value = float(item.get("expected_monthly_revenue") or 0)
+                        cost_value = float(item.get("estimated_monthly_cost") or 0)
+                        margin_value = revenue_value - cost_value
+                        margin_rate = (
+                            round((margin_value / revenue_value) * 100, 1)
+                            if revenue_value > 0 else None
+                        )
+                        ranking_rows.append({
+                            "Offre": str(item.get("offer") or item.get("niche") or "Sans titre"),
+                            "Étape": str(item.get("stage") or "À étudier"),
+                            "Revenu potentiel / mois": round(revenue_value, 2),
+                            "Coût estimé / mois": round(cost_value, 2),
+                            "Marge estimée / mois": round(margin_value, 2),
+                            "Marge (%)": margin_rate if margin_rate is not None else "—",
+                        })
+                    ranking_rows.sort(
+                        key=lambda row: row["Marge estimée / mois"], reverse=True
+                    )
+                    st.markdown(f"**Classement — {ranking_currency}**")
+                    st.dataframe(
+                        ranking_rows, use_container_width=True, hide_index=True
+                    )
 
             with st.expander("＋ Ajouter une opportunité commerciale", expanded=not opportunities):
                 with st.form("business_opportunity_form", clear_on_submit=True):
