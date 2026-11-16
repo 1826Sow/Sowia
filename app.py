@@ -3452,6 +3452,60 @@ elif page == "Abonnement":
                     )
             st.write("Votre droit d’accès est enregistré sur votre compte et sera retrouvé lors de vos prochaines connexions.")
         else:
+            # One-time Premium checkout (EUR) is separate from the recurring
+            # subscription flow. PayPal credentials and the explicit enable
+            # switch are read only on the trusted Streamlit server.
+            try:
+                one_time_config = paypal_payments.paypal_configuration()
+            except ValueError:
+                one_time_config = None
+                st.error("La configuration du paiement ponctuel PayPal est invalide.")
+
+            if one_time_config is not None:
+                payment_price = f"{one_time_config['amount']} €"
+                st.markdown("#### Accès Premium — paiement unique")
+                st.write(
+                    f"Débloquez l’espace Professionnel avec un paiement unique de **{payment_price}**. "
+                    "Aucun renouvellement mensuel automatique."
+                )
+                if st.button(
+                    f"Payer {payment_price} avec PayPal",
+                    key="buy_sowia_premium_one_time",
+                    type="primary",
+                    use_container_width=True,
+                ):
+                    try:
+                        created_order = paypal_payments.create_premium_order(
+                            str(current_user.id)
+                        )
+                        st.session_state["paypal_one_time_approval_url"] = created_order["approval_url"]
+                        st.session_state.pop("paypal_one_time_checkout_diagnostic", None)
+                    except Exception as checkout_error:
+                        response = getattr(checkout_error, "response", None)
+                        status_code = getattr(response, "status_code", None)
+                        safe_diagnostic = type(checkout_error).__name__
+                        if status_code is not None:
+                            safe_diagnostic += f" · HTTP {status_code}"
+                        st.session_state["paypal_one_time_checkout_diagnostic"] = safe_diagnostic
+                        st.session_state.pop("paypal_one_time_approval_url", None)
+                        st.error("Impossible de préparer le paiement PayPal. Aucun accès Premium n’a été accordé.")
+
+                approval_url = st.session_state.get("paypal_one_time_approval_url")
+                if approval_url:
+                    st.link_button(
+                        "Continuer vers le paiement PayPal",
+                        approval_url,
+                        use_container_width=True,
+                    )
+                checkout_diagnostic = st.session_state.get("paypal_one_time_checkout_diagnostic")
+                if checkout_diagnostic:
+                    st.caption("Diagnostic technique (sans identifiants) : " + checkout_diagnostic)
+            else:
+                st.info(
+                    "Le paiement ponctuel Premium de 9,90 € n’est pas encore activé. "
+                    "La configuration PayPal réelle doit être renseignée dans les Secrets Streamlit."
+                )
+
             try:
                 subscription_config = paypal_subscriptions.paypal_subscription_configuration()
             except ValueError:
