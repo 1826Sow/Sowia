@@ -40,6 +40,17 @@ def test_recovery_requires_a_later_matching_event_and_active_subscription():
     assert "upper(coalesce(p_status, 'UNKNOWN')) <> 'ACTIVE'" in MIGRATION
 
 
+
+def test_inactive_paypal_snapshot_creates_a_chronology_record():
+    assert "or upper(coalesce(p_status, 'UNKNOWN')) <> 'ACTIVE'" in MIGRATION
+    assert "source_paypal_status" in MIGRATION
+    assert "v_effective_block_event" in MIGRATION
+
+
+def test_existing_subscription_cannot_be_reassigned_to_another_user():
+    assert "v_existing_user_id <> p_user_id" in MIGRATION
+    assert "already linked to a different SOW IA user" in MIGRATION
+
 def test_rpc_is_not_executable_by_end_user_roles():
     assert "revoke all on function public.sowia_apply_paypal_subscription_event" in MIGRATION
     assert "from public, anon, authenticated" in MIGRATION
