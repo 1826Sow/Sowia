@@ -727,7 +727,7 @@ NAV_GROUPS = {
         "SOW IA Business Club", "Opportunités et revenus", "Technologies & fournisseurs",
         "SOWIA GLOBAL COLLABORATION HUB",
     ],
-    "🧠 Intelligence & décisions": [
+    "✨ Intelligence & décisions": [
         "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE",
         "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE",
         "SOWIA GLOBAL LEARNING ENGINE", "Stratégie & scénarios",
@@ -1086,7 +1086,7 @@ with nav_label_col:
 
 st.markdown(
     '<div class="hero"><div class="hero-kicker">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>'
-    '<h1>🧠 SOW IA</h1>'
+    '<h1>SOW IA</h1>'
     '<p>La technologie au service des décisions, de la productivité et des opportunités. '
     'Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.</p>'
     '<div class="hero-meta"><span class="hero-chip">🔐 Espaces de travail sécurisés</span>'
@@ -1287,7 +1287,7 @@ if page == "Accueil":
             ("Technologies & fournisseurs", "Solutions et fournisseurs"),
             ("SOWIA GLOBAL COLLABORATION HUB", "Collaboration entre acteurs"),
         ]),
-        ("🧠 04 · Intelligence & stratégie", [
+        ("✨ 04 · Intelligence & stratégie", [
             ("Décisions humaines vs SOW IA", "Comparer les décisions"),
             ("Stratégie & scénarios", "Étudier les scénarios"),
             ("SOWIA GLOBAL INTELLIGENCE", "Intelligence globale"),
@@ -1360,7 +1360,7 @@ elif page == "Hub SOWIA":
     hub_quick_access = [
         ("💬 Mes échanges & projets", "Mes échanges & projets", "Gérer vos projets, leurs statuts et les livrables associés."),
         ("↩ Reprendre mes échanges", "Historique", "Retrouver les conversations disponibles."),
-        ("🧠 Continuer avec SOW IA", "Assistant IA", "Reprendre le travail avec l’assistant."),
+        ("✨ Continuer avec SOW IA", "Assistant IA", "Reprendre le travail avec l’assistant."),
         ("📄 Mes livrables & documents", "Mes documents", "Consulter les PDF et fichiers enregistrés."),
         ("🧪 Laboratoire PDF", "Analyse PDF", "Analyser un document ou poursuivre son traitement."),
         ("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "Accéder à l’espace d’échanges de l’écosystème."),
@@ -1385,7 +1385,7 @@ elif page == "Hub SOWIA":
     st.caption("Vos outils quotidiens, votre mémoire et vos documents privés.")
     personal_items = [
         ("💬 Assistant IA", "Assistant IA", "Dialoguer avec SOWIA"),
-        ("🧠 Mémoire", "Ma mémoire", "Retrouver vos informations utiles"),
+        ("📚 Mémoire", "Ma mémoire", "Retrouver vos informations utiles"),
         ("📄 Documents", "Mes documents", "Gérer vos fichiers personnels"),
         ("🌐 Recherche", "Recherche Web", "Explorer des informations et des sources"),
     ]
@@ -1450,7 +1450,7 @@ elif page == "Hub SOWIA":
         else:
             st.info("Connectez-vous à votre compte sécurisé pour afficher les indicateurs professionnels enregistrés.")
         business_pillars = [
-            ("🧠 1. Intelligence & décisions", [
+            ("✨ 1. Intelligence & décisions", [
                 ("Décisions humaines vs SOWIA", "Décisions humaines vs SOW IA", "Comparer les décisions et conserver les résultats pour les statistiques."),
                 ("Stratégie & scénarios", "Stratégie & scénarios", "Étudier plusieurs scénarios avant de choisir."),
             ]),
@@ -1726,7 +1726,7 @@ elif page == "Hub SOWIA":
             ("SOW IA Business Club", "Relations et partenariats professionnels"),
             ("Opportunités et revenus", "Suivre les opportunités commerciales"),
         ]),
-        ("🧠 Stratégie & intelligence", [
+        ("✨ Stratégie & intelligence", [
             ("Décisions humaines vs SOW IA", "Comparer les décisions et leurs résultats"),
             ("SOWIA GLOBAL INTELLIGENCE", "Outils d'intelligence globale"),
             ("SOWIA GLOBAL PULSE", "Suivre les signaux et tendances"),
@@ -1976,7 +1976,7 @@ elif page == "Ma mémoire":
         if st.session_state.get("workspace_id") == "professional"
         else "personnel"
     )
-    st.subheader(f"🧠 Ma mémoire — espace {workspace_label}")
+    st.subheader(f"📚 Ma mémoire — espace {workspace_label}")
     st.write("Ajoutez les informations que SOW IA pourra réutiliser dans ses prochaines réponses.")
     if cloud_mode:
         st.success(f"Vos notes sont enregistrées dans votre espace {workspace_label} Supabase.")
@@ -4799,7 +4799,7 @@ elif page == "SOWIA GLOBAL AUTONOMOUS STRATEGY":
 
 
 elif page == "SOWIA GLOBAL LEARNING ENGINE":
-    st.subheader("🧠 SOWIA GLOBAL LEARNING ENGINE")
+    st.subheader("SOWIA GLOBAL LEARNING ENGINE")
     st.caption("Confrontez les recommandations enregistrées aux choix réellement effectués et aux résultats observés.")
     st.warning("Ce registre documente l'expérience : il ne prouve pas de causalité, ne connaît pas les résultats contrefactuels et ne réentraîne pas automatiquement le modèle d'IA. Les décisions d'origine restent figées.")
     if not cloud_mode or current_user is None:
