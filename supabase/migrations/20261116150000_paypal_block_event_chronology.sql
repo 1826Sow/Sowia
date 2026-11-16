@@ -44,8 +44,6 @@ declare
   v_previously_blocked boolean := false;
   v_existing_user_id uuid;
   v_last_event_created_at timestamptz;
-  v_last_event_id text;
-  v_existing_access_blocked boolean := false;
   v_incoming_block_is_stale boolean := false;
   v_can_recover boolean := false;
   v_effective_block_event boolean := false;
@@ -77,12 +75,10 @@ begin
 
   select s.user_id,
          coalesce(s.paypal_access_blocked, false),
-         s.last_paypal_event_created_at,
-         s.last_paypal_event_id
+         s.last_paypal_event_created_at
     into v_existing_user_id,
          v_previously_blocked,
-         v_last_event_created_at,
-         v_last_event_id
+         v_last_event_created_at
     from public.sowia_subscriptions as s
    where s.paypal_subscription_id = p_subscription_id
    for update;
