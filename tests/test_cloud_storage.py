@@ -44,6 +44,8 @@ class FakeQuery:
         return self
 
     def execute(self):
+        if ("select", "id") in self.operations:
+            return SimpleNamespace(data=[{"id": 123}])
         return SimpleNamespace(data=[{"ok": True}])
 
 
@@ -126,7 +128,9 @@ def test_clear_history_is_scoped_to_user_session_and_workspace():
 @pytest.mark.parametrize("workspace", ["personal", "professional"])
 def test_save_message_writes_user_session_and_workspace(workspace):
     client = FakeClient()
-    cloud_storage.save_message(client, User(), "private-session", "user", "Bonjour", workspace)
+    result = cloud_storage.save_message(client, User(), "private-session", "user", "Bonjour", workspace)
+    assert result == [{"id": 123}]
+    assert ("select", "id") in client.tables["sowia_messages"].operations
     assert client.tables["sowia_messages"].inserted == {
         "user_id": "user-123",
         "workspace_id": workspace,
@@ -325,3 +329,17 @@ def test_invalid_accessibility_preferences_are_rejected_before_database_write(in
 
     with pytest.raises(ValueError):
         cloud_storage.set_accessibility_preferences(Client(), User(), invalid)
+
+
+
+def test_save_message_rejects_unconfirmed_database_insert():
+    class EmptyInsertQuery(FakeQuery):
+        def execute(self):
+            return SimpleNamespace(data=[])
+
+    class Client:
+        def table(self, _name):
+            return EmptyInsertQuery()
+
+    with pytest.raises(RuntimeError, match="n’a pas confirmé"):
+        cloud_storage.save_message(Client(), User(), "private-session", "user", "Bonjour")
