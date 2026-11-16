@@ -41,7 +41,7 @@ def test_professional_workspace_requires_active_entitlement():
 
 
 def test_professional_workspace_accepts_active_entitlement():
-    active = {"status": "active", "provider": "paypal"}
+    active = {"status": "active", "provider": "paypal", "paypal_access_blocked": False}
     assert premium_access.require_workspace_access(
         "professional", Client(active), User()
     ) == active

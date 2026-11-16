@@ -38,8 +38,8 @@ class Client:
 
 
 def test_entitlement_read_is_scoped_to_authenticated_user():
-    client = Client({"status": "active"})
-    assert premium_access.get_entitlement(client, User()) == {"status": "active"}
+    client = Client({"status": "active", "paypal_access_blocked": False})
+    assert premium_access.get_entitlement(client, User()) == {"status": "active", "paypal_access_blocked": False}
     assert client.table_name == "sowia_entitlements"
     assert ("user_id", "user-123") in client.query.filters
 
@@ -121,6 +121,7 @@ def test_premium_guard_returns_active_entitlement():
         "provider": "paypal",
         "amount": "12.90",
         "currency": "EUR",
+        "paypal_access_blocked": False,
     }
     assert premium_access.require_active_entitlement(Client(active), User()) == active
 
@@ -128,3 +129,28 @@ def test_premium_guard_returns_active_entitlement():
 def test_premium_guard_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         premium_access.require_active_entitlement(Client(), None)
+
+
+@pytest.mark.parametrize("blocked_value", [True, None])
+def test_entitlement_access_fails_closed_when_blocked_or_flag_missing(blocked_value):
+    client = Client({"status": "active", "provider": "paypal", "paypal_access_blocked": blocked_value})
+    assert premium_access.get_entitlement(client, User()) is None
+
+
+def test_entitlement_access_denies_blocked_active_record():
+    client = Client({"status": "active", "provider": "paypal", "paypal_access_blocked": True})
+    with pytest.raises(PermissionError, match="accès SOW IA Premium actif"):
+        premium_access.require_active_entitlement(client, User())
+
+
+def test_active_subscription_requires_unblocked_paypal_record():
+    active = {"status": "active", "provider": "paypal", "paypal_access_blocked": False}
+    client = Client(active)
+    assert premium_access.get_active_subscription(client, User()) == active
+    assert ("paypal_access_blocked", False) in client.query.filters
+
+
+@pytest.mark.parametrize("blocked_value", [True, None])
+def test_subscription_access_fails_closed_when_blocked_or_flag_missing(blocked_value):
+    client = Client({"status": "active", "provider": "paypal", "paypal_access_blocked": blocked_value})
+    assert premium_access.get_active_subscription(client, User()) is None
