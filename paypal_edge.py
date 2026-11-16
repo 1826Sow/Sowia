@@ -32,7 +32,10 @@ def invoke(supabase_client, action: str, order_id: str | None = None) -> dict:
     anon_key = str(get_setting("SUPABASE_ANON_KEY", "") or "").strip()
     if not project_url.startswith("https://") or not anon_key:
         raise RuntimeError("La connexion Supabase n'est pas configurée.")
-    payload = {"action": action}
+    mode = str(get_setting("PAYPAL_MODE", "sandbox") or "sandbox").strip().lower()
+    if mode not in {"sandbox", "live"}:
+        raise RuntimeError("Mode PayPal non autorisé.")
+    payload = {"action": action, "mode": mode}
     if action == "capture":
         if not order_id:
             raise ValueError("Identifiant de commande manquant.")
