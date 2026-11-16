@@ -7763,16 +7763,21 @@ elif page == "SOWIA CONTROL CENTER":
                 })
 
         try:
-            one_time_config = paypal_payments.paypal_configuration()
-            if one_time_config:
-                paypal_state = "Configuré · " + str(one_time_config.get("mode", "inconnu")).upper()
-                paypal_detail = "Configuration chargée côté serveur ; aucun appel de paiement effectué"
+            if paypal_edge.checkout_enabled():
+                paypal_state = "Activé · SANDBOX"
+                paypal_detail = (
+                    "Le commutateur Sandbox est actif ; le diagnostic ne déclenche "
+                    "aucune commande et ne vérifie pas une capture PayPal."
+                )
             else:
-                paypal_state = "Désactivé ou incomplet"
-                paypal_detail = "Le parcours de paiement ponctuel n'est pas activé par ce diagnostic"
+                paypal_state = "Désactivé"
+                paypal_detail = (
+                    "Le paiement ponctuel reste bloqué tant que le commutateur Sandbox "
+                    "explicite n'est pas activé avec le prix attendu."
+                )
         except Exception as paypal_error:
-            paypal_state = "À corriger"
-            paypal_detail = "Configuration invalide (" + type(paypal_error).__name__ + ")"
+            paypal_state = "À vérifier"
+            paypal_detail = "Diagnostic du parcours Edge indisponible (" + type(paypal_error).__name__ + ")"
         checks.append({
             "Composant": "PayPal ponctuel",
             "État": paypal_state,
