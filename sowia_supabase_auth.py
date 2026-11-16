@@ -339,6 +339,17 @@ def signup_email_user(client, email, password, redirect_to):
     })
 
 
+def sign_in_email_password(client, email, password):
+    """Authenticate an existing confirmed email/password account."""
+    address = str(email or "").strip().lower()
+    secret = str(password or "")
+    if not address or len(address) > 254 or address.count("@") != 1:
+        raise ValueError("Adresse e-mail invalide.")
+    if not secret:
+        raise ValueError("Saisissez votre mot de passe.")
+    return client.auth.sign_in_with_password({"email": address, "password": secret})
+
+
 def email_magic_link(client, email, redirect_to):
     """Send a passwordless sign-in link to an existing Supabase user only."""
     address = str(email or "").strip().lower()
