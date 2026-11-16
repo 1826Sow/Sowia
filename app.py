@@ -6591,6 +6591,45 @@ elif page == "Opportunités et revenus":
             opportunities = list_opportunities(supabase_client, current_user, business_workspace)
             metrics = opportunity_metrics(opportunities)
 
+            st.markdown("#### 📊 Répartition du pipeline commercial")
+            if opportunities:
+                import pandas as pd
+                stage_counts = {
+                    stage: sum(1 for item in opportunities if item.get("stage") == stage)
+                    for stage in STAGES
+                }
+                st.bar_chart(
+                    pd.DataFrame({"Opportunités": stage_counts}),
+                    y_label="Nombre d'offres",
+                )
+                for chart_currency in sorted({
+                    str(item.get("currency") or "EUR") for item in opportunities
+                }):
+                    currency_rows = [
+                        item for item in opportunities
+                        if str(item.get("currency") or "EUR") == chart_currency
+                    ]
+                    stage_forecasts = {
+                        stage: round(sum(
+                            float(item.get("expected_monthly_revenue") or 0)
+                            for item in currency_rows if item.get("stage") == stage
+                        ), 2)
+                        for stage in STAGES
+                    }
+                    st.markdown(f"**Potentiel mensuel par étape — {chart_currency}**")
+                    st.bar_chart(
+                        pd.DataFrame({
+                            f"Potentiel mensuel ({chart_currency})": stage_forecasts
+                        }),
+                        y_label=f"Montant ({chart_currency})",
+                    )
+                st.caption(
+                    "Ces graphiques décrivent l'état actuel du pipeline et les prévisions saisies. "
+                    "Ils ne représentent ni un historique des ventes ni des revenus encaissés."
+                )
+            else:
+                st.info("Le graphique du pipeline apparaîtra après l'enregistrement d'une première opportunité.")
+
             metric_cols = st.columns(3)
             metric_cols[0].metric("Niches / offres suivies", metrics["total"])
             metric_cols[1].metric("Offres actives", metrics["active"])
