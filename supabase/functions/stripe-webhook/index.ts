@@ -171,6 +171,10 @@ Deno.serve(async (request: Request) => {
         : {};
       if (
         intent.status !== "succeeded" ||
+        Number(intent.amount_received || 0) !== expectedAmount ||
+        String(intent.currency || "").toLowerCase() !== "eur" ||
+        !String(latestCharge.id || "").startsWith("ch_") ||
+        Number(latestCharge.amount_captured || 0) !== expectedAmount ||
         Number(latestCharge.amount_refunded || 0) > 0 ||
         Boolean(latestCharge.disputed)
       ) throw new Error("PaymentIntent is not in a clean paid state");
