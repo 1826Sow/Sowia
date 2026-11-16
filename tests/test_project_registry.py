@@ -28,7 +28,10 @@ class Query:
     def limit(self, value): self.operations.append(("limit", value)); return self
     def insert(self, payload): self.payload = payload; self.operations.append(("insert",)); return self
     def update(self, payload): self.payload = payload; self.operations.append(("update",)); return self
-    def execute(self): return Response([self.payload] if self.payload else [])
+    def execute(self):
+        if self.payload:
+            return Response([{"id": "project-test-id", **self.payload}])
+        return Response([])
 class Client:
     def __init__(self): self.query = None
     def table(self, name):
@@ -41,7 +44,9 @@ def test_create_project_is_scoped_to_owner_and_workspace():
     result = create_project(client, User(), " Projet test ", workspace_id="professional")
     assert result[0]["user_id"] == "user-123"
     assert result[0]["workspace_id"] == "professional"
-    assert result[0]["title"] == "Projet test"\n    assert ("select", "id, user_id, workspace_id, title, description, status, created_at, updated_at") in client.query.operations
+    assert result[0]["title"] == "Projet test"
+    assert result[0]["id"] == "project-test-id"
+    assert ("select", "id, user_id, workspace_id, title, description, status, created_at, updated_at") in client.query.operations
 
 
 def test_list_projects_filters_owner_workspace_and_archives():
