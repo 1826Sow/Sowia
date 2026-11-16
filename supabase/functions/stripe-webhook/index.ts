@@ -192,17 +192,86 @@ Deno.serve(async (request: Request) => {
         },
       );
       if (!entitlement.ok) throw new Error("Unable to grant verified Stripe Premium entitlement");
+
+      // Keep the SOW IA financial ledger in sync with the verified provider payment.
+      // The PaymentIntent is the stable idempotency key; raw card data never enters SOW IA.
+      const paymentLedger = await supabaseRequest(
+        supabaseUrl, serviceKey,
+        "sowia_financial_transactions?on_conflict=provider,provider_payment_id,transaction_type",
+        {
+          method: "POST",
+          headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+          body: JSON.stringify({
+            user_id: userId, provider: "stripe", provider_payment_id: paymentIntent,
+            transaction_type: "payment", status: "confirmed",
+            gross_amount: (expectedAmount / 100).toFixed(2), gross_currency: "EUR",
+            reference_amount_eur: (expectedAmount / 100).toFixed(2),
+            occurred_at: new Date(Number(session.created || event.created) * 1000).toISOString(),
+          }),
+        },
+      );
+      if (!paymentLedger.ok) throw new Error("Unable to record verified Stripe payment in financial ledger");
     } else if (
       eventType === "charge.refunded" || eventType === "charge.dispute.created" ||
       eventType === "charge.dispute.closed"
     ) {
       const chargeId = String(eventType === "charge.refunded" ? data.id : data.charge || "");
       if (!chargeId.startsWith("ch_")) throw new Error("Invalid Stripe charge reference");
-      const charge = await stripeGet("charges/" + encodeURIComponent(chargeId), stripeSecret);
+      const charge = await stripeGet(
+        "charges/" + encodeURIComponent(chargeId) + "?expand[]=refunds",
+        stripeSecret,
+      );
       const paymentIntent = typeof charge.payment_intent === "string"
         ? charge.payment_intent
         : String((charge.payment_intent as Record<string, unknown> | null)?.id || "");
       if (!/^pi_[A-Za-z0-9]+$/.test(paymentIntent)) throw new Error("Charge has no valid PaymentIntent");
+      const entitlementLookup = await supabaseRequest(
+        supabaseUrl, serviceKey,
+        "sowia_entitlements?provider=eq.stripe&stripe_payment_intent_id=eq." +
+          encodeURIComponent(paymentIntent) + "&select=user_id&limit=1",
+      );
+      if (!entitlementLookup.ok) throw new Error("Unable to find Stripe entitlement owner");
+      const entitlementRows = await entitlementLookup.json();
+      const ownerId = String(entitlementRows[0]?.user_id || "");
+      if (!ownerId) throw new Error("No SOW IA account is linked to this Stripe payment");
+
+      if (eventType === "charge.refunded") {
+        const refunds = charge.refunds && typeof charge.refunds === "object"
+          ? charge.refunds as Record<string, unknown>
+          : {};
+        const refundRows = Array.isArray(refunds.data)
+          ? refunds.data as Record<string, unknown>[]
+          : [];
+        for (const refund of refundRows) {
+          if (String(refund.status || "").toLowerCase() !== "succeeded") continue;
+          if (String(refund.currency || "").toLowerCase() !== "eur") {
+            throw new Error("Stripe refund currency does not match the EUR Premium ledger");
+          }
+          const refundId = String(refund.id || "");
+          const refundCents = Number(refund.amount || 0);
+          if (!/^re_[A-Za-z0-9]+$/.test(refundId) ||
+              !Number.isSafeInteger(refundCents) || refundCents <= 0) {
+            throw new Error("Invalid succeeded Stripe refund record");
+          }
+          const refundLedger = await supabaseRequest(
+            supabaseUrl, serviceKey,
+            "sowia_financial_transactions?on_conflict=provider,provider_payment_id,transaction_type",
+            {
+              method: "POST",
+              headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+              body: JSON.stringify({
+                user_id: ownerId, provider: "stripe", provider_payment_id: refundId,
+                parent_capture_id: chargeId, transaction_type: "refund", status: "refunded",
+                gross_amount: (refundCents / 100).toFixed(2), gross_currency: "EUR",
+                reference_amount_eur: (refundCents / 100).toFixed(2),
+                occurred_at: new Date(Number(refund.created || event.created) * 1000).toISOString(),
+              }),
+            },
+          );
+          if (!refundLedger.ok) throw new Error("Unable to record Stripe refund in financial ledger");
+        }
+      }
+
       let revoke = eventType !== "charge.dispute.closed";
       if (eventType === "charge.refunded") revoke = Number(charge.amount_refunded || 0) > 0;
       if (eventType === "charge.dispute.closed") {
@@ -222,6 +291,22 @@ Deno.serve(async (request: Request) => {
         },
       );
       if (!update.ok) throw new Error("Unable to reconcile Stripe refund or dispute entitlement");
+
+      if (eventType === "charge.dispute.created" || eventType === "charge.dispute.closed") {
+        const ledgerStatus = revoke ? "reversed" : "confirmed";
+        const ledgerUpdate = await supabaseRequest(
+          supabaseUrl, serviceKey,
+          "sowia_financial_transactions?provider=eq.stripe&provider_payment_id=eq." +
+            encodeURIComponent(paymentIntent) + "&transaction_type=eq.payment&user_id=eq." +
+            encodeURIComponent(ownerId),
+          {
+            method: "PATCH",
+            headers: { Prefer: "return=minimal" },
+            body: JSON.stringify({ status: ledgerStatus }),
+          },
+        );
+        if (!ledgerUpdate.ok) throw new Error("Unable to reconcile Stripe dispute in financial ledger");
+      }
     }
 
     const done = await supabaseRequest(
