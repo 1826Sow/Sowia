@@ -28,7 +28,10 @@ class Query:
     def limit(self, value): self.operations.append(("limit", value)); return self
     def insert(self, payload): self.payload = payload; self.operations.append(("insert",)); return self
     def update(self, payload): self.payload = payload; self.operations.append(("update",)); return self
-    def execute(self): return Response([self.payload] if self.payload else [])
+    def execute(self):
+        if self.payload and ("insert",) in self.operations:
+            return Response([{"id": "project-test-id", **self.payload}])
+        return Response([self.payload] if self.payload else [])
 class Client:
     def __init__(self): self.query = None
     def table(self, name):
@@ -42,6 +45,7 @@ def test_create_project_is_scoped_to_owner_and_workspace():
     assert result[0]["user_id"] == "user-123"
     assert result[0]["workspace_id"] == "professional"
     assert result[0]["title"] == "Projet test"
+    assert result[0]["id"] == "project-test-id"
 
 
 def test_list_projects_filters_owner_workspace_and_archives():
@@ -146,7 +150,39 @@ class EmptyInsertClient(Client):
 
 def test_create_project_requires_a_returned_database_row():
     client = EmptyInsertClient()
-    with pytest.raises(RuntimeError, match="aucune ligne"):
+    with pytest.raises(RuntimeError, match="pas confirmé"):
         create_project(client, User(), "Projet non confirmé")
     assert ("insert",) in client.query.operations
     assert any(operation[0] == "select" for operation in client.query.operations)
+
+
+class MissingIdInsertQuery(Query):
+    def execute(self):
+        return Response([self.payload])
+
+
+class MissingIdInsertClient(Client):
+    def table(self, name):
+        self.query = MissingIdInsertQuery(name)
+        return self.query
+
+
+def test_create_project_rejects_insert_response_without_id():
+    with pytest.raises(RuntimeError, match="pas confirmé"):
+        create_project(MissingIdInsertClient(), User(), "Projet sans identifiant")
+
+
+class MultipleRowsInsertQuery(Query):
+    def execute(self):
+        return Response([{"id": "one"}, {"id": "two"}])
+
+
+class MultipleRowsInsertClient(Client):
+    def table(self, name):
+        self.query = MultipleRowsInsertQuery(name)
+        return self.query
+
+
+def test_create_project_rejects_multiple_insert_rows():
+    with pytest.raises(RuntimeError, match="pas confirmé"):
+        create_project(MultipleRowsInsertClient(), User(), "Projet ambigu")
