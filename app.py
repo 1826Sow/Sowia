@@ -1,4 +1,5 @@
 """SOW IA — application web Streamlit."""
+import os
 import uuid
 import html
 from datetime import datetime, timezone, timedelta
@@ -462,10 +463,30 @@ if cloud_mode:
         supabase_client = None
 
     if current_user is None:
+        # Public-facing SOW IA showcase, separate from the authenticated workspace.
         st.markdown(
-            '<div class="hero"><h1>SOW IA</h1><p>Votre espace personnel sécurisé.</p></div>',
+            """
+            <div class="hero">
+              <h1>SOW IA</h1>
+              <p>Votre plateforme d’intelligence artificielle</p>
+              <p>Explorez, apprenez, créez et transformez vos idées grâce à une IA puissante et intuitive.</p>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
+        public_vitrine_path = "assets/sowia-public-vitrine.jpg"
+        if os.path.isfile(public_vitrine_path):
+            st.image(
+                public_vitrine_path,
+                use_container_width=True,
+                caption="SOW IA — Ensemble vers un avenir plus intelligent",
+            )
+        else:
+            st.info(
+                "Bienvenue sur SOW IA — votre plateforme d’intelligence artificielle. "
+                "Assistant conversationnel, recherche Internet, analyse de documents "
+                "et création de PDF dans un environnement sécurisé."
+            )
         st.subheader(translate_ui("Connexion à SOW IA", language))
         st.write("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA. Un lien sécurisé à usage unique vous sera envoyé. Aucun compte GitHub n’est nécessaire.")
         callback_code_present = bool(st.query_params.get("code") or st.query_params.get("token_hash"))
