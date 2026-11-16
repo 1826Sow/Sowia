@@ -39,6 +39,7 @@ from sowia_supabase_auth import (
 )
 import cloud_storage
 import paypal_payments
+import paypal_edge
 import paypal_subscriptions
 import premium_access
 import financial_ledger
@@ -688,54 +689,26 @@ if cloud_mode:
         st.stop()
 
 
-# PayPal returns the buyer to this server URL with the order ID in ?token=...
-# The server validates and captures the order before granting any entitlement.
+# PayPal returns the buyer with an order ID in ?token=...
+# The authenticated Edge Function verifies/captures the order and writes the entitlement.
 if cloud_mode and current_user is not None:
     paypal_token = st.query_params.get("token")
     if paypal_token:
         try:
-            payment_config = paypal_payments.paypal_configuration()
-            if payment_config is None:
-                raise RuntimeError("Les paiements Premium sont désactivés.")
-            admin_client = premium_access.create_admin_client()
-            if admin_client is None:
-                raise RuntimeError(
-                    "Ajoutez SUPABASE_SERVICE_ROLE_KEY dans les secrets Streamlit "
-                    "avant d'activer la validation des achats."
-                )
-            normalized_order_id = str(paypal_token).strip()
-            completed_order = paypal_payments.capture_premium_order(
-                normalized_order_id, str(current_user.id)
+            capture_result = paypal_edge.invoke(
+                supabase_client, "capture", str(paypal_token).strip()
             )
-            premium_access.grant_paypal_entitlement(
-                admin_client, str(current_user.id), normalized_order_id,
-                payment_config["amount"], payment_config["currency"],
-            )
-            # Financial reporting is secondary to the verified entitlement:
-            # a ledger write failure must not misreport a successful payment
-            # as failed or revoke access already granted.
-            try:
-                capture_details = (
-                    completed_order["purchase_units"][0]["payments"]["captures"][0]
-                )
-                financial_ledger.record_paypal_capture(
-                    admin_client,
-                    user_id=str(current_user.id),
-                    order_id=normalized_order_id,
-                    capture=capture_details,
-                    amount=payment_config["amount"],
-                    currency=payment_config["currency"],
-                )
-            except Exception:
-                st.warning(
-                    "Votre accès Premium est actif. L'écriture du registre financier "
-                    "n'a pas pu être finalisée ; elle devra être rapprochée."
-                )
+            if capture_result.get("status") != "COMPLETED":
+                raise RuntimeError("La capture PayPal n'est pas confirmée.")
             st.query_params.clear()
             st.session_state["paypal_purchase_confirmed"] = True
             st.rerun()
         except Exception as exc:
-            st.error("Le paiement n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.")
+            st.error(
+                "Le paiement n'a pas pu être confirmé. Aucun accès Premium "
+                "n'a été accordé automatiquement."
+            )
+            st.caption("Diagnostic technique (sans identifiants) : " + type(exc).__name__)
     if st.query_params.get("paypal") == "cancel":
         st.info("Le paiement a été annulé. Aucun montant n'a été confirmé par SOW IA.")
         st.query_params.clear()
@@ -3549,17 +3522,10 @@ elif page == "Abonnement":
                     )
             st.write("Votre droit d’accès est enregistré sur votre compte et sera retrouvé lors de vos prochaines connexions.")
         else:
-            # One-time Premium checkout (EUR) is separate from the recurring
-            # subscription flow. PayPal credentials and the explicit enable
-            # switch are read only on the trusted Streamlit server.
-            try:
-                one_time_config = paypal_payments.paypal_configuration()
-            except ValueError:
-                one_time_config = None
-                st.error("La configuration du paiement ponctuel PayPal est invalide.")
-
-            if one_time_config is not None:
-                payment_price = f"{one_time_config['amount']} €"
+            # One-time Premium checkout runs through an authenticated Supabase Edge Function.
+            # The PayPal secret and service-role key are never read by Streamlit.
+            if paypal_edge.checkout_enabled():
+                payment_price = "9.90 €"
                 st.markdown("#### Accès Premium — paiement unique")
                 st.write(
                     f"Débloquez l’espace Professionnel avec un paiement unique de **{payment_price}**. "
@@ -3572,18 +3538,11 @@ elif page == "Abonnement":
                     use_container_width=True,
                 ):
                     try:
-                        created_order = paypal_payments.create_premium_order(
-                            str(current_user.id)
-                        )
+                        created_order = paypal_edge.invoke(supabase_client, "create")
                         st.session_state["paypal_one_time_approval_url"] = created_order["approval_url"]
                         st.session_state.pop("paypal_one_time_checkout_diagnostic", None)
                     except Exception as checkout_error:
-                        response = getattr(checkout_error, "response", None)
-                        status_code = getattr(response, "status_code", None)
-                        safe_diagnostic = type(checkout_error).__name__
-                        if status_code is not None:
-                            safe_diagnostic += f" · HTTP {status_code}"
-                        st.session_state["paypal_one_time_checkout_diagnostic"] = safe_diagnostic
+                        st.session_state["paypal_one_time_checkout_diagnostic"] = type(checkout_error).__name__
                         st.session_state.pop("paypal_one_time_approval_url", None)
                         st.error("Impossible de préparer le paiement PayPal. Aucun accès Premium n’a été accordé.")
 
@@ -3599,8 +3558,8 @@ elif page == "Abonnement":
                     st.caption("Diagnostic technique (sans identifiants) : " + checkout_diagnostic)
             else:
                 st.info(
-                    "Le paiement ponctuel Premium de 9,90 € n’est pas encore activé. "
-                    "La configuration PayPal réelle doit être renseignée dans les Secrets Streamlit."
+                    "Le paiement ponctuel Premium de 9,90 € reste désactivé. "
+                    "Le parcours Sandbox sécurisé doit d’abord être configuré et testé côté Supabase."
                 )
 
             try:

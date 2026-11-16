@@ -10,7 +10,7 @@ def _parents(tree):
     }
 
 
-def test_premium_admin_client_is_created_only_inside_authenticated_paypal_flows():
+def test_premium_admin_client_is_created_only_inside_conditional_flows():
     source = Path("app.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     parents = _parents(tree)
@@ -23,10 +23,10 @@ def test_premium_admin_client_is_created_only_inside_authenticated_paypal_flows(
         and isinstance(node.func.value, ast.Name)
         and node.func.value.id == "premium_access"
     ]
-    # Calls cover checkout validation, the authenticated subscription
-    # overview, two explicit synchronization actions, and the admin-only
-    # read-only control center. Every call must remain conditionally guarded.
-    assert len(admin_calls) == 5
+    # The one-time PayPal return no longer creates a Streamlit-side admin
+    # client: entitlement writes now happen only inside the authenticated
+    # Supabase Edge Function. Four remaining admin-only flows are expected.
+    assert len(admin_calls) == 4
 
     for call in admin_calls:
         ancestor = parents.get(call)
