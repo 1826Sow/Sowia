@@ -58,3 +58,36 @@ def test_memory_rejects_empty_and_oversized_notes(tmp_path, monkeypatch):
         storage.add_memory("   ")
     with pytest.raises(ValueError, match="1 000"):
         storage.add_memory("x" * 1001)
+
+
+def test_history_and_memory_are_isolated_by_workspace(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "workspace-test.db")
+    storage.save_message("session-1", "user", "Personnel", "personal")
+    storage.save_message("session-1", "user", "Professionnel", "professional")
+    assert [item["content"] for item in storage.get_history("session-1", workspace_id="personal")] == ["Personnel"]
+    assert [item["content"] for item in storage.get_history("session-1", workspace_id="professional")] == ["Professionnel"]
+
+    personal_id = storage.add_memory("Note personnelle", "personal")
+    storage.add_memory("Note professionnelle", "professional")
+    storage.delete_memory(personal_id, "professional")
+    assert [item["content"] for item in storage.get_memories(workspace_id="personal")] == ["Note personnelle"]
+    assert [item["content"] for item in storage.get_memories(workspace_id="professional")] == ["Note professionnelle"]
+
+
+def test_workspace_query_indexes_are_created(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "indexes-test.db")
+    with storage._connect() as conn:
+        message_indexes = {row[1] for row in conn.execute("PRAGMA index_list(messages)")}
+        memory_indexes = {row[1] for row in conn.execute("PRAGMA index_list(memory_items)")}
+    assert "idx_messages_session_workspace_id" in message_indexes
+    assert "idx_memory_workspace_id" in memory_indexes
+
+
+def test_database_schema_is_initialized_for_each_database_path(tmp_path, monkeypatch):
+    first_db = tmp_path / "first.db"
+    second_db = tmp_path / "second.db"
+    monkeypatch.setattr(storage, "DB_PATH", first_db)
+    storage.save_message("session-1", "user", "Premier")
+    monkeypatch.setattr(storage, "DB_PATH", second_db)
+    storage.save_message("session-1", "user", "Second")
+    assert storage.get_history("session-1") == [{"role": "user", "content": "Second"}]
