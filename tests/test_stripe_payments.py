@@ -78,9 +78,14 @@ def test_retrieve_checkout_requires_paid_matching_session(monkeypatch):
                 "metadata": {"sowia_user_id": "user-123", "sowia_product": "premium"},
                 "currency": "eur", "amount_total": 990,
                 "payment_intent": "pi_test_123",
+                "line_items": {"data": [{"price": {"id": "price_test"}, "quantity": 1}]},
             }
     import stripe
     monkeypatch.setattr(stripe, "checkout", SimpleNamespace(Session=Session))
+    monkeypatch.setattr(stripe, "PaymentIntent", SimpleNamespace(retrieve=lambda *args, **kwargs: {
+        "status": "succeeded", "amount_received": 990, "currency": "eur",
+        "latest_charge": {"id": "ch_test_123", "amount_captured": 990, "amount_refunded": 0, "disputed": False},
+    }))
     result = payments.retrieve_paid_checkout("cs_test_123", "user-123")
     assert result["payment_intent_id"] == "pi_test_123"
     assert result["amount"] == "9.90"
@@ -101,6 +106,7 @@ def test_retrieve_checkout_rejects_unpaid_or_wrong_owner(monkeypatch):
                 "client_reference_id": "other-user",
                 "metadata": {"sowia_user_id": "other-user", "sowia_product": "premium"},
                 "currency": "eur", "amount_total": 990, "payment_intent": "pi_test_123",
+                "line_items": {"data": [{"price": {"id": "price_test"}, "quantity": 1}]},
             }
     import stripe
     monkeypatch.setattr(stripe, "checkout", SimpleNamespace(Session=Session))
