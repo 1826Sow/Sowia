@@ -38,10 +38,19 @@ class Client:
 
 
 def test_entitlement_read_is_scoped_to_authenticated_user():
-    client = Client({"status": "active"})
-    assert premium_access.get_entitlement(client, User()) == {"status": "active"}
+    active = {
+        "plan": "premium",
+        "status": "active",
+        "provider": "paypal",
+        "paypal_access_blocked": False,
+    }
+    client = Client(active)
+    assert premium_access.get_entitlement(client, User()) == active
     assert client.table_name == "sowia_entitlements"
     assert ("user_id", "user-123") in client.query.filters
+    assert ("plan", "premium") in client.query.filters
+    assert ("provider", "paypal") in client.query.filters
+    assert ("paypal_access_blocked", False) in client.query.filters
 
 
 def test_entitlement_read_requires_login():
@@ -117,8 +126,10 @@ def test_premium_guard_denies_missing_or_inactive_entitlement(entitlement):
 
 def test_premium_guard_returns_active_entitlement():
     active = {
+        "plan": "premium",
         "status": "active",
         "provider": "paypal",
+        "paypal_access_blocked": False,
         "amount": "12.90",
         "currency": "EUR",
     }
