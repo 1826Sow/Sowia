@@ -119,10 +119,10 @@ def create_project(client, user, title, description="", status="En cours",
         .execute()
     )
     rows = response.data or []
-    if not rows:
+    if len(rows) != 1 or not isinstance(rows[0], dict) or not rows[0].get("id"):
         raise RuntimeError(
-            "Supabase n'a retourné aucune ligne après l'insertion. "
-            "L'enregistrement n'est pas confirmé ; vérifiez les droits INSERT/RETURNING et la session."
+            "Supabase n’a pas confirmé exactement une ligne créée avec un identifiant. "
+            "L’enregistrement n’est pas confirmé ; vérifiez les droits INSERT/RETURNING et la session."
         )
     return rows
 
