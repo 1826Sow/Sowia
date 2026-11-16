@@ -6,7 +6,8 @@ begin;
 alter table public.sowia_paypal_subscription_blocks
   add column if not exists source_event_type text,
   add column if not exists source_event_created_at timestamptz,
-  add column if not exists source_resource_id text;
+  add column if not exists source_resource_id text,
+  add column if not exists source_paypal_status text;
 
 create or replace function public.sowia_apply_paypal_subscription_event(
   p_subscription_id text,
@@ -33,6 +34,7 @@ declare
   v_block public.sowia_paypal_subscription_blocks%rowtype;
   v_has_block boolean := false;
   v_previously_blocked boolean := false;
+  v_existing_user_id uuid;
   v_incoming_block_is_stale boolean := false;
   v_can_recover boolean := false;
   v_effective_block_event boolean := false;
@@ -58,16 +60,19 @@ begin
 
   v_has_block := found;
 
-  select coalesce(s.paypal_access_blocked, false)
-    into v_previously_blocked
+  select s.user_id, coalesce(s.paypal_access_blocked, false)
+    into v_existing_user_id, v_previously_blocked
     from public.sowia_subscriptions as s
    where s.paypal_subscription_id = p_subscription_id
    for update;
 
   v_previously_blocked := coalesce(v_previously_blocked, false);
+  if v_existing_user_id is not null and v_existing_user_id <> p_user_id then
+    raise exception 'PayPal subscription is already linked to a different SOW IA user';
+  end if;
 
   v_incoming_block_is_stale :=
-    coalesce(p_blocked_event, false)
+    (coalesce(p_blocked_event, false) or upper(coalesce(p_status, 'UNKNOWN')) <> 'ACTIVE')
     and v_has_block
     and (
       v_block.source_event_created_at is null
@@ -90,17 +95,21 @@ begin
         and p_event_type = 'PAYMENT.SALE.COMPLETED'
       )
       or (
-        v_block.source_event_type in (
-          'BILLING.SUBSCRIPTION.CANCELLED',
-          'BILLING.SUBSCRIPTION.SUSPENDED',
-          'BILLING.SUBSCRIPTION.EXPIRED'
+        (
+          v_block.source_event_type in (
+            'BILLING.SUBSCRIPTION.CANCELLED',
+            'BILLING.SUBSCRIPTION.SUSPENDED',
+            'BILLING.SUBSCRIPTION.EXPIRED'
+          )
+          or v_block.source_paypal_status in ('CANCELLED', 'SUSPENDED', 'EXPIRED')
         )
         and p_event_type = 'BILLING.SUBSCRIPTION.ACTIVATED'
       )
     );
 
   v_effective_block_event :=
-    coalesce(p_blocked_event, false) and not v_incoming_block_is_stale;
+    (coalesce(p_blocked_event, false) or upper(coalesce(p_status, 'UNKNOWN')) <> 'ACTIVE')
+    and not v_incoming_block_is_stale;
 
   v_access_blocked :=
     upper(coalesce(p_status, 'UNKNOWN')) <> 'ACTIVE'
@@ -152,6 +161,7 @@ begin
       source_event_type,
       source_event_created_at,
       source_resource_id,
+      source_paypal_status,
       blocked_at
     ) values (
       p_subscription_id,
@@ -160,6 +170,7 @@ begin
       p_event_type,
       p_event_created_at,
       p_resource_id,
+      upper(coalesce(p_status, 'UNKNOWN')),
       pg_catalog.now()
     )
     on conflict (paypal_subscription_id) do update
@@ -168,6 +179,7 @@ begin
           source_event_type = excluded.source_event_type,
           source_event_created_at = excluded.source_event_created_at,
           source_resource_id = excluded.source_resource_id,
+          source_paypal_status = excluded.source_paypal_status,
           blocked_at = excluded.blocked_at;
   elsif v_can_recover and not v_access_blocked then
     delete from public.sowia_paypal_subscription_blocks
