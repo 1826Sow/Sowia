@@ -65,3 +65,11 @@ def test_email_callback_clears_one_time_token_from_query_and_fragment():
     assert 'fragment.delete("token_hash")' in source
     assert 'fragment.delete("type")' in source
 
+def test_email_callback_clears_session_tokens_from_query_and_fragment():
+    import inspect
+
+    source = inspect.getsource(supabase_auth.read_email_auth_fragment)
+    assert 'for (const name of ["access_token", "refresh_token", "type"])' in source
+    assert 'query.delete(name)' in source
+    assert 'fragment.delete(name)' in source
+
