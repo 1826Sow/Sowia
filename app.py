@@ -306,6 +306,15 @@ if "session_id" not in st.session_state:
 if "pdf_text" not in st.session_state:
     st.session_state.pdf_text = ""
 
+# Show logout feedback before any authentication initialization can stop the run.
+# This guarantees visible confirmation even when browser storage/Supabase needs reinitialization.
+logout_notice = st.session_state.pop("sowia_logout_notice", None)
+if logout_notice:
+    if "réussie" in logout_notice.lower():
+        st.success(logout_notice)
+    else:
+        st.warning(logout_notice)
+
 # A safe default is needed by the unauthenticated GitHub login screen,
 # before the per-account language preference is loaded after sign-in.
 language = "Français"
@@ -453,12 +462,6 @@ if cloud_mode:
         supabase_client = None
 
     if current_user is None:
-        logout_notice = st.session_state.pop("sowia_logout_notice", None)
-        if logout_notice:
-            if "réussie" in logout_notice.lower():
-                st.success(logout_notice)
-            else:
-                st.warning(logout_notice)
         st.markdown(
             '<div class="hero"><h1>SOW IA</h1><p>Votre espace personnel sécurisé.</p></div>',
             unsafe_allow_html=True,
