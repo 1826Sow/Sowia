@@ -33,7 +33,7 @@ def get_entitlement(user_client, user):
         .execute()
     )
     data = getattr(result, "data", None)
-    return data if data and data.get("status") == "active" and not data.get("paypal_access_blocked", False) else None
+    return data if data and data.get("status") == "active" and data.get("paypal_access_blocked") is False else None
 
 
 def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
