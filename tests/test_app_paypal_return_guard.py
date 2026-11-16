@@ -11,4 +11,6 @@ def test_paypal_return_requires_authenticated_cloud_user_and_uses_edge_function(
     assert '"capture"' in handler
     assert "premium_access.create_admin_client()" not in handler
     assert "premium_access.grant_paypal_entitlement(" not in handler
-    assert "Aucun accès Premium n'a été accordé automatiquement." in handler
+    assert "Le paiement n'a pas pu être confirmé." in handler
+    assert "Aucun accès Premium " in handler
+    assert "n'a été accordé automatiquement." in handler
