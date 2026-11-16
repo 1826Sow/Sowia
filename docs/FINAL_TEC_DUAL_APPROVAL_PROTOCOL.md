@@ -1,8 +1,8 @@
-# FINAL TEC — protocole d'approbation à deux personnes
+# Final Tech — protocole d'approbation à deux personnes
 
 ## 1. Objet et statut
 Ce document définit un protocole de contrôle à deux personnes pour les
-autorisations sensibles de FINAL TEC. Il complète la frontière de confiance
+autorisations sensibles de Final Tech. Il complète la frontière de confiance
 identité/approbation de la PR #255.
 
 Statut : spécification préparatoire uniquement. Aucun compte, fournisseur
