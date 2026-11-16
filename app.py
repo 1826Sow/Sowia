@@ -3424,19 +3424,31 @@ elif page == "Abonnement":
                 if subscription.get("next_billing_time"):
                     st.caption(f"Prochaine échéance indiquée par PayPal : {subscription['next_billing_time']}")
             else:
-                provider = str(entitlement.get("provider", "—")).strip().lower()
+                provider = str(entitlement.get("provider") or "—").strip().lower()
+                # Older entitlement rows may contain NULL amount/currency values.
+                # Keep the account page readable without displaying Python's "None".
+                amount_value = entitlement.get("amount")
+                amount_display = (
+                    f"{amount_value} " if amount_value not in (None, "") else ""
+                )
+                currency_display = str(entitlement.get("currency") or "EUR").strip().upper()
+                payment_details = (
+                    f"{amount_display}{currency_display}"
+                    if amount_display
+                    else "Montant non renseigné"
+                )
                 if provider == "paypal" and entitlement.get("paypal_order_id"):
                     st.caption(
                         f"Accès accordé après un paiement ponctuel PayPal · "
-                        f"{entitlement.get('amount', '—')} {entitlement.get('currency', 'EUR')}"
+                        f"{payment_details}"
                     )
                     st.caption(
                         "Cet accès enregistré n’est pas un abonnement mensuel récurrent."
                     )
                 else:
                     st.caption(
-                        f"Fournisseur : {entitlement.get('provider', '—')} · "
-                        f"{entitlement.get('amount', '—')} {entitlement.get('currency', 'EUR')}"
+                        f"Fournisseur : {entitlement.get('provider') or '—'} · "
+                        f"{payment_details}"
                     )
             st.write("Votre droit d’accès est enregistré sur votre compte et sera retrouvé lors de vos prochaines connexions.")
         else:
