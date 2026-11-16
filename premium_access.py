@@ -27,13 +27,16 @@ def get_entitlement(user_client, user):
         raise PermissionError("Connexion requise.")
     result = (
         user_client.table("sowia_entitlements")
-        .select("status, provider, paypal_order_id, amount, currency, updated_at")
+        .select("plan, status, provider, paypal_order_id, amount, currency, paypal_access_blocked, updated_at")
         .eq("user_id", str(user_id))
+        .eq("plan", "premium")
+        .eq("provider", "paypal")
+        .eq("paypal_access_blocked", False)
         .maybe_single()
         .execute()
     )
     data = getattr(result, "data", None)
-    return data if data and data.get("status") == "active" else None
+    return data if data and data.get("status") == "active" and data.get("paypal_access_blocked") is False else None
 
 
 def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
@@ -56,8 +59,10 @@ def grant_paypal_entitlement(admin_client, user_id, order_id, amount, currency):
         raise ValueError("Le montant Premium ou la devise ne sont pas valides.")
     payload = {
         "user_id": normalized_user_id,
+        "plan": "premium",
         "status": "active",
         "provider": "paypal",
+        "paypal_access_blocked": False,
         "paypal_order_id": normalized_order_id,
         "amount": f"{normalized_amount:.2f}",
         "currency": "EUR",
@@ -91,10 +96,11 @@ def get_active_subscription(user_client, user):
         user_client.table("sowia_subscriptions")
         .select(
             "status, provider, paypal_subscription_id, paypal_plan_id, "
-            "amount, currency, next_billing_time, updated_at"
+            "amount, currency, paypal_access_blocked, next_billing_time, updated_at"
         )
         .eq("user_id", str(user_id))
         .eq("status", "active")
+        .eq("paypal_access_blocked", False)
         .maybe_single()
         .execute()
     )
