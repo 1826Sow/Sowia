@@ -193,3 +193,49 @@ def test_logout_clears_account_client_oauth_and_private_caches():
     )
     assert state["sowia_browser_scope"] == {"browser_id": "retained-browser-scope"}
     assert state["unrelated_preference"] == "keep-me"
+
+
+
+def test_workspace_switch_clears_navigation_history_but_keeps_account_state():
+    from session_security import clear_workspace_session_state
+
+    state = {
+        "sowia_navigation_history": ["Assistant IA", "Analyse PDF"],
+        "sowia_current_page": "Analyse PDF",
+        "sowia_authenticated_user_id": "account-id",
+        "unrelated_preference": "keep-me",
+    }
+
+    clear_workspace_session_state(state)
+
+    assert "sowia_navigation_history" not in state
+    assert state["sowia_current_page"] == "Analyse PDF"
+    assert state["sowia_authenticated_user_id"] == "account-id"
+    assert state["unrelated_preference"] == "keep-me"
+
+
+def test_logout_clears_navigation_state_but_retains_browser_scope():
+    from session_security import clear_authenticated_session_state
+
+    state = {
+        "sowia_navigation_history": ["Assistant IA", "Analyse PDF"],
+        "sowia_current_page": "Analyse PDF",
+        "page_nav": "Analyse PDF",
+        "nav_category": "👤 Personnel & documents",
+        "sowia_browser_scope": {"browser_id": "retained"},
+        "unrelated_preference": "keep-me",
+    }
+
+    clear_authenticated_session_state(state)
+
+    assert all(
+        key not in state
+        for key in (
+            "sowia_navigation_history",
+            "sowia_current_page",
+            "page_nav",
+            "nav_category",
+        )
+    )
+    assert state["sowia_browser_scope"] == {"browser_id": "retained"}
+    assert state["unrelated_preference"] == "keep-me"
