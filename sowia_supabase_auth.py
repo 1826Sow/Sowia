@@ -302,8 +302,16 @@ def read_email_auth_fragment():
                     setStateValue("token_hash", tokenHash);
                     setStateValue("type", type);
                 } else if (accessToken && refreshToken && ["magiclink", "signup"].includes(type)) {
-                    // Implicit-flow confirmation links return tokens in the fragment.
-                    page.history.replaceState(page.history.state, "", url.pathname + url.search);
+                    // Implicit-flow confirmation links may return tokens in the query or fragment.
+                    // Remove credentials from both URL locations before handing them to Python.
+                    for (const name of ["access_token", "refresh_token", "type"]) {
+                        query.delete(name);
+                        fragment.delete(name);
+                    }
+                    const cleanUrl = url.pathname
+                        + (query.toString() ? "?" + query.toString() : "")
+                        + (fragment.toString() ? "#" + fragment.toString() : "");
+                    page.history.replaceState(page.history.state, "", cleanUrl);
                     setStateValue("access_token", accessToken);
                     setStateValue("refresh_token", refreshToken);
                     setStateValue("type", type);
