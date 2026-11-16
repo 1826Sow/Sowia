@@ -57,3 +57,11 @@ def test_email_confirmation_rejects_invalid_token_or_type(token_hash, otp_type):
     with pytest.raises(ValueError, match="Lien de connexion invalide"):
         supabase_auth.complete_email_magic_link(object(), token_hash, otp_type)
 
+def test_email_callback_clears_one_time_token_from_query_and_fragment():
+    import inspect
+
+    source = inspect.getsource(supabase_auth.read_email_auth_fragment)
+    assert 'query.delete("token_hash")' in source
+    assert 'fragment.delete("token_hash")' in source
+    assert 'fragment.delete("type")' in source
+
