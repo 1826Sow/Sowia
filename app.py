@@ -350,7 +350,18 @@ if cloud_mode:
 
         auth_stage = "lecture du retour de connexion par e-mail"
         email_tokens = read_email_auth_fragment()
-        if email_tokens:
+        if email_tokens and email_tokens.get("token_hash"):
+            # Handle Supabase ConfirmationURL callbacks that deliver token_hash
+            # in either the query string or the URL fragment.
+            complete_email_magic_link(
+                supabase_client,
+                email_tokens["token_hash"],
+                email_tokens.get("type"),
+            )
+            st.session_state.pop("sowia_email_auth_fragment", None)
+            st.rerun()
+
+        if email_tokens and email_tokens.get("access_token") and email_tokens.get("refresh_token"):
             supabase_client.auth.set_session(
                 email_tokens["access_token"],
                 email_tokens["refresh_token"],
@@ -360,12 +371,11 @@ if cloud_mode:
             st.session_state.pop("sowia_email_auth_fragment", None)
             st.rerun()
 
+        # Backward-compatible query callback for links that still use token_hash.
         email_token_hash = st.query_params.get("token_hash")
         email_token_type = st.query_params.get("type")
         if email_token_hash:
             complete_email_magic_link(supabase_client, email_token_hash, email_token_type)
-            # Keep the requested address until the authenticated identity is
-            # checked below. Never silently accept a previously active account.
             st.query_params.clear()
             st.rerun()
 
