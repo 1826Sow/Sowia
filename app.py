@@ -7764,16 +7764,17 @@ elif page == "SOWIA CONTROL CENTER":
 
         try:
             if paypal_edge.checkout_enabled():
-                paypal_state = "Activé · SANDBOX"
+                paypal_mode = str(get_setting("PAYPAL_MODE", "sandbox") or "sandbox").strip().upper()
+                paypal_state = "Activé · " + paypal_mode
                 paypal_detail = (
-                    "Le commutateur Sandbox est actif ; le diagnostic ne déclenche "
+                    "Le commutateur " + paypal_mode + " est actif ; le diagnostic ne déclenche "
                     "aucune commande et ne vérifie pas une capture PayPal."
                 )
             else:
                 paypal_state = "Désactivé"
                 paypal_detail = (
-                    "Le paiement ponctuel reste bloqué tant que le commutateur Sandbox "
-                    "explicite n'est pas activé avec le prix attendu."
+                    "Le paiement ponctuel reste bloqué tant que le commutateur explicite "
+                    "n'est pas activé avec un mode PayPal et le prix attendus."
                 )
         except Exception as paypal_error:
             paypal_state = "À vérifier"
