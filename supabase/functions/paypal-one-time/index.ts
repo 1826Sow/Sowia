@@ -114,11 +114,22 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Invalid user identity" }, 401);
     }
 
-    const clientId = env("PAYPAL_CLIENT_ID");
-    const clientSecret = env("PAYPAL_CLIENT_SECRET");
     const mode = (Deno.env.get("PAYPAL_MODE") || "sandbox").trim().toLowerCase();
-    if (mode !== "sandbox") return json({ error: "Only Sandbox is enabled for this checkout" }, 503);
-    const base = "https://api-m.sandbox.paypal.com";
+    if (mode !== "sandbox" && mode !== "live") {
+      return json({ error: "Invalid PayPal mode" }, 503);
+    }
+
+    // Keep Sandbox and Live credentials separate so Sandbox keys can never be
+    // sent to the production PayPal API (or Live keys to the Sandbox API).
+    const clientId = mode === "live"
+      ? env("PAYPAL_LIVE_CLIENT_ID")
+      : env("PAYPAL_CLIENT_ID");
+    const clientSecret = mode === "live"
+      ? env("PAYPAL_LIVE_CLIENT_SECRET")
+      : env("PAYPAL_CLIENT_SECRET");
+    const base = mode === "live"
+      ? "https://api-m.paypal.com"
+      : "https://api-m.sandbox.paypal.com";
     const token = await paypalToken(base, clientId, clientSecret);
     const input = await req.json().catch(() => ({}));
     const action = String(input?.action || "");
