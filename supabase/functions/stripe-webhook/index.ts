@@ -126,7 +126,7 @@ Deno.serve(async (request: Request) => {
     const claim = await supabaseRequest(
       supabaseUrl, serviceKey,
       "sowia_stripe_webhook_events?event_id=eq." + encodeURIComponent(eventId) +
-        "&or=" + encodeURIComponent("(processing_status.eq.received,and(processing_status.eq.processing,processing_started_at.lt." + stale + "))"),
+        "&or=" + encodeURIComponent("(processing_status.eq.received,processing_status.eq.failed,and(processing_status.eq.processing,processing_started_at.lt." + stale + "))"),
       {
         method: "PATCH",
         headers: { Prefer: "return=representation" },
@@ -162,6 +162,19 @@ Deno.serve(async (request: Request) => {
         price.id !== priceId || Number(items[0]?.quantity || 0) !== 1 || !/^pi_[A-Za-z0-9]+$/.test(paymentIntent)
       ) throw new Error("Checkout Session does not match the configured SOW IA Premium purchase");
 
+      const intent = await stripeGet(
+        "payment_intents/" + encodeURIComponent(paymentIntent) + "?expand[]=latest_charge",
+        stripeSecret,
+      );
+      const latestCharge = intent.latest_charge && typeof intent.latest_charge === "object"
+        ? intent.latest_charge as Record<string, unknown>
+        : {};
+      if (
+        intent.status !== "succeeded" ||
+        Number(latestCharge.amount_refunded || 0) > 0 ||
+        Boolean(latestCharge.disputed)
+      ) throw new Error("PaymentIntent is not in a clean paid state");
+
       const entitlement = await supabaseRequest(
         supabaseUrl, serviceKey, "sowia_entitlements?on_conflict=user_id",
         {
@@ -179,8 +192,8 @@ Deno.serve(async (request: Request) => {
       eventType === "charge.refunded" || eventType === "charge.dispute.created" ||
       eventType === "charge.dispute.closed"
     ) {
-      const chargeId = String(data.id || "");
-      if (!chargeId.startsWith("ch_")) throw new Error("Invalid Stripe charge ID");
+      const chargeId = String(eventType === "charge.refunded" ? data.id : data.charge || "");
+      if (!chargeId.startsWith("ch_")) throw new Error("Invalid Stripe charge reference");
       const charge = await stripeGet("charges/" + encodeURIComponent(chargeId), stripeSecret);
       const paymentIntent = typeof charge.payment_intent === "string"
         ? charge.payment_intent
