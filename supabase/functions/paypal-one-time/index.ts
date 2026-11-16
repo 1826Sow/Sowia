@@ -114,9 +114,16 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Invalid user identity" }, 401);
     }
 
+    const input = await req.json().catch(() => ({}));
     const mode = (Deno.env.get("PAYPAL_MODE") || "sandbox").trim().toLowerCase();
+    const requestedMode = String(input?.mode || "").trim().toLowerCase();
     if (mode !== "sandbox" && mode !== "live") {
       return json({ error: "Invalid PayPal mode" }, 503);
+    }
+    // Refuse a Streamlit/Edge configuration mismatch instead of silently
+    // creating an order against the wrong PayPal environment.
+    if (requestedMode !== mode) {
+      return json({ error: "PayPal environment mismatch" }, 409);
     }
 
     // Keep Sandbox and Live credentials separate so Sandbox keys can never be
@@ -131,7 +138,6 @@ Deno.serve(async (req: Request) => {
       ? "https://api-m.paypal.com"
       : "https://api-m.sandbox.paypal.com";
     const token = await paypalToken(base, clientId, clientSecret);
-    const input = await req.json().catch(() => ({}));
     const action = String(input?.action || "");
 
     if (action === "create") {
