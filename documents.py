@@ -115,7 +115,7 @@ def extract_pdf_text(uploaded_file, max_chars=100000, max_pages=MAX_PDF_PAGES):
                 break
             page_text = (page.extract_text() or "").strip()
             if page_text:
-                chunk = f"\\n--- Page {number} ---\\n{page_text}"
+                chunk = f"\n--- Page {number} ---\n{page_text}"
                 pages.append(chunk[:remaining])
                 total += min(len(chunk), remaining)
 

@@ -150,3 +150,70 @@ def test_pdf_source_stream_is_closed_after_text_extraction(monkeypatch):
 
     assert "Contenu du document" in result
     assert captured["stream"].closed
+
+
+def test_selectable_pdf_text_uses_real_page_markers(monkeypatch):
+    class Page:
+        def __init__(self, text):
+            self.text = text
+
+        def extract_text(self):
+            return self.text
+
+    class Reader:
+        is_encrypted = False
+        pages = [Page("Première page"), Page("Deuxième page")]
+
+    monkeypatch.setattr(documents, "PdfReader", lambda _file, **_kwargs: Reader())
+    result = extract_pdf_text(_blank_pdf())
+
+    assert "\\n--- Page" not in result
+    assert "--- Page 1 ---\nPremière page" in result
+    assert "--- Page 2 ---\nDeuxième page" in result
+
+
+def test_ocr_pdf_text_uses_real_page_markers(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    class Image:
+        def close(self):
+            pass
+
+    class Bitmap:
+        def to_pil(self):
+            return Image()
+
+        def close(self):
+            pass
+
+    class Page:
+        def render(self, scale):
+            assert scale == 2
+            return Bitmap()
+
+        def close(self):
+            pass
+
+    class Pdf:
+        def __len__(self):
+            return 1
+
+        def __getitem__(self, index):
+            assert index == 0
+            return Page()
+
+        def close(self):
+            pass
+
+    monkeypatch.setitem(sys.modules, "pypdfium2", SimpleNamespace(PdfDocument=lambda _data: Pdf()))
+    monkeypatch.setitem(
+        sys.modules,
+        "pytesseract",
+        SimpleNamespace(image_to_string=lambda *_args, **_kwargs: "Texte OCR"),
+    )
+
+    result = documents._ocr_pdf_pages(b"%PDF-test", max_chars=1000, max_pages=1)
+
+    assert "\\n--- Page" not in result
+    assert "--- Page 1 (OCR) ---\nTexte OCR" in result
