@@ -143,6 +143,8 @@ Deno.serve(async (request: Request) => {
       return json({ error: "Webhook event ID is missing or invalid" }, 400);
     }
     const eventType = String(event.event_type || "");
+    // PayPal event time, not delivery time, determines event ordering.
+    const eventCreatedAt = new Date(String(event.create_time || "")).toISOString();
     const eventResource = event.resource && typeof event.resource === "object"
       ? event.resource as Record<string, unknown>
       : {};
@@ -382,7 +384,7 @@ Deno.serve(async (request: Request) => {
       Boolean(existingSubscriptionRows[0]?.paypal_access_blocked);
     const existingBlockResponse = await fetch(
       supabaseUrl + "/rest/v1/sowia_paypal_subscription_blocks?paypal_subscription_id=eq." +
-        encodeURIComponent(subscriptionId) + "&select=paypal_subscription_id&limit=1",
+        encodeURIComponent(subscriptionId) + "&select=paypal_subscription_id,source_event_type,source_event_created_at,source_resource_id&limit=1",
       {
         headers: {
           apikey: serviceRoleKey,
@@ -392,10 +394,37 @@ Deno.serve(async (request: Request) => {
     );
     if (!existingBlockResponse.ok) throw new Error("Unable to inspect subscription block ledger");
     const existingBlockRows = await existingBlockResponse.json();
-    const hasBlockLedgerEntry = Array.isArray(existingBlockRows) &&
-      existingBlockRows.length > 0;
-    const accessBlocked = paypalStatus !== "ACTIVE" || blockedEvent ||
-      (!recoveryEvent && (previouslyBlocked || hasBlockLedgerEntry));
+    const existingBlock = Array.isArray(existingBlockRows) ? existingBlockRows[0] : null;
+    const hasBlockLedgerEntry = Boolean(existingBlock);
+    const priorBlockTime = existingBlock?.source_event_created_at
+      ? new Date(String(existingBlock.source_event_created_at)).getTime()
+      : Number.NaN;
+    const incomingEventTime = new Date(eventCreatedAt).getTime();
+    const incomingBlockIsStale = blockedEvent && Number.isFinite(priorBlockTime) &&
+      incomingEventTime <= priorBlockTime;
+    const priorBlockType = String(existingBlock?.source_event_type || "");
+    const priorBlockResourceId = String(existingBlock?.source_resource_id || "");
+    const isRefundOrReversalBlock = [
+      "PAYMENT.SALE.REFUNDED", "PAYMENT.SALE.REVERSED",
+    ].includes(priorBlockType);
+    const isPaymentFailureBlock = priorBlockType === "BILLING.SUBSCRIPTION.PAYMENT.FAILED";
+    const isSubscriptionLifecycleBlock = [
+      "BILLING.SUBSCRIPTION.CANCELLED",
+      "BILLING.SUBSCRIPTION.SUSPENDED",
+      "BILLING.SUBSCRIPTION.EXPIRED",
+    ].includes(priorBlockType);
+    const newerThanPriorBlock = Number.isFinite(priorBlockTime) &&
+      incomingEventTime > priorBlockTime;
+    const incomingResourceId = String(resource.id || "");
+    const canRecoverBlock = newerThanPriorBlock && (
+      (isRefundOrReversalBlock && eventType === "PAYMENT.SALE.COMPLETED" &&
+        incomingResourceId !== priorBlockResourceId) ||
+      (isPaymentFailureBlock && eventType === "PAYMENT.SALE.COMPLETED") ||
+      (isSubscriptionLifecycleBlock && eventType === "BILLING.SUBSCRIPTION.ACTIVATED")
+    );
+    const effectiveBlockedEvent = blockedEvent && !incomingBlockIsStale;
+    const accessBlocked = paypalStatus !== "ACTIVE" || effectiveBlockedEvent ||
+      ((previouslyBlocked || hasBlockLedgerEntry) && !canRecover);
     const payload = {
       user_id: userId,
       provider: "paypal",
@@ -432,7 +461,7 @@ Deno.serve(async (request: Request) => {
       throw new Error("Unable to persist subscription state");
     }
 
-    if (accessBlocked) {
+    if (effectiveBlockedEvent) {
       const blockResponse = await fetch(
         supabaseUrl + "/rest/v1/sowia_paypal_subscription_blocks?on_conflict=paypal_subscription_id",
         {
@@ -447,15 +476,15 @@ Deno.serve(async (request: Request) => {
             paypal_subscription_id: subscriptionId,
             user_id: userId,
             source_event_id: eventId,
+            source_event_type: eventType,
+            source_event_created_at: eventCreatedAt,
+            source_resource_id: String(resource.id || "") || null,
             blocked_at: new Date().toISOString(),
           }),
         },
       );
       if (!blockResponse.ok) throw new Error("Unable to persist subscription access block");
-    } else if (
-      eventType === "BILLING.SUBSCRIPTION.ACTIVATED" ||
-      eventType === "PAYMENT.SALE.COMPLETED"
-    ) {
+    } else if (canRecover && !accessBlocked) {
       const unblockResponse = await fetch(
         supabaseUrl + "/rest/v1/sowia_paypal_subscription_blocks?paypal_subscription_id=eq." +
           encodeURIComponent(subscriptionId),
