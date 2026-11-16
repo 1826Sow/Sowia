@@ -396,8 +396,8 @@ Deno.serve(async (request: Request) => {
       ? new Date(String(existingBlock.source_event_created_at)).getTime()
       : Number.NaN;
     const incomingEventTime = new Date(eventCreatedAt).getTime();
-    const incomingBlockIsStale = blockedEvent && Number.isFinite(priorBlockTime) &&
-      incomingEventTime <= priorBlockTime;
+    const incomingBlockIsStale = blockedEvent && hasBlockLedgerEntry &&
+      (!Number.isFinite(priorBlockTime) || incomingEventTime <= priorBlockTime);
     const priorBlockType = String(existingBlock?.source_event_type || "");
     const priorBlockResourceId = String(existingBlock?.source_resource_id || "");
     const isRefundOrReversalBlock = [
