@@ -1375,10 +1375,10 @@ elif page == "Hub SOWIA":
                 st.caption(description)
                 st.button("Ouvrir", key=f"hub_quick_{index}", use_container_width=True,
                           on_click=go_to_page, args=(destination,))
-    st.markdown("#### Protocoles & gouvernance")
-    st.caption("Documentation de référence FINAL TEC — protocole de double approbation et contrôles associés.")
+    st.markdown("#### 🧪 Final Tech")
+    st.caption("Espace Final Tech — protocole de double approbation et contrôles associés.")
     st.link_button(
-        "Consulter la documentation FINAL TEC",
+        "Consulter la documentation Final Tech",
         "https://github.com/1826Sow/Sowia/blob/main/docs/FINAL_TEC_DUAL_APPROVAL_PROTOCOL.md",
         use_container_width=True,
     )
