@@ -9,6 +9,14 @@ alter table public.sowia_paypal_subscription_blocks
   add column if not exists source_resource_id text,
   add column if not exists source_paypal_status text;
 
+-- Keep the latest accepted event on the subscription itself. This survives
+-- deletion of a recovered block row and prevents delayed events from
+-- recreating an obsolete block.
+alter table public.sowia_subscriptions
+  add column if not exists last_paypal_event_id text,
+  add column if not exists last_paypal_event_type text,
+  add column if not exists last_paypal_event_created_at timestamptz;
+
 create or replace function public.sowia_apply_paypal_subscription_event(
   p_subscription_id text,
   p_user_id uuid,
@@ -35,6 +43,9 @@ declare
   v_has_block boolean := false;
   v_previously_blocked boolean := false;
   v_existing_user_id uuid;
+  v_last_event_created_at timestamptz;
+  v_last_event_id text;
+  v_existing_access_blocked boolean := false;
   v_incoming_block_is_stale boolean := false;
   v_can_recover boolean := false;
   v_effective_block_event boolean := false;
@@ -64,8 +75,14 @@ begin
     raise exception 'PayPal block ledger is already linked to a different SOW IA user';
   end if;
 
-  select s.user_id, coalesce(s.paypal_access_blocked, false)
-    into v_existing_user_id, v_previously_blocked
+  select s.user_id,
+         coalesce(s.paypal_access_blocked, false),
+         s.last_paypal_event_created_at,
+         s.last_paypal_event_id
+    into v_existing_user_id,
+         v_previously_blocked,
+         v_last_event_created_at,
+         v_last_event_id
     from public.sowia_subscriptions as s
    where s.paypal_subscription_id = p_subscription_id
    for update;
@@ -73,6 +90,14 @@ begin
   v_previously_blocked := coalesce(v_previously_blocked, false);
   if v_existing_user_id is not null and v_existing_user_id <> p_user_id then
     raise exception 'PayPal subscription is already linked to a different SOW IA user';
+  end if;
+
+  -- A recovered block row may be deleted, but this durable subscription
+  -- watermark remains. Reject every older or equal-time event before it can
+  -- change either the subscription snapshot or the block ledger.
+  if v_last_event_created_at is not null
+     and p_event_created_at <= v_last_event_created_at then
+    return v_previously_blocked or v_has_block;
   end if;
 
   v_incoming_block_is_stale :=
@@ -131,6 +156,9 @@ begin
     amount,
     next_billing_time,
     last_payment_at,
+    last_paypal_event_id,
+    last_paypal_event_type,
+    last_paypal_event_created_at,
     updated_at
   ) values (
     p_user_id,
@@ -143,6 +171,9 @@ begin
     p_amount,
     p_next_billing_time,
     p_last_payment_at,
+    p_event_id,
+    p_event_type,
+    p_event_created_at,
     coalesce(p_updated_at, pg_catalog.now())
   )
   on conflict (paypal_subscription_id) do update
@@ -155,6 +186,9 @@ begin
         amount = excluded.amount,
         next_billing_time = excluded.next_billing_time,
         last_payment_at = excluded.last_payment_at,
+        last_paypal_event_id = excluded.last_paypal_event_id,
+        last_paypal_event_type = excluded.last_paypal_event_type,
+        last_paypal_event_created_at = excluded.last_paypal_event_created_at,
         updated_at = excluded.updated_at;
 
   if v_effective_block_event then
