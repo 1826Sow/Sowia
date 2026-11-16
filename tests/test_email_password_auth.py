@@ -32,3 +32,28 @@ def test_password_sign_in_rejects_invalid_email(email):
 def test_password_sign_in_rejects_empty_password():
     with pytest.raises(ValueError, match="mot de passe"):
         supabase_auth.sign_in_email_password(object(), "user@example.com", "")
+
+@pytest.mark.parametrize("otp_type", ["signup", "email", "magiclink"])
+def test_email_confirmation_verifies_supported_token_hash_types(otp_type):
+    calls = []
+
+    class Auth:
+        def verify_otp(self, payload):
+            calls.append(payload)
+            return "verified"
+
+    client = type("Client", (), {"auth": Auth()})()
+    result = supabase_auth.complete_email_magic_link(client, "one-time-token", otp_type)
+
+    assert result == "verified"
+    assert calls == [{"token_hash": "one-time-token", "type": otp_type}]
+
+
+@pytest.mark.parametrize(
+    ("token_hash", "otp_type"),
+    [("", "signup"), ("x" * 4097, "signup"), ("one-time-token", "unknown")],
+)
+def test_email_confirmation_rejects_invalid_token_or_type(token_hash, otp_type):
+    with pytest.raises(ValueError, match="Lien de connexion invalide"):
+        supabase_auth.complete_email_magic_link(object(), token_hash, otp_type)
+
