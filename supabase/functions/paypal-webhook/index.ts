@@ -144,7 +144,11 @@ Deno.serve(async (request: Request) => {
     }
     const eventType = String(event.event_type || "");
     // PayPal event time, not delivery time, determines event ordering.
-    const eventCreatedAt = new Date(String(event.create_time || "")).toISOString();
+    const eventCreatedAtDate = new Date(String(event.create_time || ""));
+    if (!Number.isFinite(eventCreatedAtDate.getTime())) {
+      return json({ error: "Webhook event creation time is missing or invalid" }, 400);
+    }
+    const eventCreatedAt = eventCreatedAtDate.toISOString();
     const eventResource = event.resource && typeof event.resource === "object"
       ? event.resource as Record<string, unknown>
       : {};
