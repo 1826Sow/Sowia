@@ -55,10 +55,11 @@ WORKSPACE_PRIVATE_SESSION_KEYS = (
 
 
 def clear_workspace_session_state(session_state):
-    """Clear cached PDF data when switching between Personal and Professional."""
+    """Clear workspace-private data and stale Back history on workspace switch."""
     for key in WORKSPACE_PRIVATE_SESSION_KEYS:
         session_state.pop(key, None)
     session_state["pdf_text"] = ""
+    session_state.pop("sowia_navigation_history", None)
 
 
 def clear_stale_document_delete_confirmation(session_state, visible_documents):
@@ -89,6 +90,10 @@ def clear_authenticated_session_state(session_state):
         "sowia_github_login_url",
         "active_workspace_id",
         "workspace_id",
+        "sowia_navigation_history",
+        "sowia_current_page",
+        "page_nav",
+        "nav_category",
     ):
         session_state.pop(key, None)
 
