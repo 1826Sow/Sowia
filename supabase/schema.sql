@@ -61,15 +61,15 @@ grant select, insert, delete on public.sowia_messages to authenticated;
 grant select, insert, delete on public.sowia_memory_items to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
 
-
--- Premium access is written only by the trusted server using the service-role
--- key after PayPal has confirmed a completed capture. Authenticated users may
--- read only their own entitlement; they cannot grant or edit their own access.
+-- Premium access is written only by trusted server-side payment verification.
+-- Both PayPal and Stripe are supported; provider-specific identifiers stay nullable.
 create table if not exists public.sowia_entitlements (
     user_id uuid primary key references auth.users(id) on delete cascade,
     status text not null check (status in ('active', 'inactive')),
-    provider text not null check (provider in ('paypal')),
-    paypal_order_id text not null unique,
+    provider text not null check (provider in ('paypal', 'stripe')),
+    paypal_order_id text unique,
+    stripe_checkout_session_id text unique,
+    stripe_payment_intent_id text unique,
     amount numeric(10, 2) not null check (amount > 0),
     currency text not null check (currency = 'EUR'),
     updated_at timestamptz not null default now()
