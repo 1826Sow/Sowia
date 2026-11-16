@@ -60,6 +60,10 @@ begin
 
   v_has_block := found;
 
+  if v_has_block and v_block.user_id <> p_user_id then
+    raise exception 'PayPal block ledger is already linked to a different SOW IA user';
+  end if;
+
   select s.user_id, coalesce(s.paypal_access_blocked, false)
     into v_existing_user_id, v_previously_blocked
     from public.sowia_subscriptions as s
