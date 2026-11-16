@@ -27,6 +27,7 @@ from sowia_supabase_auth import (
     complete_github_login,
     complete_email_magic_link,
     email_magic_link,
+    signup_email_user,
     email_is_allowed,
     configuration_ready,
     create_email_user_client,
@@ -398,20 +399,8 @@ if cloud_mode:
                 st.stop()
             # The expected address is cleared only after the identity matches.
             st.session_state.pop("sowia_email_login_pending", None)
-        if current_user is not None:
-            allowed_emails = f"{get_setting('SOWIA_ALLOWED_EMAILS', '')};sowkeys7@gmail.com"
-            authenticated_email = str(getattr(current_user, "email", "") or "").strip().lower()
-            if not email_is_allowed(authenticated_email, allowed_emails):
-                try:
-                    sign_out(supabase_client)
-                except Exception:
-                    pass
-                clear_authenticated_session_state(st.session_state)
-                st.error(
-                    "Accès refusé : cette adresse e-mail n’est pas autorisée à ouvrir SOW IA. "
-                    "Contactez l’administrateur pour demander un accès."
-                )
-                st.stop()
+        # Every account created through Supabase email confirmation is eligible
+        # for the standard SOW IA workspace. Premium remains a separate entitlement.
         if current_user is None:
             # Never keep the previous account's private PDF or payment cache after
             # a missing/expired login.
@@ -507,6 +496,45 @@ if cloud_mode:
         ).strip().lower() in {"1", "true", "yes"}
 
         if email_login_only:
+            st.markdown("#### Créer un compte SOW IA")
+            st.caption("Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.")
+            with st.form("sowia_email_signup_form", clear_on_submit=False):
+                signup_email = st.text_input("Votre adresse e-mail", max_chars=254, key="sowia_signup_email")
+                signup_password = st.text_input("Mot de passe (8 caractères minimum)", type="password", key="sowia_signup_password")
+                signup_password_confirm = st.text_input("Confirmer le mot de passe", type="password", key="sowia_signup_password_confirm")
+                signup_submitted = st.form_submit_button("Créer mon compte", type="primary", use_container_width=True)
+            if signup_submitted:
+                candidate_signup_email = str(signup_email or "").strip().lower()
+                if (
+                    len(candidate_signup_email) > 254
+                    or candidate_signup_email.count("@") != 1
+                    or candidate_signup_email.startswith("@")
+                    or candidate_signup_email.endswith("@")
+                    or "." not in candidate_signup_email.rsplit("@", 1)[-1]
+                ):
+                    st.error("Saisissez une adresse e-mail valide.")
+                elif len(signup_password or "") < 8:
+                    st.error("Le mot de passe doit contenir au moins 8 caractères.")
+                elif signup_password != signup_password_confirm:
+                    st.error("Les deux mots de passe ne correspondent pas.")
+                elif not redirect_to:
+                    st.error("L'adresse de retour sécurisée de SOW IA n'est pas valide.")
+                else:
+                    try:
+                        signup_client = create_email_user_client()
+                        signup_email_user(signup_client, candidate_signup_email, signup_password, redirect_to)
+                        st.session_state["sowia_signup_pending"] = candidate_signup_email
+                        st.success("Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.")
+                    except Exception as signup_exc:
+                        signup_message = str(getattr(signup_exc, "message", "") or "").strip()
+                        signup_code = str(getattr(signup_exc, "code", "") or "").strip()
+                        if "already registered" in signup_message.lower() or "already been registered" in signup_message.lower():
+                            st.error("Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.")
+                        else:
+                            st.error("La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.")
+                            st.caption("Diagnostic : " + type(signup_exc).__name__ + ((" · " + signup_code[:80]) if signup_code else ""))
+
+            st.divider()
             st.markdown("#### Connexion par e-mail")
             st.caption(
                 "Saisissez l'adresse e-mail déjà associée à votre compte SOW IA, "
@@ -536,17 +564,14 @@ if cloud_mode:
                     ):
                         st.error("Saisissez une adresse e-mail valide.")
                     else:
-                        allowed_emails = f"{get_setting('SOWIA_ALLOWED_EMAILS', '')};sowkeys7@gmail.com"
-                        if not email_is_allowed(candidate_login_email, allowed_emails):
-                            st.error("Accès refusé : cette adresse e-mail n’est pas autorisée à ouvrir SOW IA.")
-                        elif not redirect_to:
+                        if not redirect_to:
                             raise ValueError("URL HTTPS de retour invalide")
                         else:
                             email_client = create_email_user_client()
                             email_magic_link(email_client, candidate_login_email, redirect_to)
                             st.session_state["sowia_email_login_pending"] = candidate_login_email
                             st.success(
-                                "Adresse validée. Si elle correspond à un compte existant, "
+                                "Si cette adresse correspond à un compte SOW IA, "
                                 "un lien sécurisé vient d'être envoyé. Consultez aussi "
                                 "les courriers indésirables."
                             )
