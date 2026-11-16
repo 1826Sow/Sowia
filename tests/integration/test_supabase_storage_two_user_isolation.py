@@ -35,8 +35,8 @@ PDF_FIXTURE = b"%PDF-1.4\n% SOW IA isolated storage test fixture\n%%EOF\n"
 
 def _validated_supabase_url(value):
     parsed = urlsplit(value)
-    if parsed.hostname and parsed.hostname.split(".", 1)[0].lower() == "qegcopordeqjiechmbhg":
-        raise ValueError("Refusing live RLS tests against the SOW IA production Supabase project")
+    if parsed.hostname != "mrbmoavotzcuzvnhfjla.supabase.co":
+        raise ValueError("Refusing live RLS tests: only the dedicated SOWIA - TEST project mrbmoavotzcuzvnhfjla is permitted")
     if (
         parsed.scheme != "https"
         or not parsed.hostname
