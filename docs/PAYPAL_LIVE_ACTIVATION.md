@@ -21,8 +21,7 @@ Dans Supabase > Project Settings > Edge Functions > Secrets (ou l'écran de gest
 - `PAYPAL_MODE=live`
 - `PAYPAL_LIVE_CLIENT_ID` : Client ID de l'application PayPal en mode Live
 - `PAYPAL_LIVE_CLIENT_SECRET` : Secret de cette même application PayPal Live
-- `SUPABASE_URL` : URL du projet Supabase
-- `SUPABASE_SERVICE_ROLE_KEY` : clé service-role du projet, uniquement côté Edge Function
+Les variables Supabase système (`SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY`) sont déjà injectées dans l'environnement des Edge Functions. Ne pas les copier manuellement dans les secrets personnalisés.
 
 Les secrets Sandbox existants (`PAYPAL_CLIENT_ID` et `PAYPAL_CLIENT_SECRET`) restent distincts et ne doivent pas être remplacés par les identifiants Live.
 
