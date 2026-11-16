@@ -2,9 +2,9 @@ name: SOW IA quality checks
 
 on:
   push:
-    branches: [main, "feat/**", "fix/**", "security/**"]
+    branches: [main, "feat/**", "fix/**", "security/**", "test/**"]
   pull_request:
-    branches: [main]
+    branches: [main, "fix/**"]
 
 permissions:
   contents: read
