@@ -6678,6 +6678,43 @@ elif page == "Opportunités et revenus":
             else:
                 st.caption("Aucune prévision enregistrée pour le moment.")
 
+            if opportunities:
+                st.markdown("#### 🧭 Priorité économique des opportunités")
+                st.caption(
+                    "Classement indicatif par marge mensuelle estimée (revenu potentiel moins coût estimé). "
+                    "Il ne tient pas lieu de probabilité de réussite ni de revenu encaissé."
+                )
+                for ranking_currency in sorted({
+                    str(item.get("currency") or "EUR") for item in opportunities
+                }):
+                    ranking_rows = []
+                    for item in opportunities:
+                        currency_value = str(item.get("currency") or "EUR")
+                        if currency_value != ranking_currency:
+                            continue
+                        revenue_value = float(item.get("expected_monthly_revenue") or 0)
+                        cost_value = float(item.get("estimated_monthly_cost") or 0)
+                        margin_value = revenue_value - cost_value
+                        margin_rate = (
+                            round((margin_value / revenue_value) * 100, 1)
+                            if revenue_value > 0 else None
+                        )
+                        ranking_rows.append({
+                            "Offre": str(item.get("offer") or item.get("niche") or "Sans titre"),
+                            "Étape": str(item.get("stage") or "À étudier"),
+                            "Revenu potentiel / mois": round(revenue_value, 2),
+                            "Coût estimé / mois": round(cost_value, 2),
+                            "Marge estimée / mois": round(margin_value, 2),
+                            "Marge (%)": margin_rate if margin_rate is not None else "—",
+                        })
+                    ranking_rows.sort(
+                        key=lambda row: row["Marge estimée / mois"], reverse=True
+                    )
+                    st.markdown(f"**Classement — {ranking_currency}**")
+                    st.dataframe(
+                        ranking_rows, use_container_width=True, hide_index=True
+                    )
+
             with st.expander("＋ Ajouter une opportunité commerciale", expanded=not opportunities):
                 with st.form("business_opportunity_form", clear_on_submit=True):
                     niche = st.selectbox("Niche", NICHE_CATEGORIES)
