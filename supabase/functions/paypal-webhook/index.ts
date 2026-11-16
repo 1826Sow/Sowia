@@ -362,10 +362,6 @@ Deno.serve(async (request: Request) => {
       "PAYMENT.SALE.REFUNDED",
       "PAYMENT.SALE.REVERSED",
     ].includes(eventType);
-    const recoveryEvent = [
-      "BILLING.SUBSCRIPTION.ACTIVATED",
-      "PAYMENT.SALE.COMPLETED",
-    ].includes(eventType);
     const existingSubscriptionResponse = await fetch(
       supabaseUrl + "/rest/v1/sowia_subscriptions?paypal_subscription_id=eq." +
         encodeURIComponent(subscriptionId) + "&select=paypal_access_blocked&limit=1",
