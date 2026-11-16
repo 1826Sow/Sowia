@@ -8,7 +8,7 @@ DB_PATH = Path("data/sowia.db")
 WORKSPACES = {"personal", "professional"}
 MESSAGE_ROLES = {"user", "assistant"}
 _SCHEMA_LOCK = threading.Lock()
-_SCHEMA_READY_DB_PATH = None
+_SCHEMA_READY_DB_PATHS = set()
 
 
 def _workspace_id(workspace_id):
@@ -29,13 +29,13 @@ def _ensure_workspace_column(conn, table):
 
 def _connect():
     """Open a local database connection and initialize its schema once per process."""
-    global _SCHEMA_READY_DB_PATH
+    global _SCHEMA_READY_DB_PATHS
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH, timeout=10)
     schema_path = str(DB_PATH.resolve())
-    if _SCHEMA_READY_DB_PATH != schema_path:
+    if schema_path not in _SCHEMA_READY_DB_PATHS:
         with _SCHEMA_LOCK:
-            if _SCHEMA_READY_DB_PATH != schema_path:
+            if schema_path not in _SCHEMA_READY_DB_PATHS:
                 conn.execute(
                     """CREATE TABLE IF NOT EXISTS messages (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,7 +65,7 @@ def _connect():
                     "ON memory_items(workspace_id, id)"
                 )
                 conn.commit()
-                _SCHEMA_READY_DB_PATH = schema_path
+                _SCHEMA_READY_DB_PATHS.add(schema_path)
     return conn
 
 def save_message(session_id, role, content, workspace_id="personal"):
