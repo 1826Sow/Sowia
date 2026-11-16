@@ -4467,16 +4467,24 @@ elif page == "SOWIA GLOBAL PERFORMANCE & IMPACT":
                         trend_date = datetime.fromisoformat(
                             str(raw_stamp).replace("Z", "+00:00")
                         ).date().isoformat()
+                        plan_id = str(trend_row.get("action_plan_id") or "")
+                        plan_title = str(trend_row.get("plan_title_snapshot") or "Plan sans titre")
+                        if not plan_id:
+                            continue
                         trend_points.append({
                             "Date": trend_date,
-                            "Plan": str(trend_row.get("plan_title_snapshot") or "Plan sans titre"),
+                            "Plan": f"{plan_title} · {plan_id[:8]}",
+                            "Plan ID": plan_id,
                             "Avancement (%)": float(trend_row.get("progress_percent") or 0),
                         })
                     except (TypeError, ValueError):
                         continue
-                if len(trend_points) >= 2:
-                    import pandas as pd
-                    trend_frame = pd.DataFrame(trend_points)
+                trend_frame = pd.DataFrame(trend_points) if trend_points else None
+                repeat_measurement = (
+                    trend_frame.groupby("Plan ID").size().max()
+                    if trend_frame is not None and not trend_frame.empty else 0
+                )
+                if repeat_measurement >= 2:
                     trend_chart = (
                         trend_frame.pivot_table(
                             index="Date", columns="Plan",
@@ -4484,6 +4492,7 @@ elif page == "SOWIA GLOBAL PERFORMANCE & IMPACT":
                         )
                         .sort_index()
                     )
+                    trend_chart.columns.name = None
                     st.line_chart(trend_chart, y_label="Avancement (%)")
                     st.caption(
                         "Chaque courbe suit les mesures successives enregistrées pour un plan. "
