@@ -4,6 +4,8 @@ Application web d'intelligence artificielle construite avec Streamlit.
 
 Consulter la [vision produit et feuille de route maîtresse](docs/VISION_ET_FEUILLE_DE_ROUTE.md) pour le périmètre complet : intelligence financière, marchés mondiaux, météo-économie, vérification de l'information, développement international, Club Privé et projet ultérieur de carte Gold.
 
+**Projet de distribution multi-plateforme :** consulter la [feuille de route mobile et internationale](docs/DISTRIBUTION_MOBILE_ET_INTERNATIONALE.md). Elle décrit les étapes envisagées pour le web, Android/Google Play et iOS/App Store. Il s'agit d'un plan de travail, pas d'une annonce de publication : aucun binaire Android/iOS ni validation de store n'est déclaré disponible à ce stade.
+
 ## Socle actuel
 
 Consulter le [guide de l’espace Professionnel](docs/GUIDE_ESPACE_PROFESSIONNEL.md) pour utiliser le tableau de bord, les modèles PDF, la mémoire et la bibliothèque documentaire.
@@ -72,7 +74,6 @@ Ajouter aussi `TAVILY_API_KEY` seulement si la recherche web est utilisée. Ne j
 Le mode public doit impérativement conserver `SOWIA_REQUIRE_AUTH=true`. Si Supabase n'est pas configuré, l'application doit rester fermée plutôt que d'ouvrir un accès non authentifié.
 
 Les paiements restent désactivés tant que la finalisation de l'application n'est pas terminée. Ne pas activer `SOWIA_PAYMENTS_ENABLED` ni ajouter de secrets de paiement avant décision explicite du propriétaire.
-
 
 ### Autorisation des fonctions Premium
 
