@@ -118,6 +118,21 @@ jobs:
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
           fi
+      - name: Verify dedicated Supabase project ref before any test
+        if: steps.credentials.outputs.configured == 'true'
+        shell: bash
+        env:
+          SOWIA_TEST_SUPABASE_URL: ${{ secrets.SOWIA_TEST_SUPABASE_URL }}
+        run: |
+          case "$SOWIA_TEST_SUPABASE_URL" in
+            "https://mrbmoavotzcuzvnhfjla.supabase.co"|"https://mrbmoavotzcuzvnhfjla.supabase.co/")
+              echo "Verified dedicated SOWIA - TEST project ref: mrbmoavotzcuzvnhfjla"
+              ;;
+            *)
+              echo "::error::Refusing live RLS tests: SOWIA_TEST_SUPABASE_URL must target the dedicated SOWIA - TEST project mrbmoavotzcuzvnhfjla."
+              exit 1
+              ;;
+          esac
       - name: Report safely that live RLS tests are not configured
         if: steps.credentials.outputs.configured != 'true'
         run: |
