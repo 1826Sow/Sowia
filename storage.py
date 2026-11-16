@@ -1,11 +1,14 @@
 """Local SQLite storage for conversations and user-managed memory, separated by workspace."""
 import sqlite3
+import threading
 from pathlib import Path
 from datetime import datetime, timezone
 
 DB_PATH = Path("data/sowia.db")
 WORKSPACES = {"personal", "professional"}
 MESSAGE_ROLES = {"user", "assistant"}
+_SCHEMA_LOCK = threading.Lock()
+_SCHEMA_READY = False
 
 
 def _workspace_id(workspace_id):
@@ -25,30 +28,44 @@ def _ensure_workspace_column(conn, table):
 
 
 def _connect():
+    """Open a local database connection and initialize its schema once per process."""
+    global _SCHEMA_READY
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            role TEXT NOT NULL,
-            content TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            workspace_id TEXT NOT NULL DEFAULT 'personal'
-        )"""
-    )
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS memory_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            content TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            workspace_id TEXT NOT NULL DEFAULT 'personal'
-        )"""
-    )
-    _ensure_workspace_column(conn, "messages")
-    _ensure_workspace_column(conn, "memory_items")
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    if not _SCHEMA_READY:
+        with _SCHEMA_LOCK:
+            if not _SCHEMA_READY:
+                conn.execute(
+                    """CREATE TABLE IF NOT EXISTS messages (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        session_id TEXT NOT NULL,
+                        role TEXT NOT NULL,
+                        content TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        workspace_id TEXT NOT NULL DEFAULT 'personal'
+                    )"""
+                )
+                conn.execute(
+                    """CREATE TABLE IF NOT EXISTS memory_items (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        content TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        workspace_id TEXT NOT NULL DEFAULT 'personal'
+                    )"""
+                )
+                _ensure_workspace_column(conn, "messages")
+                _ensure_workspace_column(conn, "memory_items")
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_messages_session_workspace_id "
+                    "ON messages(session_id, workspace_id, id)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_memory_workspace_id "
+                    "ON memory_items(workspace_id, id)"
+                )
+                conn.commit()
+                _SCHEMA_READY = True
     return conn
-
 
 def save_message(session_id, role, content, workspace_id="personal"):
     """Save only supported conversation roles, matching cloud storage rules."""
