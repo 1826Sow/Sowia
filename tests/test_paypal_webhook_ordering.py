@@ -19,6 +19,11 @@ def test_webhook_applies_subscription_state_through_atomic_database_function():
     assert "p_blocked_event: blockedEvent" in WEBHOOK
     assert "Unable to atomically apply PayPal subscription event" in WEBHOOK
 
+def test_webhook_rejects_missing_or_invalid_event_timestamps():
+    assert "eventCreatedAtDate.getTime()" in WEBHOOK
+    assert "Webhook event creation time is missing or invalid" in WEBHOOK
+    assert "eventCreatedAtDate.toISOString()" in WEBHOOK
+
 
 def test_database_serializes_decisions_per_subscription_before_reading_state():
     lock = MIGRATION.index("pg_catalog.pg_advisory_xact_lock")
