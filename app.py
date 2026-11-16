@@ -74,7 +74,7 @@ def queue_chat_submission():
     st.session_state["sowia_chat_prompt"] = ""
 
 
-st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-brain-icon.svg", layout="wide")
+st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-app-icon.svg", layout="wide")
 st.markdown(
     """<style>
     :root { color-scheme: dark; }
@@ -868,7 +868,7 @@ else:
     st.session_state.pop("sowia_premium_status_cache", None)
 
 with st.sidebar:
-    st.image("assets/sowia-brain-brand.svg", width=210)
+    st.image("assets/sowia-mark.svg", width=210)
     st.markdown("## SOW IA")
     preference_owner = str(getattr(current_user, "id", "")) if cloud_mode and current_user is not None else "local"
     if st.session_state.get("sowia_language_loaded_for") != preference_owner:
@@ -1097,7 +1097,7 @@ st.markdown(
 st.write("")
 
 if page == "Accueil":
-    st.image("assets/sowia-accueil-hero.svg", use_container_width=True)
+    st.image("assets/sowia-home-hero.svg", use_container_width=True)
     st.caption("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.")
     # The project hub is deliberately the first major block on the home page.
     st.markdown(
