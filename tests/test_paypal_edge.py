@@ -8,7 +8,7 @@ def test_checkout_disabled_by_default(monkeypatch):
     assert paypal_edge.checkout_enabled() is False
 
 
-def test_checkout_requires_explicit_sandbox_switch(monkeypatch):
+def test_checkout_requires_explicit_switch_for_sandbox_and_live(monkeypatch):
     values = {
         "SOWIA_PAYMENTS_ENABLED": "true",
         "PAYPAL_MODE": "sandbox",
@@ -17,14 +17,10 @@ def test_checkout_requires_explicit_sandbox_switch(monkeypatch):
     monkeypatch.setattr(paypal_edge, "get_setting", lambda name, default=None: values.get(name, default))
     assert paypal_edge.checkout_enabled() is True
 
+    values["PAYPAL_MODE"] = "live"
+    assert paypal_edge.checkout_enabled() is True
 
-def test_checkout_rejects_live_mode_and_other_price(monkeypatch):
-    values = {
-        "SOWIA_PAYMENTS_ENABLED": "true",
-        "PAYPAL_MODE": "live",
-        "PAYPAL_PREMIUM_PRICE": "9.90",
-    }
-    monkeypatch.setattr(paypal_edge, "get_setting", lambda name, default=None: values.get(name, default))
+    values["PAYPAL_MODE"] = "production"
     assert paypal_edge.checkout_enabled() is False
     values["PAYPAL_MODE"] = "sandbox"
     values["PAYPAL_PREMIUM_PRICE"] = "10.00"
