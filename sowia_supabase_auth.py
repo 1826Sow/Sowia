@@ -284,7 +284,7 @@ def read_email_auth_fragment():
                 const accessToken = params.get("access_token");
                 const refreshToken = params.get("refresh_token");
                 const type = params.get("type");
-                if (accessToken && refreshToken && type === "magiclink") {
+                if (accessToken && refreshToken && ["magiclink", "signup"].includes(type)) {
                     page.history.replaceState(page.history.state, "", url.pathname + url.search);
                     setStateValue("access_token", accessToken);
                     setStateValue("refresh_token", refreshToken);
@@ -316,10 +316,27 @@ def read_email_auth_fragment():
         and 20 <= len(access_token) <= 8192
         and isinstance(refresh_token, str)
         and 10 <= len(refresh_token) <= 2048
-        and token_type == "magiclink"
+        and token_type in {"magiclink", "signup"}
     ):
         return {"access_token": access_token, "refresh_token": refresh_token}
     return None
+
+
+def signup_email_user(client, email, password, redirect_to):
+    """Create a Supabase email/password account with email confirmation required."""
+    address = str(email or "").strip().lower()
+    secret = str(password or "")
+    if not address or len(address) > 254 or address.count("@") != 1:
+        raise ValueError("Adresse e-mail invalide.")
+    if len(secret) < 8:
+        raise ValueError("Le mot de passe doit contenir au moins 8 caractères.")
+    if not redirect_to or not redirect_to.startswith("https://"):
+        raise ValueError("L'adresse de retour HTTPS n'est pas configurée.")
+    return client.auth.sign_up({
+        "email": address,
+        "password": secret,
+        "options": {"email_redirect_to": redirect_to},
+    })
 
 
 def email_magic_link(client, email, redirect_to):
@@ -343,7 +360,7 @@ def complete_email_magic_link(client, token_hash, otp_type):
     """Verify a one-time Supabase email link; accept only email magic-link types."""
     token = str(token_hash or "").strip()
     kind = str(otp_type or "").strip().lower()
-    if not token or len(token) > 4096 or kind not in {"magiclink", "email"}:
+    if not token or len(token) > 4096 or kind not in {"magiclink", "email", "signup"}:
         raise ValueError("Lien de connexion invalide ou expiré.")
     return client.auth.verify_otp({"token_hash": token, "type": kind})
 
