@@ -74,7 +74,7 @@ def queue_chat_submission():
     st.session_state["sowia_chat_prompt"] = ""
 
 
-st.set_page_config(page_title=APP_NAME, page_icon="🧠", layout="wide")
+st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-brain-icon.svg", layout="wide")
 st.markdown(
     """<style>
     :root { color-scheme: dark; }
@@ -868,7 +868,7 @@ else:
     st.session_state.pop("sowia_premium_status_cache", None)
 
 with st.sidebar:
-    st.markdown("## 🧠 SOW IA")
+    st.image("assets/sowia-brain-brand.svg", use_container_width=True)
     preference_owner = str(getattr(current_user, "id", "")) if cloud_mode and current_user is not None else "local"
     if st.session_state.get("sowia_language_loaded_for") != preference_owner:
         saved_language = "Français"
