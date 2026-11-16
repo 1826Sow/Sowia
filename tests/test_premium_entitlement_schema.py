@@ -27,10 +27,13 @@ def test_authenticated_users_can_read_only_their_own_premium_entitlement():
     assert "grant delete on public.sowia_entitlements to authenticated" not in PREMIUM_SCHEMA
 
 
-def test_premium_entitlement_order_id_is_unique_and_amount_is_positive():
+def test_premium_entitlement_schema_supports_paypal_and_stripe_safely():
     table_start = PREMIUM_SCHEMA.index("create table if not exists public.sowia_entitlements")
     table_end = PREMIUM_SCHEMA.index(");", table_start)
     table = PREMIUM_SCHEMA[table_start:table_end]
-    assert "paypal_order_id text not null unique" in table
+    assert "provider text not null check (provider in ('paypal', 'stripe'))" in table
+    assert "paypal_order_id text unique" in table
+    assert "stripe_checkout_session_id text unique" in table
+    assert "stripe_payment_intent_id text unique" in table
     assert "amount numeric(10, 2) not null check (amount > 0)" in table
     assert "currency text not null check (currency = 'eur')" in table
