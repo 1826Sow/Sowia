@@ -17,7 +17,7 @@ MIGRATION = (
 def _policy(table: str, operation: str) -> str:
     sql = MIGRATION.read_text(encoding="utf-8")
     match = re.search(
-        rf"create\s+policy\s+{table}_{operation}_own\\b(.*?);",
+        rf"create\s+policy\s+{table}_{operation}_own\b(.*?);",
         sql,
         flags=re.IGNORECASE | re.DOTALL,
     )
