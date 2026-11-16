@@ -467,7 +467,7 @@ if cloud_mode:
             unsafe_allow_html=True,
         )
         st.subheader(translate_ui("Connexion à SOW IA", language))
-        st.write("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA. Un lien sécurisé à usage unique vous sera envoyé. Aucun compte GitHub n’est nécessaire.")
+        st.write("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA : utilisez votre mot de passe ou demandez un lien sécurisé à usage unique. Aucun compte GitHub n’est nécessaire.")
         callback_code_present = bool(st.query_params.get("code") or st.query_params.get("token_hash"))
         callback_error = str(st.query_params.get("error", "")).strip()
         callback_error_description = str(st.query_params.get("error_description", "")).strip()
