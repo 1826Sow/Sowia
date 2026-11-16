@@ -73,7 +73,16 @@ Ajouter aussi `TAVILY_API_KEY` seulement si la recherche web est utilisée. Ne j
 
 Le mode public doit impérativement conserver `SOWIA_REQUIRE_AUTH=true`. Si Supabase n'est pas configuré, l'application doit rester fermée plutôt que d'ouvrir un accès non authentifié.
 
-Les paiements restent désactivés tant que la finalisation de l'application n'est pas terminée. Ne pas activer `SOWIA_PAYMENTS_ENABLED` ni ajouter de secrets de paiement avant décision explicite du propriétaire.
+### Paiements et droits Premium
+
+L'activation du parcours PayPal Live a été explicitement autorisée par le propriétaire. Le propriétaire indique également que le test de paiement est validé. Cette validation utilisateur ne constitue toutefois pas, à elle seule, une preuve indépendante de la configuration actuelle des secrets de l'hébergeur, de la réception des webhooks ou de l'état de production.
+
+- Ne jamais publier de clé, secret, jeton, identifiant privé ou contenu de webhook dans GitHub.
+- Les secrets PayPal Live doivent être configurés uniquement dans les gestionnaires de secrets prévus (Streamlit et Supabase Edge Functions), jamais dans le dépôt.
+- Vérifier séparément le mode effectif, les identifiants Live, l'URL de retour, le webhook et les journaux avant d'annoncer le parcours comme opérationnel en production.
+- Ne jamais effectuer de paiement réel pour un simple contrôle technique et ne jamais considérer un retour navigateur comme preuve de paiement.
+- Le prix Premium configuré dans le parcours concerné est de 9,90 EUR ; toute modification tarifaire doit être cohérente entre l'application et le serveur.
+- Toute fonction payante doit vérifier côté serveur un droit Premium actif, associé à l'utilisateur authentifié.
 
 ### Autorisation des fonctions Premium
 
@@ -103,4 +112,4 @@ Une action GitHub exécute ces contrôles automatiquement sur les modifications.
 
 ## État de mise en production
 
-Le dépôt contient l'intégration Supabase et les tests de sécurité associés. Le déploiement effectif, l'exécution des scripts SQL dans le projet Supabase, les secrets de l'hébergeur, les URL OAuth autorisées et les tests de bout en bout sur l'URL publique restent à vérifier. Ne pas annoncer l'application comme entièrement sécurisée ou finalisée avant ces vérifications.
+Le dépôt contient l'intégration Supabase et les tests de sécurité associés. Le propriétaire confirme avoir validé le test de paiement PayPal et autorisé l'activation Live. L'état effectif des secrets Streamlit, des URL OAuth, de la configuration Live et des tests de bout en bout sur l'URL publique doit néanmoins être contrôlé dans les consoles concernées avant de déclarer l'ensemble de la production entièrement vérifié. Ne pas confondre autorisation, test confirmé par le propriétaire et vérification indépendante du déploiement.
