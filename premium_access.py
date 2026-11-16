@@ -1,8 +1,8 @@
 """Persistent Premium entitlements backed by Supabase.
 
 Reads use the authenticated user's RLS-scoped client. Writes require a
-server-only service-role client and are called only after PayPal capture
-validation succeeds.
+server-only service-role client and are called only after provider-side
+payment validation succeeds.
 """
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -27,7 +27,7 @@ def get_entitlement(user_client, user):
         raise PermissionError("Connexion requise.")
     result = (
         user_client.table("sowia_entitlements")
-        .select("status, provider, paypal_order_id, amount, currency, updated_at")
+        .select("status, provider, paypal_order_id, stripe_checkout_session_id, stripe_payment_intent_id, amount, currency, updated_at")
         .eq("user_id", str(user_id))
         .maybe_single()
         .execute()
@@ -118,3 +118,34 @@ def require_active_entitlement(user_client, user):
     if subscription is not None:
         return subscription
     raise PermissionError("Un accès SOW IA Premium actif est nécessaire.")
+
+
+def grant_stripe_entitlement(admin_client, user_id, session_id, payment_intent_id, amount, currency):
+    """Grant Premium only after the Stripe Checkout Session is retrieved and verified."""
+    if admin_client is None:
+        raise RuntimeError("Le stockage sécurisé des abonnements n'est pas configuré.")
+    normalized_user_id = str(user_id or "").strip()
+    normalized_session_id = str(session_id or "").strip()
+    normalized_intent_id = str(payment_intent_id or "").strip()
+    if (not normalized_user_id or not normalized_session_id.startswith("cs_")
+        or not normalized_intent_id.startswith("pi_") or amount is None):
+        raise ValueError("Informations de paiement Stripe incomplètes.")
+    try:
+        normalized_amount = Decimal(str(amount)).quantize(Decimal("0.01"))
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValueError("Le montant Stripe doit être un montant en euros valide.") from None
+    if (not normalized_amount.is_finite() or normalized_amount <= 0
+        or normalized_amount > Decimal("9999.99") or str(currency).upper() != "EUR"):
+        raise ValueError("Le montant Stripe ou la devise ne sont pas valides.")
+    payload = {
+        "user_id": normalized_user_id,
+        "status": "active",
+        "provider": "stripe",
+        "stripe_checkout_session_id": normalized_session_id,
+        "stripe_payment_intent_id": normalized_intent_id,
+        "amount": f"{normalized_amount:.2f}",
+        "currency": "EUR",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return (admin_client.table("sowia_entitlements")
+            .upsert(payload, on_conflict="user_id").execute().data)
