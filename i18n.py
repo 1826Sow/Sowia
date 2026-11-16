@@ -2,7 +2,7 @@
 
 LANGUAGES = ["Français", "English", "Español", "中文", "Deutsch", "العربية"]
 
-_TRANSLATIONS = {
+_BASE_TRANSLATIONS = {
     "English": {
         "Intelligence artificielle": "Artificial intelligence", "Personnel": "Personal", "Professionnel": "Professional",
         "Accueil": "Home", "Assistant IA": "AI assistant", "Ma mémoire": "My memory", "Recherche Web": "Web search",
@@ -74,6 +74,9 @@ _TRANSLATIONS = {
         "Découvrez l’espace Premium": "اكتشف Premium", "Trouvez des partenaires et préparez vos campagnes": "اعثر على شركاء وجهّز حملاتك",
         "Vérifiez votre configuration": "تحقق من الإعدادات", "Consultez les indications d’utilisation": "راجع دليل الاستخدام",
     },
+}
+
+_EXTRA_TRANSLATIONS = {
     "English": {
         "💬 Mon Assistant IA": "💬 My AI assistant",
         "🧠 Ma mémoire — espace {workspace_label}": "🧠 My memory — {workspace_label} space",
@@ -157,7 +160,13 @@ def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     if language not in LANGUAGES:
         language = "Français"
-    translated = _TRANSLATIONS.get(language, {}).get(text)
+    # Merge the original catalogue with the additional navigation labels.
+    # Separate dictionaries prevent duplicate language keys from overwriting
+    # the broader translation catalogue during module loading.
+    translated = _BASE_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _EXTRA_TRANSLATIONS.get(language, {}).get(text)
     if translated is not None:
         return translated
     return _CORE_TRANSLATIONS.get(language, {}).get(text, text)
