@@ -38,6 +38,7 @@ from sowia_supabase_auth import (
 import cloud_storage
 import paypal_payments
 import paypal_subscriptions
+import stripe_payments
 import premium_access
 import financial_ledger
 import decision_benchmark_ui
@@ -587,6 +588,34 @@ if cloud_mode:
                 )
         st.stop()
 
+
+# Stripe returns only a Checkout Session identifier. Premium is granted
+# after retrieving the session directly from Stripe and validating ownership,
+# paid status, EUR currency and the exact server-configured amount.
+if cloud_mode and current_user is not None:
+    stripe_session_id = st.query_params.get("stripe_session_id")
+    if stripe_session_id:
+        try:
+            verified_payment = stripe_payments.retrieve_paid_checkout(
+                str(stripe_session_id), str(current_user.id)
+            )
+            admin_client = premium_access.create_admin_client()
+            if admin_client is None:
+                raise RuntimeError("Le stockage sécurisé des droits Premium n'est pas configuré.")
+            premium_access.grant_stripe_entitlement(
+                admin_client, str(current_user.id),
+                verified_payment["session_id"],
+                verified_payment["payment_intent_id"],
+                verified_payment["amount"], verified_payment["currency"],
+            )
+            st.query_params.clear()
+            st.session_state["stripe_purchase_confirmed"] = True
+            st.rerun()
+        except Exception:
+            st.error("Le paiement par carte n'a pas pu être confirmé. Aucun accès Premium n'a été accordé.")
+    if st.query_params.get("stripe") == "cancel":
+        st.info("Le paiement par carte a été annulé. Aucun accès Premium n'a été accordé.")
+        st.query_params.clear()
 
 # PayPal returns the buyer to this server URL with the order ID in ?token=...
 # The server validates and captures the order before granting any entitlement.
@@ -3437,6 +3466,27 @@ elif page == "Abonnement":
                     )
             st.write("Votre droit d’accès est enregistré sur votre compte et sera retrouvé lors de vos prochaines connexions.")
         else:
+            # Stripe card checkout remains disabled until the server-side live
+            # credentials, EUR Price and HTTPS return URLs are configured.
+            try:
+                stripe_config = stripe_payments.stripe_configuration()
+            except ValueError:
+                stripe_config = None
+                st.error("La configuration du paiement par carte Stripe est invalide.")
+            if stripe_config is None:
+                st.info("Paiement par carte bancaire : en attente de configuration sécurisée Stripe.")
+            else:
+                st.markdown("**💳 Paiement par carte bancaire**")
+                st.caption("Paiement sécurisé sur la page hébergée par Stripe. SOW IA ne collecte ni ne stocke les numéros de carte.")
+                if st.button("Payer par carte bancaire", key="sowia_stripe_card_checkout", type="primary", use_container_width=True):
+                    try:
+                        checkout = stripe_payments.create_card_checkout(str(current_user.id))
+                        st.link_button("Continuer le paiement sécurisé", checkout["url"], use_container_width=True)
+                    except Exception:
+                        st.error("Impossible de préparer le paiement par carte. Aucun paiement n'a été lancé.")
+            if st.session_state.pop("stripe_purchase_confirmed", False):
+                st.success("Paiement par carte confirmé par Stripe. Votre accès Premium est actif.")
+
             try:
                 subscription_config = paypal_subscriptions.paypal_subscription_configuration()
             except ValueError:
