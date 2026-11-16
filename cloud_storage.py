@@ -44,10 +44,25 @@ def clear_history(client, user, session_id, workspace_id="personal"):
 def save_message(client, user, session_id, role, content, workspace_id="personal"):
     if role not in {"user", "assistant"}:
         raise ValueError("Rôle de message invalide.")
-    return (client.table("sowia_messages").insert({
-        "user_id": _user_id(user), "workspace_id": _workspace_id(workspace_id), "session_id": str(session_id), "role": role,
-        "content": str(content), "created_at": datetime.now(timezone.utc).isoformat()
-    }).execute().data)
+    response = (
+        client.table("sowia_messages")
+        .insert({
+            "user_id": _user_id(user),
+            "workspace_id": _workspace_id(workspace_id),
+            "session_id": str(session_id),
+            "role": role,
+            "content": str(content),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        .select("id")
+        .execute()
+    )
+    rows = response.data or []
+    if len(rows) != 1 or not isinstance(rows[0], dict) or not rows[0].get("id"):
+        raise RuntimeError(
+            "Supabase n’a pas confirmé l’enregistrement du message avec un identifiant."
+        )
+    return rows
 
 GROWTH_LEAD_STATUSES = {
     "À vérifier",
