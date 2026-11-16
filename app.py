@@ -6626,10 +6626,25 @@ elif page == "Opportunités et revenus":
                         ), 2)
                         for stage in STAGES
                     }
-                    st.markdown(f"**Potentiel mensuel par étape — {chart_currency}**")
+                    stage_net_forecasts = {
+                        stage: round(sum(
+                            float(item.get("expected_monthly_revenue") or 0)
+                            - float(item.get("estimated_monthly_cost") or 0)
+                            for item in currency_rows if item.get("stage") == stage
+                        ), 2)
+                        for stage in STAGES
+                    }
+                    st.markdown(f"**Revenu mensuel potentiel par étape — {chart_currency}**")
                     st.bar_chart(
                         pd.DataFrame({
-                            f"Potentiel mensuel ({chart_currency})": stage_forecasts
+                            f"Revenu potentiel ({chart_currency})": stage_forecasts
+                        }),
+                        y_label=f"Montant ({chart_currency})",
+                    )
+                    st.markdown(f"**Marge mensuelle estimée après coûts — {chart_currency}**")
+                    st.bar_chart(
+                        pd.DataFrame({
+                            f"Marge estimée ({chart_currency})": stage_net_forecasts
                         }),
                         y_label=f"Montant ({chart_currency})",
                     )
