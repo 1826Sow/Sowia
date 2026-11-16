@@ -77,9 +77,11 @@ Deux scripts créent des tables distinctes, avec des modèles de données diffé
 
 Ils ne sont pas interchangeables et ne font pas partie du socle décrit dans le README. Ne pas installer les deux par défaut : vérifier d’abord quel module de l’application utilise quel schéma.
 
-## 3. Finances et paiements — installation différée
+## 3. Finances et paiements — activation contrôlée
 
-Les scripts ci-dessous touchent aux droits Premium, au grand livre ou aux flux de paiement. Ils ne font pas partie du socle à installer automatiquement. Les paiements SOWIA restent désactivés tant que le propriétaire n’a pas validé explicitement leur mise en service.
+Le parcours PayPal a fait l’objet d’une autorisation explicite du propriétaire pour le mode Live. Le propriétaire confirme également que le test de paiement est validé. Le statut de ce test est donc **confirmé par le propriétaire** ; il ne doit pas être présenté comme une vérification indépendante de tous les paramètres de production.
+
+Les scripts financiers et de paiement restent séparés du socle Supabase. Leur présence dans GitHub ne signifie ni qu’ils ont été exécutés ni que le parcours est automatiquement actif.
 
 - `supabase/migrations/20261110000100_sowia_financial_ledger.sql` — grand livre financier en lecture utilisateur ; migration distincte des flux de paiement.
 - `supabase_paypal_refund_parent_migration.sql` — ancienne migration de liaison des remboursements. La migration actuelle du grand livre contient déjà le champ et le contrôle de remboursement correspondant ; ne pas appliquer cette ancienne migration en doublon sans audit.
@@ -88,7 +90,17 @@ Les scripts ci-dessous touchent aux droits Premium, au grand livre ou aux flux d
 - `supabase/migrations/20261109000200_sowia_paypal_catalog.sql` — catalogue PayPal.
 - `supabase_crypto_payments.sql` — flux crypto et objets financiers associés ; **ne pas exécuter** dans le cadre de l’installation standard. Il touche également à `sowia_financial_transactions` et aux droits Premium : une revue dédiée de compatibilité est nécessaire avant toute utilisation.
 
-Aucun de ces scripts ne suffit, à lui seul, à activer les paiements. Les secrets, webhooks, fonctions Edge, contrôles serveur, tests Sandbox et autorisation du propriétaire restent des étapes séparées.
+### Contrôles avant déclaration de mise en production
+
+1. Confirmer dans Streamlit que le commutateur de paiement et les secrets Live sont présents, sans jamais copier ces valeurs dans GitHub ou dans une conversation.
+2. Confirmer dans Supabase Edge Functions que les secrets Live requis sont configurés et que les fonctions attendues sont déployées.
+3. Vérifier l'identifiant du webhook PayPal, son URL de réception et les journaux d'événements.
+4. Vérifier que le serveur valide le paiement et accorde les droits Premium côté serveur, sans se fier au seul retour navigateur.
+5. Vérifier les journaux et les tests automatisés disponibles. Ne pas lancer de paiement réel pour un simple contrôle technique.
+
+Le prix Premium prévu pour le parcours concerné est de **9,90 EUR**. Toute modification doit être répercutée et contrôlée de façon cohérente côté application et côté serveur.
+
+Aucun secret, jeton, clé privée ou identifiant confidentiel ne doit être ajouté au dépôt. Les secrets doivent rester dans les gestionnaires dédiés de Streamlit et Supabase.
 
 ## 4. Scripts de stockage et de finalisation
 
@@ -108,4 +120,4 @@ Aucun de ces scripts ne suffit, à lui seul, à activer les paiements. Les secre
 6. Relancer `supabase_full_diagnostics.sql` et examiner chaque ligne `MISSING`, `RLS DISABLED`, `PUBLIC` ou colonne manquante.
 7. Effectuer des tests d’isolation avec deux comptes distincts avant de déclarer la mise en production vérifiée.
 
-Ce guide est une cartographie des scripts du dépôt, pas une preuve de leur exécution dans le projet Supabase. Les migrations de paiement restent volontairement séparées.
+Ce guide est une cartographie des scripts du dépôt, pas une preuve de leur exécution dans le projet Supabase. Les migrations financières et les paiements restent séparés du socle standard et doivent être vérifiés selon les contrôles ci-dessus.
