@@ -42,6 +42,8 @@ pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integratio
 
 ## Exécution automatique dans GitHub Actions
 
+**SUSPENDU TEMPORAIREMENT (16/11/2026) :** le job `supabase-rls-integration` est désactivé dans `.github/workflows/tests.yml` (`if: false`). Une exécution précédente a révélé que les secrets CI pointaient vers le projet de production `qegcopordeqjiechmbhg`. Les scripts refusent désormais explicitement ce projet et aucun test RLS réel ne doit être relancé tant que l'URL et les deux comptes dédiés du projet `SOWIA - TEST` (`mrbmoavotzcuzvnhfjla`) n'ont pas été vérifiés. Le job ignoré ne vaut pas validation RLS. La réactivation nécessitera un contrôle préalable de l'identifiant de projet dans le workflow, en plus de la confirmation dédiée.
+
 Dans GitHub, ouvrir **Settings → Secrets and variables → Actions**, puis créer les sept secrets portant exactement les noms listés plus haut. Leurs valeurs doivent provenir exclusivement du projet Supabase de test et des deux comptes dédiés.
 
 **Protection des secrets :** le job des tests RLS réels est conditionné aux événements `push` sur `main` ou sur la branche de sécurité examinée `security/professional-access-gate`. Il ne reçoit jamais de secret pendant les événements `pull_request`, où le code proposé peut être non fiable. Les tests automatisés ordinaires continuent de s'exécuter sur les PR sans secrets. Le résultat du job RLS sur un événement `pull_request` est donc volontairement `skipped` ; la validation réelle exige un push fiable sur l'une des deux branches autorisées et les sept secrets correctement configurés.
