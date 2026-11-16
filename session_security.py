@@ -55,12 +55,10 @@ WORKSPACE_PRIVATE_SESSION_KEYS = (
 
 
 def clear_workspace_session_state(session_state):
-    """Clear workspace-private data and navigation history on workspace switch."""
+    """Clear cached PDF data when switching between Personal and Professional."""
     for key in WORKSPACE_PRIVATE_SESSION_KEYS:
         session_state.pop(key, None)
     session_state["pdf_text"] = ""
-    # Never let Back reopen a page from the previous workspace context.
-    session_state.pop("sowia_navigation_history", None)
 
 
 def clear_stale_document_delete_confirmation(session_state, visible_documents):
@@ -91,9 +89,32 @@ def clear_authenticated_session_state(session_state):
         "sowia_github_login_url",
         "active_workspace_id",
         "workspace_id",
-        "sowia_navigation_history",
-        "sowia_current_page",
-        "page_nav",
-        "nav_category",
     ):
         session_state.pop(key, None)
+
+
+
+def logout_authenticated_session(session_state, sign_out_callback, session_id_factory, action="logout"):
+    """Revoke the remote session when possible and always clear local account state."""
+    client = session_state.get("sowia_supabase_client")
+    remote_signed_out = False
+    try:
+        if client is not None:
+            sign_out_callback(client)
+            remote_signed_out = True
+    except Exception:
+        remote_signed_out = False
+    finally:
+        clear_authenticated_session_state(session_state)
+        session_state["session_id"] = session_id_factory()
+        if remote_signed_out:
+            session_state["sowia_logout_notice"] = (
+                "Déconnexion réussie. Votre session SOW IA est fermée."
+                if action == "logout"
+                else "Session fermée. Vous pouvez maintenant vous connecter avec une autre adresse."
+            )
+        else:
+            session_state["sowia_logout_notice"] = (
+                "Session locale fermée. La révocation distante n'a pas pu être confirmée."
+            )
+    return remote_signed_out
