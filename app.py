@@ -732,32 +732,62 @@ def category_for_page(page_name):
     return "👤 Personnel & documents"
 
 
+def remember_navigation_target(target_page):
+    """Add the currently displayed page to the per-session back stack."""
+    current_page = st.session_state.get("sowia_current_page")
+    if current_page and current_page != target_page:
+        history = list(st.session_state.get("sowia_navigation_history", []))
+        history.append(current_page)
+        # Bound session memory and avoid consecutive duplicates.
+        st.session_state["sowia_navigation_history"] = history[-40:]
+
+
 def choose_navigation_category():
     selected_category = st.session_state.get("nav_category")
     pages = NAV_GROUPS.get(selected_category, [])
     if pages:
-        st.session_state.page_nav = pages[0]
+        target_page = pages[0]
+        remember_navigation_target(target_page)
+        st.session_state.page_nav = target_page
+        st.session_state.sowia_current_page = target_page
 
 
 def sync_navigation_category():
-    st.session_state.nav_category = category_for_page(st.session_state.get("page_nav", "Accueil"))
+    selected_page = st.session_state.get("page_nav", "Accueil")
+    remember_navigation_target(selected_page)
+    st.session_state.nav_category = category_for_page(selected_page)
+    st.session_state.sowia_current_page = selected_page
+
+
+def go_back_navigation():
+    history = list(st.session_state.get("sowia_navigation_history", []))
+    current_page = st.session_state.get("page_nav", "Accueil")
+    while history:
+        target_page = history.pop()
+        if target_page != current_page and any(target_page in pages for pages in NAV_GROUPS.values()):
+            st.session_state["sowia_navigation_history"] = history
+            st.session_state.page_nav = target_page
+            st.session_state.nav_category = category_for_page(target_page)
+            st.session_state.sowia_current_page = target_page
+            return
+    st.session_state["sowia_navigation_history"] = history
 
 
 def go_to_page(page_name):
+    remember_navigation_target(page_name)
     st.session_state.page_nav = page_name
     st.session_state.nav_category = category_for_page(page_name)
+    st.session_state.sowia_current_page = page_name
 
 def resume_project_session(session_id):
     """Resume a project-linked conversation from the home dashboard."""
     st.session_state["sowia_resume_session_id"] = str(session_id)
-    st.session_state.page_nav = "Assistant IA"
-    st.session_state.nav_category = category_for_page("Assistant IA")
+    go_to_page("Assistant IA")
 
 
 def go_to_professional_page(page_name):
     st.session_state.workspace_choice = "Professionnel"
-    st.session_state.page_nav = page_name
-    st.session_state.nav_category = category_for_page(page_name)
+    go_to_page(page_name)
 
 
 def enable_privacy_screen():
@@ -768,30 +798,50 @@ def disable_privacy_screen():
     st.session_state["sowia_privacy_screen"] = False
 
 
-# Premium access is checked server-side. If the entitlement cannot be read,
-# the Professional workspace stays unavailable (fail closed).
-premium_entitlement = None
+# Premium status controls only whether the Professional option is displayed.
+# Cache this display hint briefly to avoid two Supabase round-trips on every
+# ordinary navigation. Opening the Professional workspace still performs a
+# fresh server-side entitlement check below (fail closed).
 premium_entitlement_unavailable = False
+premium_active = False
 if cloud_mode and current_user is not None:
-    entitlement_read_failed = False
-    subscription_read_failed = False
-    try:
-        premium_entitlement = premium_access.get_entitlement(supabase_client, current_user)
-    except Exception:
-        entitlement_read_failed = True
-    if premium_entitlement is None:
-        try:
-            premium_entitlement = premium_access.get_active_subscription(supabase_client, current_user)
-        except Exception:
-            subscription_read_failed = True
-    # A failure in the legacy one-time-entitlement table must not prevent
-    # checking the independent recurring-subscription table.
-    premium_entitlement_unavailable = (
-        premium_entitlement is None
-        and entitlement_read_failed
-        and subscription_read_failed
+    premium_cache_key = str(current_user.id)
+    premium_cache = st.session_state.get("sowia_premium_status_cache", {})
+    cache_is_fresh = (
+        premium_cache.get("user_id") == premium_cache_key
+        and premium_cache.get("checked_at") is not None
+        and (datetime.now(timezone.utc) - premium_cache["checked_at"]).total_seconds() < 30
     )
-premium_active = bool(premium_entitlement)
+    if cache_is_fresh:
+        premium_active = bool(premium_cache.get("active", False))
+        premium_entitlement_unavailable = bool(premium_cache.get("unavailable", False))
+    else:
+        entitlement_read_failed = False
+        subscription_read_failed = False
+        premium_entitlement = None
+        try:
+            premium_entitlement = premium_access.get_entitlement(supabase_client, current_user)
+        except Exception:
+            entitlement_read_failed = True
+        if premium_entitlement is None:
+            try:
+                premium_entitlement = premium_access.get_active_subscription(supabase_client, current_user)
+            except Exception:
+                subscription_read_failed = True
+        premium_entitlement_unavailable = (
+            premium_entitlement is None
+            and entitlement_read_failed
+            and subscription_read_failed
+        )
+        premium_active = bool(premium_entitlement)
+        st.session_state["sowia_premium_status_cache"] = {
+            "user_id": premium_cache_key,
+            "checked_at": datetime.now(timezone.utc),
+            "active": premium_active,
+            "unavailable": premium_entitlement_unavailable,
+        }
+else:
+    st.session_state.pop("sowia_premium_status_cache", None)
 
 with st.sidebar:
     st.markdown("## 🧠 SOW IA")
@@ -984,6 +1034,34 @@ with st.sidebar:
         format_func=lambda value: translate_ui(value, language),
         on_change=sync_navigation_category,
     )
+
+# Keep the current page synchronized after initial load and programmatic routes.
+if st.session_state.get("sowia_current_page") not in [item for group in NAV_GROUPS.values() for item in group]:
+    st.session_state["sowia_current_page"] = page
+elif st.session_state.get("sowia_current_page") != page:
+    st.session_state["sowia_current_page"] = page
+
+nav_back_col, nav_home_col, nav_label_col = st.columns([1, 1, 2])
+with nav_back_col:
+    st.button(
+        "← Retour",
+        key="sowia_navigation_back",
+        on_click=go_back_navigation,
+        disabled=not bool(st.session_state.get("sowia_navigation_history")),
+        use_container_width=True,
+    )
+with nav_home_col:
+    st.button(
+        "⌂ Accueil",
+        key="sowia_navigation_home",
+        on_click=go_to_page,
+        args=("Accueil",),
+        use_container_width=True,
+    )
+with nav_label_col:
+    st.caption("Rubrique actuelle")
+    st.markdown("**" + html.escape(translate_ui(page, language)) + "**")
+
 st.markdown(
     '<div class="hero"><div class="hero-kicker">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>'
     '<h1>🧠 SOW IA</h1>'
