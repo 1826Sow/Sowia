@@ -9,7 +9,7 @@ stripe==16.1.0
 pytest>=8.0
 supabase>=2.20,<3
 reportlab>=4.2
-qrcode[pil]>=8.0
+qrcode[pil]>=8.2
 # FINAL TEC dual-approval security adapters
 cryptography>=50,<51
 rfc8785>=0.1.4,<1
