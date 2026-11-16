@@ -277,7 +277,15 @@ st.markdown(
     [data-testid="stFileUploader"], [data-testid="stFileUploader"] * { pointer-events: auto !important; }
     [data-testid="stFileUploader"] button { min-height: 44px !important; touch-action: manipulation !important; }
     @media (max-width: 760px) {
-      [data-testid="stMainBlockContainer"] { padding: .7rem .75rem 2rem; }
+      /* Leave clear space below Streamlit's floating Menu control on phones. */
+      [data-testid="stMainBlockContainer"] { padding: 4.35rem .75rem 2rem !important; }
+      [data-testid="stMainBlockContainer"] [data-testid="stButton"] button {
+        min-height: 3.15rem !important;
+        font-size: .92rem !important;
+        font-weight: 800 !important;
+        letter-spacing: .015em;
+        touch-action: manipulation;
+      }
       .hero { padding: 1.25rem 1.05rem; border-radius: 18px; }
       .hero h1 { font-size: 2.15rem; }
       .hero p { font-size: .98rem; }
@@ -1051,15 +1059,18 @@ if st.session_state.get("sowia_current_page") not in [item for group in NAV_GROU
 elif st.session_state.get("sowia_current_page") != page:
     st.session_state["sowia_current_page"] = page
 
-nav_back_col, nav_home_col, nav_label_col = st.columns([1, 1, 2])
-with nav_back_col:
+# Navigation principale : le bouton Retour dispose de sa propre ligne,
+# séparée du menu latéral natif de Streamlit et facile à toucher sur mobile.
+with st.container():
     st.button(
-        "← Retour",
+        "←  RETOUR À LA PAGE PRÉCÉDENTE",
         key="sowia_navigation_back",
         on_click=go_back_navigation,
         disabled=not bool(st.session_state.get("sowia_navigation_history")),
         use_container_width=True,
+        type="primary",
     )
+nav_home_col, nav_label_col = st.columns([1, 2])
 with nav_home_col:
     st.button(
         "⌂ Accueil",
