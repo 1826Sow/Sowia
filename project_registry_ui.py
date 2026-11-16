@@ -52,11 +52,13 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
             submitted = st.form_submit_button("Enregistrer le projet", type="primary", use_container_width=True)
         if submitted:
             try:
-                project_registry.create_project(
+                created = project_registry.create_project(
                     client, user, title, description, status, workspace_id,
                     conversation_session_id=session_id or None,
                 )
-                st.success("Projet enregistré.")
+                if not created or len(created) != 1 or not created[0].get("id"):
+                    raise RuntimeError("La création du projet n’a pas été confirmée par la base de données.")
+                st.success(f"Projet enregistré et confirmé (référence {created[0]['id']}).")
                 st.rerun()
             except Exception as exc:
                 st.error("Le projet n'a pas été enregistré. Vérifiez les champs et la connexion.")
