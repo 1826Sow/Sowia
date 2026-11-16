@@ -14,8 +14,6 @@ comment on column public.sowia_entitlements.paypal_access_blocked is
 comment on column public.sowia_subscriptions.paypal_access_blocked is
     'Server-managed PayPal refund/dispute access block. TRUE denies Professional access.';
 
-commit;
-
 -- Keep the database-level Professional access gate aligned with Python.
 create or replace function public.sowia_has_professional_access()
 returns boolean
@@ -90,3 +88,5 @@ $function$;
 revoke all on function public.sowia_has_professional_access() from public;
 revoke all on function public.sowia_has_professional_access() from anon;
 grant execute on function public.sowia_has_professional_access() to authenticated;
+
+commit;
