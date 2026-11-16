@@ -13,7 +13,7 @@ def checkout_enabled() -> bool:
     enabled = str(get_setting("SOWIA_PAYMENTS_ENABLED", "false") or "false").strip().lower()
     mode = str(get_setting("PAYPAL_MODE", "sandbox") or "sandbox").strip().lower()
     price = str(get_setting("PAYPAL_PREMIUM_PRICE", "9.90") or "9.90").strip()
-    return enabled in {"1", "true", "yes"} and mode == "sandbox" and price == "9.90"
+    return enabled in {"1", "true", "yes"} and mode in {"sandbox", "live"} and price == "9.90"
 
 
 def _access_token(supabase_client) -> str:
