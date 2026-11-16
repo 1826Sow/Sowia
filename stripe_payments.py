@@ -63,7 +63,12 @@ def retrieve_paid_checkout(session_id: str, user_id: str):
     if not normalized_id.startswith("cs_") or len(normalized_id) > 255 or not user_id:
         raise PermissionError("Session Stripe ou utilisateur invalide.")
     import stripe
-    session = stripe.checkout.Session.retrieve(normalized_id, api_key=config["secret_key"])
+    session = stripe.checkout.Session.retrieve(
+        normalized_id, api_key=config["secret_key"], expand=["line_items"]
+    )
+    line_items = session.get("line_items") or {}
+    items = line_items.get("data") or []
+    price = (items[0].get("price") or {}) if items else {}
     if (session.get("id") != normalized_id
         or session.get("mode") != "payment"
         or session.get("payment_status") != "paid"
@@ -71,11 +76,29 @@ def retrieve_paid_checkout(session_id: str, user_id: str):
         or str((session.get("metadata") or {}).get("sowia_user_id") or "") != str(user_id)
         or str((session.get("metadata") or {}).get("sowia_product") or "") != "premium"
         or str(session.get("currency") or "").lower() != "eur"
-        or int(session.get("amount_total") or 0) != int(Decimal(config["amount"]) * 100)):
+        or int(session.get("amount_total") or 0) != int(Decimal(config["amount"]) * 100)
+        or price.get("id") != config["price_id"]
+        or int(items[0].get("quantity") or 0) != 1):
         raise PermissionError("Le paiement Stripe n'est pas confirmé pour ce compte SOW IA.")
     intent = session.get("payment_intent")
     intent_id = intent.get("id") if isinstance(intent, dict) else intent
     if not intent_id:
         raise PermissionError("Stripe n'a pas confirmé l'identifiant du paiement.")
+    payment = stripe.PaymentIntent.retrieve(
+        str(intent_id), api_key=config["secret_key"], expand=["latest_charge"]
+    )
+    latest_charge = payment.get("latest_charge") or {}
+    if not isinstance(latest_charge, dict):
+        latest_charge = {}
+    if (
+        payment.get("status") != "succeeded"
+        or int(payment.get("amount_received") or 0) != int(Decimal(config["amount"]) * 100)
+        or str(payment.get("currency") or "").lower() != "eur"
+        or not str(latest_charge.get("id") or "").startswith("ch_")
+        or int(latest_charge.get("amount_captured") or 0) != int(Decimal(config["amount"]) * 100)
+        or int(latest_charge.get("amount_refunded") or 0) > 0
+        or bool(latest_charge.get("disputed"))
+    ):
+        raise PermissionError("Le paiement Stripe est remboursé, contesté ou incomplet.")
     return {"session_id": normalized_id, "payment_intent_id": str(intent_id),
             "amount": config["amount"], "currency": "EUR"}
