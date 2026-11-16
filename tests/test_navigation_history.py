@@ -11,7 +11,7 @@ class SessionState(dict):
 def load_navigation():
     source = Path("app.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
-    wanted = {"remember_navigation_target", "choose_navigation_category",
+    wanted = {"category_for_page", "remember_navigation_target", "choose_navigation_category",
               "sync_navigation_category", "go_back_navigation", "go_to_page"}
     nodes = []
     for node in tree.body:
