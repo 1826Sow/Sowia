@@ -56,6 +56,14 @@ def test_existing_block_ledger_cannot_be_reassigned_to_another_user():
     assert "v_block.user_id <> p_user_id" in MIGRATION
     assert "block ledger is already linked to a different SOW IA user" in MIGRATION
 
+
+def test_latest_event_watermark_survives_block_recovery():
+    assert "last_paypal_event_created_at timestamptz" in MIGRATION
+    assert "last_paypal_event_id text" in MIGRATION
+    assert "p_event_created_at <= v_last_event_created_at" in MIGRATION
+    assert "return v_previously_blocked or v_has_block" in MIGRATION
+    assert "last_paypal_event_created_at = excluded.last_paypal_event_created_at" in MIGRATION
+
 def test_rpc_is_not_executable_by_end_user_roles():
     assert "revoke all on function public.sowia_apply_paypal_subscription_event" in MIGRATION
     assert "from public, anon, authenticated" in MIGRATION
