@@ -34,11 +34,12 @@ def test_email_access_requires_explicit_allowlist():
     assert not email_is_allowed("", "sowkeys7@gmail.com")
 
 
-def test_authenticated_app_session_checks_the_email_allowlist():
+def test_email_signup_is_available_without_a_fixed_email_allowlist():
     source = Path("app.py").read_text(encoding="utf-8")
 
-    expected_allowlist = 'allowed_emails = f"{get_setting(\'SOWIA_ALLOWED_EMAILS\', \'\')};sowkeys7@gmail.com"'
-    assert source.count(expected_allowlist) == 2
-    assert "email_is_allowed(authenticated_email, allowed_emails)" in source
-    assert "email_is_allowed(candidate_login_email, allowed_emails)" in source
-    assert "cette adresse e-mail n’est pas autorisée à ouvrir SOW IA" in source
+    assert 'st.form("sowia_email_signup_form"' in source
+    assert 'st.form_submit_button("Créer mon compte"' in source
+    assert "signup_email_user(signup_client, candidate_signup_email, signup_password, redirect_to)" in source
+    assert "Every account created through Supabase email confirmation is eligible" in source
+    assert "email_is_allowed(authenticated_email, allowed_emails)" not in source
+    assert "email_is_allowed(candidate_login_email, allowed_emails)" not in source
