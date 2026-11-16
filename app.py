@@ -28,6 +28,7 @@ from sowia_supabase_auth import (
     complete_email_magic_link,
     email_magic_link,
     signup_email_user,
+    sign_in_email_password,
     email_is_allowed,
     configuration_ready,
     create_email_user_client,
@@ -349,7 +350,18 @@ if cloud_mode:
 
         auth_stage = "lecture du retour de connexion par e-mail"
         email_tokens = read_email_auth_fragment()
-        if email_tokens:
+        if email_tokens and email_tokens.get("token_hash"):
+            # Handle Supabase ConfirmationURL callbacks that deliver token_hash
+            # in either the query string or the URL fragment.
+            complete_email_magic_link(
+                supabase_client,
+                email_tokens["token_hash"],
+                email_tokens.get("type"),
+            )
+            st.session_state.pop("sowia_email_auth_fragment", None)
+            st.rerun()
+
+        if email_tokens and email_tokens.get("access_token") and email_tokens.get("refresh_token"):
             supabase_client.auth.set_session(
                 email_tokens["access_token"],
                 email_tokens["refresh_token"],
@@ -359,12 +371,11 @@ if cloud_mode:
             st.session_state.pop("sowia_email_auth_fragment", None)
             st.rerun()
 
+        # Backward-compatible query callback for links that still use token_hash.
         email_token_hash = st.query_params.get("token_hash")
         email_token_type = st.query_params.get("type")
         if email_token_hash:
             complete_email_magic_link(supabase_client, email_token_hash, email_token_type)
-            # Keep the requested address until the authenticated identity is
-            # checked below. Never silently accept a previously active account.
             st.query_params.clear()
             st.rerun()
 
@@ -456,7 +467,7 @@ if cloud_mode:
             unsafe_allow_html=True,
         )
         st.subheader(translate_ui("Connexion à SOW IA", language))
-        st.write("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA. Un lien sécurisé à usage unique vous sera envoyé. Aucun compte GitHub n’est nécessaire.")
+        st.write("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA : utilisez votre mot de passe ou demandez un lien sécurisé à usage unique. Aucun compte GitHub n’est nécessaire.")
         callback_code_present = bool(st.query_params.get("code") or st.query_params.get("token_hash"))
         callback_error = str(st.query_params.get("error", "")).strip()
         callback_error_description = str(st.query_params.get("error_description", "")).strip()
@@ -589,6 +600,67 @@ if cloud_mode:
                     if safe_message:
                         diagnostic_parts.append("message=" + safe_message)
                     st.caption("Diagnostic e-mail : " + " · ".join(diagnostic_parts))
+
+            st.markdown("#### Connexion avec mot de passe")
+            st.caption(
+                "Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter "
+                "directement avec votre mot de passe, sans attendre un nouveau lien e-mail."
+            )
+            password_login_email = st.text_input(
+                "Adresse e-mail",
+                value=str(st.session_state.get("sowia_email_login_pending", "") or ""),
+                max_chars=254,
+                key="sowia_password_login_email",
+            )
+            password_login_secret = st.text_input(
+                "Mot de passe",
+                type="password",
+                key="sowia_password_login_secret",
+            )
+            if st.button(
+                "Se connecter avec mon mot de passe",
+                key="sowia_password_login_submit",
+                use_container_width=True,
+            ):
+                try:
+                    candidate_password_email = str(password_login_email or "").strip().lower()
+                    if (
+                        len(candidate_password_email) > 254
+                        or candidate_password_email.count("@") != 1
+                        or candidate_password_email.startswith("@")
+                        or candidate_password_email.endswith("@")
+                        or "." not in candidate_password_email.rsplit("@", 1)[-1]
+                    ):
+                        st.error("Saisissez une adresse e-mail valide.")
+                    elif not password_login_secret:
+                        st.error("Saisissez votre mot de passe.")
+                    else:
+                        password_client = create_email_user_client()
+                        sign_in_email_password(
+                            password_client,
+                            candidate_password_email,
+                            password_login_secret,
+                        )
+                        st.session_state.sowia_supabase_client = password_client
+                        st.session_state["sowia_email_login_pending"] = candidate_password_email
+                        st.rerun()
+                except Exception as password_exc:
+                    safe_code = str(getattr(password_exc, "code", "") or "").strip()[:80]
+                    safe_message = str(
+                        getattr(password_exc, "message", "") or str(password_exc)
+                    ).strip()
+                    safe_message = " ".join(safe_message.split())[:180].lower()
+                    if "email not confirmed" in safe_message or "email_not_confirmed" in safe_code.lower():
+                        st.error(
+                            "Votre adresse e-mail n'est pas encore confirmée. "
+                            "Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez."
+                        )
+                    else:
+                        st.error(
+                            "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe."
+                        )
+                        if safe_code:
+                            st.caption("Diagnostic : " + type(password_exc).__name__ + " · " + safe_code)
         else:
             # Preserve the established production sign-in method by default.
             try:

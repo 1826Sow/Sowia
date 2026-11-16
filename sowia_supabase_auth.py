@@ -280,12 +280,38 @@ def read_email_auth_fragment():
             try {
                 const page = window; // Streamlit Components v2 run in the app page, not an iframe.
                 const url = new URL(page.location.href);
-                const params = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash);
-                const accessToken = params.get("access_token");
-                const refreshToken = params.get("refresh_token");
-                const type = params.get("type");
-                if (accessToken && refreshToken && ["magiclink", "signup"].includes(type)) {
-                    page.history.replaceState(page.history.state, "", url.pathname + url.search);
+                const fragment = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash);
+                const query = url.searchParams;
+                const read = (name) => fragment.get(name) || query.get(name);
+                const accessToken = read("access_token");
+                const refreshToken = read("refresh_token");
+                const tokenHash = read("token_hash");
+                const type = read("type");
+                if (tokenHash && ["signup", "email", "magiclink"].includes(type)) {
+                    // Supabase email templates may return token_hash in either
+                    // the query string or the fragment. Transfer it to Python
+                    // once, then remove it from the visible browser URL.
+                    query.delete("token_hash");
+                    query.delete("type");
+                    fragment.delete("token_hash");
+                    fragment.delete("type");
+                    const cleanUrl = url.pathname
+                        + (query.toString() ? "?" + query.toString() : "")
+                        + (fragment.toString() ? "#" + fragment.toString() : "");
+                    page.history.replaceState(page.history.state, "", cleanUrl);
+                    setStateValue("token_hash", tokenHash);
+                    setStateValue("type", type);
+                } else if (accessToken && refreshToken && ["magiclink", "signup"].includes(type)) {
+                    // Implicit-flow confirmation links may return tokens in the query or fragment.
+                    // Remove credentials from both URL locations before handing them to Python.
+                    for (const name of ["access_token", "refresh_token", "type"]) {
+                        query.delete(name);
+                        fragment.delete(name);
+                    }
+                    const cleanUrl = url.pathname
+                        + (query.toString() ? "?" + query.toString() : "")
+                        + (fragment.toString() ? "#" + fragment.toString() : "");
+                    page.history.replaceState(page.history.state, "", cleanUrl);
                     setStateValue("access_token", accessToken);
                     setStateValue("refresh_token", refreshToken);
                     setStateValue("type", type);
@@ -299,18 +325,22 @@ def read_email_auth_fragment():
     key = "sowia_email_auth_fragment"
     result = component(
         data={},
-        default={"access_token": None, "refresh_token": None, "type": None, "read_error": None},
+        default={"access_token": None, "refresh_token": None, "token_hash": None, "type": None, "read_error": None},
         on_access_token_change=lambda: None,
         on_refresh_token_change=lambda: None,
+        on_token_hash_change=lambda: None,
         on_type_change=lambda: None,
         on_read_error_change=lambda: None,
         key=key,
         width="content",
         height=1,
     )
+    token_hash = _component_state_value(result, "token_hash")
+    token_type = _component_state_value(result, "type")
+    if isinstance(token_hash, str) and 20 <= len(token_hash) <= 8192 and token_type in {"signup", "email", "magiclink"}:
+        return {"token_hash": token_hash, "type": token_type}
     access_token = _component_state_value(result, "access_token")
     refresh_token = _component_state_value(result, "refresh_token")
-    token_type = _component_state_value(result, "type")
     if (
         isinstance(access_token, str)
         and 20 <= len(access_token) <= 8192
@@ -337,6 +367,17 @@ def signup_email_user(client, email, password, redirect_to):
         "password": secret,
         "options": {"email_redirect_to": redirect_to},
     })
+
+
+def sign_in_email_password(client, email, password):
+    """Authenticate an existing confirmed email/password account."""
+    address = str(email or "").strip().lower()
+    secret = str(password or "")
+    if not address or len(address) > 254 or address.count("@") != 1:
+        raise ValueError("Adresse e-mail invalide.")
+    if not secret:
+        raise ValueError("Saisissez votre mot de passe.")
+    return client.auth.sign_in_with_password({"email": address, "password": secret})
 
 
 def email_magic_link(client, email, redirect_to):
