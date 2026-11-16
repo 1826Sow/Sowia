@@ -10,10 +10,11 @@ Pour une installation neuve du socle SOW IA, exécuter dans cet ordre :
 
 1. `supabase/schema.sql` — tables privées de mémoire, messages et droits Premium.
 2. `supabase_workspaces.sql` — ajoute la séparation Personnel / Professionnel aux messages et à la mémoire.
-3. `supabase_storage_policies.sql` — bucket PDF privé et règles d’accès par utilisateur/espace.
-4. `supabase_growth_crm.sql` — carnet de partenaires.
-5. `supabase_language_preferences.sql` — préférences de langue par compte.
-6. `supabase_business_opportunities.sql` — pipeline d’opportunités et prévisions commerciales.
+3. `supabase/migrations/20261114000100_sowia_project_register.sql` — crée le registre persistant « Mes échanges & projets » avec les statuts En cours, À tester, Validé et Terminé. Cette migration est additive et applique des règles RLS par utilisateur et espace.
+4. `supabase_storage_policies.sql` — bucket PDF privé et règles d’accès par utilisateur/espace.
+5. `supabase_growth_crm.sql` — carnet de partenaires.
+6. `supabase_language_preferences.sql` — préférences de langue par compte.
+7. `supabase_business_opportunities.sql` — pipeline d’opportunités et prévisions commerciales.
 
 Le script `supabase_accessibility_preferences.sql` est facultatif et doit être exécuté **après** `supabase_language_preferences.sql`, car il ajoute une colonne à `sowia_user_preferences`.
 
@@ -98,7 +99,20 @@ Les scripts financiers et de paiement restent séparés du socle Supabase. Leur 
 4. Vérifier que le serveur valide le paiement et accorde les droits Premium côté serveur, sans se fier au seul retour navigateur.
 5. Vérifier les journaux et les tests automatisés disponibles. Ne pas lancer de paiement réel pour un simple contrôle technique.
 
-Le prix Premium prévu pour le parcours concerné est de **9,90 EUR**. Toute modification doit être répercutée et contrôlée de façon cohérente côté application et côté serveur.
+Le prix Premium prévu pour le parcours de paiement ponctuel concerné est de **9,90 EUR**. Toute modification doit être répercutée et contrôlée de façon cohérente côté application et côté serveur.
+
+### Abonnements PayPal — configuration distincte
+
+Le webhook `paypal-webhook` traite les abonnements récurrents. Son code ne lit pas les mêmes variables que le parcours ponctuel `paypal-one-time` :
+
+- `PAYPAL_MODE` — `sandbox` ou `live`, sélectionne l’environnement PayPal et l’hôte API.
+- `PAYPAL_CLIENT_ID` et `PAYPAL_CLIENT_SECRET` — identifiants utilisés par le webhook d’abonnement pour l’environnement indiqué par `PAYPAL_MODE`.
+- `PAYPAL_SUBSCRIPTION_WEBHOOK_ID` — identifiant du webhook créé dans le même environnement PayPal.
+- `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` — accès serveur requis pour enregistrer et réconcilier les événements.
+
+À l’inverse, le parcours ponctuel `paypal-one-time` sélectionne explicitement `PAYPAL_LIVE_CLIENT_ID` / `PAYPAL_LIVE_CLIENT_SECRET` en mode Live, et `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` en Sandbox. **Ne pas déduire que les abonnements sont prêts pour Live parce que le paiement ponctuel a été testé ou activé.** Avant d’activer les abonnements Live, confirmer dans les secrets Edge que `PAYPAL_MODE=live`, que les identifiants génériques `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` sont bien les identifiants Live, que `PAYPAL_SUBSCRIPTION_WEBHOOK_ID` correspond au webhook Live, et qu’un plan Live valide existe dans `sowia_paypal_catalog` pour le mode `live`. Ne jamais afficher ni transmettre les valeurs des secrets.
+
+Le webhook vérifie la signature PayPal côté serveur et interroge ensuite l’API PayPal pour réconcilier l’état de l’abonnement. La configuration de `verify_jwt=false` sur cette fonction permet à PayPal de l’appeler sans JWT Supabase ; elle ne remplace pas la vérification cryptographique de la signature dans le code. Contrôler l’URL de réception et les journaux d’événements dans PayPal/Supabase avant de déclarer le parcours récurrent opérationnel.
 
 Aucun secret, jeton, clé privée ou identifiant confidentiel ne doit être ajouté au dépôt. Les secrets doivent rester dans les gestionnaires dédiés de Streamlit et Supabase.
 
