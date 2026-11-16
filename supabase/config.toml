@@ -2,3 +2,8 @@
 # PayPal sends signed webhook headers, not a Supabase user JWT.
 # The function verifies the PayPal signature before processing any event.
 verify_jwt = false
+
+[functions.stripe-webhook]
+# Stripe sends signed webhook headers, not a Supabase user JWT.
+# The function verifies the Stripe signature before processing any event.
+verify_jwt = false
