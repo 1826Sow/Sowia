@@ -53,7 +53,17 @@ import project_registry_ui
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
-from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_authenticated_session_state
+from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_authenticated_session_state, logout_authenticated_session
+
+def handle_logout(action="logout"):
+    """Handle logout before the next Streamlit script run."""
+    logout_authenticated_session(
+        st.session_state,
+        sign_out,
+        lambda: str(uuid.uuid4()),
+        action=action,
+    )
+
 
 def queue_chat_submission():
     """Capture the mobile chat draft before Streamlit reruns the page."""
@@ -435,6 +445,12 @@ if cloud_mode:
         supabase_client = None
 
     if current_user is None:
+        logout_notice = st.session_state.pop("sowia_logout_notice", None)
+        if logout_notice:
+            if "réussie" in logout_notice.lower():
+                st.success(logout_notice)
+            else:
+                st.warning(logout_notice)
         st.markdown(
             '<div class="hero"><h1>SOW IA</h1><p>Votre espace personnel sécurisé.</p></div>',
             unsafe_allow_html=True,
@@ -959,25 +975,19 @@ with st.sidebar:
             st.caption("Compte connecté · identité masquée pendant la protection d'écran")
         else:
             st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
-        change_account = st.button(
+        st.button(
             "Se connecter avec une autre adresse e-mail",
             use_container_width=True,
+            on_click=handle_logout,
+            args=("change_account",),
         )
-        logout = st.button("Se déconnecter", use_container_width=True)
-        if change_account or logout:
-            try:
-                sign_out(supabase_client)
-            except Exception:
-                # Always clear this browser session locally, even if the
-                # remote sign-out endpoint is temporarily unavailable.
-                st.warning(
-                    "La déconnexion distante n'a pas pu être confirmée. "
-                    "Les données privées locales ont tout de même été effacées."
-                )
-            finally:
-                clear_authenticated_session_state(st.session_state)
-                st.session_state.session_id = str(uuid.uuid4())
-            st.rerun()
+        st.button(
+            "Se déconnecter",
+            use_container_width=True,
+            on_click=handle_logout,
+            args=("logout",),
+            type="secondary",
+        )
     else:
         st.warning("Mode local — données non séparées entre plusieurs utilisateurs.")
     st.divider()

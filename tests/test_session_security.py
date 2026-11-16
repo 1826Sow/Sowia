@@ -193,3 +193,50 @@ def test_logout_clears_account_client_oauth_and_private_caches():
     )
     assert state["sowia_browser_scope"] == {"browser_id": "retained-browser-scope"}
     assert state["unrelated_preference"] == "keep-me"
+
+
+
+def test_logout_helper_revokes_remote_session_and_clears_local_state():
+    from session_security import logout_authenticated_session
+
+    calls = []
+    state = {
+        "sowia_supabase_client": "client",
+        "sowia_authenticated_user_id": "account",
+        "sowia_navigation_history": ["Assistant IA"],
+        "sowia_browser_scope": {"browser_id": "retained"},
+    }
+    result = logout_authenticated_session(
+        state, lambda client: calls.append(client), lambda: "new-session"
+    )
+
+    assert result is True
+    assert calls == ["client"]
+    assert "sowia_supabase_client" not in state
+    assert "sowia_authenticated_user_id" not in state
+    assert "sowia_navigation_history" not in state
+    assert state["sowia_browser_scope"] == {"browser_id": "retained"}
+    assert state["session_id"] == "new-session"
+    assert "Déconnexion réussie" in state["sowia_logout_notice"]
+
+
+def test_logout_helper_clears_local_session_even_if_remote_signout_fails():
+    from session_security import logout_authenticated_session
+
+    state = {
+        "sowia_supabase_client": "client",
+        "sowia_authenticated_user_id": "account",
+        "pdf_text": "private text",
+    }
+
+    def fail_sign_out(_client):
+        raise RuntimeError("remote unavailable")
+
+    result = logout_authenticated_session(state, fail_sign_out, lambda: "new-session")
+
+    assert result is False
+    assert "sowia_supabase_client" not in state
+    assert "sowia_authenticated_user_id" not in state
+    assert state["pdf_text"] == ""
+    assert state["session_id"] == "new-session"
+    assert "Session locale fermée" in state["sowia_logout_notice"]
