@@ -13,7 +13,7 @@ def checkout_enabled() -> bool:
     enabled = str(get_setting("SOWIA_PAYMENTS_ENABLED", "false") or "false").strip().lower()
     mode = str(get_setting("PAYPAL_MODE", "sandbox") or "sandbox").strip().lower()
     price = str(get_setting("PAYPAL_PREMIUM_PRICE", "9.90") or "9.90").strip()
-    return enabled in {"1", "true", "yes"} and mode == "sandbox" and price == "9.90"
+    return enabled in {"1", "true", "yes"} and mode in {"sandbox", "live"} and price == "9.90"
 
 
 def _access_token(supabase_client) -> str:
@@ -32,7 +32,10 @@ def invoke(supabase_client, action: str, order_id: str | None = None) -> dict:
     anon_key = str(get_setting("SUPABASE_ANON_KEY", "") or "").strip()
     if not project_url.startswith("https://") or not anon_key:
         raise RuntimeError("La connexion Supabase n'est pas configurée.")
-    payload = {"action": action}
+    mode = str(get_setting("PAYPAL_MODE", "sandbox") or "sandbox").strip().lower()
+    if mode not in {"sandbox", "live"}:
+        raise RuntimeError("Mode PayPal non autorisé.")
+    payload = {"action": action, "mode": mode}
     if action == "capture":
         if not order_id:
             raise ValueError("Identifiant de commande manquant.")
