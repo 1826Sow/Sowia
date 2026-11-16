@@ -4459,6 +4459,42 @@ elif page == "SOWIA GLOBAL PERFORMANCE & IMPACT":
                             st.error("Mesure non enregistrée : " + type(performance_save_error).__name__)
             with performance_tabs[1]:
                 summary = performance_engine.summarize_performance(performance_rows)
+                st.markdown("#### 📈 Courbe d'évolution de l'avancement")
+                trend_points = []
+                for trend_row in performance_rows:
+                    raw_stamp = trend_row.get("observed_at") or trend_row.get("created_at")
+                    try:
+                        trend_date = datetime.fromisoformat(
+                            str(raw_stamp).replace("Z", "+00:00")
+                        ).date().isoformat()
+                        trend_points.append({
+                            "Date": trend_date,
+                            "Plan": str(trend_row.get("plan_title_snapshot") or "Plan sans titre"),
+                            "Avancement (%)": float(trend_row.get("progress_percent") or 0),
+                        })
+                    except (TypeError, ValueError):
+                        continue
+                if len(trend_points) >= 2:
+                    import pandas as pd
+                    trend_frame = pd.DataFrame(trend_points)
+                    trend_chart = (
+                        trend_frame.pivot_table(
+                            index="Date", columns="Plan",
+                            values="Avancement (%)", aggfunc="last",
+                        )
+                        .sort_index()
+                    )
+                    st.line_chart(trend_chart, y_label="Avancement (%)")
+                    st.caption(
+                        "Chaque courbe suit les mesures successives enregistrées pour un plan. "
+                        "Une courbe n'apparaît qu'après plusieurs relevés ; aucune progression "
+                        "n'est extrapolée entre deux mesures."
+                    )
+                else:
+                    st.info(
+                        "La courbe apparaîtra après l'enregistrement d'au moins deux mesures "
+                        "datées. Les données existantes restent inchangées."
+                    )
                 p1, p2, p3 = st.columns(3)
                 p1.metric("Plans mesurés", summary["measured_plans"])
                 p2.metric("Avancement moyen", (
