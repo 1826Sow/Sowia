@@ -4479,6 +4479,7 @@ elif page == "SOWIA GLOBAL PERFORMANCE & IMPACT":
                         })
                     except (TypeError, ValueError):
                         continue
+                import pandas as pd
                 trend_frame = pd.DataFrame(trend_points) if trend_points else None
                 repeat_measurement = (
                     trend_frame.groupby("Plan ID").size().max()
