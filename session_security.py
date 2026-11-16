@@ -88,6 +88,13 @@ def clear_authenticated_session_state(session_state):
         "sowia_supabase_client",
         "sowia_authenticated_user_id",
         "sowia_github_login_url",
+        # Account-scoped UI state must not carry into the next login.
+        "sowia_email_login_pending",
+        "sowia_premium_status_cache",
+        "sowia_language_loaded_for",
+        "sowia_language_saved",
+        "sowia_language_save_available",
+        "sowia_language",
         "active_workspace_id",
         "workspace_id",
         "sowia_navigation_history",
