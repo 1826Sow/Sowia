@@ -47,3 +47,17 @@ def test_access_token_fails_closed_without_session():
     except PermissionError:
         return
     raise AssertionError("Missing user session must be rejected")
+
+
+
+def test_edge_function_separates_live_and_sandbox_credentials():
+    from pathlib import Path
+
+    source = Path("supabase/functions/paypal-one-time/index.ts").read_text(encoding="utf-8")
+    assert 'env("PAYPAL_LIVE_CLIENT_ID")' in source
+    assert 'env("PAYPAL_LIVE_CLIENT_SECRET")' in source
+    assert 'env("PAYPAL_CLIENT_ID")' in source
+    assert 'env("PAYPAL_CLIENT_SECRET")' in source
+    assert 'https://api-m.paypal.com' in source
+    assert 'https://api-m.sandbox.paypal.com' in source
+    assert 'requestedMode !== mode' in source
