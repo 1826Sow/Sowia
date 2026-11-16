@@ -3,8 +3,9 @@ from pathlib import Path
 
 def test_paypal_return_checks_payment_enablement_before_admin_client():
     source = Path("app.py").read_text(encoding="utf-8")
-    start = source.index('if cloud_mode and current_user is not None:')
-    end = source.index('\n\ndef get_app_history', start)
+    paypal_marker = source.index("# PayPal returns the buyer")
+    start = source.rfind("if cloud_mode and current_user is not None:", 0, paypal_marker)
+    end = source.index("\n\ndef get_app_history", start)
     handler = source[start:end]
 
     config_check = handler.index("payment_config = paypal_payments.paypal_configuration()")
