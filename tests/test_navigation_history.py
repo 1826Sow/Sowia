@@ -5,7 +5,16 @@ from types import SimpleNamespace
 
 
 class SessionState(dict):
-    """Minimal dict-like stand-in for Streamlit session state."""
+    """Minimal dict- and attribute-compatible stand-in for Streamlit state."""
+
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError as exc:
+            raise AttributeError(name) from exc
+
+    def __setattr__(self, name, value):
+        self[name] = value
 
 
 def load_navigation():
