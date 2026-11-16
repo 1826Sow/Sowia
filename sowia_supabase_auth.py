@@ -293,7 +293,12 @@ def read_email_auth_fragment():
                     // once, then remove it from the visible browser URL.
                     query.delete("token_hash");
                     query.delete("type");
-                    page.history.replaceState(page.history.state, "", url.pathname + (query.toString() ? "?" + query.toString() : ""));
+                    fragment.delete("token_hash");
+                    fragment.delete("type");
+                    const cleanUrl = url.pathname
+                        + (query.toString() ? "?" + query.toString() : "")
+                        + (fragment.toString() ? "#" + fragment.toString() : "");
+                    page.history.replaceState(page.history.state, "", cleanUrl);
                     setStateValue("token_hash", tokenHash);
                     setStateValue("type", type);
                 } else if (accessToken && refreshToken && ["magiclink", "signup"].includes(type)) {
