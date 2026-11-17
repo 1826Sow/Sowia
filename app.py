@@ -2189,6 +2189,25 @@ elif page == "Assistant IA":
     conversation_history = get_app_history()
     for item in conversation_history:
         render_accessible_message(item["role"], item["content"])
+    # Keep assistant replies that could not be persisted, scoped to their conversation.
+    pending_assistant_responses = st.session_state.get("sowia_pending_assistant_responses", {})
+    active_pending_assistant = pending_assistant_responses.get(str(st.session_state.session_id))
+    if isinstance(active_pending_assistant, str) and active_pending_assistant:
+        render_accessible_message("assistant", active_pending_assistant)
+        st.warning("Cette réponse n’a pas encore été enregistrée dans l’historique. Elle est conservée dans cette session.")
+        if st.button("Réessayer l’enregistrement de la réponse", key="sowia_retry_assistant_save", use_container_width=True):
+            try:
+                save_app_message("assistant", active_pending_assistant)
+            except Exception as retry_error:
+                st.error("L’enregistrement a encore échoué. La réponse est conservée. Diagnostic : " + type(retry_error).__name__)
+            else:
+                pending_assistant_responses.pop(str(st.session_state.session_id), None)
+                if pending_assistant_responses:
+                    st.session_state["sowia_pending_assistant_responses"] = pending_assistant_responses
+                else:
+                    st.session_state.pop("sowia_pending_assistant_responses", None)
+                st.success("Réponse enregistrée dans l’historique.")
+                st.rerun()
     # A standard button with a callback is more reliable on mobile than a form
     # submit event. The callback copies the draft before Streamlit reruns the page.
     # Restore a draft on the next rerun if persistence failed before the AI call.
@@ -2287,9 +2306,14 @@ elif page == "Assistant IA":
                         try:
                             save_app_message("assistant", reply)
                         except Exception as save_error:
+                            pending_responses = st.session_state.setdefault(
+                                "sowia_pending_assistant_responses", {}
+                            )
+                            pending_responses[str(st.session_state.session_id)] = reply
                             st.warning(
-                                "La réponse est affichée, mais son enregistrement dans "
-                                "l’historique a échoué. Diagnostic : "
+                                "La réponse est affichée et conservée dans cette conversation, "
+                                "mais son enregistrement dans l’historique a échoué. "
+                                "Vous pourrez réessayer sans relancer la demande. Diagnostic : "
                                 + type(save_error).__name__
                             )
                     except Exception as exc:
