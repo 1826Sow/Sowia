@@ -1151,7 +1151,7 @@ with st.sidebar:
         "📁 Dossier de navigation",
         list(NAV_GROUPS.keys()),
         key="nav_category",
-        format_func=lambda value: translate_ui(value, language),
+        format_func=lambda value: translate_ui(value.replace("SOWIA", "SOW IA"), language),
         on_change=choose_navigation_category,
     )
     selected_pages = NAV_GROUPS[st.session_state.nav_category]
@@ -1159,7 +1159,7 @@ with st.sidebar:
         "🧭 Outil à ouvrir",
         selected_pages,
         key="page_nav",
-        format_func=lambda value: translate_ui(value, language),
+        format_func=lambda value: translate_ui(value.replace("SOWIA", "SOW IA"), language),
         on_change=sync_navigation_category,
     )
 
@@ -1259,7 +1259,7 @@ st.markdown(
 st.write("")
 
 if page == "Accueil":
-    st.subheader("Bienvenue dans SOWIA")
+    st.subheader("Bienvenue dans SOW IA")
     st.caption("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.")
     # The project hub is deliberately the first major block on the home page.
     st.markdown(
@@ -1422,7 +1422,7 @@ if page == "Accueil":
                 st.button("Ouvrir", key=f"home_key_{destination}", use_container_width=True,
                           on_click=go_to_page, args=(destination,))
     st.divider()
-    st.markdown("### 📁 Dossiers SOWIA")
+    st.markdown("### 📁 Dossiers SOW IA")
     st.caption("Chaque dossier rassemble les fonctions d'un même domaine. Dépliez uniquement celui dont vous avez besoin.")
     home_folders = [
         ("👤 01 · Personnel & documents", [
@@ -1487,7 +1487,7 @@ if page == "Accueil":
     st.caption("Les dossiers organisent l'accès aux fonctions existantes ; ils ne suppriment ni ne modifient les données des projets.")
 
 elif page == "Hub SOWIA":
-    st.subheader(translate_ui("Bienvenue sur le Hub SOWIA", language))
+    st.subheader(translate_ui("Bienvenue sur le Hub SOW IA", language))
     metadata = getattr(current_user, "app_metadata", None) or {}
     is_sowia_admin = isinstance(metadata, dict) and (
         metadata.get("sowia_admin") is True or metadata.get("role") == "admin"
@@ -1694,7 +1694,7 @@ elif page == "Hub SOWIA":
             "Les lignes indiquées comme non connectées ne sont pas comptées comme zéro."
         )
         st.divider()
-        st.markdown("### 🧭 Moteur de priorisation SOWIA")
+        st.markdown("### 🧭 Moteur de priorisation SOW IA")
         st.caption(
             "Ajoutez les actions à comparer. SOWIA applique une grille explicite : "
             "impact (30 %), urgence (25 %), faisabilité (20 %), coût (15 %) et sécurité/risque (10 %). "
@@ -1784,7 +1784,7 @@ elif page == "Hub SOWIA":
         st.button("Découvrir Premium", key="hub_premium", on_click=go_to_page, args=("Abonnement",))
     if is_sowia_admin:
         st.divider()
-        st.markdown("### 🛡️ Administration SOWIA")
+        st.markdown("### 🛡️ Administration SOW IA")
         st.caption("Zone réservée aux comptes portant le rôle administrateur attribué côté serveur.")
         admin_items = [
             ("💳 Revenus & paiements", "Revenus & paiements"),
@@ -1798,7 +1798,7 @@ elif page == "Hub SOWIA":
                 st.button(label, key=f"hub_admin_{destination}", use_container_width=True,
                           on_click=go_to_page, args=(destination,))
     st.divider()
-    st.markdown("### 🚀 Tous les outils SOWIA")
+    st.markdown("### 🚀 Tous les outils SOW IA")
     if st.session_state.get("workspace_id") == "professional":
         st.markdown("### Tableau de bord professionnel")
         st.caption("Vue d'ensemble de votre espace professionnel. Les indicateurs affichent uniquement les données de cet espace.")
@@ -1867,7 +1867,7 @@ elif page == "Hub SOWIA":
             st.rerun()
     with partner_cols[2]:
         st.caption("Notre priorité : des partenariats vérifiables, des objectifs mesurables et une création de valeur réciproque.")
-    st.markdown("### 🗂️ Vos espaces SOWIA")
+    st.markdown("### 🗂️ Vos espaces SOW IA")
     st.caption("Les outils sont rangés par activité. Ouvrez uniquement la rubrique dont vous avez besoin ; la navigation complète reste accessible dans le menu latéral.")
     home_sections = [
         ("👤 Espace personnel", [
@@ -3673,7 +3673,7 @@ elif page == "Abonnement":
                     st.warning("Le mode PayPal réel est bloqué dans cette version. Aucun abonnement ne peut être créé avant validation explicite du lancement.")
                 else:
                     st.info("Pour l’instant, aucun paiement réel n’est activé sur SOW IA. Cette étape sert uniquement à préparer un test PayPal Sandbox : aucun paiement réel ni accès Premium ne sera déclenché par cette préparation.")
-                    st.caption("Diagnostic de déploiement Premium : SOWIA-PREMIUM-2026-11-15-B")
+                    st.caption("Diagnostic de déploiement Premium : SOW IA-PREMIUM-2026-11-15-B")
                     prepare_subscription_clicked = st.button(
                         "Préparer mon abonnement Premium",
                         key="prepare_paypal_subscription",
@@ -3740,10 +3740,10 @@ elif page == "Abonnement":
 
 
 elif page == "SOWIA GLOBAL ID":
-    st.subheader("🪪 SOWIA GLOBAL ID")
+    st.subheader("🪪 SOW IA GLOBAL ID")
     st.caption("Votre identité professionnelle internationale, sous votre contrôle.")
     if not cloud_mode or current_user is None:
-        st.warning("Connectez-vous à votre compte sécurisé pour créer et conserver votre carte SOWIA.")
+        st.warning("Connectez-vous à votre compte sécurisé pour créer et conserver votre carte SOW IA.")
     else:
         st.markdown(
             '<div class="partner-intro"><h3>Une carte professionnelle, un identifiant mondial</h3>'
@@ -3777,7 +3777,7 @@ elif page == "SOWIA GLOBAL ID":
                     max_chars=800,
                     help="12 spécialités maximum, 60 caractères chacune.",
                 )
-                published = st.checkbox("Je souhaite publier ma carte dans l’annuaire SOWIA", value=bool(profile.get("is_published", False)))
+                published = st.checkbox("Je souhaite publier ma carte dans l’annuaire SOW IA", value=bool(profile.get("is_published", False)))
                 saved = st.form_submit_button("Enregistrer ma carte", type="primary", use_container_width=True)
             if saved:
                 try:
@@ -3789,7 +3789,7 @@ elif page == "SOWIA GLOBAL ID":
                         short_description=short_description, is_published=published,
                         professional_sectors=selected_sectors, specialties=specialties,
                     )
-                    st.success("Votre carte SOWIA a été enregistrée.")
+                    st.success("Votre carte SOW IA a été enregistrée.")
                     st.rerun()
                 except ValueError as exc:
                     st.error(str(exc))
@@ -3818,7 +3818,7 @@ elif page == "SOWIA GLOBAL ID":
                         st.write(profile["website"])
                     st.caption(f"{profile.get('public_id')} · {verification_labels.get(profile.get('verification_status'), 'Non vérifié')}")
                 st.divider()
-                st.markdown("#### 🎴 SOWIA DIGITAL BUSINESS CARD")
+                st.markdown("#### 🎴 SOW IA DIGITAL BUSINESS CARD")
                 st.write("Créez une carte professionnelle partageable. Le QR code contient une fiche contact vCard que le destinataire peut enregistrer dans son téléphone.")
                 with st.form("sowia_business_card_export_form"):
                     card_email = st.text_input("E-mail professionnel à afficher (facultatif)", max_chars=180)
@@ -3847,7 +3847,7 @@ elif page == "SOWIA GLOBAL ID":
                     download_cols[1].download_button("Télécharger PDF", st.session_state["sowia_business_card_pdf"], "sowia_business_card.pdf", "application/pdf", use_container_width=True)
                     download_cols[2].download_button("Télécharger contact", st.session_state["sowia_business_card_vcf"], "sowia_contact.vcf", "text/vcard", use_container_width=True)
                 if profile.get("is_published"):
-                    st.success("Votre fiche est publiée dans l’annuaire des cartes SOWIA.")
+                    st.success("Votre fiche est publiée dans l’annuaire des cartes SOW IA.")
                 else:
                     st.info("Votre fiche est privée. Elle n’apparaîtra pas dans l’annuaire avant votre autorisation.")
                 st.caption("Le QR code et le lien public individuel seront activés après le déploiement de la page publique HTTPS. Aucun lien non fonctionnel n’est affiché.")
@@ -3881,14 +3881,14 @@ elif page == "SOWIA GLOBAL ID":
                                         st.error("Modification refusée par le contrôle administrateur.")
                                         st.caption("Diagnostic : " + type(exc).__name__)
             st.divider()
-            st.markdown("#### Annuaire public des cartes SOWIA")
+            st.markdown("#### Annuaire public des cartes SOW IA")
             public_profiles = cloud_storage.list_public_global_profiles(supabase_client, current_user, limit=100)
             if not public_profiles:
                 st.info("Aucune carte publiée pour le moment.")
             else:
                 for public_card in public_profiles:
                     with st.container(border=True):
-                        st.markdown(f"**{public_card.get('display_name') or public_card.get('app_name') or 'Partenaire SOWIA'}**")
+                        st.markdown(f"**{public_card.get('display_name') or public_card.get('app_name') or 'Partenaire SOW IA'}**")
                         st.caption(" · ".join(x for x in [public_card.get("organization"), public_card.get("country")] if x))
                         if public_card.get("short_description"):
                             st.write(public_card["short_description"])
@@ -3898,8 +3898,8 @@ elif page == "SOWIA GLOBAL ID":
             st.caption("Diagnostic : " + type(exc).__name__)
 
 elif page == "SOWIA GLOBAL DIRECTORY":
-    st.subheader("🌐 SOWIA GLOBAL DIRECTORY")
-    st.caption("Découvrez les entreprises et applications qui ont choisi de publier leur carte professionnelle SOWIA.")
+    st.subheader("🌐 SOW IA GLOBAL DIRECTORY")
+    st.caption("Découvrez les entreprises et applications qui ont choisi de publier leur carte professionnelle SOW IA.")
     st.markdown(
         '<div class="partner-intro"><h3>Un réseau professionnel ouvert sur le monde</h3>'
         '<p>Recherchez des partenaires par pays, langue, secteur et spécialité. '
@@ -3907,7 +3907,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
         unsafe_allow_html=True,
     )
     if not cloud_mode or current_user is None:
-        st.info("Connectez-vous à votre compte SOWIA pour consulter l’annuaire international.")
+        st.info("Connectez-vous à votre compte SOW IA pour consulter l’annuaire international.")
     else:
         try:
             directory_profiles = cloud_storage.list_public_global_profiles(
@@ -3938,7 +3938,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
             st.metric("Cartes correspondant à la recherche", len(matches))
 
             st.divider()
-            st.subheader("✨ SOWIA GLOBAL PARTNER NETWORK — suggestions de partenaires")
+            st.subheader("✨ SOW IA GLOBAL PARTNER NETWORK — suggestions de partenaires")
             st.caption("Suggestions indicatives fondées sur les secteurs, spécialités, langues et pays déclarés. Elles ne constituent pas une garantie de qualité ni de réussite commerciale.")
             try:
                 import sowia_global_partner_network as partner_network
@@ -3949,7 +3949,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                     own_partner_profile, directory_profiles, limit=5
                 )
                 if not own_partner_profile or not own_partner_profile.get("is_published"):
-                    st.info("Publiez votre carte dans SOWIA GLOBAL ID pour recevoir des suggestions personnalisées.")
+                    st.info("Publiez votre carte dans SOW IA GLOBAL ID pour recevoir des suggestions personnalisées.")
                 elif not suggested_partners:
                     st.info("Aucun autre profil public disponible pour le moment.")
                 else:
@@ -4021,7 +4021,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                 my_global_profile = cloud_storage.get_my_global_profile(supabase_client, current_user)
                 can_contact = bool(my_global_profile and my_global_profile.get("is_published"))
                 if not can_contact:
-                    st.info("Pour contacter un partenaire, publiez d’abord votre propre carte dans SOWIA GLOBAL ID.")
+                    st.info("Pour contacter un partenaire, publiez d’abord votre propre carte dans SOW IA GLOBAL ID.")
                 for public_card in matches:
                     if my_global_profile and public_card.get("public_id") == my_global_profile.get("public_id"):
                         continue
@@ -4047,7 +4047,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                                 except Exception as request_error:
                                     st.error("La demande n’a pas pu être envoyée : " + type(request_error).__name__)
                         else:
-                            st.caption("Publiez votre carte SOWIA GLOBAL ID pour activer les demandes de mise en relation.")
+                            st.caption("Publiez votre carte SOW IA GLOBAL ID pour activer les demandes de mise en relation.")
 
                 inbox_tab, outbox_tab = st.tabs(["📥 Demandes reçues", "📤 Mes demandes envoyées"])
                 with inbox_tab:
@@ -4200,7 +4200,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                             )
                             st.rerun()
                     if not notifications_enabled:
-                        st.info("Les notifications dans SOWIA sont désactivées. Vous pouvez les réactiver à tout moment.")
+                        st.info("Les notifications dans SOW IA sont désactivées. Vous pouvez les réactiver à tout moment.")
                     elif not notifications:
                         st.info(notification_text["empty"])
                     else:
@@ -4219,7 +4219,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                                             supabase_client, current_user, notification["id"]
                                         )
                                         st.rerun()
-                    st.caption("Les alertes sont internes à SOWIA. Aucun e-mail, SMS ou notification push externe n’est envoyé par cette première version.")
+                    st.caption("Les alertes sont internes à SOW IA. Aucun e-mail, SMS ou notification push externe n’est envoyé par cette première version.")
                 except Exception as notification_error:
                     st.error("Le centre de notifications nécessite la migration Supabase dédiée.")
                     st.caption("Diagnostic : " + type(notification_error).__name__)
@@ -4235,7 +4235,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
 
 
 elif page == "SOWIA GLOBAL DECISION ENGINE":
-    st.subheader("⚖️ SOWIA GLOBAL DECISION ENGINE")
+    st.subheader("⚖️ SOW IA GLOBAL DECISION ENGINE")
     st.caption("Comparez plusieurs options avec une grille de critères transparente et conservez la justification de votre choix.")
     st.warning("Les notes et pondérations constituent une aide à la réflexion. Elles ne remplacent pas une expertise indépendante ni une validation humaine. Aucune décision n'est exécutée automatiquement.")
     if not cloud_mode or current_user is None:
@@ -4245,7 +4245,7 @@ elif page == "SOWIA GLOBAL DECISION ENGINE":
         decision_tabs = st.tabs(["＋ Comparer des options", "📚 Mes décisions"])
         with decision_tabs[0]:
             with st.form("sowia_global_decision_form"):
-                decision_title = st.text_input("Décision à prendre", max_chars=180, placeholder="Ex. Quel pays choisir pour le prochain pilote SOWIA ?")
+                decision_title = st.text_input("Décision à prendre", max_chars=180, placeholder="Ex. Quel pays choisir pour le prochain pilote SOW IA ?")
                 decision_evidence = st.selectbox(
                     "Niveau général des preuves",
                     ["hypothesis", "indicative", "documented", "verified"],
@@ -4307,7 +4307,7 @@ elif page == "SOWIA GLOBAL DECISION ENGINE":
                 if decision_draft["recommended_option"]:
                     st.success("Option en tête selon les critères saisis : " + decision_draft["recommended_option"])
                 else:
-                    st.info("Égalité ou écart faible : SOWIA ne force pas de recommandation.")
+                    st.info("Égalité ou écart faible : SOW IA ne force pas de recommandation.")
                 with st.expander("Pondérations et limites de l'analyse"):
                     for criterion in decision_draft["criteria"]:
                         st.write(f"• {criterion['label']} : {int(criterion['weight'] * 100)} %")
@@ -4347,7 +4347,7 @@ elif page == "SOWIA GLOBAL DECISION ENGINE":
 
 
 elif page == "SOWIA GLOBAL COLLABORATION HUB":
-    st.subheader("🤝 SOWIA GLOBAL COLLABORATION HUB")
+    st.subheader("🤝 SOW IA GLOBAL COLLABORATION HUB")
     st.caption("Espace de projets partagés entre organisations et applications partenaires, avec invitation et consentement explicites.")
     st.warning("Les contributions financières sont des déclarations, pas des paiements vérifiés. Aucun transfert, contrat, message externe ou engagement financier n'est exécuté par ce module.")
     if not cloud_mode or current_user is None:
@@ -4394,7 +4394,7 @@ elif page == "SOWIA GLOBAL COLLABORATION HUB":
                     if selected_project["owner_id"] == current_uid:
                         with st.expander("Inviter un partenaire GLOBAL ID"):
                             with st.form("sowia_project_invite_form"):
-                                invite_public_id = st.text_input("Identifiant public SOWIA (ex. SOWIA-…)",max_chars=80)
+                                invite_public_id = st.text_input("Identifiant public SOW IA (ex. SOW IA-…)",max_chars=80)
                                 invite_role = st.selectbox("Rôle proposé",["contributor","coordinator","observer"],format_func=lambda v:{"contributor":"Contributeur","coordinator":"Coordinateur","observer":"Observateur"}[v])
                                 invite_submit = st.form_submit_button("Envoyer l'invitation")
                             if invite_submit:
@@ -4506,7 +4506,7 @@ elif page == "SOWIA GLOBAL COLLABORATION HUB":
 
 
 elif page == "SOWIA GLOBAL ACTION GOVERNANCE":
-    st.subheader("🛡️ SOWIA GLOBAL ACTION GOVERNANCE")
+    st.subheader("🛡️ SOW IA GLOBAL ACTION GOVERNANCE")
     st.caption("Transformez une priorité en plan d'action encadré : responsable, budget maximal, échéance, indicateur de réussite et condition d'arrêt.")
     st.warning("Aucun paiement, achat, contrat ou contact externe n'est exécuté. L'approbation exige un second compte authentifié distinct du créateur.")
     if not cloud_mode or current_user is None:
@@ -4520,7 +4520,7 @@ elif page == "SOWIA GLOBAL ACTION GOVERNANCE":
                     ag_objective = st.text_area("Objectif", max_chars=2000)
                     ag_country = st.text_input("Pays ou marché", max_chars=100)
                     ag_owner = st.text_input("Responsable ou équipe", max_chars=120)
-                    ag_approver = st.text_input("UUID du compte approbateur distinct", max_chars=36, help="L’approbateur doit être un autre compte SOWIA authentifié. Son UUID est disponible dans son profil Supabase.")
+                    ag_approver = st.text_input("UUID du compte approbateur distinct", max_chars=36, help="L’approbateur doit être un autre compte SOW IA authentifié. Son UUID est disponible dans son profil Supabase.")
                     ag_cols = st.columns(2)
                     ag_budget = ag_cols[0].number_input("Budget maximal autorisé (plafond indicatif)", min_value=0.0, max_value=1000000000.0, value=0.0, step=50.0)
                     ag_currency = ag_cols[1].selectbox("Devise", ["EUR","USD","CNY","SGD","MYR","TWD","KRW","XOF","AED","CHF","BRL"])
@@ -4592,7 +4592,7 @@ elif page == "SOWIA GLOBAL ACTION GOVERNANCE":
 
 
 elif page == "SOWIA GLOBAL PERFORMANCE & IMPACT":
-    st.subheader("📈 SOWIA GLOBAL PERFORMANCE & IMPACT")
+    st.subheader("📈 SOW IA GLOBAL PERFORMANCE & IMPACT")
     st.caption("Mesurez l'avancement, les dépenses cumulées et les résultats opérationnels, sociaux et environnementaux de vos plans approuvés.")
     st.warning("Les mesures sont saisies par les utilisateurs. Les dépenses ne sont pas des écritures comptables rapprochées ; les justificatifs ne sont pas vérifiés automatiquement. Aucun score global d'impact n'est fabriqué.")
     if not cloud_mode or current_user is None:
@@ -4750,7 +4750,7 @@ elif page == "SOWIA GLOBAL PERFORMANCE & IMPACT":
 
 
 elif page == "SOWIA GLOBAL PORTFOLIO CONTROL":
-    st.subheader("🌐 SOWIA GLOBAL PORTFOLIO CONTROL")
+    st.subheader("🌐 SOW IA GLOBAL PORTFOLIO CONTROL")
     st.caption("Centre de contrôle pour comparer les projets et marchés à partir des plans, échéances, mesures, budgets et alertes disponibles.")
     st.warning("Outil d'aide à la revue uniquement : aucun budget n'est réaffecté, aucun paiement n'est déclenché et aucune décision n'est exécutée automatiquement.")
     if not cloud_mode or current_user is None:
@@ -4859,11 +4859,11 @@ elif page == "SOWIA GLOBAL PORTFOLIO CONTROL":
 
 
 if page == "SOWIA GLOBAL EXECUTIVE REPORTS":
-    st.subheader("📑 SOWIA GLOBAL EXECUTIVE REPORTS")
+    st.subheader("📑 SOW IA GLOBAL EXECUTIVE REPORTS")
     st.caption("Générez à la demande un rapport de direction réunissant vos marchés, alertes, scénarios, décisions, apprentissages et plans d'action.")
     st.warning("Le rapport reflète uniquement les données disponibles dans votre espace connecté. Il ne constitue ni un audit, ni une certification, ni une vérification indépendante. Les budgets restent séparés par devise.")
     if not cloud_mode or current_user is None:
-        st.info("Connectez-vous pour générer un rapport privé SOWIA.")
+        st.info("Connectez-vous pour générer un rapport privé SOW IA.")
     else:
         try:
             import sowia_global_reporting as reporting_engine
@@ -4945,9 +4945,9 @@ if page == "SOWIA GLOBAL EXECUTIVE REPORTS":
 
 
 elif page == "SOWIA GLOBAL AUTONOMOUS STRATEGY":
-    st.subheader("🌍 SOWIA GLOBAL AUTONOMOUS STRATEGY")
+    st.subheader("🌍 SOW IA GLOBAL AUTONOMOUS STRATEGY")
     st.caption("Un tableau de priorités qui rassemble les marchés évalués, les alertes actives, les scénarios et les résultats passés.")
-    st.warning("SOWIA prépare des recommandations de travail, mais n'engage aucun budget, ne contacte aucun partenaire et ne lance aucune opération. Une validation humaine est obligatoire.")
+    st.warning("SOW IA prépare des recommandations de travail, mais n'engage aucun budget, ne contacte aucun partenaire et ne lance aucune opération. Une validation humaine est obligatoire.")
     if not cloud_mode or current_user is None:
         st.info("Connectez-vous pour analyser vos données stratégiques privées.")
     else:
@@ -5013,7 +5013,7 @@ elif page == "SOWIA GLOBAL AUTONOMOUS STRATEGY":
 
 
 elif page == "SOWIA GLOBAL LEARNING ENGINE":
-    st.subheader("🧠 SOWIA GLOBAL LEARNING ENGINE")
+    st.subheader("🧠 SOW IA GLOBAL LEARNING ENGINE")
     st.caption("Confrontez les recommandations enregistrées aux choix réellement effectués et aux résultats observés.")
     st.warning("Ce registre documente l'expérience : il ne prouve pas de causalité, ne connaît pas les résultats contrefactuels et ne réentraîne pas automatiquement le modèle d'IA. Les décisions d'origine restent figées.")
     if not cloud_mode or current_user is None:
@@ -5144,7 +5144,7 @@ elif page == "SOWIA GLOBAL LEARNING ENGINE":
 
 
 elif page == "SOWIA GLOBAL STRATEGIC FORECAST":
-    st.subheader("🔭 SOWIA GLOBAL STRATEGIC FORECAST")
+    st.subheader("🔭 SOW IA GLOBAL STRATEGIC FORECAST")
     st.caption("Préparez plusieurs futurs possibles à partir de vos évaluations et alertes enregistrées.")
     st.warning("Ces scénarios sont des hypothèses conditionnelles, pas des prédictions, probabilités ni conseils financiers ou juridiques. Les données d'entrée et les sources doivent être vérifiées par une personne.")
     if not cloud_mode or current_user is None:
@@ -5157,7 +5157,7 @@ elif page == "SOWIA GLOBAL STRATEGIC FORECAST":
                     supabase_client, current_user, limit=200
                 )
                 if not forecast_assessments:
-                    st.info("Commencez par créer une évaluation dans SOWIA GLOBAL INTELLIGENCE.")
+                    st.info("Commencez par créer une évaluation dans SOW IA GLOBAL INTELLIGENCE.")
                 else:
                     assessment_map = {row["id"]: row for row in forecast_assessments}
                     with st.form("sowia_global_forecast_form"):
@@ -5243,11 +5243,11 @@ elif page == "SOWIA GLOBAL STRATEGIC FORECAST":
 
 
 elif page == "SOWIA GLOBAL INTELLIGENCE":
-    st.subheader("🌐 SOWIA GLOBAL INTELLIGENCE")
+    st.subheader("🌐 SOW IA GLOBAL INTELLIGENCE")
     st.caption("Laboratoire de veille et d'aide à la décision pour comparer les marchés, structurer les opportunités et conserver les preuves.")
     st.info("Les notes et classements sont des estimations de travail saisies par l'utilisateur. Ils ne constituent pas des statistiques de marché vérifiées ni des recommandations financières ou juridiques.")
     if not cloud_mode or current_user is None:
-        st.warning("Connectez-vous à votre compte SOWIA pour enregistrer vos évaluations dans votre espace privé.")
+        st.warning("Connectez-vous à votre compte SOW IA pour enregistrer vos évaluations dans votre espace privé.")
     else:
         intel_tabs = st.tabs(["📊 Vue stratégique", "＋ Évaluer un marché", "📁 Mon registre"])
         with intel_tabs[0]:
@@ -5281,7 +5281,7 @@ elif page == "SOWIA GLOBAL INTELLIGENCE":
         with intel_tabs[1]:
             st.markdown("#### Évaluer une opportunité internationale")
             with st.form("sowia_global_intelligence_assessment_form", clear_on_submit=True):
-                intel_name = st.text_input("Nom de l'opportunité", max_chars=120, placeholder="Ex. Déploiement de SOWIA au Sénégal")
+                intel_name = st.text_input("Nom de l'opportunité", max_chars=120, placeholder="Ex. Déploiement de SOW IA au Sénégal")
                 intel_country = st.text_input("Pays ou marché", max_chars=100, placeholder="Ex. Sénégal")
                 intel_sector = st.selectbox(
                     "Secteur",
@@ -5357,11 +5357,11 @@ elif page == "SOWIA GLOBAL INTELLIGENCE":
 
 
 elif page == "SOWIA GLOBAL PULSE":
-    st.subheader("📡 SOWIA GLOBAL PULSE")
+    st.subheader("📡 SOW IA GLOBAL PULSE")
     st.caption("Radar international de veille : lancez une recherche ciblée, conservez les sources et transmettez les signaux utiles à votre analyse stratégique.")
     st.info("La collecte est déclenchée manuellement. Cette version ne surveille pas les marchés en arrière-plan et n'envoie pas d'alertes automatiques. Les résultats web sont des pistes à vérifier, pas des faits certifiés.")
     if not cloud_mode or current_user is None:
-        st.warning("Connectez-vous à votre compte SOWIA pour conserver votre veille dans votre espace privé.")
+        st.warning("Connectez-vous à votre compte SOW IA pour conserver votre veille dans votre espace privé.")
     else:
         import sowia_global_pulse as global_pulse
         pulse_tabs = st.tabs(["🔎 Lancer une veille", "📚 Mes sources sauvegardées", "🚨 Centre des alertes"])
@@ -5476,16 +5476,16 @@ elif page == "SOWIA GLOBAL PULSE":
 
 
 elif page == "SOWIA GLOBAL ADMIN & MODERATION":
-    st.subheader("🛡️ SOWIA GLOBAL ADMIN & MODERATION")
-    st.caption("Centre réservé aux administrateurs SOWIA : signalements, contrôle des profils et journal des décisions.")
+    st.subheader("🛡️ SOW IA GLOBAL ADMIN & MODERATION")
+    st.caption("Centre réservé aux administrateurs SOW IA : signalements, contrôle des profils et journal des décisions.")
     admin_metadata = getattr(current_user, "app_metadata", None) or {} if current_user is not None else {}
     is_sowia_admin = isinstance(admin_metadata, dict) and (
         admin_metadata.get("sowia_admin") is True or admin_metadata.get("role") == "admin"
     )
     if not cloud_mode or current_user is None:
-        st.warning("Connectez-vous avec un compte administrateur SOWIA autorisé.")
+        st.warning("Connectez-vous avec un compte administrateur SOW IA autorisé.")
     elif not is_sowia_admin:
-        st.error("Accès refusé. Cette section est réservée aux administrateurs SOWIA.")
+        st.error("Accès refusé. Cette section est réservée aux administrateurs SOW IA.")
     else:
         admin_tabs = st.tabs(["🚩 Signalements", "🪪 Profils & vérification", "📜 Journal d'audit"])
         with admin_tabs[0]:
@@ -5529,7 +5529,7 @@ elif page == "SOWIA GLOBAL ADMIN & MODERATION":
                 st.caption("Vérifiez que les migrations GLOBAL TRUST et GLOBAL MODERATION sont appliquées et que le compte possède les droits administrateur.")
 
         with admin_tabs[1]:
-            st.markdown("#### Registre des profils SOWIA GLOBAL ID")
+            st.markdown("#### Registre des profils SOW IA GLOBAL ID")
             st.caption("Vérifiez les justificatifs dans un processus sécurisé séparé. Ne téléversez pas de pièces d'identité dans une note interne.")
             try:
                 moderation_profiles = cloud_storage.list_global_moderation_profiles(
@@ -5595,10 +5595,10 @@ elif page == "SOWIA GLOBAL ADMIN & MODERATION":
 
 
 elif page == "SOWIA GLOBAL TRUST":
-    st.subheader("🛡️ SOWIA GLOBAL TRUST")
+    st.subheader("🛡️ SOW IA GLOBAL TRUST")
     st.caption("Un cadre de confiance fondé sur les collaborations acceptées, des évaluations réciproques et des signalements confidentiels.")
     if not cloud_mode or current_user is None:
-        st.warning("Connectez-vous à votre compte SOWIA pour accéder à GLOBAL TRUST.")
+        st.warning("Connectez-vous à votre compte SOW IA pour accéder à GLOBAL TRUST.")
     else:
         try:
             trust_incoming = cloud_storage.list_global_connection_requests(
@@ -5649,7 +5649,7 @@ elif page == "SOWIA GLOBAL TRUST":
                             st.error("Évaluation non enregistrée : " + type(review_error).__name__)
                             st.caption("Une seule évaluation est autorisée par membre et par connexion.")
                 with st.expander("Signaler un problème confidentiellement"):
-                    st.caption("Le signalement est transmis à l’espace de modération SOWIA. Il n’est pas publié sur le profil de l’autre membre.")
+                    st.caption("Le signalement est transmis à l’espace de modération SOW IA. Il n’est pas publié sur le profil de l’autre membre.")
                     report_reason = st.text_area(
                         "Décrivez les faits (10 à 2 000 caractères)",
                         max_chars=2000,
@@ -5681,14 +5681,14 @@ elif page == "SOWIA GLOBAL TRUST":
                         )
             else:
                 st.info("Les indicateurs apparaîtront après les premières collaborations évaluées.")
-            st.info("Une note reflète une expérience déclarée par un partenaire. Elle ne certifie ni la solvabilité, ni la légalité, ni la qualité générale d’une entreprise. Les vérifications d’identité restent distinctes et nécessitent des preuves contrôlées par SOWIA.")
+            st.info("Une note reflète une expérience déclarée par un partenaire. Elle ne certifie ni la solvabilité, ni la légalité, ni la qualité générale d’une entreprise. Les vérifications d’identité restent distinctes et nécessitent des preuves contrôlées par SOW IA.")
         except Exception as trust_error:
             st.error("GLOBAL TRUST nécessite les migrations GLOBAL ID, CONNECT et TRUST.")
             st.caption("Diagnostic : " + type(trust_error).__name__)
 
 
 elif page == "SOWIA NIGHT EXCHANGE":
-    st.subheader("🌙 SOWIA NIGHT EXCHANGE")
+    st.subheader("🌙 SOW IA NIGHT EXCHANGE")
     st.caption("Place de marché nocturne internationale pour applications et services numériques.")
     if not premium_active:
         st.warning("Cet espace professionnel est réservé aux comptes Premium.")
@@ -5713,7 +5713,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
 
         with nex_tab_views[0]:
             st.markdown("#### Applications partenaires validées")
-            st.caption("Seules les fiches approuvées par SOWIA sont visibles dans cet annuaire.")
+            st.caption("Seules les fiches approuvées par SOW IA sont visibles dans cet annuaire.")
             filter_country = st.text_input("Filtrer par pays (facultatif)", key="nex_directory_country")
             if st.button("Actualiser l’annuaire", key="nex_directory_refresh"):
                 st.session_state["nex_directory_refresh_nonce"] = str(uuid.uuid4())
@@ -5737,7 +5737,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
 
         with nex_tab_views[1]:
             st.markdown("#### Suggestions de partenaires compatibles")
-            st.caption("SOWIA compare les domaines, les services proposés et les besoins. Seules les applications déjà approuvées peuvent être proposées comme partenaires.")
+            st.caption("SOW IA compare les domaines, les services proposés et les besoins. Seules les applications déjà approuvées peuvent être proposées comme partenaires.")
             try:
                 source_apps = cloud_storage.list_my_night_exchange_apps(
                     supabase_client, current_user, workspace_id=nex_workspace, limit=200
@@ -5893,7 +5893,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
                                     "recorded_by": "member_action",
                                 },
                             )
-                            st.success("Consultation enregistrée dans votre journal SOWIA.")
+                            st.success("Consultation enregistrée dans votre journal SOW IA.")
                         except Exception as exc:
                             st.error("La consultation n'a pas pu être enregistrée.")
                             st.caption(f"Diagnostic : {type(exc).__name__}")
@@ -6139,7 +6139,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
 
 elif page == "Bourse aux applications":
     st.subheader("🧩 BOURSE AUX APPLICATIONS")
-    st.caption("Découvrez les applications numériques partenaires validées dans l’écosystème SOWIA.")
+    st.caption("Découvrez les applications numériques partenaires validées dans l’écosystème SOW IA.")
     if not premium_active:
         st.warning("La Bourse aux applications est accessible aux comptes Premium.")
     elif not cloud_mode or current_user is None:
@@ -7250,7 +7250,7 @@ elif page == "Technologies & fournisseurs":
         st.error("Le comparateur de technologies est momentanément indisponible. Aucune solution n'a été sélectionnée.")
 
 elif page == "Finance & investissements":
-    st.subheader("💹 SOWIA Finance — Bourse, Crypto & Investissements")
+    st.subheader("💹 SOW IA Finance — Bourse, Crypto & Investissements")
     st.caption(
         "Première version : suivi et calculs en lecture seule à partir de données saisies par vous. "
         "Aucune cotation n'est téléchargée automatiquement et aucun ordre n'est passé."
@@ -7680,7 +7680,7 @@ elif page == "Revenus & paiements":
 
 
 elif page == "Centre de notifications":
-    st.subheader("🔔 Centre de notifications SOWIA")
+    st.subheader("🔔 Centre de notifications SOW IA")
     st.caption(
         "Un point de consultation unique pour vos notifications, alertes stratégiques, "
         "échéances professionnelles et anomalies du registre financier. Les données sont "
@@ -7706,7 +7706,7 @@ elif page == "Centre de notifications":
             with st.expander("📨 Notifications de la plateforme", expanded=True):
                 st.metric("Non lues", len(unread_notifications))
                 if not notifications_enabled:
-                    st.info("Les notifications dans SOWIA sont désactivées dans vos préférences.")
+                    st.info("Les notifications dans SOW IA sont désactivées dans vos préférences.")
                 elif not notifications:
                     st.info(notification_text["empty"])
                 else:
@@ -7879,7 +7879,7 @@ elif page == "Centre de notifications":
 
 
 elif page == "SOWIA CONTROL CENTER":
-    st.subheader("🛰️ SOWIA CONTROL CENTER")
+    st.subheader("🛰️ SOW IA CONTROL CENTER")
     st.caption(
         "Supervision technique en lecture seule. Aucun paiement, remboursement, "
         "abonnement ou changement de configuration n'est déclenché depuis cette page."
@@ -7889,9 +7889,9 @@ elif page == "SOWIA CONTROL CENTER":
         admin_metadata.get("sowia_admin") is True or admin_metadata.get("role") == "admin"
     )
     if not cloud_mode or current_user is None:
-        st.warning("Connectez-vous avec un compte administrateur SOWIA autorisé.")
+        st.warning("Connectez-vous avec un compte administrateur SOW IA autorisé.")
     elif not is_sowia_admin:
-        st.error("Accès refusé. Ce centre de contrôle est réservé aux administrateurs SOWIA.")
+        st.error("Accès refusé. Ce centre de contrôle est réservé aux administrateurs SOW IA.")
     else:
         from datetime import datetime, timezone
         st.caption("Diagnostic effectué le " + datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))
@@ -8056,7 +8056,7 @@ elif page == "SOWIA CONTROL CENTER":
         )
         st.markdown("#### Vérifications automatisées")
         st.link_button("Consulter les tests GitHub Actions", "https://github.com/1826Sow/Sowia/actions", use_container_width=True)
-        st.link_button("Ouvrir le dépôt SOWIA", "https://github.com/1826Sow/Sowia", use_container_width=True)
+        st.link_button("Ouvrir le dépôt SOW IA", "https://github.com/1826Sow/Sowia", use_container_width=True)
 
 
 elif page == "Paramètres":
