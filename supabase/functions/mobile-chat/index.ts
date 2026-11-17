@@ -124,6 +124,24 @@ Deno.serve(async (req: Request) => {
       : "",
   ].filter(Boolean).join("\n\n");
 
+  // Register the conversation in the existing user/workspace registry.
+  const conversationResponse = await fetch(
+    `${supabaseUrl}/rest/v1/sowia_conversations?on_conflict=user_id,workspace_id,session_id`,
+    {
+      method: "POST",
+      headers: { ...restHeaders, Prefer: "resolution=ignore-duplicates,return=minimal" },
+      body: JSON.stringify({
+        user_id: userId,
+        workspace_id: workspaceId,
+        session_id: sessionId,
+        title: message.slice(0, 96) || "Nouvelle conversation",
+      }),
+    },
+  );
+  if (!conversationResponse.ok) {
+    return json(403, { ok: false, code: "WORKSPACE_ACCESS_DENIED" });
+  }
+
   const aiResponse = await fetch(providerUrl, {
     method: "POST",
     headers: { Authorization: `Bearer ${providerKey}`, "Content-Type": "application/json" },
@@ -149,24 +167,6 @@ Deno.serve(async (req: Request) => {
   const answer = aiPayload?.choices?.[0]?.message?.content;
   if (typeof answer !== "string" || !answer.trim()) {
     return json(502, { ok: false, code: "EMPTY_AI_RESPONSE" });
-  }
-
-  // Register the conversation in the existing user/workspace registry.
-  const conversationResponse = await fetch(
-    `${supabaseUrl}/rest/v1/sowia_conversations?on_conflict=user_id,workspace_id,session_id`,
-    {
-      method: "POST",
-      headers: { ...restHeaders, Prefer: "resolution=ignore-duplicates,return=minimal" },
-      body: JSON.stringify({
-        user_id: userId,
-        workspace_id: workspaceId,
-        session_id: sessionId,
-        title: message.slice(0, 96) || "Nouvelle conversation",
-      }),
-    },
-  );
-  if (!conversationResponse.ok) {
-    return json(403, { ok: false, code: "WORKSPACE_ACCESS_DENIED" });
   }
 
   const insertResponse = await fetch(`${supabaseUrl}/rest/v1/sowia_messages`, {
