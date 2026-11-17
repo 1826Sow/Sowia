@@ -1090,6 +1090,8 @@ with st.sidebar:
         existing_session_id = str(st.session_state.get("session_id") or "").strip()
         workspace_sessions = st.session_state.setdefault("sowia_workspace_session_ids", {})
         if resume_session_id:
+            # A project resume must override the widget's previous selection.
+            st.session_state.pop("sowia_conversation_selector", None)
             st.session_state.session_id = str(resume_session_id)
         elif existing_session_id and (
             previous_workspace_id is None or previous_workspace_id == workspace_id
