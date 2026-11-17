@@ -15,6 +15,65 @@ def _workspace_id(workspace_id):
         raise ValueError("Espace de travail invalide.")
     return value
 
+def create_conversation(client, user, workspace_id="personal", title="Nouvelle conversation", session_id=None):
+    """Create an independent, owner- and workspace-scoped conversation."""
+    import uuid
+    workspace = _workspace_id(workspace_id)
+    cleaned_title = str(title or "Nouvelle conversation").strip()[:100] or "Nouvelle conversation"
+    identifier = str(session_id or uuid.uuid4()).strip()
+    if not identifier or len(identifier) > 128:
+        raise ValueError("Identifiant de conversation invalide.")
+    rows = client.table("sowia_conversations").insert({
+        "user_id": _user_id(user),
+        "workspace_id": workspace,
+        "session_id": identifier,
+        "title": cleaned_title,
+    }).select("session_id, title, created_at, updated_at").execute().data or []
+    if len(rows) != 1 or not rows[0].get("session_id"):
+        raise RuntimeError("La création de la conversation n’a pas été confirmée.")
+    return rows[0]
+
+
+def ensure_conversation(client, user, session_id, workspace_id="personal"):
+    """Register the active (possibly legacy) conversation without altering messages."""
+    identifier = str(session_id or "").strip()
+    if not identifier or len(identifier) > 128:
+        raise ValueError("Identifiant de conversation invalide.")
+    rows = (client.table("sowia_conversations")
+        .select("session_id, title, created_at, updated_at")
+        .eq("user_id", _user_id(user))
+        .eq("workspace_id", _workspace_id(workspace_id))
+        .eq("session_id", identifier).limit(1).execute().data or [])
+    return rows[0] if rows else create_conversation(
+        client, user, workspace_id, "Conversation précédente", identifier
+    )
+
+
+def list_conversations(client, user, workspace_id="personal", limit=50):
+    """List only the authenticated user's conversations in the active workspace."""
+    safe_limit = min(max(int(limit), 1), 100)
+    return (client.table("sowia_conversations")
+        .select("session_id, title, created_at, updated_at")
+        .eq("user_id", _user_id(user))
+        .eq("workspace_id", _workspace_id(workspace_id))
+        .order("updated_at", desc=True).limit(safe_limit).execute().data or [])
+
+
+def touch_conversation(client, user, session_id, workspace_id="personal", title=None):
+    """Update activity metadata; conversation messages remain untouched."""
+    identifier = str(session_id or "").strip()
+    if not identifier:
+        raise ValueError("Identifiant de conversation invalide.")
+    changes = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    cleaned_title = str(title or "").strip()[:100]
+    if cleaned_title:
+        changes["title"] = cleaned_title
+    return (client.table("sowia_conversations").update(changes)
+        .eq("user_id", _user_id(user))
+        .eq("workspace_id", _workspace_id(workspace_id))
+        .eq("session_id", identifier).execute())
+
+
 def list_memories(client, user, workspace_id="personal"):
     return (client.table("sowia_memory_items").select("id, content, created_at")
         .eq("user_id", _user_id(user)).eq("workspace_id", _workspace_id(workspace_id))
