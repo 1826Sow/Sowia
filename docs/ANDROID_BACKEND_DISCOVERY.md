@@ -80,3 +80,8 @@ Live database introspection confirmed that both `sowia_messages` and `sowia_memo
 - creates the conversation registry entry before invoking the AI provider, so professional-workspace RLS denial occurs before model usage;
 - includes the required workspace field on both persisted message rows.
 The Android client now sends the workspace scope (defaults to personal). Professional access remains governed by the existing database RLS policy.
+
+
+### Native registry read path — 2026-11-17
+
+Live schema and RLS inspection confirmed the existing `sowia_conversations` and `sowia_projects` tables expose owner/workspace-scoped SELECT policies. Android now reads both registries through the signed-in user's JWT (never service-role credentials), with explicit user and workspace filters and a 100-row cap. The “Mes échanges & projets” screen now has Personal/Professional workspace selectors and refreshes conversations/projects from Supabase. The chat endpoint was advanced to version 4 to touch `updated_at` after every persisted exchange, keeping the conversation registry sorted by recent activity.
