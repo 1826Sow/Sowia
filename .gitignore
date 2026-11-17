@@ -30,3 +30,6 @@ Thumbs.db
 
 # Journaux
 *.log
+
+# Android local configuration (contains project-specific build values)
+local.properties
