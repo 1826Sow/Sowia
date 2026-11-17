@@ -33,3 +33,18 @@ def test_project_resume_resets_stale_conversation_selector_before_switching_sess
     resume_branch = source.split('if resume_session_id:', 1)[1].split('elif existing_session_id', 1)[0]
     assert 'st.session_state.pop("sowia_conversation_selector", None)' in resume_branch
     assert 'st.session_state.session_id = str(resume_session_id)' in resume_branch
+
+
+
+def test_clearing_conversation_messages_requires_confirmation_and_is_session_scoped():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert 'st.session_state.sowia_confirm_clear_conversation = active_clear_session_id' in source
+    assert 'if pending_clear_session_id == active_clear_session_id:' in source
+    assert 'clear_app_history()' in source
+    assert 'st.session_state.pop("sowia_confirm_clear_conversation", None)' in source
+    assert 'Les autres conversations et les projets associés seront conservés.' in source
+
+
+def test_switching_conversation_discards_stale_clear_confirmation():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert 'if pending_clear_session_id and pending_clear_session_id != active_clear_session_id:' in source
