@@ -74,6 +74,28 @@ class SupabaseAuthClient(context: Context) {
         )
     }.getOrNull()
 
+
+    suspend fun refreshSession(): SowiaSession? = withContext(Dispatchers.IO) {
+        val previous = currentSession() ?: return@withContext null
+        val response = request(
+            "/auth/v1/token?grant_type=refresh_token",
+            JSONObject().put("refresh_token", previous.refreshToken),
+            null,
+        )
+        val user = response.optJSONObject("user")
+        val refreshed = SowiaSession(
+            accessToken = response.optString("access_token"),
+            refreshToken = response.optString("refresh_token"),
+            userId = user?.optString("id").orEmpty().ifBlank { previous.userId },
+            email = user?.optString("email").orEmpty().ifBlank { previous.email },
+        )
+        require(refreshed.accessToken.isNotBlank() && refreshed.refreshToken.isNotBlank()) {
+            "Le renouvellement de session a renvoyé une réponse incomplète."
+        }
+        saveSession(refreshed)
+        refreshed
+    }
+
     suspend fun signOut() = withContext(Dispatchers.IO) {
         val session = currentSession()
         if (session != null && isConfigured) {
