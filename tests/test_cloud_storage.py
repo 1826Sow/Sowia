@@ -442,3 +442,50 @@ def test_touch_conversation_updates_only_the_matching_owner_workspace_and_sessio
     assert ("workspace_id", "professional") in query.filters
     assert ("session_id", "session-1") in query.filters
 
+
+
+
+def test_register_legacy_conversations_derives_titles_from_first_user_message(monkeypatch):
+    client = FakeClient()
+    source_rows = [
+        {
+            "session_id": "legacy-1",
+            "first_user_message": "  Bonjour   SOW IA, aide-moi à organiser mon projet.  ",
+            "message_count": 4,
+        },
+        {
+            "session_id": "legacy-2",
+            "first_user_message": None,
+            "message_count": 2,
+        },
+    ]
+    rpc_calls = []
+    client.rpc = lambda name, params: (
+        rpc_calls.append((name, params))
+        or SimpleNamespace(execute=lambda: SimpleNamespace(data=source_rows))
+    )
+    registered = []
+    monkeypatch.setattr(
+        cloud_storage,
+        "ensure_conversation",
+        lambda client, user, session_id, workspace_id, title=None: (
+            registered.append((session_id, workspace_id, title))
+            or {"session_id": session_id, "title": title}
+        ),
+    )
+
+    result = cloud_storage.register_legacy_conversations(
+        client, User(), "personal", limit=10
+    )
+
+    assert rpc_calls == [(
+        "sowia_list_legacy_conversations", {"p_workspace_id": "personal"}
+    )]
+    assert registered == [
+        ("legacy-1", "personal", "Bonjour SOW IA, aide-moi à organiser mon projet."),
+        ("legacy-2", "personal", "Conversation précédente"),
+    ]
+    assert result == [
+        {"session_id": "legacy-1", "title": "Bonjour SOW IA, aide-moi à organiser mon projet."},
+        {"session_id": "legacy-2", "title": "Conversation précédente"},
+    ]
