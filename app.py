@@ -444,10 +444,16 @@ if cloud_mode:
                 # A new or different account starts without cached private data.
                 clear_private_session_state(st.session_state)
                 st.session_state["sowia_authenticated_user_id"] = authenticated_user_id
-            # Reuse one private conversation history for this authenticated account.
-            st.session_state.session_id = str(
-                uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
-            )
+            # Restore the legacy account conversation only on first login/account
+            # switch. Subsequent reruns must preserve the user's selected conversation.
+            if not str(st.session_state.get("session_id") or "").strip() or (
+                st.session_state.get("sowia_authenticated_user_id") == authenticated_user_id
+                and st.session_state.get("sowia_conversation_owner_id") != authenticated_user_id
+            ):
+                st.session_state.session_id = str(
+                    uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
+                )
+            st.session_state["sowia_conversation_owner_id"] = authenticated_user_id
     except Exception as exc:
         # Keep the application usable if the optional Supabase connection is
         # unavailable. Never bypass authentication when the deployment
@@ -1080,9 +1086,14 @@ with st.sidebar:
         existing_session_id = str(st.session_state.get("session_id") or "").strip()
         if resume_session_id:
             st.session_state.session_id = str(resume_session_id)
-        elif previous_workspace_id == workspace_id and existing_session_id:
+        elif existing_session_id and (
+            previous_workspace_id is None or previous_workspace_id == workspace_id
+        ):
+            # On first load keep the legacy account-wide ID so prior messages
+            # remain reachable; on reruns keep the selected independent session.
             st.session_state.session_id = existing_session_id
         else:
+            # Returning to another workspace restores its stable workspace session.
             st.session_state.session_id = str(
                 uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}:{workspace_id}")
             )
