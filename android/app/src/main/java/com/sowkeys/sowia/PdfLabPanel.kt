@@ -3,6 +3,9 @@ package com.sowkeys.sowia
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.text.PDFTextStripper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -138,6 +141,39 @@ private class PdfStorageClient(private val context: Context) {
             }
         }
 
+    suspend fun extractText(session: SowiaSession, document: StoredPdf): String = withContext(Dispatchers.IO) {
+        val request = connection(
+            "/storage/v1/object/sowia-files/" + encodedPath(document.path),
+            "GET",
+            session.accessToken,
+        )
+        try {
+            val status = request.responseCode
+            check(status in 200..299) { "Téléchargement du PDF refusé (HTTP $status)." }
+            val bytes = request.inputStream.use { input ->
+                val output = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    require(total <= PDF_MAX_BYTES) { "Le PDF dépasse la limite de 10 Mo." }
+                    output.write(buffer, 0, count)
+                }
+                output.toByteArray()
+            }
+            PDFBoxResourceLoader.init(context)
+            PDDocument.load(bytes).use { documentPdf ->
+                val text = PDFTextStripper().getText(documentPdf).trim()
+                require(text.isNotBlank()) { "Aucun texte extractible. Ce PDF est peut-être un scan image." }
+                text.take(4800)
+            }
+        } finally {
+            request.disconnect()
+        }
+    }
+
     suspend fun delete(session: SowiaSession, document: StoredPdf) = withContext(Dispatchers.IO) {
         val request = connection("/storage/v1/object/sowia-files", "DELETE", session.accessToken).apply {
             doOutput = true
@@ -258,6 +294,26 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
                                 Text("Mis à jour : " + document.updatedAt, color = PdfMuted, fontSize = 11.sp)
                             }
                             Spacer(Modifier.height(6.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    scope.launch {
+                                        busy = true
+                                        status = "Lecture du PDF et préparation de l'analyse…"
+                                        try {
+                                            val current = auth.currentSession() ?: error("Session expirée.")
+                                            val extracted = storage.extractText(current, document)
+                                            val prompt = "Analyse le document PDF suivant : ${document.name}. Fournis un résumé structuré, les points clés, les dates/chiffres importants et les éventuelles actions à retenir. Signale clairement si une information est absente.\n\nCONTENU DU PDF :\n" + extracted
+                                            val answer = auth.sendChatMessage(UUID.randomUUID().toString(), prompt, workspace)
+                                            status = "Analyse de " + document.name + " :\n" + answer
+                                        } catch (error: Exception) {
+                                            status = error.message ?: "Analyse du PDF impossible."
+                                        } finally {
+                                            busy = false
+                                        }
+                                    }
+                                },
+                                enabled = !busy,
+                            ) { Text("Analyser avec SOW IA") }
                             OutlinedButton(
                                 onClick = {
                                     scope.launch {
