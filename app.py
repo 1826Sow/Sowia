@@ -444,6 +444,8 @@ if cloud_mode:
                 # A new login/account starts from its legacy conversation ID.
                 clear_private_session_state(st.session_state)
                 st.session_state["sowia_authenticated_user_id"] = authenticated_user_id
+                st.session_state.pop("sowia_workspace_session_ids", None)
+                st.session_state.pop("sowia_conversation_selector", None)
                 st.session_state.session_id = str(
                     uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
                 )
@@ -1086,19 +1088,23 @@ with st.sidebar:
         # workspace change or explicit project-resume action selects another ID.
         resume_session_id = st.session_state.pop("sowia_resume_session_id", None)
         existing_session_id = str(st.session_state.get("session_id") or "").strip()
+        workspace_sessions = st.session_state.setdefault("sowia_workspace_session_ids", {})
         if resume_session_id:
             st.session_state.session_id = str(resume_session_id)
         elif existing_session_id and (
             previous_workspace_id is None or previous_workspace_id == workspace_id
         ):
-            # On first load keep the legacy account-wide ID so prior messages
-            # remain reachable; on reruns keep the selected independent session.
+            # On first load keep the legacy account-wide ID; on reruns keep the
+            # selected independent conversation.
             st.session_state.session_id = existing_session_id
         else:
-            # Returning to another workspace restores its stable workspace session.
+            # Restore this workspace's last selected conversation, or its
+            # legacy account-wide history on the first visit.
             st.session_state.session_id = str(
-                uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}:{workspace_id}")
+                workspace_sessions.get(workspace_id)
+                or uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
             )
+        workspace_sessions[workspace_id] = str(st.session_state.session_id)
     st.session_state.workspace_id = workspace_id
     if cloud_mode:
         st.success(f"Espace {workspace_choice.lower()} sécurisé")
@@ -2058,6 +2064,9 @@ elif page == "Assistant IA":
                 )
                 if selected_session_id != current_session_id:
                     st.session_state.session_id = selected_session_id
+                    st.session_state.setdefault("sowia_workspace_session_ids", {})[
+                        active_workspace_id
+                    ] = selected_session_id
                     st.rerun()
             with conversation_cols[1]:
                 if st.button("＋ Nouvelle", key="sowia_new_conversation", use_container_width=True):
@@ -2066,6 +2075,9 @@ elif page == "Assistant IA":
                     )
                     st.session_state.pop("sowia_conversation_selector", None)
                     st.session_state.session_id = created_conversation["session_id"]
+                    st.session_state.setdefault("sowia_workspace_session_ids", {})[
+                        active_workspace_id
+                    ] = created_conversation["session_id"]
                     st.rerun()
         except Exception as conversation_error:
             st.warning("L’historique multi-conversations sera disponible après l’application de la migration dédiée.")
