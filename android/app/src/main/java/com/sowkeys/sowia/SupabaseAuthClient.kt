@@ -166,6 +166,42 @@ class SupabaseAuthClient(context: Context) {
             }
         }
 
+    suspend fun loadConversationMessages(sessionId: String, workspaceId: String = "personal"): List<JSONObject> =
+        withContext(Dispatchers.IO) {
+            check(isConfigured) { "Configuration Supabase absente." }
+            val session = currentSession()
+                ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
+            require(workspaceId == "personal" || workspaceId == "professional")
+            require(sessionId.matches(Regex("[0-9a-fA-F-]{36}"))) { "Identifiant de conversation invalide." }
+            val url = URL(
+                BuildConfig.SUPABASE_URL.trimEnd('/') +
+                    "/rest/v1/sowia_messages?select=role,content&user_id=eq.${session.userId}&workspace_id=eq.$workspaceId&session_id=eq.$sessionId&order=id.asc&limit=200"
+            )
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 12000
+                readTimeout = 15000
+                setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+                setRequestProperty("Authorization", "Bearer ${session.accessToken}")
+                setRequestProperty("Accept", "application/json")
+            }
+            try {
+                val status = connection.responseCode
+                val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+                val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                if (status !in 200..299) throw IllegalStateException("Historique indisponible (HTTP $status).")
+                val array = org.json.JSONArray(body)
+                (0 until array.length()).mapNotNull { index ->
+                    array.optJSONObject(index)?.takeIf {
+                        (it.optString("role") == "user" || it.optString("role") == "assistant") &&
+                            it.optString("content").isNotBlank()
+                    }
+                }
+            } finally {
+                connection.disconnect()
+            }
+        }
+
     suspend fun sendChatMessage(sessionId: String, message: String, workspaceId: String = "personal"): String = withContext(Dispatchers.IO) {
         check(isConfigured) { "Configuration Supabase absente." }
         val session = currentSession() ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
