@@ -35,6 +35,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 private val Navy = Color(0xFF071426)
 private val Panel = Color(0xFF10243D)
@@ -127,10 +128,10 @@ private fun SowiaPrototype() {
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(Modifier.height(12.dp))
-                    if (screen == "Compte & paramètres") {
-                        AccountPanel()
-                    } else {
-                        Card(colors = CardDefaults.cardColors(containerColor = Panel)) {
+                    when (screen) {
+                        "Compte & paramètres" -> AccountPanel()
+                        "Assistant" -> AssistantPanel(onOpenAccount = { navigate("Compte & paramètres") })
+                        else -> Card(colors = CardDefaults.cardColors(containerColor = Panel)) {
                             Column(Modifier.padding(18.dp)) {
                                 Text("Connexion requise", color = Cyan, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(8.dp))
@@ -261,6 +262,95 @@ private fun AccountPanel() {
                 }
             }
             if (status.isNotBlank()) Text(status, color = Cyan)
+        }
+    }
+}
+
+
+private data class ChatLine(val role: String, val content: String)
+
+@Composable
+private fun AssistantPanel(onOpenAccount: () -> Unit) {
+    val context = LocalContext.current
+    val auth = remember(context) { SupabaseAuthClient(context) }
+    val scope = rememberCoroutineScope()
+    val sessionId = remember { UUID.randomUUID().toString() }
+    val session = remember { mutableStateOf(auth.currentSession()) }
+    val lines = remember { mutableStateListOf<ChatLine>() }
+    var draft by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+
+    LaunchedEffect(auth) {
+        if (session.value != null && auth.isConfigured) {
+            runCatching { session.value = auth.refreshSession() }
+        }
+    }
+
+    Card(colors = CardDefaults.cardColors(containerColor = Panel)) {
+        Column(
+            Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Assistant SOW IA", color = Cyan, fontWeight = FontWeight.Bold)
+            if (session.value == null) {
+                Text("Connectez-vous pour utiliser l'Assistant sécurisé.", color = Muted)
+                Button(
+                    onClick = onOpenAccount,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                ) { Text("Ouvrir Compte & paramètres") }
+            } else {
+                if (lines.isEmpty()) {
+                    Text("Votre conversation sera privée et associée à votre compte.", color = Muted)
+                }
+                lines.forEach { line ->
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(
+                            if (line.role == "user") "Vous" else "SOW IA",
+                            color = Cyan,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                        )
+                        Text(line.content, color = Color.White)
+                    }
+                }
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Votre message") },
+                    minLines = 2,
+                    maxLines = 5,
+                    enabled = !busy,
+                )
+                Button(
+                    onClick = {
+                        val outgoing = draft.trim()
+                        if (outgoing.isNotEmpty()) {
+                            draft = ""
+                            lines.add(ChatLine("user", outgoing))
+                            busy = true
+                            status = ""
+                            scope.launch {
+                                try {
+                                    val answer = auth.sendChatMessage(sessionId, outgoing)
+                                    lines.add(ChatLine("assistant", answer))
+                                } catch (error: Exception) {
+                                    status = error.message ?: "Le service Assistant est indisponible."
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        }
+                    },
+                    enabled = !busy && draft.isNotBlank() && auth.isConfigured,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                ) { Text(if (busy) "SOW IA réfléchit…" else "Envoyer") }
+                if (busy) Text("Connexion au moteur IA sécurisé…", color = Muted)
+                if (status.isNotBlank()) Text(status, color = Cyan)
+            }
         }
     }
 }
