@@ -5,6 +5,7 @@ from urllib.parse import urlsplit
 import streamlit as st
 
 import project_registry
+import cloud_storage
 
 
 def _safe_https_url(value):
@@ -44,6 +45,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
     st.markdown(f"**Espace actif : {workspace_label}**")
     try:
         projects = project_registry.list_projects(client, user, workspace_id)
+        conversations = cloud_storage.list_conversations(client, user, workspace_id, limit=100)
     except Exception as exc:
         st.error("Le registre n'est pas encore accessible. La migration Supabase dédiée doit être appliquée après validation.")
         st.caption(f"Diagnostic : {type(exc).__name__}")
@@ -127,9 +129,32 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
                         sorted(project_registry.PROJECT_STATUSES),
                         index=sorted(project_registry.PROJECT_STATUSES).index(project.get("status", "En cours")),
                     )
-                    new_session = st.text_input(
-                        "Identifiant de conversation",
-                        value=project.get("conversation_session_id") or "",
+                    # Offer saved conversations by readable title, while
+                    # retaining a legacy link even if it is not in the registry yet.
+                    linked_session_id = str(project.get("conversation_session_id") or "").strip()
+                    conversation_labels = {
+                        item["session_id"]: (
+                            str(item.get("title") or "Conversation")
+                            + " · "
+                            + str(item.get("updated_at") or item.get("created_at") or "")[:16].replace("T", " ")
+                        )
+                        for item in conversations
+                        if item.get("session_id")
+                    }
+                    conversation_ids = [None] + list(conversation_labels)
+                    if linked_session_id and linked_session_id not in conversation_labels:
+                        conversation_ids.append(linked_session_id)
+                        conversation_labels[linked_session_id] = "Conversation liée (historique existant)"
+                    selected_session_id = st.selectbox(
+                        "Conversation associée",
+                        options=conversation_ids,
+                        index=conversation_ids.index(linked_session_id if linked_session_id else None),
+                        format_func=lambda value: (
+                            "— Aucune conversation —" if value is None
+                            else conversation_labels.get(value, "Conversation")
+                        ),
+                        key=f"project_conversation_{project_id}",
+                        help="Choisissez une conversation enregistrée dans cet espace. Son historique reste inchangé.",
                     )
                     st.caption("Les livrables déjà associés sont conservés lors de la modification.")
                     save = st.form_submit_button("Enregistrer les modifications", use_container_width=True)
@@ -138,7 +163,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
                         project_registry.update_project(
                             client, user, project_id, workspace_id,
                             title=new_title, description=new_description, status=new_status,
-                            conversation_session_id=new_session or None,
+                            conversation_session_id=selected_session_id,
                         )
                         st.success("Projet mis à jour.")
                         st.rerun()
@@ -217,6 +242,6 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
             st.caption(f"Archives indisponibles : {type(exc).__name__}")
 
     st.caption(
-        "Les conversations anciennes et les fichiers déjà présents ne sont pas importés automatiquement à ce stade. "
-        "Seuls les projets et livrables ajoutés au registre apparaissent ici."
+        "Les conversations disponibles dans cet espace peuvent être associées aux projets. "
+        "Les anciens messages restent inchangés ; les conversations historiques sont enregistrées progressivement lorsqu’elles sont ouvertes."
     )
