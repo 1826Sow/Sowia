@@ -43,6 +43,10 @@ class FakeQuery:
         self.operations.append(("limit", value))
         return self
 
+    def range(self, start, end):
+        self.operations.append(("range", start, end))
+        return self
+
     def execute(self):
         if ("select", "id") in self.operations:
             return SimpleNamespace(data=[{"id": 123}])
@@ -79,7 +83,7 @@ def test_list_conversations_is_scoped_to_user_and_workspace():
     query = client.tables["sowia_conversations"]
     assert ("user_id", "user-123") in query.filters
     assert ("workspace_id", "professional") in query.filters
-    assert ("limit", 50) in query.operations
+    assert ("range", 0, 99) in query.operations
 
 
 def test_conversation_creation_rejects_missing_user():
@@ -529,3 +533,12 @@ def test_session_id_is_normalized_before_scoped_storage_access():
     cloud_storage.get_history(client, User(), "  session-abc  ")
     assert ("session_id", "session-abc") in client.tables["sowia_messages"].filters
 
+
+
+def test_list_conversations_supports_incremental_history_windows_safely():
+    client = FakeClient()
+    cloud_storage.list_conversations(client, User(), "personal", limit=2500)
+    query = client.tables["sowia_conversations"]
+    assert ("range", 0, 999) in query.operations
+    assert ("user_id", "user-123") in query.filters
+    assert ("workspace_id", "personal") in query.filters
