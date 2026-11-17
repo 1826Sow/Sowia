@@ -65,3 +65,19 @@ def test_failed_user_message_save_queues_original_prompt_before_rerun():
     assert "st.rerun()" in failure_branch
     assert "L’assistant n’a pas été lancé" not in failure_branch
 
+
+
+def test_failed_assistant_reply_save_is_retained_per_conversation_and_can_be_retried():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert 'st.session_state.setdefault(\n                                "sowia_pending_assistant_responses", {}\n                            )' in source
+    assert 'pending_responses[str(st.session_state.session_id)] = reply' in source
+    assert 'pending_assistant_responses.get(str(st.session_state.session_id))' in source
+    assert 'save_app_message("assistant", active_pending_assistant)' in source
+    assert 'pending_assistant_responses.pop(str(st.session_state.session_id), None)' in source
+    assert "Réessayer l’enregistrement de la réponse" in source
+
+
+def test_pending_assistant_reply_does_not_overwrite_another_conversation():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert 'pending_responses[str(st.session_state.session_id)] = reply' in source
+    assert 'pending_assistant_responses.get(str(st.session_state.session_id))' in source
