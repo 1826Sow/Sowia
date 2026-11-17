@@ -37,7 +37,7 @@ jobs:
 
       # Pull-request builds stay unsigned. Signing secrets are only read
       # for pushes to main and manually dispatched release builds.
-      - name: Decode Android upload keystore
+      - name: Decode and validate Android upload keystore
         if: github.event_name != 'pull_request'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -50,11 +50,41 @@ jobs:
             echo "Android signing secrets are missing. Add all four repository secrets before running a signed build."
             exit 1
           fi
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/sowia-upload.jks"
+
+          # Accept plain Base64, wrapped Base64, URL-safe Base64, and data-URI input.
+          python3 - <<'PY'
+          import base64
+          import os
+          import re
+          from pathlib import Path
+
+          value = os.environ["ANDROID_KEYSTORE_BASE64"].strip()
+          if value.startswith("data:") and "," in value:
+              value = value.split(",", 1)[1]
+          value = value.replace("\\r", "").replace("\\n", "")
+          value = "".join(value.split()).replace("-", "+").replace("_", "/")
+          value = value.rstrip("=")
+
+          if not value or not re.fullmatch(r"[A-Za-z0-9+/]+", value):
+              raise SystemExit("ANDROID_KEYSTORE_BASE64 contains characters that are not valid Base64.")
+          value += "=" * (-len(value) % 4)
+          try:
+              decoded = base64.b64decode(value, validate=True)
+          except Exception:
+              raise SystemExit("ANDROID_KEYSTORE_BASE64 could not be decoded. Re-encode the original .jks file as Base64.")
+
+          if not decoded:
+              raise SystemExit("Decoded Android keystore is empty.")
+          Path(os.environ["RUNNER_TEMP"], "sowia-upload.jks").write_bytes(decoded)
+          PY
+
+          # Verify the file, store password, and alias before Gradle starts.
+          keytool -list -keystore "$RUNNER_TEMP/sowia-upload.jks" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/sowia-upload.jks" >> "$GITHUB_ENV"
           echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
           echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
           echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+          echo "Android keystore decoded and validated successfully."
 
       - name: Build release bundle
         run: gradle -p android :app:bundleRelease
