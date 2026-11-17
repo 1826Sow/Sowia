@@ -2294,9 +2294,26 @@ elif page == "Assistant IA":
                                 "Une erreur inattendue est survenue pendant la réponse de l'assistant. "
                                 "Réessayez dans quelques instants."
                             )
-    if st.button("Effacer cette conversation"):
-            clear_app_history()
-            st.rerun()
+    active_clear_session_id = str(st.session_state.session_id)
+    pending_clear_session_id = st.session_state.get("sowia_confirm_clear_conversation")
+    if pending_clear_session_id and pending_clear_session_id != active_clear_session_id:
+        st.session_state.pop("sowia_confirm_clear_conversation", None)
+        pending_clear_session_id = None
+    if st.button("Effacer les messages de cette conversation", key="sowia_request_clear_conversation"):
+        st.session_state.sowia_confirm_clear_conversation = active_clear_session_id
+        st.rerun()
+    if pending_clear_session_id == active_clear_session_id:
+        st.warning("Cette action supprimera les messages de cette conversation uniquement. Les autres conversations et les projets associés seront conservés.")
+        clear_cols = st.columns(2)
+        with clear_cols[0]:
+            if st.button("Confirmer la suppression", key="sowia_confirm_clear_conversation_button", type="primary"):
+                clear_app_history()
+                st.session_state.pop("sowia_confirm_clear_conversation", None)
+                st.rerun()
+        with clear_cols[1]:
+            if st.button("Annuler", key="sowia_cancel_clear_conversation"):
+                st.session_state.pop("sowia_confirm_clear_conversation", None)
+                st.rerun()
     
 elif page == "Ma mémoire":
     workspace_label = (
