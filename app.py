@@ -2103,7 +2103,7 @@ elif page == "Assistant IA":
                 else:
                     st.info("Aucune conversation ne correspond à cette recherche.")
             with conversation_cols[1]:
-                if st.button("＋ Nouvelle", key="sowia_new_conversation", use_container_width=True):
+                if st.button("＋ Nouvelle", key=f"sowia_new_conversation_{current_user.id}_{active_workspace_id}", use_container_width=True):
                     created_conversation = cloud_storage.create_conversation(
                         supabase_client, current_user, active_workspace_id
                     )
@@ -2116,7 +2116,7 @@ elif page == "Assistant IA":
             if len(saved_conversations) >= conversation_page_size and conversation_page_size < 1000:
                 if st.button(
                     "Charger 100 conversations supplémentaires",
-                    key="sowia_load_more_conversations",
+                    key=f"sowia_load_more_conversations_{current_user.id}_{active_workspace_id}",
                     use_container_width=True,
                 ):
                     st.session_state[conversation_page_key] = min(
