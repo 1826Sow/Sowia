@@ -17,6 +17,15 @@ fun configValue(name: String): String =
 fun buildConfigString(value: String): String =
     "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
+val signingStoreFile = System.getenv("ANDROID_KEYSTORE_PATH")?.trim().orEmpty()
+val signingStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD").orEmpty()
+val signingKeyAlias = System.getenv("ANDROID_KEY_ALIAS").orEmpty()
+val signingKeyPassword = System.getenv("ANDROID_KEY_PASSWORD").orEmpty()
+val hasReleaseSigning = signingStoreFile.isNotBlank() &&
+    signingStorePassword.isNotBlank() &&
+    signingKeyAlias.isNotBlank() &&
+    signingKeyPassword.isNotBlank()
+
 android {
     namespace = "com.sowkeys.sowia"
     compileSdk = 35
@@ -29,6 +38,26 @@ android {
         versionName = "0.2.0"
         buildConfigField("String", "SUPABASE_URL", buildConfigString(configValue("SOWIA_SUPABASE_URL")))
         buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(configValue("SOWIA_SUPABASE_ANON_KEY")))
+    }
+
+    signingConfigs {
+        create("release") {
+            if (hasReleaseSigning) {
+                storeFile = file(signingStoreFile)
+                storeType = "PKCS12"
+                storePassword = signingStorePassword
+                keyAlias = signingKeyAlias
+                keyPassword = signingKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 
     buildFeatures {
