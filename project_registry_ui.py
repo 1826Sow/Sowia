@@ -59,21 +59,26 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
             st.metric(status, status_counts[status])
 
     with st.expander("＋ Créer un projet", expanded=not projects):
+        active_session_id = str(st.session_state.get("session_id") or "").strip()
         with st.form("sowia_create_project_form", clear_on_submit=True):
             title = st.text_input("Nom du projet", max_chars=project_registry.MAX_TITLE_LENGTH)
             description = st.text_area("Description / point de reprise", max_chars=project_registry.MAX_DESCRIPTION_LENGTH)
             status_options = sorted(project_registry.PROJECT_STATUSES)
             status = st.selectbox("Statut initial", status_options, index=status_options.index("En cours"))
-            session_id = st.text_input(
-                "Identifiant de conversation (facultatif)",
-                help="À renseigner uniquement si vous connaissez l'identifiant exact de la session à reprendre.",
+            attach_current_session = st.checkbox(
+                "Associer automatiquement la conversation en cours",
+                value=bool(active_session_id),
+                disabled=not bool(active_session_id),
+                help="Le raccourci de reprise ouvrira cette conversation dans le même espace de travail.",
             )
+            if not active_session_id:
+                st.caption("Aucune conversation active à associer pour le moment.")
             submitted = st.form_submit_button("Enregistrer le projet", type="primary", use_container_width=True)
         if submitted:
             try:
                 created = project_registry.create_project(
                     client, user, title, description, status, workspace_id,
-                    conversation_session_id=session_id or None,
+                    conversation_session_id=active_session_id if attach_current_session else None,
                 )
                 if not created or len(created) != 1 or not created[0].get("id"):
                     raise RuntimeError("La création du projet n’a pas été confirmée par la base de données.")
