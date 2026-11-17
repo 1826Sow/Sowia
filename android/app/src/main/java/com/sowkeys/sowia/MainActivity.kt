@@ -53,6 +53,8 @@ class MainActivity : ComponentActivity() {
 private fun SowiaPrototype() {
     val navigationStack = remember { mutableStateListOf("Accueil") }
     val screen = navigationStack.last()
+    var selectedConversationId by remember { mutableStateOf<String?>(null) }
+    var selectedWorkspace by remember { mutableStateOf("personal") }
     val sections = listOf(
         "Assistant",
         "Mes échanges & projets",
@@ -130,8 +132,8 @@ private fun SowiaPrototype() {
                     Spacer(Modifier.height(12.dp))
                     when (screen) {
                         "Compte & paramètres" -> AccountPanel()
-                        "Assistant" -> AssistantPanel(onOpenAccount = { navigate("Compte & paramètres") })
-                        "Mes échanges & projets" -> RegistryPanel(onOpenAccount = { navigate("Compte & paramètres") })
+                        "Assistant" -> AssistantPanel(initialSessionId = selectedConversationId, workspaceId = selectedWorkspace, onOpenAccount = { navigate("Compte & paramètres") })
+                        "Mes échanges & projets" -> RegistryPanel(onOpenAccount = { navigate("Compte & paramètres") }, onOpenConversation = { id, space -> selectedConversationId = id; selectedWorkspace = space; navigate("Assistant") })
                         else -> Card(colors = CardDefaults.cardColors(containerColor = Panel)) {
                             Column(Modifier.padding(18.dp)) {
                                 Text("Connexion requise", color = Cyan, fontWeight = FontWeight.Bold)
@@ -271,11 +273,11 @@ private fun AccountPanel() {
 private data class ChatLine(val role: String, val content: String)
 
 @Composable
-private fun AssistantPanel(onOpenAccount: () -> Unit) {
+private fun AssistantPanel(initialSessionId: String?, workspaceId: String, onOpenAccount: () -> Unit) {
     val context = LocalContext.current
     val auth = remember(context) { SupabaseAuthClient(context) }
     val scope = rememberCoroutineScope()
-    val sessionId = remember { UUID.randomUUID().toString() }
+    val sessionId = remember(initialSessionId) { initialSessionId ?: UUID.randomUUID().toString() }
     val session = remember { mutableStateOf(auth.currentSession()) }
     val lines = remember { mutableStateListOf<ChatLine>() }
     var draft by remember { mutableStateOf("") }
@@ -285,6 +287,23 @@ private fun AssistantPanel(onOpenAccount: () -> Unit) {
     LaunchedEffect(auth) {
         if (session.value != null && auth.isConfigured) {
             runCatching { session.value = auth.refreshSession() }
+        }
+    }
+
+    LaunchedEffect(sessionId, workspaceId, session.value?.userId) {
+        if (session.value != null && initialSessionId != null) {
+            busy = true
+            status = "Chargement de la conversation…"
+            try {
+                val previous = auth.loadConversationMessages(sessionId, workspaceId)
+                lines.clear()
+                lines.addAll(previous.map { ChatLine(it.optString("role"), it.optString("content")) })
+                status = if (previous.isEmpty()) "Cette conversation ne contient aucun message." else ""
+            } catch (error: Exception) {
+                status = error.message ?: "Impossible de rouvrir cette conversation."
+            } finally {
+                busy = false
+            }
         }
     }
 
@@ -335,7 +354,7 @@ private fun AssistantPanel(onOpenAccount: () -> Unit) {
                             status = ""
                             scope.launch {
                                 try {
-                                    val answer = auth.sendChatMessage(sessionId, outgoing)
+                                    val answer = auth.sendChatMessage(sessionId, outgoing, workspaceId)
                                     lines.add(ChatLine("assistant", answer))
                                 } catch (error: Exception) {
                                     status = error.message ?: "Le service Assistant est indisponible."
@@ -361,10 +380,11 @@ private data class RegistryEntry(
     val title: String,
     val detail: String,
     val status: String = "",
+    val sessionId: String? = null,
 )
 
 @Composable
-private fun RegistryPanel(onOpenAccount: () -> Unit) {
+private fun RegistryPanel(onOpenAccount: () -> Unit, onOpenConversation: (String, String) -> Unit) {
     val context = LocalContext.current
     val auth = remember(context) { SupabaseAuthClient(context) }
     val scope = rememberCoroutineScope()
@@ -388,6 +408,7 @@ private fun RegistryPanel(onOpenAccount: () -> Unit) {
                     RegistryEntry(
                         title = it.optString("title", "Conversation"),
                         detail = "Session : ${it.optString("session_id")}",
+                        sessionId = it.optString("session_id"),
                     )
                 })
                 projects.clear()
@@ -452,6 +473,11 @@ private fun RegistryPanel(onOpenAccount: () -> Unit) {
                     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                         Text(item.title, color = Color.White, fontWeight = FontWeight.SemiBold)
                         Text(item.detail, color = Muted, fontSize = 11.sp)
+                        Button(
+                            onClick = { item.sessionId?.let { onOpenConversation(it, workspace) } },
+                            enabled = !item.sessionId.isNullOrBlank(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                        ) { Text("Rouvrir la conversation") }
                     }
                 }
 
