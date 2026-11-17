@@ -16,3 +16,12 @@ def test_first_cloud_session_keeps_legacy_history_identifier():
     source = Path("app.py").read_text(encoding="utf-8")
     assert 'uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")' in source
     assert 'previous_workspace_id is None or previous_workspace_id == workspace_id' in source
+
+
+
+def test_legacy_conversations_are_registered_once_per_account_and_workspace():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert 'legacy_registry_key = f"{current_user.id}:{active_workspace_id}"' in source
+    assert 'st.session_state.get("sowia_legacy_conversations_loaded") != legacy_registry_key' in source
+    assert 'st.session_state.sowia_legacy_conversations_loaded = legacy_registry_key' in source
+    assert 'cloud_storage.register_legacy_conversations(' in source
