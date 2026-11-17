@@ -85,8 +85,25 @@ jobs:
           Path(os.environ["RUNNER_TEMP"], "sowia-upload.jks").write_bytes(decoded)
           PY
 
-          # Verify the file, store password, and alias before Gradle starts.
-          keytool -list -keystore "$RUNNER_TEMP/sowia-upload.jks" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
+          # Diagnose each signing input separately without printing any secret.
+          KEYSTORE="$RUNNER_TEMP/sowia-upload.jks"
+          if ! keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>"$RUNNER_TEMP/keytool-store.err"; then
+            echo "::error::The Base64 file was decoded, but the JKS could not be opened with the configured keystore password."
+            sed -E 's/(password|passphrase)[^:]*:.*/\1: [redacted]/I' "$RUNNER_TEMP/keytool-store.err"
+            exit 1
+          fi
+          if ! keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>"$RUNNER_TEMP/keytool-alias.err"; then
+            echo "::error::The JKS opens successfully, but the configured key alias was not found. Available aliases:"
+            keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" | grep '^[^,]*,' | sed 's/,.*//'
+            sed -E 's/(password|passphrase)[^:]*:.*/\1: [redacted]/I' "$RUNNER_TEMP/keytool-alias.err"
+            exit 1
+          fi
+          if ! keytool -certreq -storetype JKS -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -keypass "$ANDROID_KEY_PASSWORD" -alias "$ANDROID_KEY_ALIAS" -dname "CN=SOWIA Android Upload" -file "$RUNNER_TEMP/sowia-signing-check.csr" >/dev/null 2>"$RUNNER_TEMP/keytool-key.err"; then
+            echo "::error::The JKS and alias are valid, but the configured key password could not unlock the signing key."
+            sed -E 's/(password|passphrase)[^:]*:.*/\1: [redacted]/I' "$RUNNER_TEMP/keytool-key.err"
+            exit 1
+          fi
+          echo "Android JKS, keystore password, alias, and key password validated successfully."
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/sowia-upload.jks" >> "$GITHUB_ENV"
           echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
           echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
