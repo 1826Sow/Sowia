@@ -8,8 +8,8 @@ def test_selected_cloud_conversation_survives_streamlit_reruns():
     assert 'workspace_sessions = st.session_state.setdefault("sowia_workspace_session_ids", {})' in source
     assert 'workspace_sessions.get(workspace_id)' in source
     assert 'st.session_state.session_id = existing_session_id' in source
-    assert ']= selected_session_id' in source
-    assert ']= created_conversation["session_id"]' in source
+    assert '] = selected_session_id' in source
+    assert '] = created_conversation["session_id"]' in source
 
 
 def test_first_cloud_session_keeps_legacy_history_identifier():
