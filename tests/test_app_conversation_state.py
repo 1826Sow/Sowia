@@ -25,3 +25,11 @@ def test_legacy_conversations_are_registered_once_per_account_and_workspace():
     assert 'st.session_state.get("sowia_legacy_conversations_loaded") != legacy_registry_key' in source
     assert 'st.session_state.sowia_legacy_conversations_loaded = legacy_registry_key' in source
     assert 'cloud_storage.register_legacy_conversations(' in source
+
+
+
+def test_project_resume_resets_stale_conversation_selector_before_switching_session():
+    source = Path("app.py").read_text(encoding="utf-8")
+    resume_branch = source.split('if resume_session_id:', 1)[1].split('elif existing_session_id', 1)[0]
+    assert 'st.session_state.pop("sowia_conversation_selector", None)' in resume_branch
+    assert 'st.session_state.session_id = str(resume_session_id)' in resume_branch
