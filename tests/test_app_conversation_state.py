@@ -31,7 +31,7 @@ def test_legacy_conversations_are_registered_once_per_account_and_workspace():
 def test_project_resume_resets_stale_conversation_selector_before_switching_session():
     source = Path("app.py").read_text(encoding="utf-8")
     resume_branch = source.split('if resume_session_id:', 1)[1].split('elif existing_session_id', 1)[0]
-    assert 'st.session_state.pop("sowia_conversation_selector", None)' in resume_branch
+    assert 'st.session_state.pop(f"sowia_conversation_selector_{current_user.id}_{workspace_id}", None)' in resume_branch
     assert 'st.session_state.session_id = str(resume_session_id)' in resume_branch
 
 
@@ -86,7 +86,7 @@ def test_pending_assistant_reply_does_not_overwrite_another_conversation():
 def test_conversation_history_search_filters_titles_and_handles_no_match():
     source = Path("app.py").read_text(encoding="utf-8")
     assert 'limit=100' in source
-    assert 'key="sowia_conversation_search"' in source
+    assert 'key=f"sowia_conversation_search_{current_user.id}_{active_workspace_id}"' in source
     assert 'conversation_search in str(item.get("title") or "").casefold()' in source
     assert 'if conversation_ids:' in source
     assert "Aucune conversation ne correspond à cette recherche." in source
@@ -103,3 +103,11 @@ def test_conversation_search_and_selector_state_are_scoped_to_account_and_worksp
     source = Path("app.py").read_text(encoding="utf-8")
     assert 'key=f"sowia_conversation_search_{current_user.id}_{active_workspace_id}"' in source
     assert 'key=f"sowia_conversation_selector_{current_user.id}_{active_workspace_id}"' in source
+
+
+
+def test_conversation_selector_reset_uses_the_scoped_widget_key():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert 'st.session_state.pop(f"sowia_conversation_selector_{current_user.id}_{workspace_id}", None)' in source
+    assert 'st.session_state.pop(f"sowia_conversation_selector_{current_user.id}_{active_workspace_id}", None)' in source
+    assert 'st.session_state.pop("sowia_conversation_selector", None)' not in source
