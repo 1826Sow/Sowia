@@ -441,19 +441,21 @@ if cloud_mode:
         else:
             authenticated_user_id = str(current_user.id)
             if st.session_state.get("sowia_authenticated_user_id") != authenticated_user_id:
-                # A new or different account starts without cached private data.
+                # A new login/account starts from its legacy conversation ID.
                 clear_private_session_state(st.session_state)
                 st.session_state["sowia_authenticated_user_id"] = authenticated_user_id
-            # Restore the legacy account conversation only on first login/account
-            # switch. Subsequent reruns must preserve the user's selected conversation.
-            if not str(st.session_state.get("session_id") or "").strip() or (
-                st.session_state.get("sowia_authenticated_user_id") == authenticated_user_id
-                and st.session_state.get("sowia_conversation_owner_id") != authenticated_user_id
+                st.session_state.session_id = str(
+                    uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
+                )
+                st.session_state["sowia_conversation_owner_id"] = authenticated_user_id
+            elif (
+                not str(st.session_state.get("session_id") or "").strip()
+                or st.session_state.get("sowia_conversation_owner_id") != authenticated_user_id
             ):
                 st.session_state.session_id = str(
                     uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
                 )
-            st.session_state["sowia_conversation_owner_id"] = authenticated_user_id
+                st.session_state["sowia_conversation_owner_id"] = authenticated_user_id
     except Exception as exc:
         # Keep the application usable if the optional Supabase connection is
         # unavailable. Never bypass authentication when the deployment
