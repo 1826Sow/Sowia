@@ -102,16 +102,17 @@ def conversation_option_label(conversation):
         return title
 
 
-def list_conversations(client, user, workspace_id="personal", limit=50):
-    """List only the authenticated user's conversations in the active workspace."""
+def list_conversations(client, user, workspace_id="personal", limit=100):
+    """List a bounded recent-history window for the authenticated owner/workspace."""
     owner_id = _user_id(user)
     workspace = _workspace_id(workspace_id)
-    safe_limit = min(max(int(limit), 1), 100)
+    safe_limit = min(max(int(limit), 1), 1000)
     return (client.table("sowia_conversations")
         .select("session_id, title, created_at, updated_at")
         .eq("user_id", owner_id)
         .eq("workspace_id", workspace)
-        .order("updated_at", desc=True).limit(safe_limit).execute().data or [])
+        .order("updated_at", desc=True)
+        .range(0, safe_limit - 1).execute().data or [])
 
 
 def touch_conversation(client, user, session_id, workspace_id="personal", title=None):
