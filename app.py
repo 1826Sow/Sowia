@@ -445,7 +445,7 @@ if cloud_mode:
                 clear_private_session_state(st.session_state)
                 st.session_state["sowia_authenticated_user_id"] = authenticated_user_id
                 st.session_state.pop("sowia_workspace_session_ids", None)
-                st.session_state.pop("sowia_conversation_selector", None)
+                st.session_state.pop(f"sowia_conversation_selector_{current_user.id}_{workspace_id}", None)
                 st.session_state.session_id = str(
                     uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
                 )
@@ -1091,7 +1091,7 @@ with st.sidebar:
         workspace_sessions = st.session_state.setdefault("sowia_workspace_session_ids", {})
         if resume_session_id:
             # A project resume must override the widget's previous selection.
-            st.session_state.pop("sowia_conversation_selector", None)
+            st.session_state.pop(f"sowia_conversation_selector_{current_user.id}_{workspace_id}", None)
             st.session_state.session_id = str(resume_session_id)
         elif existing_session_id and (
             previous_workspace_id is None or previous_workspace_id == workspace_id
@@ -2107,7 +2107,7 @@ elif page == "Assistant IA":
                     created_conversation = cloud_storage.create_conversation(
                         supabase_client, current_user, active_workspace_id
                     )
-                    st.session_state.pop("sowia_conversation_selector", None)
+                    st.session_state.pop(f"sowia_conversation_selector_{current_user.id}_{active_workspace_id}", None)
                     st.session_state.session_id = created_conversation["session_id"]
                     st.session_state.setdefault("sowia_workspace_session_ids", {})[
                         active_workspace_id
