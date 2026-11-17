@@ -1,9 +1,28 @@
 """Streamlit interface for the persistent SOW IA project register."""
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 
 import streamlit as st
 
 import project_registry
+
+
+def _safe_https_url(value):
+    """Accept only absolute HTTPS links without credentials or control characters."""
+    if not isinstance(value, str) or not value or value != value.strip():
+        return False
+    if any(ord(char) < 32 or ord(char) == 127 for char in value):
+        return False
+    try:
+        parsed = urlsplit(value)
+        if parsed.scheme.lower() != "https" or not parsed.hostname:
+            return False
+        if parsed.username is not None or parsed.password is not None:
+            return False
+        _ = parsed.port  # Force validation of any explicitly supplied port.
+        return True
+    except ValueError:
+        return False
 
 
 def render(client, user, workspace_id, cloud_mode, premium_active):
@@ -87,8 +106,10 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
                         label = str(item.get("title") or "Livrable")
                         url = str(item.get("url") or "").strip()
                         st.write(f"- {label}")
-                        if url.startswith("https://"):
+                        if _safe_https_url(url):
                             st.link_button("Ouvrir le livrable", url, key=f"open_deliverable_{project_id}_{item_index}")
+                        elif url:
+                            st.caption("Lien masqué : seule une adresse HTTPS valide est acceptée.")
                     else:
                         st.markdown(f"- {str(item)}")
 
@@ -128,8 +149,8 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
                     try:
                         if not deliverable_title.strip():
                             raise ValueError("Le nom du livrable est obligatoire.")
-                        if deliverable_url and not deliverable_url.strip().startswith("https://"):
-                            raise ValueError("Le lien doit commencer par https://.")
+                        if deliverable_url and not _safe_https_url(deliverable_url):
+                            raise ValueError("Le lien doit être une adresse HTTPS complète et valide, sans identifiants intégrés.")
                         updated = list(deliverables)
                         updated.append({
                             "title": deliverable_title.strip(),
