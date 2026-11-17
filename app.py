@@ -2051,18 +2051,23 @@ elif page == "Assistant IA":
                 supabase_client, current_user, active_workspace_id, limit=50
             )
             conversation_ids = [item["session_id"] for item in saved_conversations]
+            conversation_by_id = {
+                item["session_id"]: item for item in saved_conversations
+            }
             current_session_id = str(st.session_state.session_id)
             current_index = conversation_ids.index(current_session_id) if current_session_id in conversation_ids else 0
+            st.caption(
+                f"{len(saved_conversations)} conversation(s) · classement par activité récente "
+                "(horaires affichés en UTC)"
+            )
             conversation_cols = st.columns([3, 1])
             with conversation_cols[0]:
                 selected_session_id = st.selectbox(
                     "🗂️ Mes conversations",
                     options=conversation_ids,
                     index=current_index,
-                    format_func=lambda value: next(
-                        (str(item.get("title") or "Conversation") for item in saved_conversations
-                         if item.get("session_id") == value),
-                        "Conversation",
+                    format_func=lambda value: cloud_storage.conversation_option_label(
+                        conversation_by_id.get(value, {})
                     ),
                     key="sowia_conversation_selector",
                 )
