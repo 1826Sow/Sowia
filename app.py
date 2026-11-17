@@ -81,6 +81,26 @@ st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-brain-icon.svg",
 st.markdown(
     """<style>
     :root { color-scheme: dark; }
+    /* Blend Streamlit's native top controls into SOW IA and let them scroll with the app. */
+    .stApp, [data-testid="stAppViewContainer"] { position: relative !important; }
+    header[data-testid="stHeader"] {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      width: 100% !important;
+      background: linear-gradient(180deg, #071426 0%, #0a1b31 100%) !important;
+      border-bottom: 1px solid rgba(0,220,235,.18) !important;
+      box-shadow: none !important;
+    }
+    header[data-testid="stHeader"] *,
+    [data-testid="stToolbar"],
+    [data-testid="stToolbar"] * {
+      color: #e8f3ff !important;
+    }
+    [data-testid="stToolbar"] {
+      background: transparent !important;
+    }
     .stApp { background: radial-gradient(circle at 85% 0%, rgba(0,210,230,.10), transparent 30%), linear-gradient(180deg, #071426 0%, #0a1b31 58%, #0c2038 100%) !important; color: #e8f3ff !important; }
     [data-testid="stAppViewContainer"], [data-testid="stMain"] { background: transparent !important; color: #e8f3ff !important; }
     [data-testid="stMainBlockContainer"] { max-width: 1240px; padding-top: 1.2rem; padding-bottom: 3.2rem; }
