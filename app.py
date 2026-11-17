@@ -2040,6 +2040,10 @@ elif page == "Assistant IA":
     active_workspace_id = st.session_state.get("workspace_id", "personal")
     if cloud_mode and current_user is not None and supabase_client is not None:
         try:
+            # Register recent legacy sessions with titles derived from their first user message.
+            cloud_storage.register_legacy_conversations(
+                supabase_client, current_user, active_workspace_id, limit=100
+            )
             cloud_storage.ensure_conversation(
                 supabase_client, current_user, st.session_state.session_id, active_workspace_id
             )
