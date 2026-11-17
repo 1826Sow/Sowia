@@ -85,3 +85,8 @@ The Android client now sends the workspace scope (defaults to personal). Profess
 ### Native registry read path — 2026-11-17
 
 Live schema and RLS inspection confirmed the existing `sowia_conversations` and `sowia_projects` tables expose owner/workspace-scoped SELECT policies. Android now reads both registries through the signed-in user's JWT (never service-role credentials), with explicit user and workspace filters and a 100-row cap. The “Mes échanges & projets” screen now has Personal/Professional workspace selectors and refreshes conversations/projects from Supabase. The chat endpoint was advanced to version 4 to touch `updated_at` after every persisted exchange, keeping the conversation registry sorted by recent activity.
+
+
+### Reopen saved conversations — 2026-11-17
+
+The native registry now exposes a “Rouvrir la conversation” action. Selecting a saved entry opens the Assistant with its existing session UUID and workspace; Android then loads the prior user/assistant turns from `sowia_messages` using the signed-in user's JWT and explicit owner/workspace/session filters. The same session ID is retained for the next prompt, so the exchange continues in that conversation rather than creating a new one. The query is capped at 200 messages.
