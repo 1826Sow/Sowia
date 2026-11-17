@@ -45,11 +45,17 @@ def render(client, user, workspace_id, cloud_mode, premium_active):
     st.markdown(f"**Espace actif : {workspace_label}**")
     try:
         projects = project_registry.list_projects(client, user, workspace_id)
-        conversations = cloud_storage.list_conversations(client, user, workspace_id, limit=100)
     except Exception as exc:
         st.error("Le registre n'est pas encore accessible. La migration Supabase dédiée doit être appliquée après validation.")
         st.caption(f"Diagnostic : {type(exc).__name__}")
         return
+
+    try:
+        conversations = cloud_storage.list_conversations(client, user, workspace_id, limit=100)
+    except Exception as exc:
+        conversations = []
+        st.warning("La liste des conversations n'est pas disponible pour le moment. Les projets restent accessibles.")
+        st.caption(f"Diagnostic conversations : {type(exc).__name__}")
 
     status_counts = {
         status: sum(1 for project in projects if project.get("status") == status)
