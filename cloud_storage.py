@@ -35,7 +35,7 @@ def create_conversation(client, user, workspace_id="personal", title="Nouvelle c
     return rows[0]
 
 
-def ensure_conversation(client, user, session_id, workspace_id="personal"):
+def ensure_conversation(client, user, session_id, workspace_id="personal", title=None):
     """Register the active (possibly legacy) conversation without altering messages."""
     identifier = str(session_id or "").strip()
     if not identifier or len(identifier) > 128:
@@ -47,9 +47,42 @@ def ensure_conversation(client, user, session_id, workspace_id="personal"):
         .eq("user_id", owner_id)
         .eq("workspace_id", workspace)
         .eq("session_id", identifier).limit(1).execute().data or [])
-    return rows[0] if rows else create_conversation(
-        client, user, workspace_id, "Conversation précédente", identifier
+    cleaned_title = " ".join(str(title or "").split())[:100].strip()
+    if rows:
+        existing = rows[0]
+        if cleaned_title and str(existing.get("title") or "") in {
+            "Conversation précédente", "Nouvelle conversation"
+        }:
+            client.table("sowia_conversations").update({"title": cleaned_title}) \
+                .eq("user_id", owner_id).eq("workspace_id", workspace) \
+                .eq("session_id", identifier).execute()
+            existing = {**existing, "title": cleaned_title}
+        return existing
+    return create_conversation(
+        client, user, workspace_id,
+        cleaned_title or "Conversation précédente", identifier
     )
+
+
+def register_legacy_conversations(client, user, workspace_id="personal", limit=100):
+    """Discover and register recent legacy sessions using only the signed-in user's rows."""
+    owner_id = _user_id(user)
+    workspace = _workspace_id(workspace_id)
+    safe_limit = min(max(int(limit), 1), 100)
+    rows = client.rpc(
+        "sowia_list_legacy_conversations", {"p_workspace_id": workspace}
+    ).execute().data or []
+    registered = []
+    for item in rows[:safe_limit]:
+        identifier = str(item.get("session_id") or "").strip()
+        if not identifier:
+            continue
+        raw_title = " ".join(str(item.get("first_user_message") or "").split())
+        title = raw_title[:100].strip() or "Conversation précédente"
+        registered.append(ensure_conversation(
+            client, user, identifier, workspace, title=title
+        ))
+    return registered
 
 
 def list_conversations(client, user, workspace_id="personal", limit=50):
