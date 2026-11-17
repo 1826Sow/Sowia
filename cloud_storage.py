@@ -15,15 +15,19 @@ def _workspace_id(workspace_id):
         raise ValueError("Espace de travail invalide.")
     return value
 
+def _session_id(session_id):
+    value = str(session_id or "").strip()
+    if not value or len(value) > 128:
+        raise ValueError("Identifiant de conversation invalide.")
+    return value
+
 def create_conversation(client, user, workspace_id="personal", title="Nouvelle conversation", session_id=None):
     """Create an independent, owner- and workspace-scoped conversation."""
     import uuid
     owner_id = _user_id(user)
     workspace = _workspace_id(workspace_id)
     cleaned_title = str(title or "Nouvelle conversation").strip()[:100] or "Nouvelle conversation"
-    identifier = str(session_id or uuid.uuid4()).strip()
-    if not identifier or len(identifier) > 128:
-        raise ValueError("Identifiant de conversation invalide.")
+    identifier = _session_id(session_id or uuid.uuid4())
     rows = client.table("sowia_conversations").insert({
         "user_id": owner_id,
         "workspace_id": workspace,
@@ -37,9 +41,7 @@ def create_conversation(client, user, workspace_id="personal", title="Nouvelle c
 
 def ensure_conversation(client, user, session_id, workspace_id="personal", title=None):
     """Register the active (possibly legacy) conversation without altering messages."""
-    identifier = str(session_id or "").strip()
-    if not identifier or len(identifier) > 128:
-        raise ValueError("Identifiant de conversation invalide.")
+    identifier = _session_id(session_id)
     owner_id = _user_id(user)
     workspace = _workspace_id(workspace_id)
     rows = (client.table("sowia_conversations")
@@ -114,9 +116,7 @@ def list_conversations(client, user, workspace_id="personal", limit=50):
 
 def touch_conversation(client, user, session_id, workspace_id="personal", title=None):
     """Update activity metadata; conversation messages remain untouched."""
-    identifier = str(session_id or "").strip()
-    if not identifier:
-        raise ValueError("Identifiant de conversation invalide.")
+    identifier = _session_id(session_id)
     owner_id = _user_id(user)
     workspace = _workspace_id(workspace_id)
     changes = {"updated_at": datetime.now(timezone.utc).isoformat()}
@@ -147,15 +147,18 @@ def delete_memory(client, user, memory_id, workspace_id="personal"):
         .eq("user_id", _user_id(user)).eq("workspace_id", _workspace_id(workspace_id)).execute())
 
 def get_history(client, user, session_id, limit=30, workspace_id="personal"):
+    identifier = _session_id(session_id)
     return (client.table("sowia_messages").select("role, content")
-        .eq("user_id", _user_id(user)).eq("workspace_id", _workspace_id(workspace_id)).eq("session_id", session_id)
+        .eq("user_id", _user_id(user)).eq("workspace_id", _workspace_id(workspace_id)).eq("session_id", identifier)
         .order("id", desc=True).limit(min(max(int(limit), 1), 100)).execute().data[::-1])
 
 def clear_history(client, user, session_id, workspace_id="personal"):
+    identifier = _session_id(session_id)
     return (client.table("sowia_messages").delete().eq("user_id", _user_id(user))
-        .eq("workspace_id", _workspace_id(workspace_id)).eq("session_id", str(session_id)).execute())
+        .eq("workspace_id", _workspace_id(workspace_id)).eq("session_id", identifier).execute())
 
 def save_message(client, user, session_id, role, content, workspace_id="personal"):
+    identifier = _session_id(session_id)
     if role not in {"user", "assistant"}:
         raise ValueError("Rôle de message invalide.")
     response = (
@@ -163,7 +166,7 @@ def save_message(client, user, session_id, role, content, workspace_id="personal
         .insert({
             "user_id": _user_id(user),
             "workspace_id": _workspace_id(workspace_id),
-            "session_id": str(session_id),
+            "session_id": identifier,
             "role": role,
             "content": str(content),
             "created_at": datetime.now(timezone.utc).isoformat(),
