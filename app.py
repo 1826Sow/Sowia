@@ -1546,7 +1546,7 @@ elif page == "Hub SOWIA":
         ("🧠 Continuer avec SOW IA", "Assistant IA", "Reprendre le travail avec l’assistant."),
         ("📄 Mes livrables & documents", "Mes documents", "Consulter les PDF et fichiers enregistrés."),
         ("🧪 Laboratoire PDF", "Analyse PDF", "Analyser un document ou poursuivre son traitement."),
-        ("🌙 SOW IA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "Accéder à l’espace d’échanges de l’écosystème."),
+        ("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "Accéder à l’espace d’échanges de l’écosystème."),
     ]
     quick_cols = st.columns(2)
     for index, (label, destination, description) in enumerate(hub_quick_access):
