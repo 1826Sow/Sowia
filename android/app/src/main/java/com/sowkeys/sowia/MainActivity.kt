@@ -134,14 +134,12 @@ private fun SowiaPrototype() {
                         "Compte & paramètres" -> AccountPanel()
                         "Assistant" -> AssistantPanel(initialSessionId = selectedConversationId, workspaceId = selectedWorkspace, onOpenAccount = { navigate("Compte & paramètres") })
                         "Mes échanges & projets" -> RegistryPanel(onOpenAccount = { navigate("Compte & paramètres") }, onOpenConversation = { id, space -> selectedConversationId = id; selectedWorkspace = space; navigate("Assistant") })
+                        "Laboratoire PDF" -> PdfLabPanel(onOpenAccount = { navigate("Compte & paramètres") })
                         else -> Card(colors = CardDefaults.cardColors(containerColor = Panel)) {
                             Column(Modifier.padding(18.dp)) {
-                                Text("Connexion requise", color = Cyan, fontWeight = FontWeight.Bold)
+                                Text("Rubrique en préparation", color = Cyan, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.height(8.dp))
-                                Text(
-                                    "Connectez votre compte SOW IA. Les données et outils seront activés après raccordement des services correspondants.",
-                                    color = Muted,
-                                )
+                                Text("Ce module sera activé après raccordement de ses services.", color = Muted)
                             }
                         }
                     }
