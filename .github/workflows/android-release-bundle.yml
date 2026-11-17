@@ -68,7 +68,9 @@ jobs:
               value = value.split(":", 1)[1]
           value = value.replace("-", "+").replace("_", "/")
           value = re.sub(r"[^A-Za-z0-9+/=]", "", value)
-          value = value.rstrip("=")
+          # Rebuild padding from the payload itself. This also repairs padding copied
+          # into the middle of wrapped output by some Android Base64 converter apps.
+          value = value.replace("=", "")
 
           if not value or not re.fullmatch(r"[A-Za-z0-9+/]+", value):
               raise SystemExit("ANDROID_KEYSTORE_BASE64 is empty after removing copy/paste separators.")
