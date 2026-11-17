@@ -755,7 +755,19 @@ def get_app_history(limit=30):
 
 def save_app_message(role, content):
     if cloud_mode:
-        return cloud_storage.save_message(supabase_client, current_user, st.session_state.session_id, role, content, st.session_state.get("workspace_id", "personal"))
+        saved = cloud_storage.save_message(
+            supabase_client, current_user, st.session_state.session_id,
+            role, content, st.session_state.get("workspace_id", "personal")
+        )
+        try:
+            cloud_storage.touch_conversation(
+                supabase_client, current_user, st.session_state.session_id,
+                st.session_state.get("workspace_id", "personal")
+            )
+        except Exception:
+            # Message persistence must not be undone by optional registry metadata.
+            pass
+        return saved
     return local_save_message(st.session_state.session_id, role, content, st.session_state.get("workspace_id", "personal"))
 
 def clear_app_history():
@@ -2039,6 +2051,7 @@ elif page == "Assistant IA":
                     created_conversation = cloud_storage.create_conversation(
                         supabase_client, current_user, active_workspace_id
                     )
+                    st.session_state.pop("sowia_conversation_selector", None)
                     st.session_state.session_id = created_conversation["session_id"]
                     st.rerun()
         except Exception as conversation_error:
@@ -2192,6 +2205,15 @@ elif page == "Assistant IA":
             # presenting a reply for a turn that cannot be recovered from history.
             try:
                 save_app_message("user", prompt)
+                if not conversation_history and cloud_mode and current_user is not None:
+                    try:
+                        cloud_storage.touch_conversation(
+                            supabase_client, current_user, st.session_state.session_id,
+                            st.session_state.get("workspace_id", "personal"),
+                            title=prompt[:100].strip() or "Nouvelle conversation",
+                        )
+                    except Exception:
+                        pass
             except Exception as save_error:
                 st.error(
                     "Votre message n’a pas pu être enregistré dans votre espace. "
