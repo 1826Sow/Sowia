@@ -2191,6 +2191,17 @@ elif page == "Assistant IA":
         render_accessible_message(item["role"], item["content"])
     # A standard button with a callback is more reliable on mobile than a form
     # submit event. The callback copies the draft before Streamlit reruns the page.
+    # Restore a draft on the next rerun if persistence failed before the AI call.
+    restored_prompt = st.session_state.pop("sowia_chat_prompt_restore", None)
+    if restored_prompt is not None:
+        st.session_state["sowia_chat_prompt"] = restored_prompt
+    pending_save_error = st.session_state.pop("sowia_chat_save_error", None)
+    if pending_save_error:
+        st.error(
+            "Votre message n’a pas été enregistré. Votre texte a été conservé "
+            "dans le champ ci-dessous ; vous pouvez réessayer sans le retaper."
+        )
+        st.caption("Diagnostic technique : " + str(pending_save_error))
     st.text_area(
         "Écrivez votre message...",
         key="sowia_chat_prompt",
@@ -2254,17 +2265,15 @@ elif page == "Assistant IA":
                     except Exception:
                         pass
             except Exception as save_error:
-                st.error(
-                    "Votre message n’a pas pu être enregistré dans votre espace. "
-                    "L’assistant n’a pas été lancé."
-                )
+                # The callback already cleared the visible input. Restore the
+                # original draft on the next rerun instead of losing user text.
                 safe_code = str(getattr(save_error, "code", "") or "").strip()[:80]
-                st.caption(
-                    "Diagnostic technique : "
-                    + type(save_error).__name__
-                    + (f" · code {safe_code}" if safe_code else "")
-                    + ". Vérifiez les migrations Supabase et les droits RLS."
-                )
+                diagnostic = type(save_error).__name__
+                if safe_code:
+                    diagnostic += f" · code {safe_code}"
+                st.session_state["sowia_chat_prompt_restore"] = prompt
+                st.session_state["sowia_chat_save_error"] = diagnostic
+                st.rerun()
             else:
                 render_accessible_message("user", prompt)
                 request_history = conversation_history + [{"role": "user", "content": prompt}]
