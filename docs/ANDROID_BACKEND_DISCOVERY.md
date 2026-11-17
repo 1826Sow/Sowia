@@ -37,3 +37,18 @@ Before enabling those Android screens, implement and deploy dedicated authentica
 ## Next implementation step
 
 Create a dedicated mobile API function only after defining and testing its request/response contract against the existing database schema and entitlement model. Then connect one Android feature at a time, beginning with a minimal authenticated health/profile call before chat or file processing.
+
+
+## First native API delivered — 2026-11-17
+
+A dedicated `mobile-health` Edge Function is now deployed to the production Supabase project:
+
+- Route: `GET /functions/v1/mobile-health`
+- Platform JWT verification: **enabled**
+- Deployment status: **ACTIVE**, version 1
+- Contract: returns `ok`, `service`, and `contractVersion` only after the Supabase gateway accepts the caller's bearer JWT.
+- It does not accept a client-supplied user ID, expose account data, invoke an AI provider, or use privileged credentials.
+
+The Android account screen now includes **Tester la connexion sécurisée**. It sends the stored user access token in `Authorization: Bearer …` and the public project key in `apikey`, then validates the expected service response.
+
+This is the first real native-to-backend integration. It proves the authenticated transport path once exercised with a configured Supabase account on a device. It does **not** yet connect chat, project synchronization, or PDF processing. Those remain separate deliverables.
