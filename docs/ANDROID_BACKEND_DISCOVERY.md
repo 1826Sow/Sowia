@@ -52,3 +52,21 @@ A dedicated `mobile-health` Edge Function is now deployed to the production Supa
 The Android account screen now includes **Tester la connexion sécurisée**. It sends the stored user access token in `Authorization: Bearer …` and the public project key in `apikey`, then validates the expected service response.
 
 This is the first real native-to-backend integration. It proves the authenticated transport path once exercised with a configured Supabase account on a device. It does **not** yet connect chat, project synchronization, or PDF processing. Those remain separate deliverables.
+
+
+## Native Assistant integration — 2026-11-17
+
+A dedicated `mobile-chat` Edge Function is now deployed (version 1, JWT verification enabled) and its source is versioned at `supabase/functions/mobile-chat/index.ts`.
+
+- Accepts only a bounded user message and a UUID conversation identifier.
+- Validates the bearer token with Supabase Auth and derives the user ID from the verified session; the client cannot choose a user ID or send system prompts / arbitrary role messages.
+- Reads the user's recent messages and saved memory through the caller's JWT, leaving database RLS authoritative.
+- Calls the existing OpenAI-compatible provider pattern (Groq preferred, OpenAI fallback) using server-side Edge Function environment secrets only.
+- Persists user and assistant turns through the caller's JWT so RLS continues to enforce ownership.
+- Never places AI-provider credentials in Android.
+
+The Android Assistant screen now calls `POST /functions/v1/mobile-chat` and displays the returned answer.
+
+**Activation dependency:** the function expects `GROQ_API_KEY` or `OPENAI_API_KEY` configured as Supabase Edge Function secrets. The existing web application's Streamlit secrets are separate and cannot be read by Supabase. No secret value has been copied or exposed. Until one of these provider secrets is configured in Supabase, the endpoint deliberately returns `503 AI_PROVIDER_NOT_CONFIGURED` rather than pretending to generate an answer.
+
+The new Android screen has not yet passed a successful real-account / real-provider device test. CI compilation and endpoint authentication checks are tracked separately.
