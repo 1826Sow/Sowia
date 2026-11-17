@@ -1075,15 +1075,35 @@ with st.sidebar:
     st.caption("Votre compte et vos espaces de travail")
 
 if privacy_screen:
+    # A main-area unlock control remains reachable on mobile even when the
+    # Streamlit sidebar is collapsed. Only the other main-area blocks are blurred.
+    st.button(
+        "🔓 DÉSACTIVER LA PROTECTION D'ÉCRAN",
+        key="sowia_privacy_unlock_main",
+        on_click=disable_privacy_screen,
+        use_container_width=True,
+        type="primary",
+    )
     st.markdown(
         """<style>
-        section[data-testid="stMain"] {
+        section[data-testid="stMain"] .stVerticalBlock > div:not(:has(.st-key-sowia_privacy_unlock_main)) {
             filter: blur(9px) !important;
             pointer-events: none !important;
             user-select: none !important;
         }
+        section[data-testid="stMain"] .st-key-sowia_privacy_unlock_main {
+            position: fixed !important;
+            top: 66px !important;
+            right: 12px !important;
+            z-index: 1000001 !important;
+            width: min(320px, calc(100vw - 24px)) !important;
+        }
+        section[data-testid="stMain"] .st-key-sowia_privacy_unlock_main button {
+            min-height: 48px !important;
+            box-shadow: 0 8px 28px rgba(0,0,0,.35) !important;
+        }
         body::after {
-            content: "🔒 Protection d'écran activée — désactivez l'option dans le menu latéral pour afficher le contenu";
+            content: "🔒 Protection d'écran activée — utilisez le bouton de déverrouillage toujours visible";
             position: fixed;
             z-index: 999999;
             top: 12px;
@@ -1143,6 +1163,51 @@ with st.container():
         use_container_width=True,
         type="primary",
     )
+
+# Android/browser Back is mapped to the same in-app navigation stack.
+# The small HTML component only bridges the browser event to the existing
+# Streamlit button; navigation state and authentication remain server-side.
+st.components.v1.html(
+    """<script>
+    (() => {
+      try {
+        const host = window.parent;
+        const installGuard = () => {
+          const state = host.history.state || {};
+          if (!state.sowiaNavigationGuard) {
+            host.history.pushState(
+              Object.assign({}, state, {sowiaNavigationGuard: true}),
+              "",
+              host.location.href
+            );
+          }
+        };
+        installGuard();
+        if (!host.__sowiaAndroidBackHandlerInstalled) {
+          host.__sowiaAndroidBackHandlerInstalled = true;
+          host.addEventListener("popstate", () => {
+            try {
+              const backButton = host.document.querySelector(
+                ".st-key-sowia_navigation_back button"
+              );
+              if (backButton && !backButton.disabled) {
+                installGuard();
+                backButton.click();
+              }
+            } catch (error) {
+              // If the host browser blocks iframe access, the native browser
+              // behavior is left intact; the visible SOWIA Back button remains.
+            }
+          });
+        }
+      } catch (error) {
+        // Browser history integration is progressive enhancement only.
+      }
+    })();
+    </script>""",
+    height=0,
+    scrolling=False,
+)
 nav_home_col, nav_label_col = st.columns([1, 2])
 with nav_home_col:
     st.button(
