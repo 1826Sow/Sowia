@@ -489,3 +489,23 @@ def test_register_legacy_conversations_derives_titles_from_first_user_message(mo
         {"session_id": "legacy-1", "title": "Bonjour SOW IA, aide-moi à organiser mon projet."},
         {"session_id": "legacy-2", "title": "Conversation précédente"},
     ]
+
+
+
+def test_conversation_option_label_includes_explicit_utc_activity_time():
+    label = cloud_storage.conversation_option_label({
+        "title": "  Mon   projet  ",
+        "updated_at": "2026-11-17T10:30:00+00:00",
+    })
+    assert label == "Mon projet · 17/11 10:30 UTC"
+
+
+def test_conversation_option_label_falls_back_safely_for_missing_or_invalid_date():
+    assert cloud_storage.conversation_option_label({
+        "title": "Ancienne conversation",
+        "updated_at": None,
+    }) == "Ancienne conversation"
+    assert cloud_storage.conversation_option_label({
+        "title": "Conversation sans date",
+        "updated_at": "date-invalide",
+    }) == "Conversation sans date"
