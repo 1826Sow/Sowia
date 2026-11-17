@@ -96,6 +96,36 @@ class SupabaseAuthClient(context: Context) {
         refreshed
     }
 
+
+    suspend fun checkMobileHealth(): String = withContext(Dispatchers.IO) {
+        check(isConfigured) { "Configuration Supabase absente." }
+        val session = currentSession() ?: throw IllegalStateException("Connectez-vous avant le test.")
+        val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/functions/v1/mobile-health")
+            .openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 12000
+            readTimeout = 15000
+            setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            setRequestProperty("Authorization", "Bearer ${session.accessToken}")
+            setRequestProperty("Accept", "application/json")
+        }
+        try {
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (status !in 200..299) {
+                throw IllegalStateException("Vérification refusée (HTTP $status).")
+            }
+            val result = JSONObject(text)
+            check(result.optBoolean("ok") && result.optString("service") == "sowia-mobile-health") {
+                "Réponse du service mobile invalide."
+            }
+            "Connexion sécurisée au service mobile confirmée."
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     suspend fun signOut() = withContext(Dispatchers.IO) {
         val session = currentSession()
         if (session != null && isConfigured) {
