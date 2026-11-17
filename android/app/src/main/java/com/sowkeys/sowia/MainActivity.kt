@@ -187,6 +187,24 @@ private fun AccountPanel() {
                 Button(
                     onClick = {
                         busy = true
+                        status = "Vérification du service mobile…"
+                        scope.launch {
+                            try {
+                                status = auth.checkMobileHealth()
+                            } catch (error: Exception) {
+                                status = error.message ?: "Service mobile indisponible."
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    enabled = !busy && auth.isConfigured,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                ) { Text(if (busy) "Vérification…" else "Tester la connexion sécurisée") }
+                Button(
+                    onClick = {
+                        busy = true
                         scope.launch {
                             auth.signOut()
                             session = null
