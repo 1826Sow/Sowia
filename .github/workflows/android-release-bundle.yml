@@ -51,7 +51,7 @@ jobs:
             exit 1
           fi
 
-          # Accept plain Base64, wrapped Base64, URL-safe Base64, and data-URI input.
+          # Decode Base64 and detect both single- and double-encoded keystore files.
           python3 - <<'PY'
           import base64
           import os
@@ -61,43 +61,49 @@ jobs:
           value = os.environ["ANDROID_KEYSTORE_BASE64"].strip()
           if value.startswith("data:") and "," in value:
               value = value.split(",", 1)[1]
-          # Remove separators/quotes accidentally included when copying the value.
-          # Keep the Base64 alphabet and padding; keytool below rejects corrupted data.
           value = "".join(value.split())
           if value.lower().startswith("base64:"):
               value = value.split(":", 1)[1]
           value = value.replace("-", "+").replace("_", "/")
-          value = re.sub(r"[^A-Za-z0-9+/=]", "", value)
-          # Rebuild padding from the payload itself. This also repairs padding copied
-          # into the middle of wrapped output by some Android Base64 converter apps.
-          value = value.replace("=", "")
-
+          value = re.sub(r"[^A-Za-z0-9+/=]", "", value).replace("=", "")
           if not value or not re.fullmatch(r"[A-Za-z0-9+/]+", value):
-              raise SystemExit("ANDROID_KEYSTORE_BASE64 is empty after removing copy/paste separators.")
+              raise SystemExit("ANDROID_KEYSTORE_BASE64 is empty or contains no Base64 payload.")
           value += "=" * (-len(value) % 4)
           try:
               decoded = base64.b64decode(value, validate=True)
           except Exception:
-              raise SystemExit("ANDROID_KEYSTORE_BASE64 could not be decoded. Re-encode the original .jks file as Base64.")
+              raise SystemExit("ANDROID_KEYSTORE_BASE64 could not be decoded.")
+
+          print(f"First decode size: {len(decoded)} bytes")
+          print(f"First decode header: {decoded[:4].hex().upper()}")
+
+          # Some mobile converters encode an already-Base64 text value.
+          # If stage one is not a keystore, safely test one additional layer.
+          if decoded[:4] != bytes.fromhex("FEEDFEED"):
+              try:
+                  nested = decoded.decode("ascii").strip()
+                  nested = "".join(nested.split())
+                  nested = nested.replace("-", "+").replace("_", "/")
+                  nested = re.sub(r"[^A-Za-z0-9+/=]", "", nested).replace("=", "")
+                  if nested and re.fullmatch(r"[A-Za-z0-9+/]+", nested):
+                      nested += "=" * (-len(nested) % 4)
+                      second = base64.b64decode(nested, validate=True)
+                      print(f"Second decode size: {len(second)} bytes")
+                      print(f"Second decode header: {second[:4].hex().upper()}")
+                      if second[:4] == bytes.fromhex("FEEDFEED"):
+                          decoded = second
+                          print("Detected and corrected double Base64 encoding.")
+              except (UnicodeDecodeError, ValueError):
+                  pass
 
           if not decoded:
               raise SystemExit("Decoded Android keystore is empty.")
+          if decoded[:4] != bytes.fromhex("FEEDFEED"):
+              raise SystemExit("Neither the first nor second Base64 decode produced a JKS file. The secret does not currently contain the original JKS bytes.")
           Path(os.environ["RUNNER_TEMP"], "sowia-upload.jks").write_bytes(decoded)
           PY
 
-          # Check the decoded file signature before testing credentials.
           KEYSTORE="$RUNNER_TEMP/sowia-upload.jks"
-          python3 - "$KEYSTORE" <<'PY'
-          import sys
-          from pathlib import Path
-
-          data = Path(sys.argv[1]).read_bytes()
-          print(f"Decoded keystore size: {len(data)} bytes")
-          print(f"Decoded keystore header: {data[:4].hex().upper()}")
-          if data[:4] != bytes.fromhex("FEEDFEED"):
-              raise SystemExit("Decoded file does not have the JKS file signature. The Base64 secret may come from a different file or a non-JKS keystore.")
-          PY
-
           # Capture both output streams: keytool may print diagnostics on stdout.
           if ! keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" >"$RUNNER_TEMP/keytool-store.err" 2>&1; then
             echo "::error::The decoded file has a JKS signature, but keytool could not open it with the configured keystore password. Check that password against the original JKS; the file itself may also be damaged."
