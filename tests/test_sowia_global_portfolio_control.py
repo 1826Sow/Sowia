@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
 
-from sowia_global_portfolio_control import build_portfolio
+from sowia_global_portfolio_control import build_portfolio, summarize_action_plans
 
 
 class PortfolioControlTests(unittest.TestCase):
@@ -12,6 +12,23 @@ class PortfolioControlTests(unittest.TestCase):
             {"id": "p2", "title": "Projet Beta", "country": "Singapour", "status": "approved",
              "due_date": "2099-01-01", "budget_cap": 200, "currency": "USD"},
         ]
+
+    def test_home_summary_counts_real_workflow_statuses(self):
+        result = summarize_action_plans([
+            {"status": "draft"}, {"status": "submitted"}, {"status": "approved"},
+            {"status": "completed"}, {"status": "rejected"}, {"status": "cancelled"},
+            {"status": "unexpected"},
+        ])
+        self.assertEqual(result, {
+            "total": 7, "active": 3, "awaiting_approval": 1,
+            "completed": 1, "rejected": 1, "cancelled": 1, "unknown": 1,
+        })
+
+    def test_home_summary_handles_empty_records(self):
+        self.assertEqual(summarize_action_plans([]), {
+            "total": 0, "active": 0, "awaiting_approval": 0,
+            "completed": 0, "rejected": 0, "cancelled": 0, "unknown": 0,
+        })
 
     def test_flags_overdue_and_over_budget_without_global_score(self):
         result = build_portfolio(
