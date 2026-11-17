@@ -793,7 +793,7 @@ NAV_GROUPS = {
         "Mes échanges & projets", "Historique",
     ],
     "🌐 Écosystème mondial": [
-        "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID",
+        "Développement mondial", "SOWIA NIGHT EXCHANGE", "Bourse aux applications", "SOWIA GLOBAL ID",
         "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION",
     ],
     "🤝 Entreprises & opportunités": [
@@ -6046,6 +6046,92 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 except Exception as exc:
                     st.error("La file de validation des intégrations n’est pas accessible.")
                     st.caption(f"Diagnostic : {type(exc).__name__}")
+
+elif page == "Bourse aux applications":
+    st.subheader("🧩 BOURSE AUX APPLICATIONS")
+    st.caption("Découvrez les applications numériques partenaires validées dans l’écosystème SOWIA.")
+    if not premium_active:
+        st.warning("La Bourse aux applications est accessible aux comptes Premium.")
+    elif not cloud_mode or current_user is None:
+        st.warning("Connectez-vous à votre compte SOW IA pour consulter la bourse sécurisée.")
+    else:
+        st.markdown(
+            '<div class="partner-intro"><h3>Un catalogue international d’applications</h3>'
+            '<p>Explorez les solutions approuvées, comparez leurs domaines et repérez les services '
+            'qui peuvent compléter vos projets. Seules les applications validées par SOWIA sont affichées.</p></div>',
+            unsafe_allow_html=True,
+        )
+        market_country = st.text_input(
+            "Filtrer par pays", key="app_market_country",
+            placeholder="Ex. : France, Sénégal, Canada…",
+        )
+        market_category_options = ["Tous les domaines"] + sorted(cloud_storage.NIGHT_EXCHANGE_CATEGORIES)
+        market_category = st.selectbox(
+            "Domaine d’activité", market_category_options, key="app_market_category"
+        )
+        market_search = st.text_input(
+            "Rechercher une application ou un service",
+            key="app_market_search",
+            placeholder="Nom, service proposé ou besoin recherché…",
+        )
+        if st.button("Actualiser la bourse", key="app_market_refresh", use_container_width=True):
+            st.session_state["app_market_refresh_nonce"] = str(uuid.uuid4())
+        try:
+            market_apps = cloud_storage.list_approved_night_exchange_apps(
+                supabase_client, current_user,
+                country=market_country.strip() or None,
+                limit=200,
+            )
+            normalized_search = market_search.strip().casefold()
+            if market_category != "Tous les domaines":
+                market_apps = [
+                    item for item in market_apps
+                    if market_category in (item.get("categories") or [])
+                ]
+            if normalized_search:
+                market_apps = [
+                    item for item in market_apps
+                    if normalized_search in " ".join([
+                        str(item.get("app_name") or ""),
+                        str(item.get("country") or ""),
+                        str(item.get("services_offered") or ""),
+                        str(item.get("services_wanted") or ""),
+                        " ".join(item.get("categories") or []),
+                    ]).casefold()
+                ]
+            st.metric("Applications approuvées affichées", len(market_apps))
+            if not market_apps:
+                st.info("Aucune application approuvée ne correspond à ces filtres pour le moment.")
+            else:
+                for start in range(0, len(market_apps), 2):
+                    market_cols = st.columns(2)
+                    for col, app in zip(market_cols, market_apps[start:start + 2]):
+                        with col:
+                            with st.container(border=True):
+                                st.markdown("**" + str(app.get("app_name") or "Application") + "**")
+                                st.caption(str(app.get("country") or "Pays non renseigné"))
+                                categories = app.get("categories") or []
+                                if categories:
+                                    st.caption(" · ".join(str(value) for value in categories))
+                                st.markdown("**Services proposés**")
+                                st.write(app.get("services_offered") or "Non renseigné")
+                                st.markdown("**Services recherchés**")
+                                st.write(app.get("services_wanted") or "Non renseigné")
+                                st.caption(
+                                    "Fuseau : " + str(app.get("timezone") or "Non renseigné")
+                                    + " · Session : " + str(app.get("night_start") or "—")[:5]
+                                    + "–" + str(app.get("night_end") or "—")[:5]
+                                )
+            st.caption(
+                "Catalogue en lecture seule : une fiche en attente ou refusée n’est jamais publiée ici. "
+                "La consultation ne déclenche aucun contact, paiement ou partage de données."
+            )
+        except Exception as market_error:
+            st.error("La Bourse aux applications n’est pas accessible pour le moment.")
+            st.caption(
+                "Vérifiez le registre NIGHT EXCHANGE et les droits de lecture. Diagnostic : "
+                + type(market_error).__name__
+            )
 
 elif page == "SOW IA Business Club":
     st.subheader("🏛️ SOW IA BUSINESS CLUB")
