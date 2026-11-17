@@ -131,6 +131,7 @@ private fun SowiaPrototype() {
                     when (screen) {
                         "Compte & paramètres" -> AccountPanel()
                         "Assistant" -> AssistantPanel(onOpenAccount = { navigate("Compte & paramètres") })
+                        "Mes échanges & projets" -> RegistryPanel(onOpenAccount = { navigate("Compte & paramètres") })
                         else -> Card(colors = CardDefaults.cardColors(containerColor = Panel)) {
                             Column(Modifier.padding(18.dp)) {
                                 Text("Connexion requise", color = Cyan, fontWeight = FontWeight.Bold)
@@ -350,6 +351,120 @@ private fun AssistantPanel(onOpenAccount: () -> Unit) {
                 ) { Text(if (busy) "SOW IA réfléchit…" else "Envoyer") }
                 if (busy) Text("Connexion au moteur IA sécurisé…", color = Muted)
                 if (status.isNotBlank()) Text(status, color = Cyan)
+            }
+        }
+    }
+}
+
+
+private data class RegistryEntry(
+    val title: String,
+    val detail: String,
+    val status: String = "",
+)
+
+@Composable
+private fun RegistryPanel(onOpenAccount: () -> Unit) {
+    val context = LocalContext.current
+    val auth = remember(context) { SupabaseAuthClient(context) }
+    val scope = rememberCoroutineScope()
+    val conversations = remember { mutableStateListOf<RegistryEntry>() }
+    val projects = remember { mutableStateListOf<RegistryEntry>() }
+    var workspace by remember { mutableStateOf("personal") }
+    var busy by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf("") }
+    var signedIn by remember { mutableStateOf(auth.currentSession() != null) }
+
+    fun reload() {
+        if (!signedIn) return
+        busy = true
+        status = ""
+        scope.launch {
+            try {
+                val conversationRows = auth.loadConversations(workspace)
+                val projectRows = auth.loadProjects(workspace)
+                conversations.clear()
+                conversations.addAll(conversationRows.map {
+                    RegistryEntry(
+                        title = it.optString("title", "Conversation"),
+                        detail = "Session : ${it.optString("session_id")}",
+                    )
+                })
+                projects.clear()
+                projects.addAll(projectRows.map {
+                    RegistryEntry(
+                        title = it.optString("title", "Projet"),
+                        detail = it.optString("description"),
+                        status = it.optString("status"),
+                    )
+                })
+                status = "Données actualisées depuis votre espace sécurisé."
+            } catch (error: Exception) {
+                status = error.message ?: "Impossible de charger vos données."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    LaunchedEffect(workspace, signedIn) { if (signedIn) reload() }
+
+    Card(colors = CardDefaults.cardColors(containerColor = Panel)) {
+        Column(
+            Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Mes échanges & projets", color = Cyan, fontWeight = FontWeight.Bold)
+            if (!signedIn) {
+                Text("Connectez-vous pour retrouver vos conversations et projets.", color = Muted)
+                Button(
+                    onClick = onOpenAccount,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                ) { Text("Ouvrir Compte & paramètres") }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { workspace = "personal" },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (workspace == "personal") Cyan else Navy,
+                            contentColor = if (workspace == "personal") Navy else Color.White,
+                        ),
+                    ) { Text("Personnel") }
+                    Button(
+                        onClick = { workspace = "professional" },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (workspace == "professional") Cyan else Navy,
+                            contentColor = if (workspace == "professional") Navy else Color.White,
+                        ),
+                    ) { Text("Professionnel") }
+                }
+                Button(
+                    onClick = { reload() },
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                ) { Text(if (busy) "Actualisation…" else "Actualiser") }
+
+                Text("CONVERSATIONS", color = Cyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                if (conversations.isEmpty() && !busy) Text("Aucune conversation enregistrée dans cet espace.", color = Muted)
+                conversations.forEach { item ->
+                    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        Text(item.title, color = Color.White, fontWeight = FontWeight.SemiBold)
+                        Text(item.detail, color = Muted, fontSize = 11.sp)
+                    }
+                }
+
+                Text("PROJETS", color = Cyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                if (projects.isEmpty() && !busy) Text("Aucun projet enregistré dans cet espace.", color = Muted)
+                projects.forEach { item ->
+                    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        Text(item.title, color = Color.White, fontWeight = FontWeight.SemiBold)
+                        if (item.detail.isNotBlank()) Text(item.detail, color = Muted, fontSize = 12.sp)
+                        if (item.status.isNotBlank()) Text("État : ${item.status}", color = Cyan, fontSize = 11.sp)
+                    }
+                }
+                if (status.isNotBlank()) Text(status, color = Cyan, fontSize = 12.sp)
             }
         }
     }
