@@ -37,3 +37,11 @@ def test_project_deliverable_links_require_valid_https_without_credentials():
     assert "_safe_https_url(url)" in source
     assert "_safe_https_url(deliverable_url)" in source
     assert "Lien masqué : seule une adresse HTTPS valide est acceptée." in source
+
+def test_new_projects_can_auto_link_the_active_conversation():
+    source = (ROOT / "project_registry_ui.py").read_text(encoding="utf-8")
+    assert 'active_session_id = str(st.session_state.get("session_id") or "").strip()' in source
+    assert 'Associer automatiquement la conversation en cours' in source
+    assert 'value=bool(active_session_id)' in source
+    assert 'conversation_session_id=active_session_id if attach_current_session else None' in source
+    assert "Aucune conversation active à associer pour le moment." in source
