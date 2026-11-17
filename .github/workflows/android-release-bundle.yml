@@ -1,4 +1,4 @@
-name: Android release bundle (unsigned)
+name: Android release bundle
 
 on:
   pull_request:
@@ -35,13 +35,34 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Build release bundle (unsigned)
+      # Pull-request builds stay unsigned. Signing secrets are only read
+      # for pushes to main and manually dispatched release builds.
+      - name: Decode Android upload keystore
+        if: github.event_name != 'pull_request'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
+            echo "Android signing secrets are missing. Add all four repository secrets before running a signed build."
+            exit 1
+          fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/sowia-upload.p12"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/sowia-upload.p12" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Build release bundle
         run: gradle -p android :app:bundleRelease
 
-      - name: Upload unsigned AAB for internal build verification
+      - name: Upload release AAB
         uses: actions/upload-artifact@v4
         with:
-          name: sowia-android-release-unsigned
+          name: sowia-android-release-${{ github.event_name == 'pull_request' && 'unsigned' || 'signed' }}
           path: android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 14
