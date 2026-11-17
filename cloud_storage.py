@@ -85,6 +85,21 @@ def register_legacy_conversations(client, user, workspace_id="personal", limit=1
     return registered
 
 
+def conversation_option_label(conversation):
+    """Build a compact, distinguishable label with an explicit UTC activity time."""
+    title = " ".join(str(conversation.get("title") or "Conversation").split())
+    raw_timestamp = conversation.get("updated_at")
+    if not raw_timestamp:
+        return title
+    try:
+        timestamp = datetime.fromisoformat(str(raw_timestamp).replace("Z", "+00:00"))
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+        return f"{title} · {timestamp.astimezone(timezone.utc):%d/%m %H:%M} UTC"
+    except (TypeError, ValueError, OverflowError):
+        return title
+
+
 def list_conversations(client, user, workspace_id="personal", limit=50):
     """List only the authenticated user's conversations in the active workspace."""
     owner_id = _user_id(user)
