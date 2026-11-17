@@ -160,6 +160,21 @@ private fun AccountPanel() {
     var status by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
 
+    LaunchedEffect(auth) {
+        if (session != null && auth.isConfigured) {
+            busy = true
+            try {
+                session = auth.refreshSession()
+                status = "Session sécurisée rétablie."
+            } catch (_: Exception) {
+                // Keep the encrypted session when the device is temporarily offline.
+                status = "Session enregistrée sur cet appareil. Vérification réseau à la prochaine connexion."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
     Card(colors = CardDefaults.cardColors(containerColor = Panel)) {
         Column(
             Modifier.fillMaxWidth().padding(18.dp),
