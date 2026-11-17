@@ -179,5 +179,19 @@ Deno.serve(async (req: Request) => {
   });
   if (!insertResponse.ok) return json(503, { ok: false, code: "MESSAGE_SAVE_FAILED" });
 
+  // Keep the registry ordered by the latest activity.
+  const touchUrl = new URL(`${supabaseUrl}/rest/v1/sowia_conversations`);
+  touchUrl.searchParams.set("user_id", `eq.${userId}`);
+  touchUrl.searchParams.set("workspace_id", `eq.${workspaceId}`);
+  touchUrl.searchParams.set("session_id", `eq.${sessionId}`);
+  const touchResponse = await fetch(touchUrl, {
+    method: "PATCH",
+    headers: { ...restHeaders, Prefer: "return=minimal" },
+    body: JSON.stringify({ updated_at: new Date().toISOString() }),
+  });
+  if (!touchResponse.ok) {
+    return json(503, { ok: false, code: "CONVERSATION_REGISTRY_UPDATE_FAILED" });
+  }
+
   return json(200, { ok: true, session_id: sessionId, workspace_id: workspaceId, answer: answer.trim(), model });
 });
