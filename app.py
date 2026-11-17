@@ -2053,35 +2053,48 @@ elif page == "Assistant IA":
                 supabase_client, current_user, st.session_state.session_id, active_workspace_id
             )
             saved_conversations = cloud_storage.list_conversations(
-                supabase_client, current_user, active_workspace_id, limit=50
+                supabase_client, current_user, active_workspace_id, limit=100
             )
-            conversation_ids = [item["session_id"] for item in saved_conversations]
             conversation_by_id = {
                 item["session_id"]: item for item in saved_conversations
             }
             current_session_id = str(st.session_state.session_id)
-            current_index = conversation_ids.index(current_session_id) if current_session_id in conversation_ids else 0
             st.caption(
-                f"{len(saved_conversations)} conversation(s) · classement par activité récente "
-                "(horaires affichés en UTC)"
+                f"{len(saved_conversations)} conversation(s) récentes disponibles · "
+                "classement par activité (horaires affichés en UTC)"
             )
+            conversation_search = st.text_input(
+                "Rechercher une conversation par son titre",
+                key="sowia_conversation_search",
+                placeholder="Saisir quelques mots du titre…",
+            ).strip().casefold()
+            filtered_conversations = [
+                item for item in saved_conversations
+                if not conversation_search
+                or conversation_search in str(item.get("title") or "").casefold()
+            ]
+            conversation_ids = [item["session_id"] for item in filtered_conversations]
+            current_index = conversation_ids.index(current_session_id) if current_session_id in conversation_ids else 0
             conversation_cols = st.columns([3, 1])
             with conversation_cols[0]:
-                selected_session_id = st.selectbox(
-                    "🗂️ Mes conversations",
-                    options=conversation_ids,
-                    index=current_index,
-                    format_func=lambda value: cloud_storage.conversation_option_label(
-                        conversation_by_id.get(value, {})
-                    ),
-                    key="sowia_conversation_selector",
-                )
-                if selected_session_id != current_session_id:
-                    st.session_state.session_id = selected_session_id
-                    st.session_state.setdefault("sowia_workspace_session_ids", {})[
-                        active_workspace_id
-                    ] = selected_session_id
-                    st.rerun()
+                if conversation_ids:
+                    selected_session_id = st.selectbox(
+                        "🗂️ Mes conversations",
+                        options=conversation_ids,
+                        index=current_index,
+                        format_func=lambda value: cloud_storage.conversation_option_label(
+                            conversation_by_id.get(value, {})
+                        ),
+                        key="sowia_conversation_selector",
+                    )
+                    if selected_session_id != current_session_id:
+                        st.session_state.session_id = selected_session_id
+                        st.session_state.setdefault("sowia_workspace_session_ids", {})[
+                            active_workspace_id
+                        ] = selected_session_id
+                        st.rerun()
+                else:
+                    st.info("Aucune conversation ne correspond à cette recherche.")
             with conversation_cols[1]:
                 if st.button("＋ Nouvelle", key="sowia_new_conversation", use_container_width=True):
                     created_conversation = cloud_storage.create_conversation(
