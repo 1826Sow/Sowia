@@ -1201,6 +1201,42 @@ with st.container():
         type="primary",
     )
 
+# A second compact control stays within thumb reach when a long page is scrolled.
+if st.session_state.get("sowia_navigation_history"):
+    st.markdown(
+        """<style>
+        @media (max-width: 760px) {
+          section[data-testid="stMain"] .st-key-sowia_navigation_back_bottom {
+            position: fixed !important;
+            right: 14px !important;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 14px) !important;
+            z-index: 100001 !important;
+            width: min(330px, calc(100vw - 28px)) !important;
+            margin: 0 !important;
+            filter: drop-shadow(0 6px 18px rgba(0,0,0,.42));
+          }
+          section[data-testid="stMain"] .st-key-sowia_navigation_back_bottom button {
+            min-height: 50px !important;
+            border: 1px solid rgba(117,242,255,.75) !important;
+            background: rgba(7,35,59,.96) !important;
+            color: #effcff !important;
+            font-weight: 700 !important;
+            touch-action: manipulation !important;
+          }
+        }
+        @media (min-width: 761px) {
+          .st-key-sowia_navigation_back_bottom { display: none !important; }
+        }
+        </style>""",
+        unsafe_allow_html=True,
+    )
+    st.button(
+        "← Retour",
+        key="sowia_navigation_back_bottom",
+        on_click=go_back_navigation,
+        type="primary",
+    )
+
 # Android/browser Back is mapped to the same in-app navigation stack.
 # Re-arm a browser-history sentinel after every Back event, then invoke the
 # existing Streamlit callback. This preserves the authenticated Streamlit
