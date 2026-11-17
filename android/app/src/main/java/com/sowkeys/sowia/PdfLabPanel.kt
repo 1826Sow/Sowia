@@ -187,7 +187,7 @@ private class PdfStorageClient(private val context: Context) {
                                 try {
                                     val pageText = recognizer.process(InputImage.fromBitmap(bitmap, 0)).await().text
                                     if (pageText.isNotBlank()) {
-                                        append("\\n[Page ${pageIndex + 1}]\\n")
+                                        append("\n[Page ${pageIndex + 1}]\n")
                                         append(pageText)
                                     }
                                 } finally {
@@ -201,7 +201,7 @@ private class PdfStorageClient(private val context: Context) {
                         }.let { ocrText ->
                             "[Texte obtenu par OCR local — ${pagesToScan} page(s)" +
                                 (if (pageCount > pagesToScan) ", premières pages uniquement]" else "]") +
-                                "\\n" + ocrText
+                                "\n" + ocrText
                         }
                     } finally {
                         recognizer.close()
