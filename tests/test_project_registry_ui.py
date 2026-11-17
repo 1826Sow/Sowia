@@ -45,3 +45,13 @@ def test_new_projects_can_auto_link_the_active_conversation():
     assert 'value=bool(active_session_id)' in source
     assert 'conversation_session_id=active_session_id if attach_current_session else None' in source
     assert "Aucune conversation active à associer pour le moment." in source
+
+
+
+def test_project_edit_uses_saved_conversation_picker_not_manual_session_id():
+    source = (ROOT / "project_registry_ui.py").read_text(encoding="utf-8")
+    assert "cloud_storage.list_conversations(client, user, workspace_id, limit=100)" in source
+    assert '"Conversation associée"' in source
+    assert "Conversation liée (historique existant)" in source
+    assert "conversation_session_id=selected_session_id" in source
+    assert "Identifiant de conversation" not in source
