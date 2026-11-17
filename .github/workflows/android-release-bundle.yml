@@ -50,8 +50,8 @@ jobs:
             echo "Android signing secrets are missing. Add all four repository secrets before running a signed build."
             exit 1
           fi
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/sowia-upload.p12"
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/sowia-upload.p12" >> "$GITHUB_ENV"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/sowia-upload.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/sowia-upload.jks" >> "$GITHUB_ENV"
           echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
           echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
           echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
