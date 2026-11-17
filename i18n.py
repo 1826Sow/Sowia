@@ -158,6 +158,10 @@ _CORE_TRANSLATIONS = {
 
 def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
+    # Keep the product name visually consistent in every translated UI label.
+    # This changes display text only; internal route keys and Python identifiers
+    # remain untouched.
+    text = str(text).replace("SOWIA", "SOW IA").replace("Sowia", "SOW IA")
     if language not in LANGUAGES:
         language = "Français"
     # Merge the original catalogue with the additional navigation labels.
