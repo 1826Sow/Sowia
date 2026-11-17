@@ -97,3 +97,9 @@ def test_conversation_search_keeps_switching_limited_to_filtered_results():
     selector = source.split('selected_session_id = st.selectbox(', 1)[1].split('if selected_session_id != current_session_id:', 1)[0]
     assert 'options=conversation_ids' in selector
     assert 'conversation_by_id.get(value, {})' in selector
+
+
+def test_conversation_search_and_selector_state_are_scoped_to_account_and_workspace():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert 'key=f"sowia_conversation_search_{current_user.id}_{active_workspace_id}"' in source
+    assert 'key=f"sowia_conversation_selector_{current_user.id}_{active_workspace_id}"' in source
