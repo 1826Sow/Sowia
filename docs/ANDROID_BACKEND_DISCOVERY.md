@@ -70,3 +70,13 @@ The Android Assistant screen now calls `POST /functions/v1/mobile-chat` and disp
 **Activation dependency:** the function expects `GROQ_API_KEY` or `OPENAI_API_KEY` configured as Supabase Edge Function secrets. The existing web application's Streamlit secrets are separate and cannot be read by Supabase. No secret value has been copied or exposed. Until one of these provider secrets is configured in Supabase, the endpoint deliberately returns `503 AI_PROVIDER_NOT_CONFIGURED` rather than pretending to generate an answer.
 
 The new Android screen has not yet passed a successful real-account / real-provider device test. CI compilation and endpoint authentication checks are tracked separately.
+
+
+### Workspace alignment correction — 2026-11-17
+
+Live database introspection confirmed that both `sowia_messages` and `sowia_memory_items` require a non-null `workspace_id`, and the project already has the `sowia_conversations` registry. The mobile chat endpoint was corrected accordingly (deployed version 3):
+- accepts only `personal` or `professional` workspace scope;
+- filters history and memory by both verified owner and workspace;
+- creates the conversation registry entry before invoking the AI provider, so professional-workspace RLS denial occurs before model usage;
+- includes the required workspace field on both persisted message rows.
+The Android client now sends the workspace scope (defaults to personal). Professional access remains governed by the existing database RLS policy.
