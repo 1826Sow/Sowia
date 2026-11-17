@@ -57,6 +57,39 @@ class FakeClient:
         return self.tables.setdefault(name, FakeQuery())
 
 
+def test_create_conversation_is_scoped_to_owner_and_workspace():
+    client = FakeClient()
+    query = client.table("sowia_conversations")
+    query.execute = lambda: SimpleNamespace(data=[{
+        "session_id": "session-abc", "title": "Nouvelle conversation",
+        "created_at": "now", "updated_at": "now",
+    }])
+    result = cloud_storage.create_conversation(
+        client, User(), "professional", session_id="session-abc"
+    )
+    assert result["session_id"] == "session-abc"
+    assert query.inserted["user_id"] == "user-123"
+    assert query.inserted["workspace_id"] == "professional"
+    assert query.inserted["session_id"] == "session-abc"
+
+
+def test_list_conversations_is_scoped_to_user_and_workspace():
+    client = FakeClient()
+    cloud_storage.list_conversations(client, User(), "professional")
+    query = client.tables["sowia_conversations"]
+    assert ("user_id", "user-123") in query.filters
+    assert ("workspace_id", "professional") in query.filters
+    assert ("limit", 50) in query.operations
+
+
+def test_conversation_creation_rejects_missing_user():
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called without a user")
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        cloud_storage.create_conversation(Client(), None)
+
+
 def test_storage_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         cloud_storage._user_id(None)
