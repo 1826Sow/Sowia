@@ -2052,8 +2052,15 @@ elif page == "Assistant IA":
             cloud_storage.ensure_conversation(
                 supabase_client, current_user, st.session_state.session_id, active_workspace_id
             )
+            conversation_page_key = (
+                f"sowia_conversation_page_size_{current_user.id}_{active_workspace_id}"
+            )
+            conversation_page_size = int(
+                st.session_state.setdefault(conversation_page_key, 100)
+            )
             saved_conversations = cloud_storage.list_conversations(
-                supabase_client, current_user, active_workspace_id, limit=100
+                supabase_client, current_user, active_workspace_id,
+                limit=conversation_page_size
             )
             conversation_by_id = {
                 item["session_id"]: item for item in saved_conversations
@@ -2106,6 +2113,18 @@ elif page == "Assistant IA":
                         active_workspace_id
                     ] = created_conversation["session_id"]
                     st.rerun()
+            if len(saved_conversations) >= conversation_page_size and conversation_page_size < 1000:
+                if st.button(
+                    "Charger 100 conversations supplémentaires",
+                    key="sowia_load_more_conversations",
+                    use_container_width=True,
+                ):
+                    st.session_state[conversation_page_key] = min(
+                        conversation_page_size + 100, 1000
+                    )
+                    st.rerun()
+            elif conversation_page_size >= 1000 and len(saved_conversations) >= 1000:
+                st.caption("Limite de consultation atteinte : 1 000 conversations récentes.")
         except Exception as conversation_error:
             st.warning("L’historique multi-conversations sera disponible après l’application de la migration dédiée.")
             st.caption("Diagnostic : " + type(conversation_error).__name__)
