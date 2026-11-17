@@ -509,3 +509,23 @@ def test_conversation_option_label_falls_back_safely_for_missing_or_invalid_date
         "title": "Conversation sans date",
         "updated_at": "date-invalide",
     }) == "Conversation sans date"
+
+@pytest.mark.parametrize("invalid_session_id", [None, "", "   ", "x" * 129])
+def test_session_scoped_storage_rejects_invalid_session_id_before_database_access(invalid_session_id):
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Database must not be called for an invalid session ID")
+
+    with pytest.raises(ValueError, match="Identifiant de conversation invalide"):
+        cloud_storage.get_history(Client(), User(), invalid_session_id)
+    with pytest.raises(ValueError, match="Identifiant de conversation invalide"):
+        cloud_storage.clear_history(Client(), User(), invalid_session_id)
+    with pytest.raises(ValueError, match="Identifiant de conversation invalide"):
+        cloud_storage.save_message(Client(), User(), invalid_session_id, "user", "Bonjour")
+
+
+def test_session_id_is_normalized_before_scoped_storage_access():
+    client = FakeClient()
+    cloud_storage.get_history(client, User(), "  session-abc  ")
+    assert ("session_id", "session-abc") in client.tables["sowia_messages"].filters
+
