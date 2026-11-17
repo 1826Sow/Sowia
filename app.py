@@ -1086,24 +1086,41 @@ if privacy_screen:
     )
     st.markdown(
         """<style>
-        section[data-testid="stMain"] .stVerticalBlock > div:not(:has(.st-key-sowia_privacy_unlock_main)) {
-            filter: blur(9px) !important;
-            pointer-events: none !important;
-            user-select: none !important;
+        /* A dedicated overlay avoids blurring or disabling the unlock control itself. */
+        section[data-testid="stMain"] {
+            position: relative !important;
+            isolation: isolate !important;
+        }
+        section[data-testid="stMain"]::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 999998;
+            background: rgba(5, 16, 31, .58);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            pointer-events: none;
         }
         section[data-testid="stMain"] .st-key-sowia_privacy_unlock_main {
             position: fixed !important;
-            top: 66px !important;
-            right: 12px !important;
-            z-index: 1000001 !important;
-            width: min(320px, calc(100vw - 24px)) !important;
+            top: 68px !important;
+            left: 50% !important;
+            right: auto !important;
+            transform: translateX(-50%) !important;
+            z-index: 1000000 !important;
+            width: min(360px, calc(100vw - 24px)) !important;
+            isolation: isolate !important;
         }
         section[data-testid="stMain"] .st-key-sowia_privacy_unlock_main button {
-            min-height: 48px !important;
-            box-shadow: 0 8px 28px rgba(0,0,0,.35) !important;
+            min-height: 54px !important;
+            border: 2px solid #75f2ff !important;
+            background: #07536b !important;
+            color: #fff !important;
+            box-shadow: 0 8px 28px rgba(0,0,0,.55) !important;
+            pointer-events: auto !important;
         }
         body::after {
-            content: "🔒 Protection d'écran activée — utilisez le bouton de déverrouillage toujours visible";
+            content: "🔒 Protection d'écran activée";
             position: fixed;
             z-index: 999999;
             top: 12px;
@@ -1113,7 +1130,7 @@ if privacy_screen:
             padding: 12px 16px;
             border: 1px solid #b8c6d5;
             border-radius: 12px;
-            background: rgba(15, 35, 56, .96);
+            background: rgba(15, 35, 56, .98);
             color: #fff !important;
             text-align: center;
             font-weight: 700;
@@ -1165,43 +1182,51 @@ with st.container():
     )
 
 # Android/browser Back is mapped to the same in-app navigation stack.
-# The small HTML component only bridges the browser event to the existing
-# Streamlit button; navigation state and authentication remain server-side.
+# Re-arm a browser-history sentinel after every Back event, then invoke the
+# existing Streamlit callback. This preserves the authenticated Streamlit
+# session; it never calls logout or clears account state.
 st.components.v1.html(
     """<script>
     (() => {
       try {
         const host = window.parent;
-        const installGuard = () => {
-          const state = host.history.state || {};
-          if (!state.sowiaNavigationGuard) {
-            host.history.pushState(
-              Object.assign({}, state, {sowiaNavigationGuard: true}),
-              "",
-              host.location.href
-            );
-          }
+        const marker = "sowiaNavigationGuard";
+        const pushGuard = () => {
+          const current = host.history.state || {};
+          host.history.pushState(
+            Object.assign({}, current, {[marker]: true}),
+            "",
+            host.location.href
+          );
         };
-        installGuard();
         if (!host.__sowiaAndroidBackHandlerInstalled) {
           host.__sowiaAndroidBackHandlerInstalled = true;
           host.addEventListener("popstate", () => {
             try {
+              // Always keep the user inside the current app document while
+              // Streamlit processes the in-app Back action.
+              pushGuard();
+              const buttons = Array.from(host.document.querySelectorAll("button"));
               const backButton = host.document.querySelector(
                 ".st-key-sowia_navigation_back button"
+              ) || buttons.find((button) =>
+                (button.innerText || "").toUpperCase().includes("RETOUR À LA PAGE PRÉCÉDENTE")
               );
               if (backButton && !backButton.disabled) {
-                installGuard();
                 backButton.click();
               }
             } catch (error) {
-              // If the host browser blocks iframe access, the native browser
-              // behavior is left intact; the visible SOWIA Back button remains.
+              // Fail safely: the visible in-app Back control remains available.
             }
-          });
+          }, true);
+        }
+        // Install one sentinel on initial load as well as after Streamlit reruns.
+        const currentState = host.history.state || {};
+        if (!currentState[marker]) {
+          pushGuard();
         }
       } catch (error) {
-        // Browser history integration is progressive enhancement only.
+        // If the browser isolates the component iframe, use SOW IA's visible Back button.
       }
     })();
     </script>""",
