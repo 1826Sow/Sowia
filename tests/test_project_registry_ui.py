@@ -26,3 +26,14 @@ def test_project_register_ui_enforces_premium_and_reports_import_limits():
     assert "Les conversations anciennes et les fichiers déjà présents ne sont pas importés automatiquement" in source
     assert 'st.session_state["sowia_resume_session_id"] = session_id' in source
     assert 'resume_session_id = st.session_state.pop("sowia_resume_session_id", None)' in app_source
+
+
+
+def test_project_deliverable_links_require_valid_https_without_credentials():
+    source = (ROOT / "project_registry_ui.py").read_text(encoding="utf-8")
+    assert "def _safe_https_url(value):" in source
+    assert "parsed.scheme.lower() != \"https\"" in source
+    assert "parsed.username is not None or parsed.password is not None" in source
+    assert "_safe_https_url(url)" in source
+    assert "_safe_https_url(deliverable_url)" in source
+    assert "Lien masqué : seule une adresse HTTPS valide est acceptée." in source
