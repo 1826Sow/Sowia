@@ -376,3 +376,69 @@ def test_save_message_rejects_unconfirmed_database_insert():
 
     with pytest.raises(RuntimeError, match="n’a pas confirmé"):
         cloud_storage.save_message(Client(), User(), "private-session", "user", "Bonjour")
+
+
+def test_ensure_conversation_registers_legacy_session_without_rewriting_messages():
+    client = FakeClient()
+    query = client.table("sowia_conversations")
+    calls = {"count": 0}
+
+    def execute():
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return SimpleNamespace(data=[])
+        return SimpleNamespace(data=[{
+            "session_id": "legacy-session",
+            "title": "Conversation précédente",
+            "created_at": "now",
+            "updated_at": "now",
+        }])
+
+    query.execute = execute
+    result = cloud_storage.ensure_conversation(
+        client, User(), "legacy-session", "personal"
+    )
+
+    assert result["session_id"] == "legacy-session"
+    assert query.inserted == {
+        "user_id": "user-123",
+        "workspace_id": "personal",
+        "session_id": "legacy-session",
+        "title": "Conversation précédente",
+    }
+    assert "sowia_messages" not in client.tables
+
+
+def test_ensure_conversation_is_idempotent_for_an_already_registered_session():
+    client = FakeClient()
+    query = client.table("sowia_conversations")
+    query.execute = lambda: SimpleNamespace(data=[{
+        "session_id": "existing-session",
+        "title": "Mon projet",
+        "created_at": "then",
+        "updated_at": "now",
+    }])
+
+    result = cloud_storage.ensure_conversation(
+        client, User(), "existing-session", "professional"
+    )
+
+    assert result["title"] == "Mon projet"
+    assert query.inserted is None
+    assert ("user_id", "user-123") in query.filters
+    assert ("workspace_id", "professional") in query.filters
+    assert ("session_id", "existing-session") in query.filters
+
+
+def test_touch_conversation_updates_only_the_matching_owner_workspace_and_session():
+    client = FakeClient()
+    cloud_storage.touch_conversation(
+        client, User(), "session-1", "professional", title="Nouveau titre"
+    )
+
+    query = client.tables["sowia_conversations"]
+    assert query.inserted["title"] == "Nouveau titre"
+    assert ("user_id", "user-123") in query.filters
+    assert ("workspace_id", "professional") in query.filters
+    assert ("session_id", "session-1") in query.filters
+
