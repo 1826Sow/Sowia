@@ -2000,6 +2000,49 @@ elif page == "Mes échanges & projets":
 
 elif page == "Assistant IA":
     st.subheader(translate_ui("💬 Mon Assistant IA", language))
+    # Conversation registry: each cloud conversation has its own session ID.
+    active_workspace_id = st.session_state.get("workspace_id", "personal")
+    if cloud_mode and current_user is not None and supabase_client is not None:
+        try:
+            cloud_storage.ensure_conversation(
+                supabase_client, current_user, st.session_state.session_id, active_workspace_id
+            )
+            saved_conversations = cloud_storage.list_conversations(
+                supabase_client, current_user, active_workspace_id, limit=50
+            )
+            conversation_ids = [item["session_id"] for item in saved_conversations]
+            current_session_id = str(st.session_state.session_id)
+            current_index = conversation_ids.index(current_session_id) if current_session_id in conversation_ids else 0
+            conversation_cols = st.columns([3, 1])
+            with conversation_cols[0]:
+                selected_session_id = st.selectbox(
+                    "🗂️ Mes conversations",
+                    options=conversation_ids,
+                    index=current_index,
+                    format_func=lambda value: next(
+                        (str(item.get("title") or "Conversation") for item in saved_conversations
+                         if item.get("session_id") == value),
+                        "Conversation",
+                    ),
+                    key="sowia_conversation_selector",
+                )
+                if selected_session_id != current_session_id:
+                    st.session_state.session_id = selected_session_id
+                    st.rerun()
+            with conversation_cols[1]:
+                if st.button("＋ Nouvelle", key="sowia_new_conversation", use_container_width=True):
+                    created_conversation = cloud_storage.create_conversation(
+                        supabase_client, current_user, active_workspace_id
+                    )
+                    st.session_state.session_id = created_conversation["session_id"]
+                    st.rerun()
+        except Exception as conversation_error:
+            st.warning("L’historique multi-conversations sera disponible après l’application de la migration dédiée.")
+            st.caption("Diagnostic : " + type(conversation_error).__name__)
+    elif not cloud_mode:
+        if st.button("＋ Nouvelle conversation", key="sowia_new_local_conversation"):
+            st.session_state.session_id = str(uuid.uuid4())
+            st.rerun()
     st.markdown("#### ♿ Accessibilité de la conversation")
     access_cols = st.columns([1, 1, 1])
     with access_cols[0]:
