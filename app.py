@@ -1447,7 +1447,7 @@ if page == "Accueil":
     home_folders = [
         ("👤 01 · Personnel & documents", [
             ("Hub SOWIA", "Vue centrale de vos espaces et services"),
-            ("Assistant IA", "Conversation avec SOWIA"),
+            ("Assistant IA", "Conversation avec SOW IA"),
             ("Ma mémoire", "Informations mémorisées"),
             ("Recherche Web", "Recherche et sources"),
             ("Analyse PDF", "Analyser des documents"),
@@ -1483,7 +1483,7 @@ if page == "Accueil":
             ("SOWIA GLOBAL PORTFOLIO CONTROL", "Contrôle du portefeuille"),
             ("SOWIA GLOBAL EXECUTIVE REPORTS", "Rapports de direction"),
         ]),
-        ("💶 05 · SOWIA FINANCIAL HUB", [
+        ("💶 05 · SOW IA FINANCIAL HUB", [
             ("Finance & investissements", "Analyses et investissements"),
             ("Revenus & paiements", "Paiements, remboursements et rapprochements"),
         ]),
@@ -1500,8 +1500,9 @@ if page == "Accueil":
             folder_cols = st.columns(2)
             for index, (destination, description) in enumerate(folder_items):
                 with folder_cols[index % 2]:
-                    st.markdown(f"**{destination}**")
-                    st.caption(description)
+                    # Normalize the visible product name without changing internal route keys.
+                    st.markdown(f"**{destination.replace('SOWIA', 'SOW IA').replace('Sowia', 'SOW IA')}**")
+                    st.caption(description.replace("SOWIA", "SOW IA").replace("Sowia", "SOW IA"))
                     st.button("Ouvrir", key=f"home_folder_{destination}", use_container_width=True,
                               on_click=go_to_page, args=(destination,))
     st.caption("Les dossiers organisent l'accès aux fonctions existantes ; ils ne suppriment ni ne modifient les données des projets.")
@@ -1515,7 +1516,7 @@ elif page == "Hub SOWIA":
     current_workspace = st.session_state.get("workspace_id", "personal")
     workspace_title = "Professionnel" if current_workspace == "professional" else "Personnel"
     st.markdown(
-        '<div class="partner-intro"><h3>🌐 SOWIA Executive Hub</h3>'
+        '<div class="partner-intro"><h3>🌐 SOW IA Executive Hub</h3>'
         '<p>Un point d’entrée unique pour vos outils personnels, vos activités professionnelles et les services réservés à l’administration.</p></div>',
         unsafe_allow_html=True,
     )
@@ -1545,14 +1546,14 @@ elif page == "Hub SOWIA":
         ("🧠 Continuer avec SOW IA", "Assistant IA", "Reprendre le travail avec l’assistant."),
         ("📄 Mes livrables & documents", "Mes documents", "Consulter les PDF et fichiers enregistrés."),
         ("🧪 Laboratoire PDF", "Analyse PDF", "Analyser un document ou poursuivre son traitement."),
-        ("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "Accéder à l’espace d’échanges de l’écosystème."),
+        ("🌙 SOW IA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "Accéder à l’espace d’échanges de l’écosystème."),
     ]
     quick_cols = st.columns(2)
     for index, (label, destination, description) in enumerate(hub_quick_access):
         with quick_cols[index % 2]:
             with st.container(border=True):
-                st.markdown(f"**{label}**")
-                st.caption(description)
+                st.markdown(f"**{label.replace('SOWIA', 'SOW IA').replace('Sowia', 'SOW IA')}**")
+                st.caption(description.replace("SOWIA", "SOW IA").replace("Sowia", "SOW IA"))
                 st.button("Ouvrir", key=f"hub_quick_{index}", use_container_width=True,
                           on_click=go_to_page, args=(destination,))
     st.markdown("#### 🧪 Final Tech")
@@ -1566,7 +1567,7 @@ elif page == "Hub SOWIA":
     st.markdown("### 👤 Espace Personnel")
     st.caption("Vos outils quotidiens, votre mémoire et vos documents privés.")
     personal_items = [
-        ("💬 Assistant IA", "Assistant IA", "Dialoguer avec SOWIA"),
+        ("💬 Assistant IA", "Assistant IA", "Dialoguer avec SOW IA"),
         ("🧠 Mémoire", "Ma mémoire", "Retrouver vos informations utiles"),
         ("📄 Documents", "Mes documents", "Gérer vos fichiers personnels"),
         ("🌐 Recherche", "Recherche Web", "Explorer des informations et des sources"),
