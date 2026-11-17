@@ -111,3 +111,12 @@ def test_conversation_selector_reset_uses_the_scoped_widget_key():
     assert 'st.session_state.pop(f"sowia_conversation_selector_{current_user.id}_{workspace_id}", None)' in source
     assert 'st.session_state.pop(f"sowia_conversation_selector_{current_user.id}_{active_workspace_id}", None)' in source
     assert 'st.session_state.pop("sowia_conversation_selector", None)' not in source
+
+
+
+def test_conversation_action_buttons_are_scoped_to_account_and_workspace():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert 'key=f"sowia_new_conversation_{current_user.id}_{active_workspace_id}"' in source
+    assert 'key=f"sowia_load_more_conversations_{current_user.id}_{active_workspace_id}"' in source
+    assert 'key="sowia_new_conversation"' not in source
+    assert 'key="sowia_load_more_conversations"' not in source
