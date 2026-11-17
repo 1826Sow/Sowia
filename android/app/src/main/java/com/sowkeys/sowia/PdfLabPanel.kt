@@ -200,7 +200,7 @@ private class PdfStorageClient(private val context: Context) {
                             }
                         }.let { ocrText ->
                             "[Texte obtenu par OCR local — ${pagesToScan} page(s)" +
-                                if (pageCount > pagesToScan) ", premières pages uniquement]" else "]" +
+                                (if (pageCount > pagesToScan) ", premières pages uniquement]" else "]") +
                                 "\\n" + ocrText
                         }
                     } finally {
