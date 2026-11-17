@@ -15,7 +15,7 @@ fun configValue(name: String): String =
         ?: System.getenv(name)?.trim()
         ?: ""
 fun buildConfigString(value: String): String =
-    "\\"" + value.replace("\\\\", "\\\\\\\\").replace("\\"", "\\\\\\"") + "\\""
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
 android {
     namespace = "com.sowkeys.sowia"
