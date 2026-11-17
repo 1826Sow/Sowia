@@ -126,13 +126,13 @@ class SupabaseAuthClient(context: Context) {
         }
     }
 
-    suspend fun sendChatMessage(sessionId: String, message: String): String = withContext(Dispatchers.IO) {
+    suspend fun sendChatMessage(sessionId: String, message: String, workspaceId: String = "personal"): String = withContext(Dispatchers.IO) {
         check(isConfigured) { "Configuration Supabase absente." }
         val session = currentSession() ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
         require(sessionId.isNotBlank() && message.isNotBlank()) { "Le message ne peut pas être vide." }
         val response = request(
             "/functions/v1/mobile-chat",
-            JSONObject().put("session_id", sessionId).put("message", message.trim()),
+            JSONObject().put("session_id", sessionId).put("workspace_id", workspaceId).put("message", message.trim()),
             session.accessToken,
         )
         check(response.optBoolean("ok")) { "Le service Assistant a refusé la demande." }
