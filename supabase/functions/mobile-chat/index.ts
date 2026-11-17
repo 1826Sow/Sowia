@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
   const userId = typeof user.id === "string" ? user.id : "";
   if (!userId) return json(401, { ok: false, code: "INVALID_SESSION" });
 
-  let payload: { message?: unknown; session_id?: unknown };
+  let payload: { message?: unknown; session_id?: unknown; workspace_id?: unknown };
   try {
     payload = await req.json();
   } catch {
@@ -47,11 +47,12 @@ Deno.serve(async (req: Request) => {
   }
   const message = typeof payload.message === "string" ? payload.message.trim() : "";
   const sessionId = typeof payload.session_id === "string" ? payload.session_id : "";
-  if (!message || message.length > MAX_MESSAGE_CHARS || !isUuid(sessionId)) {
+  const workspaceId = typeof payload.workspace_id === "string" ? payload.workspace_id : "personal";
+  if (!message || message.length > MAX_MESSAGE_CHARS || !isUuid(sessionId) || !["personal", "professional"].includes(workspaceId)) {
     return json(400, {
       ok: false,
       code: "INVALID_INPUT",
-      message: `Message requis (1-${MAX_MESSAGE_CHARS} caractères) et session_id UUID obligatoire.`,
+      message: `Message requis (1-${MAX_MESSAGE_CHARS} caractères), session_id UUID et espace personnel/professionnel obligatoires.`,
     });
   }
 
@@ -80,11 +81,13 @@ Deno.serve(async (req: Request) => {
   historyUrl.searchParams.set("select", "role,content");
   historyUrl.searchParams.set("user_id", `eq.${userId}`);
   historyUrl.searchParams.set("session_id", `eq.${sessionId}`);
+  historyUrl.searchParams.set("workspace_id", `eq.${workspaceId}`);
   historyUrl.searchParams.set("order", "id.desc");
   historyUrl.searchParams.set("limit", String(MAX_HISTORY));
   const memoryUrl = new URL(`${supabaseUrl}/rest/v1/sowia_memory_items`);
   memoryUrl.searchParams.set("select", "content");
   memoryUrl.searchParams.set("user_id", `eq.${userId}`);
+  memoryUrl.searchParams.set("workspace_id", `eq.${workspaceId}`);
   memoryUrl.searchParams.set("order", "created_at.desc");
   memoryUrl.searchParams.set("limit", "20");
 
@@ -148,15 +151,33 @@ Deno.serve(async (req: Request) => {
     return json(502, { ok: false, code: "EMPTY_AI_RESPONSE" });
   }
 
+  // Register the conversation in the existing user/workspace registry.
+  const conversationResponse = await fetch(
+    `${supabaseUrl}/rest/v1/sowia_conversations?on_conflict=user_id,workspace_id,session_id`,
+    {
+      method: "POST",
+      headers: { ...restHeaders, Prefer: "resolution=ignore-duplicates,return=minimal" },
+      body: JSON.stringify({
+        user_id: userId,
+        workspace_id: workspaceId,
+        session_id: sessionId,
+        title: message.slice(0, 96) || "Nouvelle conversation",
+      }),
+    },
+  );
+  if (!conversationResponse.ok) {
+    return json(403, { ok: false, code: "WORKSPACE_ACCESS_DENIED" });
+  }
+
   const insertResponse = await fetch(`${supabaseUrl}/rest/v1/sowia_messages`, {
     method: "POST",
     headers: { ...restHeaders, Prefer: "return=minimal" },
     body: JSON.stringify([
-      { user_id: userId, session_id: sessionId, role: "user", content: message },
-      { user_id: userId, session_id: sessionId, role: "assistant", content: answer.trim() },
+      { user_id: userId, workspace_id: workspaceId, session_id: sessionId, role: "user", content: message },
+      { user_id: userId, workspace_id: workspaceId, session_id: sessionId, role: "assistant", content: answer.trim() },
     ]),
   });
   if (!insertResponse.ok) return json(503, { ok: false, code: "MESSAGE_SAVE_FAILED" });
 
-  return json(200, { ok: true, session_id: sessionId, answer: answer.trim(), model });
+  return json(200, { ok: true, session_id: sessionId, workspace_id: workspaceId, answer: answer.trim(), model });
 });
