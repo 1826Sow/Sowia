@@ -2072,7 +2072,7 @@ elif page == "Assistant IA":
             )
             conversation_search = st.text_input(
                 "Rechercher une conversation par son titre",
-                key="sowia_conversation_search",
+                key=f"sowia_conversation_search_{current_user.id}_{active_workspace_id}",
                 placeholder="Saisir quelques mots du titre…",
             ).strip().casefold()
             filtered_conversations = [
@@ -2092,7 +2092,7 @@ elif page == "Assistant IA":
                         format_func=lambda value: cloud_storage.conversation_option_label(
                             conversation_by_id.get(value, {})
                         ),
-                        key="sowia_conversation_selector",
+                        key=f"sowia_conversation_selector_{current_user.id}_{active_workspace_id}",
                     )
                     if selected_session_id != current_session_id:
                         st.session_state.session_id = selected_session_id
