@@ -61,12 +61,17 @@ jobs:
           value = os.environ["ANDROID_KEYSTORE_BASE64"].strip()
           if value.startswith("data:") and "," in value:
               value = value.split(",", 1)[1]
-          value = value.replace("\\r", "").replace("\\n", "")
-          value = "".join(value.split()).replace("-", "+").replace("_", "/")
+          # Remove separators/quotes accidentally included when copying the value.
+          # Keep the Base64 alphabet and padding; keytool below rejects corrupted data.
+          value = "".join(value.split())
+          if value.lower().startswith("base64:"):
+              value = value.split(":", 1)[1]
+          value = value.replace("-", "+").replace("_", "/")
+          value = re.sub(r"[^A-Za-z0-9+/=]", "", value)
           value = value.rstrip("=")
 
           if not value or not re.fullmatch(r"[A-Za-z0-9+/]+", value):
-              raise SystemExit("ANDROID_KEYSTORE_BASE64 contains characters that are not valid Base64.")
+              raise SystemExit("ANDROID_KEYSTORE_BASE64 is empty after removing copy/paste separators.")
           value += "=" * (-len(value) % 4)
           try:
               decoded = base64.b64decode(value, validate=True)
