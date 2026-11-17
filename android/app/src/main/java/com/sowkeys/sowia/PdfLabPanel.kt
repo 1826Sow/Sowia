@@ -6,6 +6,12 @@ import android.provider.OpenableColumns
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
+import com.tom_roush.pdfbox.rendering.ImageType
+import com.tom_roush.pdfbox.rendering.PDFRenderer
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import kotlinx.coroutines.tasks.await
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -165,9 +171,43 @@ private class PdfStorageClient(private val context: Context) {
             }
             PDFBoxResourceLoader.init(context)
             PDDocument.load(bytes).use { documentPdf ->
-                val text = PDFTextStripper().getText(documentPdf).trim()
-                require(text.isNotBlank()) { "Aucun texte extractible. Ce PDF est peut-être un scan image." }
-                text.take(4800)
+                val embeddedText = PDFTextStripper().getText(documentPdf).trim()
+                val finalText = if (embeddedText.isNotBlank()) {
+                    embeddedText
+                } else {
+                    val pageCount = documentPdf.numberOfPages
+                    require(pageCount > 0) { "Le PDF ne contient aucune page." }
+                    val pagesToScan = minOf(pageCount, 10)
+                    val renderer = PDFRenderer(documentPdf)
+                    val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+                    try {
+                        buildString {
+                            for (pageIndex in 0 until pagesToScan) {
+                                val bitmap = renderer.renderImageWithDPI(pageIndex, 120f, ImageType.RGB)
+                                try {
+                                    val pageText = recognizer.process(InputImage.fromBitmap(bitmap, 0)).await().text
+                                    if (pageText.isNotBlank()) {
+                                        append("\\n[Page ${pageIndex + 1}]\\n")
+                                        append(pageText)
+                                    }
+                                } finally {
+                                    bitmap.recycle()
+                                }
+                            }
+                        }.trim().also { ocrText ->
+                            require(ocrText.isNotBlank()) {
+                                "Aucun texte détecté, même après OCR. Vérifiez la qualité du scan."
+                            }
+                        }.let { ocrText ->
+                            "[Texte obtenu par OCR local — ${pagesToScan} page(s)" +
+                                if (pageCount > pagesToScan) ", premières pages uniquement]" else "]" +
+                                "\\n" + ocrText
+                        }
+                    } finally {
+                        recognizer.close()
+                    }
+                }
+                finalText.take(4800)
             }
         } finally {
             request.disconnect()
