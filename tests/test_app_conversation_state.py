@@ -81,3 +81,19 @@ def test_pending_assistant_reply_does_not_overwrite_another_conversation():
     source = Path("app.py").read_text(encoding="utf-8")
     assert 'pending_responses[str(st.session_state.session_id)] = reply' in source
     assert 'pending_assistant_responses.get(str(st.session_state.session_id))' in source
+
+
+def test_conversation_history_search_filters_titles_and_handles_no_match():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert 'limit=100' in source
+    assert 'key="sowia_conversation_search"' in source
+    assert 'conversation_search in str(item.get("title") or "").casefold()' in source
+    assert 'if conversation_ids:' in source
+    assert "Aucune conversation ne correspond à cette recherche." in source
+
+
+def test_conversation_search_keeps_switching_limited_to_filtered_results():
+    source = Path("app.py").read_text(encoding="utf-8")
+    selector = source.split('selected_session_id = st.selectbox(', 1)[1].split('if selected_session_id != current_session_id:', 1)[0]
+    assert 'options=conversation_ids' in selector
+    assert 'conversation_by_id.get(value, {})' in selector
