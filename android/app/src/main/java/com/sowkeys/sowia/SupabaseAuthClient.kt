@@ -148,7 +148,7 @@ class SupabaseAuthClient(context: Context) {
      */
     suspend fun trackAppOpen() = withContext(Dispatchers.IO) {
         if (!isConfigured) return@withContext
-        val session = runCatching { validSession() }.getOrNull() ?: return@withContext
+        val session = currentSession() ?: return@withContext
         val installationId = preferences.getString("analytics_installation_id", null)
             ?: UUID.randomUUID().toString().also {
                 preferences.edit().putString("analytics_installation_id", it).apply()
