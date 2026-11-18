@@ -57,6 +57,7 @@ def aggregate_events(events, now=None):
     now = now or datetime.now(timezone.utc)
     day_start = now - timedelta(days=1)
     month_start = now - timedelta(days=30)
+    chart_start = now - timedelta(days=90)
     installs = set()
     active_today = set()
     active_30d = set()
@@ -85,9 +86,10 @@ def aggregate_events(events, now=None):
             elif event_type == "web_session" and platform == "web":
                 web_sessions += 1
 
+            if user_id and created >= chart_start:
+                daily_users[created.date().isoformat()].add(user_id)
             if user_id and created >= month_start:
                 active_30d.add(user_id)
-                daily_users[created.date().isoformat()].add(user_id)
             if user_id and created >= day_start:
                 active_today.add(user_id)
         except (KeyError, TypeError, ValueError):
