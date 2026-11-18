@@ -278,7 +278,7 @@ private fun AccountPanel() {
                 Button(
                     onClick = {
                         busy = true
-                        status = ""
+                        status = "Connexion en cours…"
                         scope.launch {
                             try {
                                 session = auth.signIn(email, password)
