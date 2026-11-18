@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   bundle-release:
@@ -35,98 +36,52 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      # Pull-request builds stay unsigned. Signing secrets are only read
-      # for pushes to main and manually dispatched release builds.
-      - name: Decode and validate Android upload keystore
+      # Pull-request builds stay unsigned. Release builds retrieve the JKS
+      # and credentials from the successful keystore-generation artifact.
+      - name: Find latest successful keystore generation
         if: github.event_name != 'pull_request'
+        id: keystore_run
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
-            echo "Android signing secrets are missing. Add all four repository secrets before running a signed build."
+          RUN_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/generate-android-keystore.yml/runs?status=completed&per_page=20" --jq '.workflow_runs | map(select(.conclusion == "success")) | .[0].id')"
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "::error::No successful Android keystore generation run was found."
             exit 1
           fi
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "Found a successful Android keystore generation run."
 
-          # Decode Base64 and detect both single- and double-encoded keystore files.
-          python3 - <<'PY'
-          import base64
-          import os
-          import re
-          from pathlib import Path
+      - name: Download Android signing artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/download-artifact@v4
+        with:
+          name: sowia-android-signing-material
+          run-id: ${{ steps.keystore_run.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: signing-output
 
-          value = os.environ["ANDROID_KEYSTORE_BASE64"].strip()
-          if value.startswith("data:") and "," in value:
-              value = value.split(",", 1)[1]
-          value = "".join(value.split())
-          if value.lower().startswith("base64:"):
-              value = value.split(":", 1)[1]
-          value = value.replace("-", "+").replace("_", "/")
-          value = re.sub(r"[^A-Za-z0-9+/=]", "", value).replace("=", "")
-          if not value or not re.fullmatch(r"[A-Za-z0-9+/]+", value):
-              raise SystemExit("ANDROID_KEYSTORE_BASE64 is empty or contains no Base64 payload.")
-          value += "=" * (-len(value) % 4)
-          try:
-              decoded = base64.b64decode(value, validate=True)
-          except Exception:
-              raise SystemExit("ANDROID_KEYSTORE_BASE64 could not be decoded.")
-
-          print(f"First decode size: {len(decoded)} bytes")
-          print(f"First decode header: {decoded[:4].hex().upper()}")
-
-          # Some mobile converters encode an already-Base64 text value.
-          # If stage one is not a keystore, safely test one additional layer.
-          if decoded[:4] != bytes.fromhex("FEEDFEED"):
-              try:
-                  nested = decoded.decode("ascii").strip()
-                  nested = "".join(nested.split())
-                  nested = nested.replace("-", "+").replace("_", "/")
-                  nested = re.sub(r"[^A-Za-z0-9+/=]", "", nested).replace("=", "")
-                  if nested and re.fullmatch(r"[A-Za-z0-9+/]+", nested):
-                      nested += "=" * (-len(nested) % 4)
-                      second = base64.b64decode(nested, validate=True)
-                      print(f"Second decode size: {len(second)} bytes")
-                      print(f"Second decode header: {second[:4].hex().upper()}")
-                      if second[:4] == bytes.fromhex("FEEDFEED"):
-                          decoded = second
-                          print("Detected and corrected double Base64 encoding.")
-              except (UnicodeDecodeError, ValueError):
-                  pass
-
-          if not decoded:
-              raise SystemExit("Decoded Android keystore is empty.")
-          if decoded[:4] != bytes.fromhex("FEEDFEED"):
-              raise SystemExit("Neither the first nor second Base64 decode produced a JKS file. The secret does not currently contain the original JKS bytes.")
-          Path(os.environ["RUNNER_TEMP"], "sowia-upload.jks").write_bytes(decoded)
-          PY
-
-          KEYSTORE="$RUNNER_TEMP/sowia-upload.jks"
-          # Capture both output streams: keytool may print diagnostics on stdout.
-          if ! keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" >"$RUNNER_TEMP/keytool-store.err" 2>&1; then
-            echo "::error::The decoded file has a JKS signature, but keytool could not open it with the configured keystore password. Check that password against the original JKS; the file itself may also be damaged."
-            cat "$RUNNER_TEMP/keytool-store.err"
-            exit 1
-          fi
-          if ! keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >"$RUNNER_TEMP/keytool-alias.err" 2>&1; then
-            echo "::error::The JKS opens successfully, but the configured key alias was not found. Available aliases:"
-            keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" | grep '^[^,]*,' | sed 's/,.*//'
-            cat "$RUNNER_TEMP/keytool-alias.err"
-            exit 1
-          fi
-          if ! keytool -certreq -storetype JKS -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -keypass "$ANDROID_KEY_PASSWORD" -alias "$ANDROID_KEY_ALIAS" -dname "CN=SOWIA Android Upload" -file "$RUNNER_TEMP/sowia-signing-check.csr" >"$RUNNER_TEMP/keytool-key.err" 2>&1; then
-            echo "::error::The JKS and alias are valid, but the configured key password could not unlock the signing key."
-            cat "$RUNNER_TEMP/keytool-key.err"
-            exit 1
-          fi
-          echo "Android JKS, keystore password, alias, and key password validated successfully."
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/sowia-upload.jks" >> "$GITHUB_ENV"
-          echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-          echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
-          echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
-          echo "Android keystore decoded and validated successfully."
+      - name: Validate Android upload keystore
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          test -s signing-output/sowia-upload.jks
+          test -s signing-output/KEYSTORE_CREDENTIALS.txt
+          set -a
+          source signing-output/KEYSTORE_CREDENTIALS.txt
+          set +a
+          KEYSTORE="$GITHUB_WORKSPACE/signing-output/sowia-upload.jks"
+          keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASSWORD" >/dev/null
+          keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+          keytool -certreq -storetype JKS -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" -alias "$KEY_ALIAS" -dname "CN=SOWIA Android Upload" -file "$RUNNER_TEMP/sowia-signing-check.csr" >/dev/null
+          {
+            echo "ANDROID_KEYSTORE_PATH=$KEYSTORE"
+            echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "Android keystore, alias, and both passwords validated successfully."
 
       - name: Build release bundle
         run: gradle -p android :app:bundleRelease
@@ -138,8 +93,6 @@ jobs:
           path: android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 14
-
-# Trigger a signed release build after Android signing secrets are configured.
 
   build-debug-apk:
     name: Build Android debug APK (independent of release signing)
