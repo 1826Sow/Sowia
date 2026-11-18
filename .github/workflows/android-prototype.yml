@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "android/supabase-session-hardening"
+      - "android/vitrine-preview-isolated"
     paths:
       - "android/**"
       - ".github/workflows/android-prototype.yml"
