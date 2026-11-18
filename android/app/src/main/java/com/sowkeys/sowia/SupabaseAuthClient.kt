@@ -34,7 +34,6 @@ private class SupabaseRequestException(
  * Only the public publishable key is used; secret and AI provider keys never ship in the app.
  */
 class SupabaseAuthClient(context: Context) {
-    private val refreshMutex = Mutex()
     private val preferences = context.applicationContext
         .getSharedPreferences("sowia_secure_session", Context.MODE_PRIVATE)
 
@@ -342,6 +341,8 @@ class SupabaseAuthClient(context: Context) {
     }
 
     companion object {
+        // One lock shared by every SupabaseAuthClient instance in this app process.
+        private val refreshMutex = Mutex()
         private const val KEY_ALIAS = "sowia.supabase.session.v1"
     }
 }
