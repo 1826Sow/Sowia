@@ -37,7 +37,7 @@ android {
         versionCode = 1
         versionName = "0.2.0"
         buildConfigField("String", "SUPABASE_URL", buildConfigString(configValue("SOWIA_SUPABASE_URL")))
-        buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(configValue("SOWIA_SUPABASE_ANON_KEY")))
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", buildConfigString(configValue("SOWIA_SUPABASE_PUBLISHABLE_KEY")))
     }
 
     signingConfigs {
