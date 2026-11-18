@@ -579,62 +579,6 @@ if cloud_mode:
                                 st.caption("Diagnostic : " + type(signup_exc).__name__ + ((" · " + signup_code[:80]) if signup_code else ""))
 
 
-            st.divider()
-            st.markdown("#### Connexion par e-mail")
-            st.caption(
-                "Saisissez l'adresse e-mail déjà associée à votre compte SOW IA, "
-                "puis validez. Un lien sécurisé à usage unique sera envoyé ; "
-                "aucun nouveau compte ne sera créé."
-            )
-            email_address = st.text_input(
-                "Adresse e-mail du compte SOW IA",
-                value=str(st.session_state.get("sowia_email_login_pending", "") or ""),
-                max_chars=254,
-                key="sowia_email_login_address",
-            )
-            if st.button(
-                "Valider",
-                key="sowia_send_email_link",
-                type="primary",
-                use_container_width=True,
-            ):
-                try:
-                    candidate_login_email = str(email_address or "").strip().lower()
-                    if (
-                        len(candidate_login_email) > 254
-                        or candidate_login_email.count("@") != 1
-                        or candidate_login_email.startswith("@")
-                        or candidate_login_email.endswith("@")
-                        or "." not in candidate_login_email.rsplit("@", 1)[-1]
-                    ):
-                        st.error("Saisissez une adresse e-mail valide.")
-                    else:
-                        if not redirect_to:
-                            raise ValueError("URL HTTPS de retour invalide")
-                        else:
-                            email_client = create_email_user_client()
-                            email_magic_link(email_client, candidate_login_email, redirect_to)
-                            st.session_state["sowia_email_login_pending"] = candidate_login_email
-                            st.success(
-                                "Si cette adresse correspond à un compte SOW IA, "
-                                "un lien sécurisé vient d'être envoyé. Consultez aussi "
-                                "les courriers indésirables."
-                            )
-                except Exception as email_exc:
-                    st.error("Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
-                    safe_message = str(getattr(email_exc, "message", "") or str(email_exc)).strip()
-                    safe_message = " ".join(safe_message.split())[:240]
-                    safe_code = str(getattr(email_exc, "code", "") or "").strip()[:80]
-                    safe_status = getattr(email_exc, "status", None)
-                    diagnostic_parts = [type(email_exc).__name__]
-                    if safe_code:
-                        diagnostic_parts.append("code=" + safe_code)
-                    if safe_status is not None:
-                        diagnostic_parts.append("status=" + str(safe_status)[:12])
-                    if safe_message:
-                        diagnostic_parts.append("message=" + safe_message)
-                    st.caption("Diagnostic e-mail : " + " · ".join(diagnostic_parts))
-
             st.markdown("#### Connexion avec mot de passe")
             st.caption(
                 "Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter "
@@ -695,6 +639,63 @@ if cloud_mode:
                         )
                         if safe_code:
                             st.caption("Diagnostic : " + type(password_exc).__name__ + " · " + safe_code)
+
+            st.divider()
+            st.markdown("#### Connexion par e-mail")
+            st.caption(
+                "Saisissez l'adresse e-mail déjà associée à votre compte SOW IA, "
+                "puis validez. Un lien sécurisé à usage unique sera envoyé ; "
+                "aucun nouveau compte ne sera créé."
+            )
+            email_address = st.text_input(
+                "Adresse e-mail du compte SOW IA",
+                value=str(st.session_state.get("sowia_email_login_pending", "") or ""),
+                max_chars=254,
+                key="sowia_email_login_address",
+            )
+            if st.button(
+                "Valider",
+                key="sowia_send_email_link",
+                type="primary",
+                use_container_width=True,
+            ):
+                try:
+                    candidate_login_email = str(email_address or "").strip().lower()
+                    if (
+                        len(candidate_login_email) > 254
+                        or candidate_login_email.count("@") != 1
+                        or candidate_login_email.startswith("@")
+                        or candidate_login_email.endswith("@")
+                        or "." not in candidate_login_email.rsplit("@", 1)[-1]
+                    ):
+                        st.error("Saisissez une adresse e-mail valide.")
+                    else:
+                        if not redirect_to:
+                            raise ValueError("URL HTTPS de retour invalide")
+                        else:
+                            email_client = create_email_user_client()
+                            email_magic_link(email_client, candidate_login_email, redirect_to)
+                            st.session_state["sowia_email_login_pending"] = candidate_login_email
+                            st.success(
+                                "Si cette adresse correspond à un compte SOW IA, "
+                                "un lien sécurisé vient d'être envoyé. Consultez aussi "
+                                "les courriers indésirables."
+                            )
+                except Exception as email_exc:
+                    st.error("Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
+                    safe_message = str(getattr(email_exc, "message", "") or str(email_exc)).strip()
+                    safe_message = " ".join(safe_message.split())[:240]
+                    safe_code = str(getattr(email_exc, "code", "") or "").strip()[:80]
+                    safe_status = getattr(email_exc, "status", None)
+                    diagnostic_parts = [type(email_exc).__name__]
+                    if safe_code:
+                        diagnostic_parts.append("code=" + safe_code)
+                    if safe_status is not None:
+                        diagnostic_parts.append("status=" + str(safe_status)[:12])
+                    if safe_message:
+                        diagnostic_parts.append("message=" + safe_message)
+                    st.caption("Diagnostic e-mail : " + " · ".join(diagnostic_parts))
+
         else:
             # Preserve the established production sign-in method by default.
             try:
