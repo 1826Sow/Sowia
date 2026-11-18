@@ -445,7 +445,7 @@ if cloud_mode:
                 clear_private_session_state(st.session_state)
                 st.session_state["sowia_authenticated_user_id"] = authenticated_user_id
                 st.session_state.pop("sowia_workspace_session_ids", None)
-                st.session_state.pop(f"sowia_conversation_selector_{current_user.id}_{workspace_id}", None)
+                st.session_state.pop(f"sowia_conversation_selector_{current_user.id}_{st.session_state.get('workspace_id', 'personal')}", None)
                 st.session_state.session_id = str(
                     uuid.uuid5(uuid.NAMESPACE_URL, f"sowia-user:{current_user.id}")
                 )
