@@ -25,8 +25,8 @@ def test_premium_admin_client_is_created_only_inside_conditional_flows():
     ]
     # The one-time PayPal return no longer creates a Streamlit-side admin
     # client: entitlement writes now happen only inside the authenticated
-    # Supabase Edge Function. Four remaining admin-only flows are expected.
-    assert len(admin_calls) == 4
+    # Supabase Edge Function. Five remaining admin-only flows are expected.
+    assert len(admin_calls) == 5
 
     for call in admin_calls:
         ancestor = parents.get(call)
