@@ -17,6 +17,15 @@ fun configValue(name: String): String =
 fun buildConfigString(value: String): String =
     "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
+val previewStoreFile = System.getenv("ANDROID_DEBUG_KEYSTORE_PATH")?.trim().orEmpty()
+val previewStorePassword = System.getenv("ANDROID_DEBUG_KEYSTORE_PASSWORD").orEmpty()
+val previewKeyAlias = System.getenv("ANDROID_DEBUG_KEY_ALIAS").orEmpty()
+val previewKeyPassword = System.getenv("ANDROID_DEBUG_KEY_PASSWORD").orEmpty()
+val hasPreviewSigning = previewStoreFile.isNotBlank() &&
+    previewStorePassword.isNotBlank() &&
+    previewKeyAlias.isNotBlank() &&
+    previewKeyPassword.isNotBlank()
+
 val signingStoreFile = System.getenv("ANDROID_KEYSTORE_PATH")?.trim().orEmpty()
 val signingStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD").orEmpty()
 val signingKeyAlias = System.getenv("ANDROID_KEY_ALIAS").orEmpty()
@@ -41,6 +50,15 @@ android {
     }
 
     signingConfigs {
+        create("preview") {
+            if (hasPreviewSigning) {
+                storeFile = file(previewStoreFile)
+                storeType = "JKS"
+                storePassword = previewStorePassword
+                keyAlias = previewKeyAlias
+                keyPassword = previewKeyPassword
+            }
+        }
         create("release") {
             if (hasReleaseSigning) {
                 storeFile = file(signingStoreFile)
@@ -53,6 +71,15 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            // A parallel preview install must never replace the user's existing production app.
+            applicationIdSuffix = ".preview2"
+            if (hasPreviewSigning) {
+                signingConfig = signingConfigs.getByName("preview")
+            } else if (System.getenv("CI") == "true") {
+                throw GradleException("Stable preview signing secrets are required in CI.")
+            }
+        }
         getByName("release") {
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")

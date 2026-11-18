@@ -6,6 +6,7 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -20,6 +21,7 @@ data class SowiaSession(
     val refreshToken: String,
     val userId: String,
     val email: String,
+    val expiresAt: Long = 0L,
 )
 
 private class SupabaseRequestException(
@@ -59,6 +61,8 @@ class SupabaseAuthClient(context: Context) {
                 refreshToken = response.optString("refresh_token"),
                 userId = user.optString("id"),
                 email = user.optString("email", email.trim()),
+                expiresAt = response.optLong("expires_at").takeIf { it > 0L }
+                    ?: (System.currentTimeMillis() / 1000L + response.optLong("expires_in", 3600L)),
             )
             require(session.accessToken.isNotBlank() && session.refreshToken.isNotBlank() &&
                 session.userId.isNotBlank()) {
@@ -76,6 +80,7 @@ class SupabaseAuthClient(context: Context) {
             json.getString("refresh_token"),
             json.getString("user_id"),
             json.optString("email"),
+            json.optLong("expires_at", 0L),
         )
     }.getOrNull()
 
@@ -101,6 +106,8 @@ class SupabaseAuthClient(context: Context) {
             refreshToken = response.optString("refresh_token"),
             userId = user?.optString("id").orEmpty().ifBlank { previous.userId },
             email = user?.optString("email").orEmpty().ifBlank { previous.email },
+            expiresAt = response.optLong("expires_at").takeIf { it > 0L }
+                ?: (System.currentTimeMillis() / 1000L + response.optLong("expires_in", 3600L)),
         )
         require(refreshed.accessToken.isNotBlank() && refreshed.refreshToken.isNotBlank()) {
             "Le renouvellement de session a renvoyé une réponse incomplète."
@@ -110,9 +117,22 @@ class SupabaseAuthClient(context: Context) {
     }
 
 
+    suspend fun validSession(): SowiaSession? {
+        refreshMutex.lock()
+        try {
+            // Re-read after acquiring the lock: another request may already have
+            // rotated the refresh token while this request was waiting.
+            val session = currentSession() ?: return null
+            val now = System.currentTimeMillis() / 1000L
+            return if (session.expiresAt > now + 60L) session else refreshSession()
+        } finally {
+            refreshMutex.unlock()
+        }
+    }
+
     suspend fun checkMobileHealth(): String = withContext(Dispatchers.IO) {
         check(isConfigured) { "Configuration Supabase absente." }
-        val session = currentSession() ?: throw IllegalStateException("Connectez-vous avant le test.")
+        val session = validSession() ?: throw IllegalStateException("Connectez-vous avant le test.")
         val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/functions/v1/mobile-health")
             .openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
@@ -148,7 +168,7 @@ class SupabaseAuthClient(context: Context) {
     private suspend fun loadRows(table: String, fields: String, workspaceId: String): List<JSONObject> =
         withContext(Dispatchers.IO) {
             check(isConfigured) { "Configuration Supabase absente." }
-            val session = currentSession()
+            val session = validSession()
                 ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
             require(workspaceId == "personal" || workspaceId == "professional") {
                 "Espace de travail invalide."
@@ -182,7 +202,7 @@ class SupabaseAuthClient(context: Context) {
     suspend fun loadConversationMessages(sessionId: String, workspaceId: String = "personal"): List<JSONObject> =
         withContext(Dispatchers.IO) {
             check(isConfigured) { "Configuration Supabase absente." }
-            val session = currentSession()
+            val session = validSession()
                 ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
             require(workspaceId == "personal" || workspaceId == "professional")
             require(sessionId.matches(Regex("[0-9a-fA-F-]{36}"))) { "Identifiant de conversation invalide." }
@@ -217,7 +237,7 @@ class SupabaseAuthClient(context: Context) {
 
     suspend fun sendChatMessage(sessionId: String, message: String, workspaceId: String = "personal"): String = withContext(Dispatchers.IO) {
         check(isConfigured) { "Configuration Supabase absente." }
-        val session = currentSession() ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
+        val session = validSession() ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
         require(sessionId.isNotBlank() && message.isNotBlank()) { "Le message ne peut pas être vide." }
         val response = request(
             "/functions/v1/mobile-chat",
@@ -243,6 +263,7 @@ class SupabaseAuthClient(context: Context) {
             .put("refresh_token", session.refreshToken)
             .put("user_id", session.userId)
             .put("email", session.email)
+            .put("expires_at", session.expiresAt)
         preferences.edit().putString("session", encrypt(json.toString())).apply()
     }
 
@@ -320,6 +341,8 @@ class SupabaseAuthClient(context: Context) {
     }
 
     companion object {
+        // One lock shared by every SupabaseAuthClient instance in this app process.
+        private val refreshMutex = Mutex()
         private const val KEY_ALIAS = "sowia.supabase.session.v1"
     }
 }

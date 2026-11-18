@@ -99,8 +99,45 @@ private fun SowiaPrototype() {
                     Text(
                         "Socle Android natif — connexion sécurisée en préparation",
                         color = Muted,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
+                        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
                     )
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Panel),
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text("Choisissez votre espace", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Button(
+                                    onClick = { selectedWorkspace = "personal" },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (selectedWorkspace == "personal") Cyan else Navy,
+                                        contentColor = if (selectedWorkspace == "personal") Navy else Color.White,
+                                    ),
+                                ) { Text("Personnel") }
+                                Button(
+                                    onClick = { selectedWorkspace = "professional" },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (selectedWorkspace == "professional") Cyan else Navy,
+                                        contentColor = if (selectedWorkspace == "professional") Navy else Color.White,
+                                    ),
+                                ) { Text("Professionnel") }
+                            }
+                            Button(
+                                onClick = { navigate("Assistant") },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                            ) { Text("Valider") }
+                        }
+                    }
                     sections.forEach { item ->
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
@@ -166,7 +203,7 @@ private fun AccountPanel() {
         if (session != null && auth.isConfigured) {
             busy = true
             try {
-                session = auth.refreshSession()
+                session = auth.validSession()
                 status = if (session == null) {
                     "Session expirée. Reconnectez-vous pour continuer."
                 } else {
@@ -241,7 +278,7 @@ private fun AccountPanel() {
                 Button(
                     onClick = {
                         busy = true
-                        status = ""
+                        status = "Connexion en cours…"
                         scope.launch {
                             try {
                                 session = auth.signIn(email, password)
@@ -257,7 +294,7 @@ private fun AccountPanel() {
                     enabled = !busy && auth.isConfigured,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
-                ) { Text(if (busy) "Connexion…" else "Se connecter") }
+                ) { Text(if (busy) "Validation…" else "Valider") }
                 if (!auth.isConfigured) {
                     Text(
                         "Configuration Supabase à fournir à la compilation. La clé publique est utilisée ; aucune clé secrète serveur n'est intégrée.",
@@ -287,7 +324,7 @@ private fun AssistantPanel(initialSessionId: String?, workspaceId: String, onOpe
 
     LaunchedEffect(auth) {
         if (session.value != null && auth.isConfigured) {
-            runCatching { session.value = auth.refreshSession() }
+            runCatching { session.value = auth.validSession() }
         }
     }
 
