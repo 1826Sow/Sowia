@@ -24,7 +24,7 @@ data class SowiaSession(
 
 /**
  * Minimal Supabase Auth client for the native Android shell.
- * Only the public anon key is used; service-role and AI provider keys never ship in the app.
+ * Only the public publishable key is used; secret and AI provider keys never ship in the app.
  */
 class SupabaseAuthClient(context: Context) {
     private val preferences = context.applicationContext
@@ -32,7 +32,7 @@ class SupabaseAuthClient(context: Context) {
 
     val isConfigured: Boolean
         get() = BuildConfig.SUPABASE_URL.startsWith("https://") &&
-            BuildConfig.SUPABASE_ANON_KEY.isNotBlank()
+            BuildConfig.SUPABASE_PUBLISHABLE_KEY.isNotBlank()
 
     suspend fun signIn(email: String, password: String): SowiaSession =
         withContext(Dispatchers.IO) {
@@ -105,7 +105,7 @@ class SupabaseAuthClient(context: Context) {
             requestMethod = "GET"
             connectTimeout = 12000
             readTimeout = 15000
-            setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
             setRequestProperty("Authorization", "Bearer ${session.accessToken}")
             setRequestProperty("Accept", "application/json")
         }
@@ -148,7 +148,7 @@ class SupabaseAuthClient(context: Context) {
                 requestMethod = "GET"
                 connectTimeout = 12000
                 readTimeout = 15000
-                setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+                setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
                 setRequestProperty("Authorization", "Bearer ${session.accessToken}")
                 setRequestProperty("Accept", "application/json")
             }
@@ -181,7 +181,7 @@ class SupabaseAuthClient(context: Context) {
                 requestMethod = "GET"
                 connectTimeout = 12000
                 readTimeout = 15000
-                setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+                setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
                 setRequestProperty("Authorization", "Bearer ${session.accessToken}")
                 setRequestProperty("Accept", "application/json")
             }
@@ -240,7 +240,7 @@ class SupabaseAuthClient(context: Context) {
             connectTimeout = 15000
             readTimeout = 20000
             doOutput = true
-            setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("Accept", "application/json")
             if (!bearer.isNullOrBlank()) setRequestProperty("Authorization", "Bearer $bearer")
