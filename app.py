@@ -53,6 +53,7 @@ import sowia_global_messenger
 import sowia_global_alerts
 import sowia_business_card
 import project_registry_ui
+import sowia_analytics
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -830,6 +831,18 @@ def extract_explicit_memory_request(message):
         return None
     return content
 
+# One privacy-minimal event per authenticated Streamlit browser session.
+# Tracking failures are intentionally non-blocking and never affect authentication.
+if cloud_mode and current_user is not None and not st.session_state.get("sowia_web_analytics_recorded"):
+    st.session_state["sowia_web_analytics_recorded"] = True
+    sowia_analytics.record_event(
+        supabase_client,
+        str(current_user.id),
+        "web_session",
+        "web",
+        session_id=st.session_state.setdefault("sowia_web_analytics_session_id", str(uuid.uuid4())),
+    )
+
 NAV_GROUPS = {
     "👤 Personnel & documents": [
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
@@ -863,7 +876,7 @@ NAV_GROUPS = {
         "Abonnement",
     ],
     "🛡️ Administration & assistance": [
-        "Centre de notifications", "SOWIA CONTROL CENTER", "Paramètres", "Aide",
+        "Centre de notifications", "SOWIA CONTROL CENTER", "Statistiques & audience", "Paramètres", "Aide",
     ],
 }
 
@@ -8128,6 +8141,64 @@ elif page == "Centre de notifications":
 
     st.divider()
     st.caption("Ce centre regroupe les données déjà enregistrées. Il n'envoie pas d'e-mail, de SMS ou de notification push et ne surveille pas les événements en arrière-plan.")
+
+
+elif page == "Statistiques & audience":
+    st.subheader("📊 Statistiques & audience SOW IA")
+    st.caption(
+        "Indicateurs agrégés de fréquentation. Aucun message, document, e-mail "
+        "ou contenu personnel n'est collecté par ce suivi."
+    )
+    admin_metadata = getattr(current_user, "app_metadata", None) or {} if current_user is not None else {}
+    is_sowia_admin = isinstance(admin_metadata, dict) and (
+        admin_metadata.get("sowia_admin") is True or admin_metadata.get("role") == "admin"
+    )
+    if not cloud_mode or current_user is None:
+        st.warning("Connectez-vous avec un compte administrateur SOW IA autorisé.")
+    elif not is_sowia_admin:
+        st.error("Accès refusé. Ces statistiques sont réservées aux administrateurs SOW IA.")
+    else:
+        try:
+            analytics_admin = premium_access.create_admin_client()
+        except Exception:
+            analytics_admin = None
+        if analytics_admin is None:
+            st.warning("Le client administratif Supabase n'est pas disponible. Aucun secret n'est demandé ici.")
+        else:
+            try:
+                analytics_events = sowia_analytics.load_events(analytics_admin, days=90, limit=10000)
+                analytics_metrics = sowia_analytics.aggregate_events(analytics_events)
+                metric_cols = st.columns(4)
+                metric_cols[0].metric("Premières ouvertures Android", analytics_metrics["android_installations"])
+                metric_cols[1].metric("Ouvertures Android", analytics_metrics["android_opens"])
+                metric_cols[2].metric("Sessions web", analytics_metrics["web_sessions"])
+                metric_cols[3].metric("Utilisateurs actifs · 30 j", analytics_metrics["active_30d"])
+                st.metric("Utilisateurs actifs · 24 h", analytics_metrics["active_today"])
+                st.info(
+                    "Les premières ouvertures Android sont comptées après connexion à un compte SOW IA. "
+                    "Un téléchargement APK brut n'est pas mesurable via un lien de fichier direct ; "
+                    "les téléchargements Play Store seront disponibles dans Play Console après publication."
+                )
+                if analytics_metrics["daily_active_users"]:
+                    st.markdown("#### Utilisateurs actifs par jour · 90 derniers jours")
+                    st.dataframe(
+                        analytics_metrics["daily_active_users"],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                else:
+                    st.caption("Aucune activité enregistrée pour le moment. Les statistiques commencent après activation du suivi.")
+                st.caption(
+                    f"{analytics_metrics['events_loaded']} événements chargés · "
+                    "fenêtre de 90 jours · affichage agrégé et en lecture seule."
+                )
+            except Exception as analytics_error:
+                st.warning(
+                    "Le suivi n'est pas encore activé dans Supabase. "
+                    "La table dédiée doit être créée avec le script supabase_analytics_events.sql. "
+                    "Aucune donnée existante n'a été modifiée."
+                )
+                st.caption("Diagnostic : " + type(analytics_error).__name__)
 
 
 elif page == "SOWIA CONTROL CENTER":
