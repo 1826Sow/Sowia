@@ -166,7 +166,7 @@ private fun AccountPanel() {
         if (session != null && auth.isConfigured) {
             busy = true
             try {
-                session = auth.refreshSession()
+                session = auth.validSession()
                 status = if (session == null) {
                     "Session expirée. Reconnectez-vous pour continuer."
                 } else {
@@ -287,7 +287,7 @@ private fun AssistantPanel(initialSessionId: String?, workspaceId: String, onOpe
 
     LaunchedEffect(auth) {
         if (session.value != null && auth.isConfigured) {
-            runCatching { session.value = auth.refreshSession() }
+            runCatching { session.value = auth.validSession() }
         }
     }
 
