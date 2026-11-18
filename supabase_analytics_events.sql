@@ -54,4 +54,4 @@ create policy "SOW IA admins can read analytics events"
 
 grant usage on schema public to authenticated;
 grant insert, select on public.sowia_analytics_events to authenticated;
-grant usage, select on sequence public.sowia_analytics_events_id_seq to authenticated;
+grant usage on sequence public.sowia_analytics_events_id_seq to authenticated;
