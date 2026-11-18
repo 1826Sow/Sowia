@@ -6,6 +6,7 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -33,6 +34,7 @@ private class SupabaseRequestException(
  * Only the public publishable key is used; secret and AI provider keys never ship in the app.
  */
 class SupabaseAuthClient(context: Context) {
+    private val refreshMutex = Mutex()
     private val preferences = context.applicationContext
         .getSharedPreferences("sowia_secure_session", Context.MODE_PRIVATE)
 
@@ -117,9 +119,16 @@ class SupabaseAuthClient(context: Context) {
 
 
     suspend fun validSession(): SowiaSession? {
-        val session = currentSession() ?: return null
-        val now = System.currentTimeMillis() / 1000L
-        return if (session.expiresAt > now + 60L) session else refreshSession()
+        refreshMutex.lock()
+        try {
+            // Re-read after acquiring the lock: another request may already have
+            // rotated the refresh token while this request was waiting.
+            val session = currentSession() ?: return null
+            val now = System.currentTimeMillis() / 1000L
+            return if (session.expiresAt > now + 60L) session else refreshSession()
+        } finally {
+            refreshMutex.unlock()
+        }
     }
 
     suspend fun checkMobileHealth(): String = withContext(Dispatchers.IO) {
