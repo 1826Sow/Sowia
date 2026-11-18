@@ -73,7 +73,7 @@ android {
     buildTypes {
         getByName("debug") {
             // A parallel preview install must never replace the user's existing production app.
-            applicationIdSuffix = ".preview"
+            applicationIdSuffix = ".preview2"
             if (hasPreviewSigning) {
                 signingConfig = signingConfigs.getByName("preview")
             } else if (System.getenv("CI") == "true") {
