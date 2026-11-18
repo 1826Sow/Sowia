@@ -51,6 +51,11 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun SowiaPrototype() {
+    val analyticsContext = LocalContext.current
+    val analyticsClient = remember(analyticsContext) { SupabaseAuthClient(analyticsContext) }
+    LaunchedEffect(analyticsClient) {
+        runCatching { analyticsClient.trackAppOpen() }
+    }
     val navigationStack = remember { mutableStateListOf("Accueil") }
     val screen = navigationStack.last()
     var selectedConversationId by remember { mutableStateOf<String?>(null) }
@@ -245,6 +250,7 @@ private fun AccountPanel() {
                         scope.launch {
                             try {
                                 session = auth.signIn(email, password)
+                                runCatching { auth.trackAppOpen() }
                                 password = ""
                                 status = "Connexion réussie."
                             } catch (error: Exception) {
