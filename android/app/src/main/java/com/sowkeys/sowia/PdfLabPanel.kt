@@ -61,7 +61,7 @@ private class PdfStorageClient(private val context: Context) {
             requestMethod = method
             connectTimeout = 15000
             readTimeout = 30000
-            setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+            setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
             setRequestProperty("Authorization", "Bearer $token")
             setRequestProperty("Accept", "application/json")
         }
