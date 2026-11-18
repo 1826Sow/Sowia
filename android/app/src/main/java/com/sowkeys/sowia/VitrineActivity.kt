@@ -11,8 +11,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -32,11 +33,9 @@ class VitrineActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                VitrineScreen(
-                    onEnter = {
-                        startActivity(Intent(this, MainActivity::class.java))
-                    }
-                )
+                VitrineScreen {
+                    startActivity(Intent(this, MainActivity::class.java))
+                }
             }
         }
     }
@@ -75,11 +74,7 @@ private fun VitrineScreen(onEnter: () -> Unit) {
                     contentColor = Color.White
                 )
             ) {
-                Text(
-                    "Entrer dans SOW IA",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Entrer dans SOW IA", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
