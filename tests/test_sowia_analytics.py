@@ -38,6 +38,7 @@ def test_aggregate_excludes_users_outside_active_windows():
     assert metrics["active_today"] == 0
     assert metrics["active_30d"] == 0
     assert metrics["web_sessions"] == 1
+    assert len(metrics["daily_active_users"]) == 1
 
 
 def test_record_event_rejects_invalid_payload_without_database_call():
