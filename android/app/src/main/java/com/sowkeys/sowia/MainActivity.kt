@@ -167,7 +167,11 @@ private fun AccountPanel() {
             busy = true
             try {
                 session = auth.refreshSession()
-                status = "Session sécurisée rétablie."
+                status = if (session == null) {
+                    "Session expirée. Reconnectez-vous pour continuer."
+                } else {
+                    "Session sécurisée rétablie."
+                }
             } catch (_: Exception) {
                 // Keep the encrypted session when the device is temporarily offline.
                 status = "Session enregistrée sur cet appareil. Vérification réseau à la prochaine connexion."
@@ -185,7 +189,6 @@ private fun AccountPanel() {
             Text("Compte SOW IA", color = Cyan, fontWeight = FontWeight.Bold)
             if (session != null) {
                 Text("Connecté : ${session?.email}", color = Color.White)
-                Text("Compte utilisateur : ${session?.userId}", color = Muted, fontSize = 12.sp)
                 Button(
                     onClick = {
                         busy = true
@@ -257,7 +260,7 @@ private fun AccountPanel() {
                 ) { Text(if (busy) "Connexion…" else "Se connecter") }
                 if (!auth.isConfigured) {
                     Text(
-                        "Configuration Supabase à fournir à la compilation. La clé publique anon est utilisée ; aucune clé secrète serveur n'est intégrée.",
+                        "Configuration Supabase à fournir à la compilation. La clé publique est utilisée ; aucune clé secrète serveur n'est intégrée.",
                         color = Muted,
                     )
                 }
