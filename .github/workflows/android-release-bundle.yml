@@ -15,16 +15,15 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 env:
-  # Supabase publishable key: intentionally public client configuration.
   SOWIA_SUPABASE_URL: https://qegcopordeqjiechmbhg.supabase.co
-  SOWIA_SUPABASE_PUBLISHABLE_KEY: sb_publishable_a15NAIP7-ofvY5krT2a07A_M40bthGp
+  SOWIA_SUPABASE_PUBLISHABLE_KEY: sb_publishable_a15NAIP7-ofyV5krT2a07A_M40bthGp
 
 jobs:
   bundle-release:
     name: Build Android release AAB
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -41,52 +40,41 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      # Pull-request builds stay unsigned. Release builds retrieve the JKS
-      # and credentials from the successful keystore-generation artifact.
-      - name: Find latest successful keystore generation
-        if: github.event_name != 'pull_request'
-        id: keystore_run
+      # The release build accepts ONLY the upload key already registered with Google Play.
+      # Configure these four GitHub Actions secrets from the original keystore.
+      - name: Validate and install original Google Play upload key
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOWIA_UPLOAD_KEYSTORE_BASE64: ${{ secrets.SOWIA_UPLOAD_KEYSTORE_BASE64 }}
+          SOWIA_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEYSTORE_PASSWORD }}
+          SOWIA_UPLOAD_KEY_ALIAS: ${{ secrets.SOWIA_UPLOAD_KEY_ALIAS }}
+          SOWIA_UPLOAD_KEY_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          RUN_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/generate-android-keystore.yml/runs?status=completed&per_page=20" --jq '.workflow_runs | map(select(.conclusion == "success")) | .[0].id')"
-          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
-            echo "::error::No successful Android keystore generation run was found."
+          for name in SOWIA_UPLOAD_KEYSTORE_BASE64 SOWIA_UPLOAD_KEYSTORE_PASSWORD SOWIA_UPLOAD_KEY_ALIAS SOWIA_UPLOAD_KEY_PASSWORD; do
+            value="${!name:-}"
+            if [ -z "$value" ]; then
+              echo "::error::Missing required GitHub Actions secret: $name. Release signing is disabled until the original Google-validated keystore is configured."
+              exit 1
+            fi
+            echo "::add-mask::$value"
+          done
+          KEYSTORE="$RUNNER_TEMP/sowia-original-upload.jks"
+          printf '%s' "$SOWIA_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          keytool -list -v -storetype JKS -keystore "$KEYSTORE" -storepass "$SOWIA_UPLOAD_KEYSTORE_PASSWORD" -alias "$SOWIA_UPLOAD_KEY_ALIAS" > "$RUNNER_TEMP/sowia-keystore-inspection.txt"
+          ACTUAL_FINGERPRINT="$(awk -F 'SHA256: ' '/SHA256:/{gsub(/:/,"",$2); print toupper($2); exit}' "$RUNNER_TEMP/sowia-keystore-inspection.txt")"
+          EXPECTED_FINGERPRINT="A967AA50C0257BFF7D7EFA0D102035A61AAE4A0A085717702152BECCADF304F4"
+          if [ "$ACTUAL_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]; then
+            echo "::error::The configured keystore does not match the Google-validated upload certificate. No release bundle will be signed."
             exit 1
           fi
-          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
-          echo "Found a successful Android keystore generation run."
-
-      - name: Download Android signing artifact
-        if: github.event_name != 'pull_request'
-        uses: actions/download-artifact@v4
-        with:
-          name: sowia-android-signing-material
-          run-id: ${{ steps.keystore_run.outputs.run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: signing-output
-
-      - name: Validate Android upload keystore
-        if: github.event_name != 'pull_request'
-        run: |
-          set -euo pipefail
-          test -s signing-output/sowia-upload.jks
-          test -s signing-output/KEYSTORE_CREDENTIALS.txt
-          set -a
-          source signing-output/KEYSTORE_CREDENTIALS.txt
-          set +a
-          KEYSTORE="$GITHUB_WORKSPACE/signing-output/sowia-upload.jks"
-          keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASSWORD" >/dev/null
-          keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
-          keytool -certreq -storetype JKS -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" -alias "$KEY_ALIAS" -dname "CN=SOWIA Android Upload" -file "$RUNNER_TEMP/sowia-signing-check.csr" >/dev/null
           {
             echo "ANDROID_KEYSTORE_PATH=$KEYSTORE"
-            echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
-            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS"
-            echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD"
+            echo "ANDROID_KEYSTORE_PASSWORD=$SOWIA_UPLOAD_KEYSTORE_PASSWORD"
+            echo "ANDROID_KEY_ALIAS=$SOWIA_UPLOAD_KEY_ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$SOWIA_UPLOAD_KEY_PASSWORD"
           } >> "$GITHUB_ENV"
-          echo "Android keystore, alias, and both passwords validated successfully."
+          echo "Original Google-validated upload certificate verified."
 
       - name: Validate Android public Supabase configuration
         run: |
@@ -100,10 +88,10 @@ jobs:
       - name: Upload release AAB
         uses: actions/upload-artifact@v4
         with:
-          name: sowia-android-release-${{ github.event_name == 'pull_request' && 'unsigned' || 'signed' }}
+          name: sowia-android-release-signed
           path: android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3
 
   build-debug-apk:
     name: Build Android debug APK (independent of release signing)
@@ -138,4 +126,4 @@ jobs:
           name: sowia-android-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3
