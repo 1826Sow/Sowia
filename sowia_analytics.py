@@ -3,7 +3,7 @@
 Only authenticated user IDs and random installation/session UUIDs are stored.
 No prompts, emails, document names, or message content are collected.
 """
-from collections import Counter, defaultdict
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
