@@ -242,7 +242,7 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
 
     suspend fun refresh() {
-        val current = auth.currentSession()
+        val current = auth.validSession()
         if (current == null) {
             session.value = null
             documents.clear()
@@ -265,7 +265,7 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
-            val current = auth.currentSession()
+            val current = auth.validSession()
             if (current == null) {
                 status = "Connectez-vous avant d'importer un PDF."
             } else {
@@ -340,7 +340,7 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
                                         busy = true
                                         status = "Lecture du PDF et préparation de l'analyse…"
                                         try {
-                                            val current = auth.currentSession() ?: error("Session expirée.")
+                                            val current = auth.validSession() ?: error("Session expirée.")
                                             val extracted = storage.extractText(current, document)
                                             val prompt = "Analyse le document PDF suivant : ${document.name}. Fournis un résumé structuré, les points clés, les dates/chiffres importants et les éventuelles actions à retenir. Signale clairement si une information est absente.\n\nCONTENU DU PDF :\n" + extracted
                                             val answer = auth.sendChatMessage(UUID.randomUUID().toString(), prompt, workspace)
@@ -359,7 +359,7 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
                                     scope.launch {
                                         busy = true
                                         try {
-                                            storage.delete(auth.currentSession() ?: error("Session expirée."), document)
+                                            storage.delete(auth.validSession() ?: error("Session expirée."), document)
                                             refresh()
                                             status = "Document supprimé."
                                         } catch (error: Exception) {
