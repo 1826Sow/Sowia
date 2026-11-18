@@ -52,6 +52,7 @@ create policy "SOW IA admins can read analytics events"
         or (select auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
     );
 
-grant usage on schema public to authenticated;
+grant usage on schema public to authenticated, service_role;
 grant insert, select on public.sowia_analytics_events to authenticated;
+grant select on public.sowia_analytics_events to service_role;
 grant usage on sequence public.sowia_analytics_events_id_seq to authenticated;
