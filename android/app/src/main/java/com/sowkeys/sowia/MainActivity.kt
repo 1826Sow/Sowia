@@ -257,7 +257,7 @@ private fun AccountPanel() {
                     enabled = !busy && auth.isConfigured,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
-                ) { Text(if (busy) "Connexion…" else "Se connecter") }
+                ) { Text(if (busy) "Validation…" else "Valider") }
                 if (!auth.isConfigured) {
                     Text(
                         "Configuration Supabase à fournir à la compilation. La clé publique est utilisée ; aucune clé secrète serveur n'est intégrée.",
