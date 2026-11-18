@@ -6,7 +6,9 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.KeyStore
@@ -134,6 +136,65 @@ class SupabaseAuthClient(context: Context) {
                 "Réponse du service mobile invalide."
             }
             "Connexion sécurisée au service mobile confirmée."
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    /**
+     * Records a privacy-minimal authenticated app open.
+     * A first-open event is emitted once per app installation after the first login.
+     * Failures are deliberately non-blocking for normal app usage.
+     */
+    suspend fun trackAppOpen() = withContext(Dispatchers.IO) {
+        if (!isConfigured) return@withContext
+        val session = runCatching { validSession() }.getOrNull() ?: return@withContext
+        val installationId = preferences.getString("analytics_installation_id", null)
+            ?: UUID.randomUUID().toString().also {
+                preferences.edit().putString("analytics_installation_id", it).apply()
+            }
+        val firstOpenPending = !preferences.getBoolean("analytics_first_open_recorded", false)
+        val events = JSONArray()
+        if (firstOpenPending) {
+            events.put(
+                JSONObject()
+                    .put("user_id", session.userId)
+                    .put("event_type", "android_first_open")
+                    .put("platform", "android")
+                    .put("installation_id", installationId)
+            )
+        }
+        events.put(
+            JSONObject()
+                .put("user_id", session.userId)
+                .put("event_type", "android_app_open")
+                .put("platform", "android")
+                .put("installation_id", installationId)
+        )
+        val connection = (URL(
+            BuildConfig.SUPABASE_URL.trimEnd('/') + "/rest/v1/sowia_analytics_events"
+        ).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 10000
+            readTimeout = 12000
+            doOutput = true
+            setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
+            setRequestProperty("Authorization", "Bearer ${session.accessToken}")
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Prefer", "return=minimal")
+        }
+        try {
+            connection.outputStream.use {
+                it.write(events.toString().toByteArray(Charsets.UTF_8))
+            }
+            val status = connection.responseCode
+            if (status !in 200..299) {
+                throw IllegalStateException("Analytics insert refused (HTTP $status).")
+            }
+            if (firstOpenPending) {
+                preferences.edit().putBoolean("analytics_first_open_recorded", true).apply()
+            }
         } finally {
             connection.disconnect()
         }
