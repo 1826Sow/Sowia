@@ -17,6 +17,11 @@ permissions:
   contents: read
   actions: read
 
+env:
+  # Supabase publishable key: intentionally public client configuration.
+  SOWIA_SUPABASE_URL: https://qegcopordeqjiechmbhg.supabase.co
+  SOWIA_SUPABASE_PUBLISHABLE_KEY: sb_publishable_a15NAIP7-ofvY5krT2a07A_M40bthGp
+
 jobs:
   bundle-release:
     name: Build Android release AAB
@@ -83,6 +88,12 @@ jobs:
           } >> "$GITHUB_ENV"
           echo "Android keystore, alias, and both passwords validated successfully."
 
+      - name: Validate Android public Supabase configuration
+        run: |
+          set -euo pipefail
+          [[ "$SOWIA_SUPABASE_URL" == https://*.supabase.co ]]
+          [[ "$SOWIA_SUPABASE_PUBLISHABLE_KEY" == sb_publishable_* ]]
+
       - name: Build release bundle
         run: gradle -p android :app:bundleRelease
 
@@ -111,6 +122,12 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+
+      - name: Validate Android public Supabase configuration
+        run: |
+          set -euo pipefail
+          [[ "$SOWIA_SUPABASE_URL" == https://*.supabase.co ]]
+          [[ "$SOWIA_SUPABASE_PUBLISHABLE_KEY" == sb_publishable_* ]]
 
       - name: Build installable debug APK
         run: gradle -p android :app:assembleDebug
