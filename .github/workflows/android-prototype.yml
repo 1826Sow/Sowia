@@ -1,6 +1,12 @@
 name: Android prototype build
 
 on:
+  push:
+    branches:
+      - "android/supabase-session-hardening"
+    paths:
+      - "android/**"
+      - ".github/workflows/android-prototype.yml"
   pull_request:
     paths:
       - "android/**"
