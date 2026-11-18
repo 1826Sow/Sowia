@@ -55,6 +55,19 @@ jobs:
           SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
           SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
         run: gradle -p android :app:assembleDebug
+      - name: Verify APK package, alignment and signature
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          test -s "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" > "$RUNNER_TEMP/sowia-apk-badging.txt"
+          grep -F "package: name='com.sowkeys.sowia.preview2'" "$RUNNER_TEMP/sowia-apk-badging.txt"
+          grep -F "sdkVersion:'26'" "$RUNNER_TEMP/sowia-apk-badging.txt"
+          "$BUILD_TOOLS/zipalign" -c -v 4 "$APK"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
+          unzip -t "$APK" >/dev/null
+          echo "APK package identity, ZIP integrity, alignment and signature verified."
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
