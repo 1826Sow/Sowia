@@ -111,6 +111,34 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Restore stable preview signing key
+        env:
+          ANDROID_DEBUG_KEYSTORE_BASE64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+          ANDROID_DEBUG_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_DEBUG_KEYSTORE_PASSWORD }}
+          ANDROID_DEBUG_KEY_ALIAS: ${{ secrets.ANDROID_DEBUG_KEY_ALIAS }}
+          ANDROID_DEBUG_KEY_PASSWORD: ${{ secrets.ANDROID_DEBUG_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in ANDROID_DEBUG_KEYSTORE_BASE64 ANDROID_DEBUG_KEYSTORE_PASSWORD ANDROID_DEBUG_KEY_ALIAS ANDROID_DEBUG_KEY_PASSWORD; do
+            value="${!name:-}"
+            if [ -z "$value" ]; then
+              echo "::error::Missing required GitHub Actions secret: $name"
+              exit 1
+            fi
+            echo "::add-mask::$value"
+          done
+          KEYSTORE="$RUNNER_TEMP/sowia-preview.keystore"
+          printf '%s' "$ANDROID_DEBUG_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$ANDROID_DEBUG_KEYSTORE_PASSWORD" -alias "$ANDROID_DEBUG_KEY_ALIAS" >/dev/null
+          {
+            echo "ANDROID_DEBUG_KEYSTORE_PATH=$KEYSTORE"
+            echo "ANDROID_DEBUG_KEYSTORE_PASSWORD=$ANDROID_DEBUG_KEYSTORE_PASSWORD"
+            echo "ANDROID_DEBUG_KEY_ALIAS=$ANDROID_DEBUG_KEY_ALIAS"
+            echo "ANDROID_DEBUG_KEY_PASSWORD=$ANDROID_DEBUG_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "Stable preview signing key restored and verified."
+
       - name: Validate Android public Supabase configuration
         run: |
           set -euo pipefail
