@@ -99,8 +99,45 @@ private fun SowiaPrototype() {
                     Text(
                         "Socle Android natif — connexion sécurisée en préparation",
                         color = Muted,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
+                        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
                     )
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Panel),
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text("Choisissez votre espace", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Button(
+                                    onClick = { selectedWorkspace = "personal" },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (selectedWorkspace == "personal") Cyan else Navy,
+                                        contentColor = if (selectedWorkspace == "personal") Navy else Color.White,
+                                    ),
+                                ) { Text("Personnel") }
+                                Button(
+                                    onClick = { selectedWorkspace = "professional" },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (selectedWorkspace == "professional") Cyan else Navy,
+                                        contentColor = if (selectedWorkspace == "professional") Navy else Color.White,
+                                    ),
+                                ) { Text("Professionnel") }
+                            }
+                            Button(
+                                onClick = { navigate("Assistant") },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                            ) { Text("Valider") }
+                        }
+                    }
                     sections.forEach { item ->
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
