@@ -22,6 +22,11 @@ data class SowiaSession(
     val email: String,
 )
 
+private class SupabaseRequestException(
+    val statusCode: Int,
+    message: String,
+) : IllegalStateException(message)
+
 /**
  * Minimal Supabase Auth client for the native Android shell.
  * Only the public publishable key is used; secret and AI provider keys never ship in the app.
@@ -77,11 +82,19 @@ class SupabaseAuthClient(context: Context) {
 
     suspend fun refreshSession(): SowiaSession? = withContext(Dispatchers.IO) {
         val previous = currentSession() ?: return@withContext null
-        val response = request(
-            "/auth/v1/token?grant_type=refresh_token",
-            JSONObject().put("refresh_token", previous.refreshToken),
-            null,
-        )
+        val response = try {
+            request(
+                "/auth/v1/token?grant_type=refresh_token",
+                JSONObject().put("refresh_token", previous.refreshToken),
+                null,
+            )
+        } catch (error: SupabaseRequestException) {
+            if (error.statusCode == 400 || error.statusCode == 401) {
+                preferences.edit().remove("session").apply()
+                return@withContext null
+            }
+            throw error
+        }
         val user = response.optJSONObject("user")
         val refreshed = SowiaSession(
             accessToken = response.optString("access_token"),
@@ -257,9 +270,10 @@ class SupabaseAuthClient(context: Context) {
                     val error = JSONObject(text)
                     error.optString("msg").ifBlank { error.optString("error_description") }
                 }.getOrDefault("")
-                throw IllegalStateException(message.ifBlank {
-                    "Connexion refusée (HTTP $status)."
-                })
+                throw SupabaseRequestException(
+                    status,
+                    message.ifBlank { "Connexion refusée (HTTP $status)." },
+                )
             }
             if (text.isBlank()) JSONObject() else JSONObject(text)
         } finally {
