@@ -1,6 +1,11 @@
 name: Android prototype build
 
 on:
+  push:
+    branches: ["main"]
+    paths:
+      - "android/**"
+      - ".github/workflows/android-prototype.yml"
   pull_request:
     paths:
       - "android/**"
