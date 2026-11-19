@@ -596,7 +596,7 @@ if cloud_mode:
                 key="sowia_password_login_secret",
             )
             if st.button(
-                "Se connecter avec mon mot de passe",
+                "VALIDER",
                 key="sowia_password_login_submit",
                 use_container_width=True,
             ):
