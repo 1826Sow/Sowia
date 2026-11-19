@@ -32,7 +32,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.sowkeys.sowia"
+        applicationId = "com.sowkeys.sowia.parallel"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
