@@ -1,6 +1,6 @@
 # SOW IA — prototype Android
 
-This is an **early native Android UI scaffold**, separate from the existing Streamlit web app.
+This is a **native Android companion app** to the existing Streamlit web app. It is not yet at full web-suite feature parity.
 
 ## Included
 - Kotlin + Jetpack Compose application shell
@@ -10,10 +10,11 @@ This is an **early native Android UI scaffold**, separate from the existing Stre
 - Explicit placeholder state: no private data or live service is connected
 
 ## Not included yet
-- Supabase native OAuth/PKCE sign-in or sign-out
-- SOW IA API endpoints
-- Conversations, project registry, PDF upload, AI or web search integration
-- Production signing, APK/AAB release, Play Store submission
+- Authorization Code + PKCE sign-in (the current client uses email/password token grant)
+- Full parity with all SOW IA web-suite modules and native web search
+- A verified signed release build and physical-device test evidence
+
+Partially implemented in source: Supabase email/password sign-in and encrypted session storage, conversations/projects, assistant calls through the production `mobile-chat` function, and private PDF storage with local extraction/OCR. See [the parity audit](../docs/ANDROID_PARITY_AUDIT_2026-11-19.md) for verified scope and remaining gaps.
 
 No server secrets belong in this Android project. The existing Streamlit application remains unchanged.
 
