@@ -19,6 +19,7 @@ fun buildConfigString(value: String): String =
 
 val signingStoreFile = System.getenv("ANDROID_KEYSTORE_PATH")?.trim().orEmpty()
 val signingStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD").orEmpty()
+val signingStoreType = System.getenv("ANDROID_KEYSTORE_TYPE")?.trim().orEmpty().ifBlank { "JKS" }
 val signingKeyAlias = System.getenv("ANDROID_KEY_ALIAS").orEmpty()
 val signingKeyPassword = System.getenv("ANDROID_KEY_PASSWORD").orEmpty()
 val hasReleaseSigning = signingStoreFile.isNotBlank() &&
@@ -44,7 +45,7 @@ android {
         create("release") {
             if (hasReleaseSigning) {
                 storeFile = file(signingStoreFile)
-                storeType = "JKS"
+                storeType = signingStoreType
                 storePassword = signingStorePassword
                 keyAlias = signingKeyAlias
                 keyPassword = signingKeyPassword
