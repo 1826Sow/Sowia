@@ -74,7 +74,7 @@ private fun VitrineScreen(onEnter: () -> Unit) {
                     contentColor = Color.White
                 )
             ) {
-                Text("VALIDER — ACCÉDER À MON COMPTE", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("VALIDER", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
