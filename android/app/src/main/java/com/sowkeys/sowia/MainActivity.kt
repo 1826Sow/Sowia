@@ -143,6 +143,25 @@ private fun SowiaPrototype() {
                             ) { Text("Valider") }
                         }
                     }
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Panel),
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text("Accès à votre compte", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text("Ouvrez la page de connexion pour saisir votre adresse e-mail et votre mot de passe.", color = Muted)
+                            Button(
+                                onClick = { navigate("Compte & paramètres") },
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                            ) {
+                                Text("Connexion — Valider", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                     sections.forEach { item ->
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
@@ -327,14 +346,14 @@ private fun AccountPanel() {
                         }
                     },
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Cyan,
                         contentColor = Navy,
                         disabledContainerColor = Muted,
                         disabledContentColor = Navy,
                     ),
-                ) { Text(if (busy) "Validation…" else "Valider") }
+                ) { Text("Valider", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
                 if (!auth.isConfigured) {
                     Text(
                         "Configuration Supabase à fournir à la compilation. La clé publique est utilisée ; aucune clé secrète serveur n'est intégrée.",
