@@ -87,8 +87,23 @@ jobs:
       - name: Validate Android public Supabase configuration
         run: |
           set -euo pipefail
-          [[ "$SOWIA_SUPABASE_URL" == https://*.supabase.co ]]
-          [[ "$SOWIA_SUPABASE_PUBLISHABLE_KEY" == sb_publishable_* ]]
+          if [[ -z "$SOWIA_SUPABASE_URL" ]]; then
+            echo "::error::GitHub Actions secret SOWIA_SUPABASE_URL is missing."
+            exit 1
+          fi
+          if [[ "$SOWIA_SUPABASE_URL" != https://*.supabase.co ]]; then
+            echo "::error::SOWIA_SUPABASE_URL must be the project URL ending in .supabase.co."
+            exit 1
+          fi
+          if [[ -z "$SOWIA_SUPABASE_PUBLISHABLE_KEY" ]]; then
+            echo "::error::GitHub Actions secret SOWIA_SUPABASE_PUBLISHABLE_KEY is missing."
+            exit 1
+          fi
+          if [[ "$SOWIA_SUPABASE_PUBLISHABLE_KEY" != sb_publishable_* ]]; then
+            echo "::error::SOWIA_SUPABASE_PUBLISHABLE_KEY must be the public sb_publishable_ key, not a secret/service-role key."
+            exit 1
+          fi
+          echo "Both public Supabase settings are present and have the expected format."
 
       - name: Build release bundle
         run: gradle -p android :app:bundleRelease
