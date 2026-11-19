@@ -25,6 +25,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -197,6 +200,7 @@ private fun AccountPanel() {
     val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var session by remember { mutableStateOf(auth.currentSession()) }
     var status by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -268,6 +272,16 @@ private fun AccountPanel() {
                     label = { Text("Adresse e-mail") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedLabelColor = Cyan,
+                        unfocusedLabelColor = Muted,
+                        focusedBorderColor = Cyan,
+                        unfocusedBorderColor = Muted,
+                        cursorColor = Cyan,
+                    ),
                 )
                 OutlinedTextField(
                     value = password,
@@ -275,7 +289,22 @@ private fun AccountPanel() {
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Mot de passe") },
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        TextButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Text(if (passwordVisible) "Masquer" else "Afficher", color = Cyan)
+                        }
+                    },
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedLabelColor = Cyan,
+                        unfocusedLabelColor = Muted,
+                        focusedBorderColor = Cyan,
+                        unfocusedBorderColor = Muted,
+                        cursorColor = Cyan,
+                    ),
                 )
                 Button(
                     onClick = {
