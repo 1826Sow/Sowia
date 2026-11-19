@@ -18,8 +18,8 @@ permissions:
   actions: read
 
 env:
-  SOWIA_SUPABASE_URL: https://qegcopordeqjiechmbhg.supabase.co
-  SOWIA_SUPABASE_PUBLISHABLE_KEY: sb_publishable_a15NAIP7-ofyV5krT2a07A_M40bthGp
+  SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
+  SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
 
 jobs:
   bundle-release:
