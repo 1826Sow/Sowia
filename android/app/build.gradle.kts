@@ -35,7 +35,7 @@ android {
         applicationId = "com.sowkeys.sowia.parallel"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
+        versionCode = 2
         versionName = "0.2.0"
         buildConfigField("String", "SUPABASE_URL", buildConfigString(configValue("SOWIA_SUPABASE_URL")))
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", buildConfigString(configValue("SOWIA_SUPABASE_PUBLISHABLE_KEY")))
