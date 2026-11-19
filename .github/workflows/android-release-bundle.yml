@@ -129,6 +129,17 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+      - name: Build installable signed release APK
+        run: gradle -p android :app:assembleRelease
+
+      - name: Upload signed release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sowia-android-release-signed-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 3
+
   build-debug-apk:
     name: Build Android debug APK (independent of release signing)
     runs-on: ubuntu-latest
