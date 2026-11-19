@@ -97,14 +97,26 @@ jobs:
           KEYSTORE="$RUNNER_TEMP/sowia-original-upload.keystore"
           STORE_TYPE=""
           for candidate in JKS PKCS12; do
-            if keytool -list -storetype "$candidate" -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+            if keytool -list -storetype "$candidate" -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" >/dev/null 2>&1; then
               STORE_TYPE="$candidate"
               break
             fi
           done
           if [[ -z "$STORE_TYPE" ]]; then
-            echo "::error::The original upload keystore could not be opened with the configured credentials."
+            echo "::error::The original upload keystore could not be opened with the configured store password."
             exit 1
+          fi
+
+          # Older SOW IA uploads used a different alias. If the configured alias
+          # is absent, safely detect the sole private-key alias in this keystore.
+          if ! keytool -list -storetype "$STORE_TYPE" -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+            DETECTED_ALIASES="$(keytool -list -v -storetype "$STORE_TYPE" -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" | awk -F': ' '/^Alias name:/{print $2}')"
+            ALIAS_COUNT="$(printf '%s\\n' "$DETECTED_ALIASES" | sed '/^$/d' | wc -l | tr -d ' ')"
+            if [[ "$ALIAS_COUNT" != "1" ]]; then
+              echo "::error::The configured alias is absent and the keystore does not contain exactly one alias."
+              exit 1
+            fi
+            KEY_ALIAS="$DETECTED_ALIASES"
           fi
 
           ACTUAL_FINGERPRINT="$(keytool -list -v -storetype "$STORE_TYPE" -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" | awk -F': ' '/SHA256:/{print $2; exit}' | tr -d ': ' | tr '[:lower:]' '[:upper:]')"
