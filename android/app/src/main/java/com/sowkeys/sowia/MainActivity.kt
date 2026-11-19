@@ -23,6 +23,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -30,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -197,6 +200,7 @@ private fun AccountPanel() {
     val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var session by remember { mutableStateOf(auth.currentSession()) }
     var status by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -265,17 +269,54 @@ private fun AccountPanel() {
                     value = email,
                     onValueChange = { email = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Adresse e-mail") },
+                    label = { Text("Adresse e-mail", color = Muted) },
                     singleLine = true,
+                    textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedLabelColor = Cyan,
+                        unfocusedLabelColor = Muted,
+                        cursorColor = Cyan,
+                        focusedBorderColor = Cyan,
+                        unfocusedBorderColor = Muted,
+                        focusedContainerColor = Panel,
+                        unfocusedContainerColor = Panel,
+                    ),
                 )
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Mot de passe") },
+                    label = { Text("Mot de passe", color = Muted) },
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                    textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
+                    visualTransformation = if (passwordVisible) {
+                        androidx.compose.ui.text.input.VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    trailingIcon = {
+                        TextButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Text(
+                                if (passwordVisible) "Masquer" else "Afficher",
+                                color = Cyan,
+                                fontSize = 12.sp,
+                            )
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedLabelColor = Cyan,
+                        unfocusedLabelColor = Muted,
+                        cursorColor = Cyan,
+                        focusedBorderColor = Cyan,
+                        unfocusedBorderColor = Muted,
+                        focusedContainerColor = Panel,
+                        unfocusedContainerColor = Panel,
+                    ),
                 )
                 Button(
                     onClick = {
