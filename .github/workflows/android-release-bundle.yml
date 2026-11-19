@@ -74,6 +74,7 @@ jobs:
             echo "::add-mask::$value"
           done
 
+          export ENCODED_KEY
           python3 - <<'PY'
           import base64, os, re
           from pathlib import Path
@@ -93,7 +94,6 @@ jobs:
               raise SystemExit("The decoded upload keystore is empty.")
           Path(os.environ["RUNNER_TEMP"], "sowia-original-upload.keystore").write_bytes(raw)
           PY
-          export ENCODED_KEY
           KEYSTORE="$RUNNER_TEMP/sowia-original-upload.keystore"
           STORE_TYPE=""
           for candidate in JKS PKCS12; do
