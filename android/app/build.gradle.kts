@@ -41,6 +41,16 @@ android {
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", buildConfigString(configValue("SOWIA_SUPABASE_PUBLISHABLE_KEY")))
     }
 
+    flavorDimensions += "identity"
+    productFlavors {
+        create("legacy") {
+            dimension = "identity"
+            applicationId = "com.sowkeys.sowia.parallel"
+            versionCode = 7
+            versionName = "0.2.3"
+        }
+    }
+
     signingConfigs {
         create("release") {
             if (hasReleaseSigning) {
