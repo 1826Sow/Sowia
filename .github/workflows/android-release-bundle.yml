@@ -50,14 +50,21 @@ jobs:
           SOWIA_UPLOAD_KEY_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEY_PASSWORD }}
         run: |
           set -euo pipefail
+          missing=()
           for name in SOWIA_UPLOAD_KEYSTORE_BASE64 SOWIA_UPLOAD_KEYSTORE_PASSWORD SOWIA_UPLOAD_KEY_ALIAS SOWIA_UPLOAD_KEY_PASSWORD; do
             value="${!name:-}"
             if [ -z "$value" ]; then
-              echo "::error::Missing required GitHub Actions secret: $name. Release signing is disabled until the original Google-validated keystore is configured."
-              exit 1
+              echo "::error::Secret presence check: $name=missing"
+              missing+=("$name")
+            else
+              echo "::notice::Secret presence check: $name=present"
+              echo "::add-mask::$value"
             fi
-            echo "::add-mask::$value"
           done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Release signing stopped. One or more original upload-key secrets were not passed to this job. No secret values were displayed."
+            exit 1
+          fi
           KEYSTORE="$RUNNER_TEMP/sowia-original-upload.jks"
           printf '%s' "$SOWIA_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
           chmod 600 "$KEYSTORE"
