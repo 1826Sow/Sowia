@@ -60,7 +60,7 @@ private fun VitrineScreen(onEnter: () -> Unit) {
                 contentDescription = "Vitrine officielle SOW IA — Édition Sowkeys",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f, fill = false),
+                    .weight(1f),
                 contentScale = ContentScale.Fit
             )
             Button(
