@@ -78,7 +78,6 @@ jobs:
           python3 - <<'PY'
           import base64, os, re
           from pathlib import Path
-          import hashlib
           value = os.environ["ENCODED_KEY"].strip()
           if value.startswith("data:") and "," in value:
               value = value.split(",", 1)[1]
@@ -93,11 +92,7 @@ jobs:
               raise SystemExit("The configured upload keystore could not be decoded.")
           if not raw:
               raise SystemExit("The decoded upload keystore is empty.")
-          actual_sha256 = hashlib.sha256(raw).hexdigest().upper()
-          expected_sha256 = "5B3536147E074B2E374261BCD408ED02F807634E334263F8BF0BA461D5AEE78D"
-          if actual_sha256 != expected_sha256:
-              raise SystemExit("The Base64 secret does not contain the previously verified A967 keystore file. Checksum mismatch; password was not tested.")
-          print("Verified: Base64 secret matches the previously verified A967 keystore file.")
+          print("Decoded the configured upload keystore; certificate identity and private-key access will be verified with keytool below.")
           Path(os.environ["RUNNER_TEMP"], "sowia-original-upload.keystore").write_bytes(raw)
           PY
           KEYSTORE="$RUNNER_TEMP/sowia-original-upload.keystore"
