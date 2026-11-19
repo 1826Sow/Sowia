@@ -14,6 +14,20 @@ fun configValue(name: String): String =
     localProperties.getProperty(name)?.trim()
         ?: System.getenv(name)?.trim()
         ?: ""
+fun normalizeSupabaseProjectUrl(raw: String): String {
+    val value = raw.trim().trimEnd('/')
+    if (value.isBlank()) return ""
+    val apiSuffixes = listOf(
+        "/auth/v1", "/rest/v1", "/storage/v1", "/realtime/v1",
+        "/functions/v1", "/graphql/v1",
+    )
+    val root = apiSuffixes.firstOrNull { value.endsWith(it, ignoreCase = true) }
+        ?.let { value.dropLast(it.length) } ?: value
+    require(Regex("^https://[a-zA-Z0-9-]+\\.supabase\\.co$").matches(root)) {
+        "SOWIA_SUPABASE_URL must be the HTTPS project root, without an API path."
+    }
+    return root
+}
 fun buildConfigString(value: String): String =
     "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
@@ -37,7 +51,7 @@ android {
         targetSdk = 35
         versionCode = 6
         versionName = "0.2.2"
-        buildConfigField("String", "SUPABASE_URL", buildConfigString(configValue("SOWIA_SUPABASE_URL")))
+        buildConfigField("String", "SUPABASE_URL", buildConfigString(normalizeSupabaseProjectUrl(configValue("SOWIA_SUPABASE_URL"))))
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", buildConfigString(configValue("SOWIA_SUPABASE_PUBLISHABLE_KEY")))
     }
 
