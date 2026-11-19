@@ -326,9 +326,14 @@ private fun AccountPanel() {
                             }
                         }
                     },
-                    enabled = !busy && auth.isConfigured,
+                    enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Cyan,
+                        contentColor = Navy,
+                        disabledContainerColor = Muted,
+                        disabledContentColor = Navy,
+                    ),
                 ) { Text(if (busy) "Validation…" else "Valider") }
                 if (!auth.isConfigured) {
                     Text(
