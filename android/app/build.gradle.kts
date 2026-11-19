@@ -49,8 +49,8 @@ android {
         applicationId = "com.sowkeys.sowia"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.2.5"
+        versionCode = 10
+        versionName = "0.2.6"
         buildConfigField("String", "SUPABASE_URL", buildConfigString(normalizeSupabaseProjectUrl(configValue("SOWIA_SUPABASE_URL"))))
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", buildConfigString(configValue("SOWIA_SUPABASE_PUBLISHABLE_KEY").ifBlank { configValue("SOWIA_SUPABASE_ANON_KEY") }))
     }
@@ -60,14 +60,14 @@ android {
         create("current") {
             dimension = "identity"
             applicationId = "com.sowkeys.sowia"
-            versionCode = 9
-            versionName = "0.2.5"
+            versionCode = 10
+            versionName = "0.2.6"
         }
         create("legacy") {
             dimension = "identity"
             applicationId = "com.sowkeys.sowia.parallel"
-            versionCode = 8
-            versionName = "0.2.4"
+            versionCode = 9
+            versionName = "0.2.5"
         }
     }
 
