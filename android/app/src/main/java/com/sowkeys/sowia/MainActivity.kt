@@ -49,13 +49,13 @@ private val Muted = Color(0xFFB7C7D9)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { SowiaPrototype() }
+        setContent { SowiaPrototype(openLogin = intent.getBooleanExtra("open_login", false)) }
     }
 }
 
 @Composable
-private fun SowiaPrototype() {
-    val navigationStack = remember { mutableStateListOf("Accueil") }
+private fun SowiaPrototype(openLogin: Boolean = false) {
+    val navigationStack = remember { mutableStateListOf(if (openLogin) "Compte & paramètres" else "Accueil") }
     val screen = navigationStack.last()
     var selectedConversationId by remember { mutableStateOf<String?>(null) }
     var selectedWorkspace by remember { mutableStateOf("personal") }
