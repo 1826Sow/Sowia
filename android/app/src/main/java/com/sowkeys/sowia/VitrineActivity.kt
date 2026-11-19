@@ -45,22 +45,21 @@ private fun VitrineScreen(onEnter: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF020817)),
-        contentAlignment = Alignment.Center
+            .background(Color(0xFF020817))
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 24.dp),
+                .fillMaxSize()
+                .padding(horizontal = 18.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(22.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Image(
                 painter = painterResource(id = R.drawable.sowia_vitrine),
                 contentDescription = "Vitrine officielle SOW IA — Édition Sowkeys",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .weight(1f, fill = true),
                 contentScale = ContentScale.Fit
             )
             Button(
