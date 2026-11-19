@@ -65,14 +65,27 @@ jobs:
             echo "::error::Release signing stopped. One or more original upload-key secrets were not passed to this job. No secret values were displayed."
             exit 1
           fi
-          KEYSTORE="$RUNNER_TEMP/sowia-original-upload.jks"
+          KEYSTORE="$RUNNER_TEMP/sowia-original-upload.keystore"
           printf '%s' "$SOWIA_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
           chmod 600 "$KEYSTORE"
-          if ! keytool -list -v -storetype JKS -keystore "$KEYSTORE" -storepass "$SOWIA_UPLOAD_KEYSTORE_PASSWORD" -alias "$SOWIA_UPLOAD_KEY_ALIAS" > "$RUNNER_TEMP/sowia-keystore-inspection.txt" 2> "$RUNNER_TEMP/sowia-keytool-error.txt"; then
-            echo "::error::The original JKS upload keystore could not be opened. Check the configured original keystore and alias; no release bundle was signed."
+          STORE_TYPE=""
+          for candidate in JKS PKCS12; do
+            if keytool -list -v -storetype "$candidate" -keystore "$KEYSTORE" -storepass "$SOWIA_UPLOAD_KEYSTORE_PASSWORD" > "$RUNNER_TEMP/sowia-keystore-list.txt" 2> "$RUNNER_TEMP/sowia-keytool-error.txt"; then
+              STORE_TYPE="$candidate"
+              break
+            fi
+          done
+          if [ -z "$STORE_TYPE" ]; then
+            echo "::error::The uploaded keystore cannot be opened as JKS or PKCS12. No release bundle was signed."
             cat "$RUNNER_TEMP/sowia-keytool-error.txt"
             exit 1
           fi
+          if ! keytool -list -v -storetype "$STORE_TYPE" -keystore "$KEYSTORE" -storepass "$SOWIA_UPLOAD_KEYSTORE_PASSWORD" -alias "$SOWIA_UPLOAD_KEY_ALIAS" > "$RUNNER_TEMP/sowia-keystore-inspection.txt" 2> "$RUNNER_TEMP/sowia-keytool-error.txt"; then
+            echo "::error::The keystore opens, but the configured key alias is not available. No release bundle was signed."
+            cat "$RUNNER_TEMP/sowia-keytool-error.txt"
+            exit 1
+          fi
+          echo "Detected original upload keystore format: $STORE_TYPE"
           ACTUAL_FINGERPRINT="$(awk -F 'SHA256: ' '/SHA256:/{gsub(/:/,"",$2); print toupper($2); exit}' "$RUNNER_TEMP/sowia-keystore-inspection.txt")"
           EXPECTED_FINGERPRINT="A967AA50C0257BFF7D7EFA0D102035A61AAE4A0A085717702152BECCADF304F4"
           if [ "$ACTUAL_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]; then
@@ -81,6 +94,7 @@ jobs:
           fi
           {
             echo "ANDROID_KEYSTORE_PATH=$KEYSTORE"
+            echo "ANDROID_KEYSTORE_TYPE=$STORE_TYPE"
             echo "ANDROID_KEYSTORE_PASSWORD=$SOWIA_UPLOAD_KEYSTORE_PASSWORD"
             echo "ANDROID_KEY_ALIAS=$SOWIA_UPLOAD_KEY_ALIAS"
             echo "ANDROID_KEY_PASSWORD=$SOWIA_UPLOAD_KEY_PASSWORD"
