@@ -105,10 +105,10 @@ jobs:
           fi
           echo "Both public Supabase settings are present and have the expected format."
 
-      - name: Build release bundle
+      - name: Build release bundles
         run: gradle -p android :app:bundleRelease
 
-      - name: Upload release AAB
+      - name: Upload release AABs
         uses: actions/upload-artifact@v4
         with:
           name: sowia-android-release-signed
@@ -116,14 +116,25 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-      - name: Build installable signed release APK
+      - name: Build installable signed release APKs
         run: gradle -p android :app:assembleRelease
 
-      - name: Upload signed release APK
+      - name: Upload all signed release APKs
         uses: actions/upload-artifact@v4
         with:
           name: sowia-android-release-signed-apk
           path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Build APK for the existing parallel installation
+        run: gradle -p android :app:assembleLegacyRelease
+
+      - name: Upload compatible legacy APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sowia-android-legacy-compatible-apk
+          path: android/app/build/outputs/apk/legacy/release/*.apk
           if-no-files-found: error
           retention-days: 3
 
@@ -139,7 +150,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
