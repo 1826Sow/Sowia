@@ -353,7 +353,7 @@ private fun AccountPanel() {
                         disabledContainerColor = Muted,
                         disabledContentColor = Navy,
                     ),
-                ) { Text("Valider", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                ) { Text("VALIDER", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
                 if (!auth.isConfigured) {
                     Text(
                         "Configuration Supabase à fournir à la compilation. La clé publique est utilisée ; aucune clé secrète serveur n'est intégrée.",
