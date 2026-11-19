@@ -25,8 +25,25 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
-      - name: Assemble debug APK
-        run: gradle -p android :app:assembleDebug
+      - name: Validate Supabase configuration and assemble debug APK
+        env:
+          SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
+          SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          python - <<'PY'
+          import os
+          from urllib.parse import urlparse
+
+          value = os.environ.get("SOWIA_SUPABASE_URL", "").strip()
+          key = os.environ.get("SOWIA_SUPABASE_PUBLISHABLE_KEY", "").strip()
+          parsed = urlparse(value)
+          if parsed.scheme != "https" or parsed.hostname != "qegcopordeqjiechmbhg.supabase.co" or parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+              raise SystemExit("SOWIA_SUPABASE_URL must be the project root HTTPS URL, without /rest/v1 or another path.")
+          if not key:
+              raise SystemExit("SOWIA_SUPABASE_PUBLISHABLE_KEY is missing.")
+          print("Supabase project URL and publishable-key presence validated.")
+          PY
+          gradle -p android :app:assembleDebug
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
