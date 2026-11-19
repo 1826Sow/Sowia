@@ -34,7 +34,7 @@ class VitrineActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 VitrineScreen {
-                    startActivity(Intent(this, MainActivity::class.java))
+                    startActivity(Intent(this, MainActivity::class.java).putExtra("open_login", true))
                 }
             }
         }
@@ -74,7 +74,7 @@ private fun VitrineScreen(onEnter: () -> Unit) {
                     contentColor = Color.White
                 )
             ) {
-                Text("Valider", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("VALIDER — ACCÉDER À MON COMPTE", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
