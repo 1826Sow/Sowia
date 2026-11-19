@@ -102,16 +102,21 @@ jobs:
           PY
           KEYSTORE="$RUNNER_TEMP/sowia-original-upload.keystore"
           STORE_TYPE=""
-          for candidate in JKS PKCS12; do
-            if keytool -list -storetype "$candidate" -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" >/dev/null 2>&1; then
-              STORE_TYPE="$candidate"
-              break
-            fi
+          PASSWORD_CANDIDATES=("$STORE_PASSWORD" "$KEY_PASSWORD")
+          for candidate_password in "${PASSWORD_CANDIDATES[@]}"; do
+            for candidate_type in JKS PKCS12; do
+              if keytool -list -storetype "$candidate_type" -keystore "$KEYSTORE" -storepass "$candidate_password" >/dev/null 2>&1; then
+                STORE_TYPE="$candidate_type"
+                STORE_PASSWORD="$candidate_password"
+                break 2
+              fi
+            done
           done
           if [[ -z "$STORE_TYPE" ]]; then
-            echo "::error::The original upload keystore could not be opened with the configured store password."
+            echo "::error::The verified A967 keystore file is present, but neither configured password opens it. No release APK was produced."
             exit 1
           fi
+          echo "Keystore opened successfully using one of the two configured password fields."
 
           # Older SOW IA uploads used a different alias. If the configured alias
           # is absent, safely detect the sole private-key alias in this keystore.
@@ -130,7 +135,18 @@ jobs:
             echo "::error::The configured upload key does not match the registered SOW IA certificate. No release APK will be produced."
             exit 1
           fi
-          keytool -certreq -storetype "$STORE_TYPE" -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD" -alias "$KEY_ALIAS" -dname "CN=SOWIA Android Upload" -file "$RUNNER_TEMP/sowia-signing-check.csr" >/dev/null
+          if ! keytool -certreq -storetype "$STORE_TYPE" -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD" -alias "$KEY_ALIAS" -dname "CN=SOWIA Android Upload" -file "$RUNNER_TEMP/sowia-signing-check.csr" >/dev/null 2>&1; then
+            rm -f "$RUNNER_TEMP/sowia-signing-check.csr"
+            if [[ "$KEY_PASSWORD" == "$STORE_PASSWORD" ]]; then
+              echo "::error::The keystore opens, but the private-key password is invalid."
+              exit 1
+            fi
+            if ! keytool -certreq -storetype "$STORE_TYPE" -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -keypass "$STORE_PASSWORD" -alias "$KEY_ALIAS" -dname "CN=SOWIA Android Upload" -file "$RUNNER_TEMP/sowia-signing-check.csr" >/dev/null 2>&1; then
+              echo "::error::The keystore opens, but neither configured password unlocks its private key."
+              exit 1
+            fi
+            KEY_PASSWORD="$STORE_PASSWORD"
+          fi
 
           {
             echo "ANDROID_KEYSTORE_PATH=$KEYSTORE"
