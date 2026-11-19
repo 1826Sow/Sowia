@@ -65,10 +65,14 @@ jobs:
             echo "::error::Release signing stopped. One or more original upload-key secrets were not passed to this job. No secret values were displayed."
             exit 1
           fi
-          KEYSTORE="$RUNNER_TEMP/sowia-original-upload.jks"
+          KEYSTORE="$RUNNER_TEMP/sowia-original-upload.p12"
           printf '%s' "$SOWIA_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
           chmod 600 "$KEYSTORE"
-          keytool -list -v -storetype JKS -keystore "$KEYSTORE" -storepass "$SOWIA_UPLOAD_KEYSTORE_PASSWORD" -alias "$SOWIA_UPLOAD_KEY_ALIAS" > "$RUNNER_TEMP/sowia-keystore-inspection.txt"
+          if ! keytool -list -v -storetype PKCS12 -keystore "$KEYSTORE" -storepass "$SOWIA_UPLOAD_KEYSTORE_PASSWORD" -alias "$SOWIA_UPLOAD_KEY_ALIAS" > "$RUNNER_TEMP/sowia-keystore-inspection.txt" 2> "$RUNNER_TEMP/sowia-keytool-error.txt"; then
+  echo "::error::The original PKCS12 upload keystore could not be opened. Check the configured original keystore and alias; no release bundle was signed."
+  cat "$RUNNER_TEMP/sowia-keytool-error.txt"
+  exit 1
+fi
           ACTUAL_FINGERPRINT="$(awk -F 'SHA256: ' '/SHA256:/{gsub(/:/,"",$2); print toupper($2); exit}' "$RUNNER_TEMP/sowia-keystore-inspection.txt")"
           EXPECTED_FINGERPRINT="A967AA50C0257BFF7D7EFA0D102035A61AAE4A0A085717702152BECCADF304F4"
           if [ "$ACTUAL_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]; then
