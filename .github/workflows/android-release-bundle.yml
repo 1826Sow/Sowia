@@ -41,39 +41,55 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Restore and validate the original SOW IA upload keystore
+      - name: Find latest successful keystore generation
+        id: keystore_run
         env:
-          SOWIA_UPLOAD_KEYSTORE_BASE64: ${{ secrets.SOWIA_UPLOAD_KEYSTORE_BASE64 }}
-          SOWIA_KEYSTORE_PASSWORD: ${{ secrets.SOWIA_KEYSTORE_PASSWORD }}
-          SOWIA_KEY_PASSWORD: ${{ secrets.SOWIA_KEY_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          for name in SOWIA_UPLOAD_KEYSTORE_BASE64 SOWIA_KEYSTORE_PASSWORD SOWIA_KEY_PASSWORD; do
-            if [[ -z "${!name}" ]]; then
-              echo "::error::GitHub Actions secret $name is missing."
-              exit 1
-            fi
-          done
-          KEYSTORE="$GITHUB_WORKSPACE/sowia-original-upload.jks"
-          printf '%s' "$SOWIA_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
-          test -s "$KEYSTORE"
-          keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$SOWIA_KEYSTORE_PASSWORD" -alias uploadsowia-upload >/dev/null
-          ACTUAL_FINGERPRINT="$(keytool -list -v -storetype JKS -keystore "$KEYSTORE" -storepass "$SOWIA_KEYSTORE_PASSWORD" -alias uploadsowia-upload | awk -F': ' '/SHA256:/{print $2; exit}' | tr -d ': ' | tr '[:lower:]' '[:upper:]')"
-          EXPECTED_FINGERPRINT="A967AA50C0257BFF7D7EFA0D102035A61AAE4A0A085717702152BECCADF304F4"
-          if [[ "$ACTUAL_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]]; then
-            echo "::error::The keystore certificate does not match the registered SOW IA upload certificate. Build stopped."
+          RUN_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/generate-android-keystore.yml/runs?status=completed&per_page=20" --jq '.workflow_runs | map(select(.conclusion == "success")) | .[0].id')"
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "::error::No successful Android keystore generation run was found."
             exit 1
           fi
-          keytool -certreq -storetype JKS -keystore "$KEYSTORE" -storepass "$SOWIA_KEYSTORE_PASSWORD" -keypass "$SOWIA_KEY_PASSWORD" -alias uploadsowia-upload -dname "CN=SOWIA Android Upload" -file "$RUNNER_TEMP/sowia-signing-check.csr" >/dev/null
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "Found a successful Android keystore generation run."
+
+      - name: Download Android signing artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sowia-android-signing-material
+          run-id: ${{ steps.keystore_run.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: signing-output
+
+      - name: Validate Android upload keystore
+        run: |
+          set -euo pipefail
+          test -s signing-output/sowia-upload.jks
+          test -s signing-output/KEYSTORE_CREDENTIALS.txt
+          set -a
+          source signing-output/KEYSTORE_CREDENTIALS.txt
+          set +a
+          KEYSTORE="$GITHUB_WORKSPACE/signing-output/sowia-upload.jks"
+          keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASSWORD" >/dev/null
+          keytool -list -storetype JKS -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+          ACTUAL_FINGERPRINT="$(keytool -list -v -storetype JKS -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | awk -F': ' '/SHA256:/{print $2; exit}' | tr -d ': ' | tr '[:lower:]' '[:upper:]')"
+          EXPECTED_FINGERPRINT="A967AA50C0257BFF7D7EFA0D102035A61AAE4A0A085717702152BECCADF304F4"
+          if [[ "$ACTUAL_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]]; then
+            echo "::error::The restored keystore does not match the registered SOW IA upload certificate."
+            exit 1
+          fi
+          keytool -certreq -storetype JKS -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" -alias "$KEY_ALIAS" -dname "CN=SOWIA Android Upload" -file "$RUNNER_TEMP/sowia-signing-check.csr" >/dev/null
           {
             echo "ANDROID_KEYSTORE_PATH=$KEYSTORE"
             echo "ANDROID_KEYSTORE_TYPE=JKS"
-            echo "ANDROID_KEYSTORE_PASSWORD=$SOWIA_KEYSTORE_PASSWORD"
-            echo "ANDROID_KEY_ALIAS=uploadsowia-upload"
-            echo "ANDROID_KEY_PASSWORD=$SOWIA_KEY_PASSWORD"
+            echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD"
           } >> "$GITHUB_ENV"
-          echo "Original SOW IA upload certificate and signing credentials validated."
-          
+          echo "Android keystore, alias, and both passwords validated successfully."
+
       - name: Validate Android public Supabase configuration
         run: |
           set -euo pipefail
@@ -114,21 +130,17 @@ jobs:
         run: |
           set -euo pipefail
           APK="$(find android/app/build/outputs/apk/current/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
-          if [[ -z "$APK" ]]; then
-            echo "::error::Primary release APK was not produced."
-            exit 1
-          fi
+          test -n "$APK"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)/apksigner"
           test -x "$APKSIGNER"
           CERT_OUTPUT="$("$APKSIGNER" verify --verbose --print-certs "$APK" 2>&1)"
-          printf '%s\n' "$CERT_OUTPUT"
-          ACTUAL_FINGERPRINT="$(printf '%s\n' "$CERT_OUTPUT" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}' | tr -d ': ' | tr '[:lower:]' '[:upper:]')"
+          ACTUAL_FINGERPRINT="$(printf '%s\\n' "$CERT_OUTPUT" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print $NF; exit}' | tr -d ': ' | tr '[:lower:]' '[:upper:]')"
           EXPECTED_FINGERPRINT="A967AA50C0257BFF7D7EFA0D102035A61AAE4A0A085717702152BECCADF304F4"
           if [[ "$ACTUAL_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]]; then
-            echo "::error::APK signature does not match the registered SOW IA certificate. Artifact will not be uploaded."
+            echo "::error::APK signer does not match the registered SOW IA upload certificate."
             exit 1
           fi
-          echo "Primary SOW IA APK signature verified."
+          echo "Primary APK signer verified."
 
       - name: Upload primary SOW IA APK
         uses: actions/upload-artifact@v4
