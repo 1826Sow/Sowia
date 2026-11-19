@@ -48,6 +48,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sowia-android-debug
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: |
+            android/app/build/outputs/apk/current/debug/*.apk
+            android/app/build/outputs/apk/legacy/debug/*.apk
           if-no-files-found: error
           retention-days: 7
