@@ -73,7 +73,7 @@ private fun VitrineScreen(onEnter: () -> Unit) {
                     contentColor = Color.White
                 )
             ) {
-                Text("Entrer dans SOW IA", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Valider", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
