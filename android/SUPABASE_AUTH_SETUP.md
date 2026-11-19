@@ -8,10 +8,12 @@ For a local Android Studio build, add these values to `android/local.properties`
 
 ```properties
 SOWIA_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-SOWIA_SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_OR_PUBLISHABLE_KEY
+SOWIA_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLIC_PUBLISHABLE_KEY
+# Legacy anon keys are also accepted:
+# SOWIA_SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
 ```
 
-Alternatively, provide environment variables with the same names to Gradle/CI.
+Alternatively, provide the same environment variables to Gradle/CI. The Android build accepts `SOWIA_SUPABASE_PUBLISHABLE_KEY` (preferred) or the legacy `SOWIA_SUPABASE_ANON_KEY`. Use only the public publishable/anon key, never a service-role or secret key.
 The CI build intentionally compiles with empty values when no configuration is supplied;
 the sign-in action remains disabled until configured.
 
