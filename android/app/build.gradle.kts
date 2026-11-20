@@ -43,12 +43,12 @@ val hasReleaseSigning = signingStoreFile.isNotBlank() &&
 
 android {
     namespace = "com.sowkeys.sowia"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.sowkeys.sowia"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 14
         versionName = "0.2.10"
         buildConfigField("String", "SUPABASE_URL", buildConfigString(normalizeSupabaseProjectUrl(configValue("SOWIA_SUPABASE_URL"))))
