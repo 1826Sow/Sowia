@@ -224,7 +224,7 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                     }
                 }
                 Spacer(Modifier.height(24.dp))
-                Text("SOW IA • Android 0.2.10 • Modules en intégration", color = Muted, fontSize = 11.sp)
+                Text("SOW IA • Android 0.2.11 • Modules en intégration", color = Muted, fontSize = 11.sp)
                 }
             }
         }
