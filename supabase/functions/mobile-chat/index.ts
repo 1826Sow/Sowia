@@ -163,7 +163,7 @@ async function handleMobileChat(req: Request): Promise<Response> {
   historyUrl.searchParams.set("order", "id.desc");
   historyUrl.searchParams.set("limit", String(MAX_HISTORY));
   const memoryUrl = new URL(`${supabaseUrl}/rest/v1/sowia_memory_items`);
-  memoryUrl.searchParams.set("select", "content");
+  memoryUrl.searchParams.set("select", "content,created_at");
   memoryUrl.searchParams.set("user_id", `eq.${userId}`);
   memoryUrl.searchParams.set("workspace_id", `eq.${workspaceId}`);
   memoryUrl.searchParams.set("order", "created_at.desc");
@@ -183,9 +183,29 @@ async function handleMobileChat(req: Request): Promise<Response> {
         (row.role === "user" || row.role === "assistant") && typeof row.content === "string"
       )
     : [];
+  const memoryStopWords = new Set([
+    "avec", "dans", "pour", "mais", "donc", "alors", "plus", "moins", "tout", "tous",
+    "toute", "toutes", "quel", "quelle", "quels", "quelles", "mon", "mes", "ton", "tes",
+    "son", "ses", "une", "des", "les", "aux", "sur", "est", "sont", "être", "avoir",
+    "faire", "comment", "peux", "vous", "nous", "cela", "cette", "comme", "quoi",
+  ]);
+  const memoryTerms = new Set(
+    (message.toLocaleLowerCase().match(/[a-zà-ÿ0-9]{3,}/g) ?? [])
+      .filter((term) => !memoryStopWords.has(term)),
+  );
+  const rankedMemoryRows = (Array.isArray(memoryRows) ? memoryRows : [])
+    .map((item: any, index: number) => {
+      const content = typeof item?.content === "string" ? item.content : "";
+      const words = new Set(content.toLocaleLowerCase().match(/[a-zà-ÿ0-9]{3,}/g) ?? []);
+      const score = [...memoryTerms].reduce((total, term) => total + (words.has(term) ? 1 : 0), 0);
+      return { item, index, score };
+    })
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map((entry) => entry.item);
+
   let memoryChars = 0;
   const memoryLines: string[] = [];
-  for (const item of (Array.isArray(memoryRows) ? memoryRows : [])) {
+  for (const item of rankedMemoryRows) {
     if (typeof item.content !== "string") continue;
     const line = item.content.slice(0, Math.max(0, MAX_MEMORY_CHARS - memoryChars));
     if (!line) break;
