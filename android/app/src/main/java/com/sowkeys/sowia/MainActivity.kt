@@ -2,7 +2,6 @@ package com.sowkeys.sowia
 
 import android.os.Bundle
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -185,11 +184,7 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                             )
                             Button(
                                 onClick = {
-                                    val intent = Intent(
-                                        Intent.ACTION_VIEW,
-                                        Uri.parse("https://fm5aczcvvj5jgkhpxwqtcr.streamlit.app/"),
-                                    )
-                                    context.startActivity(intent)
+                                    context.startActivity(Intent(context, DashboardActivity::class.java))
                                 },
                                 modifier = Modifier.fillMaxWidth().height(56.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
