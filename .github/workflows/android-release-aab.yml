@@ -45,13 +45,36 @@ jobs:
             fi
           done
           KEYSTORE_PATH="$RUNNER_TEMP/sowia-existing-upload-key"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
-          test -s "$KEYSTORE_PATH"
-          KEYSTORE_TYPE="${ANDROID_KEYSTORE_TYPE:-JKS}"
-          keytool -list -keystore "$KEYSTORE_PATH" -storetype "$KEYSTORE_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
+          if ! printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"; then
+            echo "::error::The existing keystore secret could not be decoded. No signing key was generated or changed."
+            exit 1
+          fi
+          if [ ! -s "$KEYSTORE_PATH" ]; then
+            echo "::error::The decoded keystore is empty. No signing key was generated or changed."
+            exit 1
+          fi
+
+          # Detect the existing keystore format if no explicit type is configured.
+          if [ -n "${ANDROID_KEYSTORE_TYPE:-}" ]; then
+            CANDIDATE_TYPES=("$ANDROID_KEYSTORE_TYPE")
+          else
+            CANDIDATE_TYPES=(JKS PKCS12)
+          fi
+          VALIDATED_TYPE=""
+          for candidate in "${CANDIDATE_TYPES[@]}"; do
+            if keytool -list -keystore "$KEYSTORE_PATH" -storetype "$candidate" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+              VALIDATED_TYPE="$candidate"
+              break
+            fi
+          done
+          if [ -z "$VALIDATED_TYPE" ]; then
+            echo "::error::The existing keystore could not be validated with the configured password, alias, or store type. Check those existing GitHub secret values; no key or certificate was created or replaced."
+            exit 1
+          fi
+
           echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
-          echo "ANDROID_KEYSTORE_TYPE=$KEYSTORE_TYPE" >> "$GITHUB_ENV"
-          echo "Existing signing key and requested alias validated."
+          echo "ANDROID_KEYSTORE_TYPE=$VALIDATED_TYPE" >> "$GITHUB_ENV"
+          echo "Existing signing keystore, password, and alias validated (format: $VALIDATED_TYPE). No signing material was changed."
 
       - name: Validate Supabase configuration and build current release AAB
         env:
