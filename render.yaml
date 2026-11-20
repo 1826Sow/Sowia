@@ -10,8 +10,6 @@ services:
     healthCheckPath: /_stcore/health
     autoDeploy: true
     envVars:
-      - key: PORT
-        value: "8501"
       - key: SOWIA_REQUIRE_AUTH
         value: "true"
       - key: SUPABASE_URL
