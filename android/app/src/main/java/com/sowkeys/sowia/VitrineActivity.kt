@@ -34,7 +34,9 @@ class VitrineActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 VitrineScreen {
-                    startActivity(Intent(this, MainActivity::class.java).putExtra("open_login", true))
+                    // Enter the real SOW IA home screen first.
+                    // Login remains available from the home screen, not forced at launch.
+                    startActivity(Intent(this, MainActivity::class.java))
                 }
             }
         }
