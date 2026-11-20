@@ -302,6 +302,8 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
                     val name = storage.upload(uri, current, workspace)
                     refresh()
                     status = "PDF importé : " + name
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
                 } catch (error: Exception) {
                     status = error.message ?: "Échec de l'import PDF."
                 } finally {
@@ -372,6 +374,8 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
                                             val prompt = buildPdfAnalysisPrompt(document.name, extracted)
                                             val answer = auth.sendChatMessage(UUID.randomUUID().toString(), prompt, workspace)
                                             status = "Analyse de " + document.name + " :\n" + answer
+                                        } catch (cancelled: CancellationException) {
+                                            throw cancelled
                                         } catch (error: Exception) {
                                             status = error.message ?: "Analyse du PDF impossible."
                                         } finally {
@@ -389,6 +393,8 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
                                             storage.delete(auth.validSession() ?: error("Session expirée."), document)
                                             refresh()
                                             status = "Document supprimé."
+                                        } catch (cancelled: CancellationException) {
+                                            throw cancelled
                                         } catch (error: Exception) {
                                             status = error.message ?: "Suppression impossible."
                                         } finally {
