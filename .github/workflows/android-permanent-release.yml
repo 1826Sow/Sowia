@@ -63,9 +63,20 @@ jobs:
             fi
           done
           KEYSTORE="$RUNNER_TEMP/sowia-release-permanent.jks"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
-          test -s "$KEYSTORE"
-          keytool -list -keystore "$KEYSTORE" -storetype "${ANDROID_KEYSTORE_TYPE:-JKS}" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
+          if ! printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"; then
+            echo "::error::Keystore secret is not valid Base64."
+            exit 1
+          fi
+          if [[ ! -s "$KEYSTORE" ]]; then
+            echo "::error::Decoded keystore file is empty."
+            exit 1
+          fi
+          KEYSTORE_TYPE="${ANDROID_KEYSTORE_TYPE:-JKS}"
+          if ! KEYTOOL_OUTPUT="$(keytool -list -keystore "$KEYSTORE" -storetype "$KEYSTORE_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" 2>&1)"; then
+            echo "::error::Keystore validation failed. Diagnostic follows; no secret values are printed."
+            printf '%s\\n' "$KEYTOOL_OUTPUT" | sed -E 's/(password|secret|key)[^:]*:.*/\\1: [masqué]/Ig'
+            exit 1
+          fi
           {
             echo "ANDROID_KEYSTORE_PATH=$KEYSTORE"
             echo "ANDROID_KEYSTORE_TYPE=${ANDROID_KEYSTORE_TYPE:-JKS}"
