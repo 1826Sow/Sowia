@@ -223,6 +223,7 @@ class SupabaseAuthClient(context: Context) {
             "/functions/v1/mobile-chat",
             JSONObject().put("session_id", sessionId).put("workspace_id", workspaceId).put("message", message.trim()),
             session.accessToken,
+            readTimeoutMillis = 60000,
         )
         check(response.optBoolean("ok")) { "Le service Assistant a refusé la demande." }
         response.optString("answer").takeIf { it.isNotBlank() }
@@ -246,12 +247,17 @@ class SupabaseAuthClient(context: Context) {
         preferences.edit().putString("session", encrypt(json.toString())).apply()
     }
 
-    private fun request(path: String, body: JSONObject, bearer: String?): JSONObject {
+    private fun request(
+        path: String,
+        body: JSONObject,
+        bearer: String?,
+        readTimeoutMillis: Int = 20000,
+    ): JSONObject {
         val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + path)
             .openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 15000
-            readTimeout = 20000
+            readTimeout = readTimeoutMillis
             doOutput = true
             setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
             setRequestProperty("Content-Type", "application/json")
