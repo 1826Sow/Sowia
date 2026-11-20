@@ -1,0 +1,93 @@
+name: SOW IA — Play Store AAB (signed)
+
+on:
+  push:
+    branches: ["prepare-play-store-aab"]
+    paths:
+      - ".github/workflows/android-play-store-aab.yml"
+      - "android/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle-current-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      - name: Validate existing signing material
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_TYPE: ${{ secrets.ANDROID_KEYSTORE_TYPE }}
+        run: |
+          set -euo pipefail
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Le secret GitHub ${name} est absent. Aucun certificat ne sera créé ou remplacé."
+              exit 1
+            fi
+          done
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/sowia-upload-key"
+          test -s "$RUNNER_TEMP/sowia-upload-key"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/sowia-upload-key" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_TYPE=${ANDROID_KEYSTORE_TYPE:-JKS}" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+          echo "Existing signing material detected; no key or certificate was generated."
+
+      - name: Validate Supabase build configuration
+        env:
+          SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
+          SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          python - <<'PY'
+          import os
+          from urllib.parse import urlparse
+
+          url = os.environ.get("SOWIA_SUPABASE_URL", "").strip()
+          key = os.environ.get("SOWIA_SUPABASE_PUBLISHABLE_KEY", "").strip()
+          parsed = urlparse(url)
+          if parsed.scheme != "https" or parsed.hostname != "qegcopordeqjiechmbhg.supabase.co" or parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+              raise SystemExit("SOWIA_SUPABASE_URL is missing or invalid.")
+          if not key:
+              raise SystemExit("SOWIA_SUPABASE_PUBLISHABLE_KEY is missing.")
+          print("Supabase configuration validated.")
+          PY
+
+      - name: Build Play Store Android App Bundle
+        env:
+          SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
+          SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          set -euo pipefail
+          gradle -p android :app:bundleCurrentRelease
+          AAB="android/app/build/outputs/bundle/currentRelease/app-current-release.aab"
+          test -s "$AAB"
+          jarsigner -verify "$AAB"
+          echo "AAB built and signature verification passed."
+
+      - name: Upload signed AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: sowia-play-store-aab
+          path: android/app/build/outputs/bundle/currentRelease/app-current-release.aab
+          if-no-files-found: error
+          retention-days: 14
