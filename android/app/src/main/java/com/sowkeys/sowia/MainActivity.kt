@@ -65,6 +65,7 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
         "Assistant",
         "Mes échanges & projets",
         "Laboratoire PDF",
+        "Mémoire de l'assistant",
         "Compte & paramètres",
     )
     fun navigate(destination: String) {
@@ -208,6 +209,7 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                                         "Assistant" -> "Assistant IA"
                                         "Mes échanges & projets" -> "Mes échanges et projets"
                                         "Laboratoire PDF" -> "Rubrique PDF"
+                                        "Mémoire de l'assistant" -> "Ma mémoire"
                                         "Compte & paramètres" -> "Paramètres et connexion"
                                         else -> item
                                     },
@@ -240,6 +242,7 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                         "Assistant" -> AssistantPanel(initialSessionId = selectedConversationId, workspaceId = selectedWorkspace, onOpenAccount = { navigate("Compte & paramètres") })
                         "Mes échanges & projets" -> RegistryPanel(onOpenAccount = { navigate("Compte & paramètres") }, onOpenConversation = { id, space -> selectedConversationId = id; selectedWorkspace = space; navigate("Assistant") })
                         "Laboratoire PDF" -> PdfLabPanel(onOpenAccount = { navigate("Compte & paramètres") })
+                        "Mémoire de l'assistant" -> MemoryPanel(workspaceId = selectedWorkspace, onOpenAccount = { navigate("Compte & paramètres") })
                         else -> Card(colors = CardDefaults.cardColors(containerColor = Panel)) {
                             Column(Modifier.padding(18.dp)) {
                                 Text("Rubrique en préparation", color = Cyan, fontWeight = FontWeight.Bold)
