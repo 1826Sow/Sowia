@@ -266,14 +266,31 @@ class SupabaseAuthClient(context: Context) {
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
             if (status !in 200..299) {
-                val message = runCatching {
-                    val error = JSONObject(text)
-                    error.optString("msg").ifBlank { error.optString("error_description") }
-                }.getOrDefault("")
-                throw SupabaseRequestException(
-                    status,
-                    message.ifBlank { "Connexion refusée (HTTP $status)." },
-                )
+                val error = runCatching { JSONObject(text) }.getOrNull()
+                val code = error?.optString("code").orEmpty()
+                val serverMessage = error?.optString("message").orEmpty()
+                    .ifBlank { error?.optString("msg").orEmpty() }
+                    .ifBlank { error?.optString("error_description").orEmpty() }
+                val message = when (code) {
+                    "AI_QUOTA_EXCEEDED" ->
+                        "Le moteur IA a atteint son quota fournisseur. La connexion fonctionne, mais aucune réponse IA ne peut être générée avant le rétablissement du quota."
+                    "AI_PROVIDER_NOT_CONFIGURED" ->
+                        "Le moteur IA n'est pas configuré côté serveur. La clé du fournisseur IA doit être ajoutée aux secrets Supabase."
+                    "AI_PROVIDER_CONFIGURATION_ERROR" ->
+                        "Le fournisseur IA refuse sa configuration côté serveur. Vérification de la clé et du modèle nécessaire."
+                    "AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_CONNECTION_FAILED" ->
+                        "Le fournisseur IA est momentanément inaccessible. Réessayez ultérieurement."
+                    "USER_CONTEXT_UNAVAILABLE" ->
+                        "L'historique ou la mémoire de votre compte est momentanément inaccessible."
+                    "WORKSPACE_ACCESS_DENIED" ->
+                        "L'accès à cet espace de travail a été refusé. Vérifiez vos droits de compte."
+                    "MESSAGE_SAVE_FAILED", "CONVERSATION_REGISTRY_UPDATE_FAILED" ->
+                        "La réponse IA n'a pas pu être enregistrée dans votre historique. Réessayez."
+                    "MOBILE_CHAT_INTERNAL_ERROR" ->
+                        "Le service IA a rencontré une erreur interne. Le diagnostic serveur a été conservé."
+                    else -> serverMessage.ifBlank { "Connexion refusée (HTTP $status)." }
+                }
+                throw SupabaseRequestException(status, message)
             }
             if (text.isBlank()) JSONObject() else JSONObject(text)
         } finally {
