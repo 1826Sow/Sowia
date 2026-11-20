@@ -31,6 +31,10 @@ jobs:
 
       - name: Validate and prepare the existing Android signing key
         env:
+          SOWIA_UPLOAD_KEYSTORE_BASE64: ${{ secrets.SOWIA_UPLOAD_KEYSTORE_BASE64 }}
+          SOWIA_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEYSTORE_PASSWORD }}
+          SOWIA_UPLOAD_KEY_ALIAS: ${{ secrets.SOWIA_UPLOAD_KEY_ALIAS }}
+          SOWIA_UPLOAD_KEY_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEY_PASSWORD }}
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -38,6 +42,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Prefer the complete legacy SOWIA_UPLOAD_* set when present.
+          # Otherwise keep using the complete ANDROID_* set.
+          if [[ -n "${SOWIA_UPLOAD_KEYSTORE_BASE64:-}" && -n "${SOWIA_UPLOAD_KEYSTORE_PASSWORD:-}" && -n "${SOWIA_UPLOAD_KEY_ALIAS:-}" && -n "${SOWIA_UPLOAD_KEY_PASSWORD:-}" ]]; then
+            ANDROID_KEYSTORE_BASE64="$SOWIA_UPLOAD_KEYSTORE_BASE64"
+            ANDROID_KEYSTORE_PASSWORD="$SOWIA_UPLOAD_KEYSTORE_PASSWORD"
+            ANDROID_KEY_ALIAS="$SOWIA_UPLOAD_KEY_ALIAS"
+            ANDROID_KEY_PASSWORD="$SOWIA_UPLOAD_KEY_PASSWORD"
+          fi
+          export ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD
           for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
             if [ -z "${!name:-}" ]; then
               echo "::error::Required signing secret $name is missing. No signing key will be generated or replaced."
@@ -131,9 +144,6 @@ jobs:
           SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
           SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
           SOWIA_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_SUPABASE_ANON_KEY }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           python - <<'PY'
