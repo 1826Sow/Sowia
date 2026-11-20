@@ -53,33 +53,33 @@ class SupabaseAuthClient(context: Context) {
     suspend fun signIn(email: String, password: String): SowiaSession =
         withContext(Dispatchers.IO) {
             SessionOperationGate.withLock {
-            check(isConfigured) {
-                "Configuration Supabase absente. Le service de connexion n'est pas encore activé."
-            }
-            require(email.isNotBlank() && password.isNotBlank()) {
-                "Saisissez votre adresse e-mail et votre mot de passe."
-            }
-            val response = request(
-                "/auth/v1/token?grant_type=password",
-                JSONObject().put("email", email.trim()).put("password", password),
-                null,
-            )
-            val user = response.optJSONObject("user")
-                ?: throw IllegalStateException("Réponse d'authentification invalide.")
-            val session = SowiaSession(
-                accessToken = response.optString("access_token"),
-                refreshToken = response.optString("refresh_token"),
-                userId = user.optString("id"),
-                email = user.optString("email", email.trim()),
-                expiresAt = response.optLong("expires_at").takeIf { it > 0L }
-                    ?: (System.currentTimeMillis() / 1000L + response.optLong("expires_in", 3600L)),
-            )
-            require(session.accessToken.isNotBlank() && session.refreshToken.isNotBlank() &&
-                session.userId.isNotBlank()) {
-                "La session reçue est incomplète."
-            }
-            saveSession(session)
-            session
+                check(isConfigured) {
+                    "Configuration Supabase absente. Le service de connexion n'est pas encore activé."
+                }
+                require(email.isNotBlank() && password.isNotBlank()) {
+                    "Saisissez votre adresse e-mail et votre mot de passe."
+                }
+                val response = request(
+                    "/auth/v1/token?grant_type=password",
+                    JSONObject().put("email", email.trim()).put("password", password),
+                    null,
+                )
+                val user = response.optJSONObject("user")
+                    ?: throw IllegalStateException("Réponse d'authentification invalide.")
+                val session = SowiaSession(
+                    accessToken = response.optString("access_token"),
+                    refreshToken = response.optString("refresh_token"),
+                    userId = user.optString("id"),
+                    email = user.optString("email", email.trim()),
+                    expiresAt = response.optLong("expires_at").takeIf { it > 0L }
+                        ?: (System.currentTimeMillis() / 1000L + response.optLong("expires_in", 3600L)),
+                )
+                require(session.accessToken.isNotBlank() && session.refreshToken.isNotBlank() &&
+                    session.userId.isNotBlank()) {
+                    "La session reçue est incomplète."
+                }
+                saveSession(session)
+                session
             }
         }
 
@@ -133,7 +133,7 @@ class SupabaseAuthClient(context: Context) {
     }
 
 
-    suspend fun validSession(): SowiaSession? =
+    suspend fun validSession(): SowiaSession? = withContext(Dispatchers.IO) {
         SessionOperationGate.withLock {
             // Re-read after acquiring the shared gate: another operation may have
             // rotated or removed the session while this request was waiting.
@@ -141,6 +141,7 @@ class SupabaseAuthClient(context: Context) {
             val now = System.currentTimeMillis() / 1000L
             if (session.expiresAt > now + 60L) session else refreshSessionLocked()
         }
+    }
 
     suspend fun checkMobileHealth(): String = withContext(Dispatchers.IO) {
         check(isConfigured) { "Configuration Supabase absente." }
