@@ -20,7 +20,7 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-Deno.serve(async (req: Request) => {
+async function handleMobileChat(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsHeaders });
   if (req.method !== "POST") return json(405, { ok: false, code: "METHOD_NOT_ALLOWED" });
 
@@ -142,19 +142,26 @@ Deno.serve(async (req: Request) => {
     return json(403, { ok: false, code: "WORKSPACE_ACCESS_DENIED" });
   }
 
-  const aiResponse = await fetch(providerUrl, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${providerKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...history,
-        { role: "user", content: message },
-      ],
-      temperature: 0.4,
-    }),
-  });
+  let aiResponse: Response;
+  try {
+    aiResponse = await fetch(providerUrl, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${providerKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...history,
+          { role: "user", content: message },
+        ],
+        temperature: 0.4,
+      }),
+    });
+  } catch (error) {
+    // Keep provider credentials and raw upstream error details out of client responses.
+    console.error("mobile-chat provider connection failed", error instanceof Error ? error.name : "UnknownError");
+    return json(502, { ok: false, code: "AI_PROVIDER_CONNECTION_FAILED" });
+  }
 
   if (!aiResponse.ok) {
     if (aiResponse.status === 429) return json(429, { ok: false, code: "AI_QUOTA_EXCEEDED" });
@@ -163,7 +170,13 @@ Deno.serve(async (req: Request) => {
     }
     return json(502, { ok: false, code: "AI_PROVIDER_UNAVAILABLE" });
   }
-  const aiPayload = await aiResponse.json();
+  let aiPayload: any;
+  try {
+    aiPayload = await aiResponse.json();
+  } catch (error) {
+    console.error("mobile-chat provider returned invalid JSON", error instanceof Error ? error.name : "UnknownError");
+    return json(502, { ok: false, code: "AI_PROVIDER_INVALID_RESPONSE" });
+  }
   const answer = aiPayload?.choices?.[0]?.message?.content;
   if (typeof answer !== "string" || !answer.trim()) {
     return json(502, { ok: false, code: "EMPTY_AI_RESPONSE" });
@@ -194,4 +207,14 @@ Deno.serve(async (req: Request) => {
   }
 
   return json(200, { ok: true, session_id: sessionId, workspace_id: workspaceId, answer: answer.trim(), model });
+}
+
+Deno.serve(async (req: Request) => {
+  try {
+    return await handleMobileChat(req);
+  } catch (error) {
+    // Do not log request bodies, JWTs, provider keys, or upstream response bodies.
+    console.error("mobile-chat unhandled exception", error instanceof Error ? error.name : "UnknownError");
+    return json(502, { ok: false, code: "MOBILE_CHAT_INTERNAL_ERROR" });
+  }
 });

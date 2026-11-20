@@ -177,7 +177,17 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(item, color = Color.White, fontWeight = FontWeight.Medium)
+                                Text(
+                                    when (item) {
+                                        "Assistant" -> "Assistant IA"
+                                        "Mes échanges & projets" -> "Mes échanges et projets"
+                                        "Laboratoire PDF" -> "Rubrique PDF"
+                                        "Compte & paramètres" -> "Paramètres et connexion"
+                                        else -> item
+                                    },
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Medium,
+                                )
                                 Button(
                                     onClick = { navigate(item) },
                                     colors = ButtonDefaults.buttonColors(
@@ -190,7 +200,7 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                     }
                 } else {
                     Text(
-                        screen,
+                        if (screen == "Assistant") "Assistant IA" else screen,
                         color = Color.White,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -214,7 +224,7 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                     }
                 }
                 Spacer(Modifier.height(24.dp))
-                Text("SOW IA • Android 0.2.10 • Modules en intégration", color = Muted, fontSize = 11.sp)
+                Text("SOW IA • Android 0.2.11 • Modules en intégration", color = Muted, fontSize = 11.sp)
                 }
             }
         }
@@ -270,6 +280,9 @@ private fun AccountPanel(onLoginSuccess: () -> Unit) {
                         scope.launch {
                             try {
                                 status = auth.checkMobileHealth()
+                                // A successful health check confirms the account and mobile
+                                // service are ready; continue into the real application.
+                                onLoginSuccess()
                             } catch (error: Exception) {
                                 status = error.message ?: "Service mobile indisponible."
                             } finally {
