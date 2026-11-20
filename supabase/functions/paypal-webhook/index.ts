@@ -143,6 +143,12 @@ Deno.serve(async (request: Request) => {
       return json({ error: "Webhook event ID is missing or invalid" }, 400);
     }
     const eventType = String(event.event_type || "");
+    // PayPal event time, not delivery time, determines event ordering.
+    const eventCreatedAtDate = new Date(String(event.create_time || ""));
+    if (!Number.isFinite(eventCreatedAtDate.getTime())) {
+      return json({ error: "Webhook event creation time is missing or invalid" }, 400);
+    }
+    const eventCreatedAt = eventCreatedAtDate.toISOString();
     const eventResource = event.resource && typeof event.resource === "object"
       ? event.resource as Record<string, unknown>
       : {};
@@ -360,115 +366,46 @@ Deno.serve(async (request: Request) => {
       "PAYMENT.SALE.REFUNDED",
       "PAYMENT.SALE.REVERSED",
     ].includes(eventType);
-    const recoveryEvent = [
-      "BILLING.SUBSCRIPTION.ACTIVATED",
-      "PAYMENT.SALE.COMPLETED",
-    ].includes(eventType);
-    const existingSubscriptionResponse = await fetch(
-      supabaseUrl + "/rest/v1/sowia_subscriptions?paypal_subscription_id=eq." +
-        encodeURIComponent(subscriptionId) + "&select=paypal_access_blocked&limit=1",
-      {
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: "Bearer " + serviceRoleKey,
-        },
-      },
-    );
-    if (!existingSubscriptionResponse.ok) {
-      throw new Error("Unable to inspect existing subscription access state");
-    }
-    const existingSubscriptionRows = await existingSubscriptionResponse.json();
-    const previouslyBlocked = Array.isArray(existingSubscriptionRows) &&
-      Boolean(existingSubscriptionRows[0]?.paypal_access_blocked);
-    const existingBlockResponse = await fetch(
-      supabaseUrl + "/rest/v1/sowia_paypal_subscription_blocks?paypal_subscription_id=eq." +
-        encodeURIComponent(subscriptionId) + "&select=paypal_subscription_id&limit=1",
-      {
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: "Bearer " + serviceRoleKey,
-        },
-      },
-    );
-    if (!existingBlockResponse.ok) throw new Error("Unable to inspect subscription block ledger");
-    const existingBlockRows = await existingBlockResponse.json();
-    const hasBlockLedgerEntry = Array.isArray(existingBlockRows) &&
-      existingBlockRows.length > 0;
-    const accessBlocked = paypalStatus !== "ACTIVE" || blockedEvent ||
-      (!recoveryEvent && (previouslyBlocked || hasBlockLedgerEntry));
-    const payload = {
-      user_id: userId,
-      provider: "paypal",
-      paypal_subscription_id: subscriptionId,
-      paypal_plan_id: planId,
-      status: paypalStatus.toLowerCase(),
-      paypal_access_blocked: accessBlocked,
-      currency: paymentAmount.currency_code || null,
-      amount: paymentAmount.value || null,
-      next_billing_time: billing.next_billing_time || null,
-      last_payment_at: lastPayment.time || null,
-      updated_at: new Date().toISOString(),
-    };
-
-    const writeResponse = await fetch(
-      supabaseUrl +
-        "/rest/v1/sowia_subscriptions?on_conflict=paypal_subscription_id",
+    // Apply the subscription snapshot, event ordering decision, and block-ledger
+    // mutation atomically under a per-subscription PostgreSQL advisory lock.
+    const applyResponse = await fetch(
+      supabaseUrl + "/rest/v1/rpc/sowia_apply_paypal_subscription_event",
       {
         method: "POST",
         headers: {
           apikey: serviceRoleKey,
           Authorization: "Bearer " + serviceRoleKey,
           "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates,return=minimal",
+          Accept: "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          p_subscription_id: subscriptionId,
+          p_user_id: userId,
+          p_plan_id: planId,
+          p_status: paypalStatus,
+          p_currency: paymentAmount.currency_code || null,
+          p_amount: paymentAmount.value || null,
+          p_next_billing_time: billing.next_billing_time || null,
+          p_last_payment_at: lastPayment.time || null,
+          p_updated_at: new Date().toISOString(),
+          p_event_id: eventId,
+          p_event_type: eventType,
+          p_event_created_at: eventCreatedAt,
+          p_resource_id: String(resource.id || "") || null,
+          p_blocked_event: blockedEvent,
+        }),
       },
     );
-    if (!writeResponse.ok) {
+    if (!applyResponse.ok) {
       console.error(
-        "Supabase subscription upsert failed",
-        await writeResponse.text(),
+        "Supabase atomic PayPal event application failed",
+        await applyResponse.text(),
       );
-      throw new Error("Unable to persist subscription state");
+      throw new Error("Unable to atomically apply PayPal subscription event");
     }
-
-    if (accessBlocked) {
-      const blockResponse = await fetch(
-        supabaseUrl + "/rest/v1/sowia_paypal_subscription_blocks?on_conflict=paypal_subscription_id",
-        {
-          method: "POST",
-          headers: {
-            apikey: serviceRoleKey,
-            Authorization: "Bearer " + serviceRoleKey,
-            "Content-Type": "application/json",
-            Prefer: "resolution=merge-duplicates,return=minimal",
-          },
-          body: JSON.stringify({
-            paypal_subscription_id: subscriptionId,
-            user_id: userId,
-            source_event_id: eventId,
-            blocked_at: new Date().toISOString(),
-          }),
-        },
-      );
-      if (!blockResponse.ok) throw new Error("Unable to persist subscription access block");
-    } else if (
-      eventType === "BILLING.SUBSCRIPTION.ACTIVATED" ||
-      eventType === "PAYMENT.SALE.COMPLETED"
-    ) {
-      const unblockResponse = await fetch(
-        supabaseUrl + "/rest/v1/sowia_paypal_subscription_blocks?paypal_subscription_id=eq." +
-          encodeURIComponent(subscriptionId),
-        {
-          method: "DELETE",
-          headers: {
-            apikey: serviceRoleKey,
-            Authorization: "Bearer " + serviceRoleKey,
-            Prefer: "return=minimal",
-          },
-        },
-      );
-      if (!unblockResponse.ok) throw new Error("Unable to clear subscription access block");
+    const accessBlocked = await applyResponse.json();
+    if (typeof accessBlocked !== "boolean") {
+      throw new Error("Atomic PayPal event function returned an invalid result");
     }
 
     const eventStatusResponse = await fetch(
