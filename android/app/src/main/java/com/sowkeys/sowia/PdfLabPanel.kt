@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -262,22 +263,28 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
 
     suspend fun refresh() {
-        val current = auth.validSession()
-        if (current == null) {
-            session.value = null
-            documents.clear()
-            status = "Connectez-vous pour accéder à vos documents privés."
-            return
-        }
-        session.value = current
         busy = true
         try {
+            val current = auth.validSession()
+            if (current == null) {
+                session.value = null
+                documents.clear()
+                status = "Connectez-vous pour accéder à vos documents privés."
+                return
+            }
+            session.value = current
             val loaded = storage.list(current, workspace)
             documents.clear()
             documents.addAll(loaded)
             status = if (loaded.isEmpty()) "Aucun PDF dans cet espace pour le moment." else loaded.size.toString() + " document(s) chargé(s)."
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (error: Exception) {
-            status = error.message ?: "Impossible de charger les documents."
+            // Never leave a previous private document listing visible when the
+            // session check or the storage refresh fails.
+            documents.clear()
+            session.value = auth.currentSession()
+            status = error.message ?: "Impossible de charger les documents. Réessayez."
         } finally {
             busy = false
         }
