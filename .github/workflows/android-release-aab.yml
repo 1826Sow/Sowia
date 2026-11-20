@@ -31,11 +31,11 @@ jobs:
 
       - name: Validate and prepare the existing Android signing key
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          ANDROID_KEYSTORE_TYPE: ${{ secrets.ANDROID_KEYSTORE_TYPE }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.SOWIA_UPLOAD_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.SOWIA_UPLOAD_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_TYPE: JKS
         run: |
           set -euo pipefail
           for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
@@ -54,28 +54,20 @@ jobs:
             exit 1
           fi
 
-          # Detect the existing keystore format if no explicit type is configured.
-          if [ -n "${ANDROID_KEYSTORE_TYPE:-}" ]; then
-            CANDIDATE_TYPES=("$ANDROID_KEYSTORE_TYPE")
-          else
-            CANDIDATE_TYPES=(JKS PKCS12)
-          fi
-          VALIDATED_TYPE=""
-          for candidate in "${CANDIDATE_TYPES[@]}"; do
-            if keytool -list -keystore "$KEYSTORE_PATH" -storetype "$candidate" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
-              VALIDATED_TYPE="$candidate"
-              break
-            fi
-          done
-          if [ -z "$VALIDATED_TYPE" ]; then
-            echo "::error::The existing keystore could not be opened. The keystore password, encoded file, or store type is incorrect. No signing material was changed."
+          # The original Play upload certificate is a JKS and must remain unchanged.
+          EXPECTED_CERT_SHA256="A967AA50C0257BFF7D7EFA0D102035A61AAE4A0A085717702152BECCADF304F4"
+          ACTUAL_CERT_SHA256="$(keytool -list -v -keystore "$KEYSTORE_PATH" -storetype JKS -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" 2>/dev/null | awk -F": " '/SHA256:/{gsub(/:/,"",$2); print toupper($2); exit}')"
+          if [ -z "$ACTUAL_CERT_SHA256" ]; then
+            echo "::error::The existing JKS could not be opened with the configured store password and alias. No signing material was changed."
             exit 1
           fi
-          if ! keytool -list -keystore "$KEYSTORE_PATH" -storetype "$VALIDATED_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
-            echo "::error::The keystore opens, but the configured key alias was not found. No signing material was changed."
+          if [ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::The certificate fingerprint does not match the original Play upload certificate. Release signing is stopped to protect app updates."
             exit 1
           fi
+          VALIDATED_TYPE="JKS"
 
+          # Test the private-key password by signing a disposable empty JAR; never alter the keystore.
           # Test the private-key password by signing a disposable empty JAR; never alter the keystore.
           python - <<'PY'
           from zipfile import ZipFile
