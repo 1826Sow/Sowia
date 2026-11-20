@@ -26,6 +26,10 @@ class DashboardActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val container = FrameLayout(this)
+        val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            isIndeterminate = false
+            max = 100
+        }
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
@@ -55,10 +59,6 @@ class DashboardActivity : ComponentActivity() {
                     return uri.scheme != "https"
                 }
             }
-        }
-        val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            isIndeterminate = false
-            max = 100
         }
         container.addView(
             webView,
