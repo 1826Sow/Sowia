@@ -68,7 +68,6 @@ jobs:
           VALIDATED_TYPE="JKS"
 
           # Test the private-key password by signing a disposable empty JAR; never alter the keystore.
-          # Test the private-key password by signing a disposable empty JAR; never alter the keystore.
           python - <<'PY'
           from zipfile import ZipFile
           with ZipFile("signing-probe.jar", "w"):
@@ -89,9 +88,9 @@ jobs:
           SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
           SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
           SOWIA_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_SUPABASE_ANON_KEY }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.SOWIA_UPLOAD_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           python - <<'PY'
