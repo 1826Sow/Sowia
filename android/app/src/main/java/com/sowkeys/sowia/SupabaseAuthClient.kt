@@ -8,6 +8,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeUnit
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -43,6 +48,13 @@ private class SupabaseRequestException(
  * Only the public publishable key is used; secret and AI provider keys never ship in the app.
  */
 class SupabaseAuthClient(context: Context) {
+    private val projectHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(12, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
+    }
+
     private val preferences = context.applicationContext
         .getSharedPreferences("sowia_secure_session", Context.MODE_PRIVATE)
 
@@ -177,6 +189,67 @@ class SupabaseAuthClient(context: Context) {
 
     suspend fun loadProjects(workspaceId: String = "personal"): List<JSONObject> =
         loadRows("sowia_projects", "id,title,description,status,workspace_id,updated_at", workspaceId)
+
+    suspend fun createProject(
+        title: String,
+        description: String,
+        workspaceId: String = "personal",
+    ): JSONObject = withContext(Dispatchers.IO) {
+        check(isConfigured) { "Configuration Supabase absente." }
+        require(title.trim().length in 1..160) { "Le titre doit contenir entre 1 et 160 caractères." }
+        require(description.length <= 4000) { "La description est trop longue (4 000 caractères maximum)." }
+        require(workspaceId == "personal" || workspaceId == "professional") { "Espace de travail invalide." }
+        val session = validSession() ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
+        val payload = JSONObject()
+            .put("user_id", session.userId)
+            .put("workspace_id", workspaceId)
+            .put("title", title.trim())
+            .put("description", description.trim())
+        projectRequest("POST", "/rest/v1/sowia_projects", payload, session)
+            .firstOrNull() ?: throw IllegalStateException("Le projet n'a pas été renvoyé par le serveur.")
+    }
+
+    suspend fun updateProjectStatus(
+        projectId: Long,
+        status: String,
+        workspaceId: String = "personal",
+    ) = withContext(Dispatchers.IO) {
+        check(status in setOf("En cours", "À tester", "Validé", "Terminé")) {
+            "État de projet invalide."
+        }
+        require(projectId > 0L) { "Identifiant de projet invalide." }
+        require(workspaceId == "personal" || workspaceId == "professional") { "Espace de travail invalide." }
+        val session = validSession() ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
+        val path = "/rest/v1/sowia_projects?id=eq.$projectId&user_id=eq.${session.userId}&workspace_id=eq.$workspaceId"
+        val updated = projectRequest("PATCH", path, JSONObject().put("status", status), session)
+        check(updated.size == 1) { "Le projet n'a pas été modifié. Vérifiez vos droits et actualisez la liste." }
+    }
+
+    private fun projectRequest(
+        method: String,
+        path: String,
+        payload: JSONObject,
+        session: SowiaSession,
+    ): List<JSONObject> {
+        val requestBody = payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = Request.Builder()
+            .url(BuildConfig.SUPABASE_URL.trimEnd('/') + path)
+            .header("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
+            .header("Authorization", "Bearer ${session.accessToken}")
+            .header("Accept", "application/json")
+            .header("Prefer", "return=representation")
+            .method(method, requestBody)
+            .build()
+        projectHttpClient.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IllegalStateException("Opération projet refusée (HTTP ${response.code}).")
+            }
+            if (body.isBlank()) return emptyList()
+            val rows = org.json.JSONArray(body)
+            return (0 until rows.length()).mapNotNull { rows.optJSONObject(it) }
+        }
+    }
 
     private suspend fun loadRows(table: String, fields: String, workspaceId: String): List<JSONObject> =
         withContext(Dispatchers.IO) {
