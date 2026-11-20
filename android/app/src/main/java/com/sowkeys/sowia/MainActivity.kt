@@ -484,6 +484,7 @@ private data class RegistryEntry(
     val detail: String,
     val status: String = "",
     val sessionId: String? = null,
+    val projectId: Long? = null,
 )
 
 @Composable
@@ -497,6 +498,8 @@ private fun RegistryPanel(onOpenAccount: () -> Unit, onOpenConversation: (String
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
     var signedIn by remember { mutableStateOf(auth.currentSession() != null) }
+    var newProjectTitle by remember { mutableStateOf("") }
+    var newProjectDescription by remember { mutableStateOf("") }
 
     fun reload() {
         if (!signedIn) return
@@ -520,6 +523,7 @@ private fun RegistryPanel(onOpenAccount: () -> Unit, onOpenConversation: (String
                         title = it.optString("title", "Projet"),
                         detail = it.optString("description"),
                         status = it.optString("status"),
+                        projectId = it.optLong("id").takeIf { id -> id > 0L },
                     )
                 })
                 status = "Données actualisées depuis votre espace sécurisé."
@@ -585,12 +589,119 @@ private fun RegistryPanel(onOpenAccount: () -> Unit, onOpenConversation: (String
                 }
 
                 Text("PROJETS", color = Cyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                OutlinedTextField(
+                    value = newProjectTitle,
+                    onValueChange = { newProjectTitle = it.take(160) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Nom du nouveau projet") },
+                    singleLine = true,
+                    enabled = !busy,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = Navy),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Navy,
+                        unfocusedTextColor = Navy,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedLabelColor = Navy,
+                        unfocusedLabelColor = Navy,
+                        focusedBorderColor = Cyan,
+                        unfocusedBorderColor = Navy,
+                        cursorColor = Cyan,
+                    ),
+                )
+                OutlinedTextField(
+                    value = newProjectDescription,
+                    onValueChange = { newProjectDescription = it.take(4000) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Description (facultative)") },
+                    minLines = 2,
+                    maxLines = 4,
+                    enabled = !busy,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = Navy),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Navy,
+                        unfocusedTextColor = Navy,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedLabelColor = Navy,
+                        unfocusedLabelColor = Navy,
+                        focusedBorderColor = Cyan,
+                        unfocusedBorderColor = Navy,
+                        cursorColor = Cyan,
+                    ),
+                )
+                Button(
+                    onClick = {
+                        busy = true
+                        status = ""
+                        scope.launch {
+                            try {
+                                auth.createProject(newProjectTitle, newProjectDescription, workspace)
+                                newProjectTitle = ""
+                                newProjectDescription = ""
+                                val refreshed = auth.loadProjects(workspace)
+                                projects.clear()
+                                projects.addAll(refreshed.map {
+                                    RegistryEntry(
+                                        title = it.optString("title", "Projet"),
+                                        detail = it.optString("description"),
+                                        status = it.optString("status"),
+                                        projectId = it.optLong("id").takeIf { id -> id > 0L },
+                                    )
+                                })
+                                status = "Projet créé et enregistré."
+                            } catch (error: Exception) {
+                                status = error.message ?: "Création du projet impossible."
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    enabled = !busy && newProjectTitle.isNotBlank() && auth.isConfigured,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                ) { Text(if (busy) "Enregistrement…" else "Créer le projet") }
                 if (projects.isEmpty() && !busy) Text("Aucun projet enregistré dans cet espace.", color = Muted)
                 projects.forEach { item ->
                     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                         Text(item.title, color = Color.White, fontWeight = FontWeight.SemiBold)
                         if (item.detail.isNotBlank()) Text(item.detail, color = Muted, fontSize = 12.sp)
                         if (item.status.isNotBlank()) Text("État : ${item.status}", color = Cyan, fontSize = 11.sp)
+                        val nextStatus = when (item.status) {
+                            "En cours" -> "À tester"
+                            "À tester" -> "Validé"
+                            "Validé" -> "Terminé"
+                            else -> "En cours"
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                val id = item.projectId
+                                if (id != null) {
+                                    busy = true
+                                    scope.launch {
+                                        try {
+                                            auth.updateProjectStatus(id, nextStatus, workspace)
+                                            val refreshed = auth.loadProjects(workspace)
+                                            projects.clear()
+                                            projects.addAll(refreshed.map {
+                                                RegistryEntry(
+                                                    title = it.optString("title", "Projet"),
+                                                    detail = it.optString("description"),
+                                                    status = it.optString("status"),
+                                                    projectId = it.optLong("id").takeIf { rowId -> rowId > 0L },
+                                                )
+                                            })
+                                            status = "État du projet mis à jour."
+                                        } catch (error: Exception) {
+                                            status = error.message ?: "Modification du projet impossible."
+                                        } finally {
+                                            busy = false
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = !busy && item.projectId != null,
+                        ) { Text("Passer à : $nextStatus") }
                     }
                 }
                 if (status.isNotBlank()) Text(status, color = Cyan, fontSize = 12.sp)
