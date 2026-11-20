@@ -197,7 +197,10 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                     )
                     Spacer(Modifier.height(12.dp))
                     when (screen) {
-                        "Compte & paramètres" -> AccountPanel()
+                        "Compte & paramètres" -> AccountPanel(onLoginSuccess = {
+                            navigationStack.clear()
+                            navigationStack.add("Accueil")
+                        })
                         "Assistant" -> AssistantPanel(initialSessionId = selectedConversationId, workspaceId = selectedWorkspace, onOpenAccount = { navigate("Compte & paramètres") })
                         "Mes échanges & projets" -> RegistryPanel(onOpenAccount = { navigate("Compte & paramètres") }, onOpenConversation = { id, space -> selectedConversationId = id; selectedWorkspace = space; navigate("Assistant") })
                         "Laboratoire PDF" -> PdfLabPanel(onOpenAccount = { navigate("Compte & paramètres") })
@@ -219,7 +222,7 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
 }
 
 @Composable
-private fun AccountPanel() {
+private fun AccountPanel(onLoginSuccess: () -> Unit) {
     val context = LocalContext.current
     val auth = remember(context) { SupabaseAuthClient(context) }
     val scope = rememberCoroutineScope()
@@ -344,6 +347,7 @@ private fun AccountPanel() {
                                 session = auth.signIn(email, password)
                                 password = ""
                                 status = "Connexion réussie."
+                                onLoginSuccess()
                             } catch (error: Exception) {
                                 status = error.message ?: "Connexion impossible."
                             } finally {
