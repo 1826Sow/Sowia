@@ -507,6 +507,16 @@ private fun RegistryPanel(onOpenAccount: () -> Unit, onOpenConversation: (String
         status = ""
         scope.launch {
             try {
+                // Refresh the encrypted session before loading private registry data.
+                // If refresh fails or the user has signed out, clear stale private rows.
+                val currentSession = auth.validSession()
+                if (currentSession == null) {
+                    conversations.clear()
+                    projects.clear()
+                    signedIn = false
+                    status = "Session expirée. Reconnectez-vous pour retrouver vos données."
+                    return@launch
+                }
                 val conversationRows = auth.loadConversations(workspace)
                 val projectRows = auth.loadProjects(workspace)
                 conversations.clear()
@@ -528,7 +538,14 @@ private fun RegistryPanel(onOpenAccount: () -> Unit, onOpenConversation: (String
                 })
                 status = "Données actualisées depuis votre espace sécurisé."
             } catch (error: Exception) {
-                status = error.message ?: "Impossible de charger vos données."
+                if (auth.currentSession() == null) {
+                    conversations.clear()
+                    projects.clear()
+                    signedIn = false
+                    status = "Session expirée. Reconnectez-vous pour retrouver vos données."
+                } else {
+                    status = error.message ?: "Impossible de charger vos données."
+                }
             } finally {
                 busy = false
             }
