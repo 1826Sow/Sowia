@@ -265,7 +265,7 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
-            val current = auth.currentSession()
+            val current = auth.validSession()
             if (current == null) {
                 status = "Connectez-vous avant d'importer un PDF."
             } else {
