@@ -35,21 +35,24 @@ jobs:
           set -euo pipefail
           for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
             if [ -z "${!name:-}" ]; then
-              echo "::error::The required repository secret $name is not configured. No signing key will be generated or replaced."
+              echo "::error::Required signing secret $name is missing. No signing key will be generated or replaced."
               exit 1
             fi
           done
           KEYSTORE_PATH="$RUNNER_TEMP/sowia-existing-upload-key"
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
           test -s "$KEYSTORE_PATH"
+          KEYSTORE_TYPE="${ANDROID_KEYSTORE_TYPE:-JKS}"
+          keytool -list -keystore "$KEYSTORE_PATH" -storetype "$KEYSTORE_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
           echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
-          echo "ANDROID_KEYSTORE_TYPE=${ANDROID_KEYSTORE_TYPE:-JKS}" >> "$GITHUB_ENV"
-          echo "Existing signing-key file prepared in the temporary runner workspace."
+          echo "ANDROID_KEYSTORE_TYPE=$KEYSTORE_TYPE" >> "$GITHUB_ENV"
+          echo "Existing signing key and requested alias validated."
 
       - name: Validate Supabase configuration and build current release AAB
         env:
           SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
           SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
+          SOWIA_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_SUPABASE_ANON_KEY }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -60,12 +63,13 @@ jobs:
           from urllib.parse import urlparse
 
           value = os.environ.get("SOWIA_SUPABASE_URL", "").strip()
-          key = os.environ.get("SOWIA_SUPABASE_PUBLISHABLE_KEY", "").strip()
+          key = (os.environ.get("SOWIA_SUPABASE_PUBLISHABLE_KEY", "").strip()
+                 or os.environ.get("SOWIA_SUPABASE_ANON_KEY", "").strip())
           parsed = urlparse(value)
           if parsed.scheme != "https" or parsed.hostname != "qegcopordeqjiechmbhg.supabase.co" or parsed.path not in ("", "/") or parsed.query or parsed.fragment:
-              raise SystemExit("SOWIA_SUPABASE_URL must be the project root HTTPS URL, without /rest/v1 or another path.")
+              raise SystemExit("SOWIA_SUPABASE_URL must be the HTTPS project root, without an API path.")
           if not key:
-              raise SystemExit("SOWIA_SUPABASE_PUBLISHABLE_KEY is missing.")
+              raise SystemExit("SOWIA_SUPABASE_PUBLISHABLE_KEY or SOWIA_SUPABASE_ANON_KEY is missing.")
           for name in ("ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD"):
               if not os.environ.get(name, "").strip():
                   raise SystemExit(f"{name} is missing.")
