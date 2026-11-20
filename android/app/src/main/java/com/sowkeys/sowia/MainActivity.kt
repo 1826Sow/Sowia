@@ -1,6 +1,8 @@
 package com.sowkeys.sowia
 
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -55,6 +57,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun SowiaPrototype(openLogin: Boolean = false) {
+    val context = LocalContext.current
     val navigationStack = remember { mutableStateListOf(if (openLogin) "Compte & paramètres" else "Accueil") }
     val screen = navigationStack.last()
     var selectedConversationId by remember { mutableStateOf<String?>(null) }
@@ -164,6 +167,34 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                                 colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
                             ) {
                                 Text("Connexion — Valider", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp),
+                        colors = CardDefaults.cardColors(containerColor = Panel),
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text("Accueil complet SOW IA", color = Cyan, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(
+                                "Retrouvez le véritable tableau de bord SOW IA avec ses dossiers, outils personnels et professionnels, recherche Web, mémoire, analyse et création PDF, projets, modules internationaux et espace financier.",
+                                color = Muted,
+                            )
+                            Button(
+                                onClick = {
+                                    val intent = Intent(
+                                        Intent.ACTION_VIEW,
+                                        Uri.parse("https://fm5aczcvvj5jgkhpxwqtcr.streamlit.app/"),
+                                    )
+                                    context.startActivity(intent)
+                                },
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                            ) {
+                                Text("OUVRIR MON ACCUEIL COMPLET", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
