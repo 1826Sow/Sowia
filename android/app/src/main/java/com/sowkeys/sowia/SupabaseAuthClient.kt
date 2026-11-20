@@ -202,7 +202,7 @@ class SupabaseAuthClient(context: Context) {
     suspend fun loadConversationMessages(sessionId: String, workspaceId: String = "personal"): List<JSONObject> =
         withContext(Dispatchers.IO) {
             check(isConfigured) { "Configuration Supabase absente." }
-            val session = currentSession()
+            val session = validSession()
                 ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
             require(workspaceId == "personal" || workspaceId == "professional")
             require(sessionId.matches(Regex("[0-9a-fA-F-]{36}"))) { "Identifiant de conversation invalide." }
