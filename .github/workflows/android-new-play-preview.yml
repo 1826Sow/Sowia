@@ -66,7 +66,12 @@ jobs:
             echo "::error::Unexpected application ID: $ACTUAL"
             exit 1
           fi
-          apksigner verify "$APK"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          if [ -z "$APKSIGNER" ]; then
+            echo "::error::Android SDK apksigner tool was not found."
+            exit 1
+          fi
+          "$APKSIGNER" verify "$APK"
           mkdir -p preview-output
           cp "$APK" preview-output/SOWIA-new-listing-preview-debug.apk
           sha256sum preview-output/SOWIA-new-listing-preview-debug.apk
