@@ -8,6 +8,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeUnit
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -43,6 +48,13 @@ private class SupabaseRequestException(
  * Only the public publishable key is used; secret and AI provider keys never ship in the app.
  */
 class SupabaseAuthClient(context: Context) {
+    private val projectHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(12, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
+    }
+
     private val preferences = context.applicationContext
         .getSharedPreferences("sowia_secure_session", Context.MODE_PRIVATE)
 
@@ -219,36 +231,23 @@ class SupabaseAuthClient(context: Context) {
         payload: JSONObject,
         session: SowiaSession,
     ): List<JSONObject> {
-        val connection = (URL(BuildConfig.SUPABASE_URL.trimEnd('/') + path)
-            .openConnection() as HttpURLConnection).apply {
-            requestMethod = method
-            connectTimeout = 12000
-            readTimeout = 15000
-            doOutput = true
-            setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
-            setRequestProperty("Authorization", "Bearer ${session.accessToken}")
-            setRequestProperty("Content-Type", "application/json")
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("Prefer", "return=representation")
-        }
-        try {
-            connection.outputStream.use {
-                it.write(if (method == "POST") org.json.JSONArray().put(payload).toString().toByteArray(Charsets.UTF_8)
-                    else payload.toString().toByteArray(Charsets.UTF_8))
+        val requestBody = payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = Request.Builder()
+            .url(BuildConfig.SUPABASE_URL.trimEnd('/') + path)
+            .header("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
+            .header("Authorization", "Bearer ${session.accessToken}")
+            .header("Accept", "application/json")
+            .header("Prefer", "return=representation")
+            .method(method, requestBody)
+            .build()
+        projectHttpClient.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IllegalStateException("Opération projet refusée (HTTP ${response.code}).")
             }
-            val status = connection.responseCode
-            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (status !in 200..299) {
-                throw IllegalStateException("Opération projet refusée (HTTP $status).")
-            }
-            if (body.isBlank()) emptyList()
-            else {
-                val rows = org.json.JSONArray(body)
-                (0 until rows.length()).mapNotNull { rows.optJSONObject(it) }
-            }
-        } finally {
-            connection.disconnect()
+            if (body.isBlank()) return emptyList()
+            val rows = org.json.JSONArray(body)
+            return (0 until rows.length()).mapNotNull { rows.optJSONObject(it) }
         }
     }
 
