@@ -63,6 +63,12 @@ android {
             versionCode = 17
             versionName = "0.2.13"
         }
+        create("legacy") {
+            dimension = "identity"
+            applicationId = "com.sowkeys.sowia.parallel"
+            versionCode = 11
+            versionName = "0.2.7"
+        }
         create("playNew") {
             dimension = "identity"
             applicationId = "com.sowkeys.sowia.mobile"
