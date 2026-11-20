@@ -62,19 +62,35 @@ jobs:
           fi
           VALIDATED_TYPE=""
           for candidate in "${CANDIDATE_TYPES[@]}"; do
-            if keytool -list -keystore "$KEYSTORE_PATH" -storetype "$candidate" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            if keytool -list -keystore "$KEYSTORE_PATH" -storetype "$candidate" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
               VALIDATED_TYPE="$candidate"
               break
             fi
           done
           if [ -z "$VALIDATED_TYPE" ]; then
-            echo "::error::The existing keystore could not be validated with the configured password, alias, or store type. Check those existing GitHub secret values; no key or certificate was created or replaced."
+            echo "::error::The existing keystore could not be opened. The keystore password, encoded file, or store type is incorrect. No signing material was changed."
+            exit 1
+          fi
+          if ! keytool -list -keystore "$KEYSTORE_PATH" -storetype "$VALIDATED_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "::error::The keystore opens, but the configured key alias was not found. No signing material was changed."
             exit 1
           fi
 
+          # Test the private-key password by signing a disposable empty JAR; never alter the keystore.
+          python - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile("signing-probe.jar", "w"):
+              pass
+          PY
+          if ! jarsigner -keystore "$KEYSTORE_PATH" -storetype "$VALIDATED_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -keypass "$ANDROID_KEY_PASSWORD" signing-probe.jar "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "::error::The keystore and alias are valid, but the private-key password does not unlock the existing key. No signing material was changed."
+            exit 1
+          fi
+          rm -f signing-probe.jar
+
           echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
           echo "ANDROID_KEYSTORE_TYPE=$VALIDATED_TYPE" >> "$GITHUB_ENV"
-          echo "Existing signing keystore, password, and alias validated (format: $VALIDATED_TYPE). No signing material was changed."
+          echo "Existing keystore, alias, and private-key password validated (format: $VALIDATED_TYPE). No signing material was changed."
 
       - name: Validate Supabase configuration and build current release AAB
         env:
