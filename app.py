@@ -1957,13 +1957,20 @@ elif page == "Hub SOWIA":
     )
     partner_cols = st.columns([1, 1, 2])
     with partner_cols[0]:
-        if st.button("Découvrir les partenariats", type="primary", use_container_width=True):
-            go_to_page("Développement mondial")
-            st.rerun()
+        st.button(
+            "Découvrir les partenariats",
+            type="primary",
+            use_container_width=True,
+            on_click=go_to_page,
+            args=("Développement mondial",),
+        )
     with partner_cols[1]:
-        if st.button("Voir les opportunités", use_container_width=True):
-            go_to_page("Opportunités et revenus")
-            st.rerun()
+        st.button(
+            "Voir les opportunités",
+            use_container_width=True,
+            on_click=go_to_page,
+            args=("Opportunités et revenus",),
+        )
     with partner_cols[2]:
         st.caption("Notre priorité : des partenariats vérifiables, des objectifs mesurables et une création de valeur réciproque.")
     st.markdown("### 🗂️ Vos espaces SOW IA")
