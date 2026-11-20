@@ -278,8 +278,8 @@ class SupabaseAuthClient(context: Context) {
                         "Le moteur IA n'est pas configuré côté serveur. La clé du fournisseur IA doit être ajoutée aux secrets Supabase."
                     "AI_PROVIDER_CONFIGURATION_ERROR" ->
                         "Le fournisseur IA refuse sa configuration côté serveur. Vérification de la clé et du modèle nécessaire."
-                    "AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_CONNECTION_FAILED" ->
-                        "Le fournisseur IA est momentanément inaccessible. Réessayez ultérieurement."
+                    "AI_PROVIDER_UNAVAILABLE", "AI_PROVIDER_CONNECTION_FAILED", "AI_PROVIDER_INVALID_RESPONSE" ->
+                        "Le fournisseur IA est momentanément inaccessible ou a renvoyé une réponse invalide. Réessayez ultérieurement."
                     "USER_CONTEXT_UNAVAILABLE" ->
                         "L'historique ou la mémoire de votre compte est momentanément inaccessible."
                     "WORKSPACE_ACCESS_DENIED" ->
