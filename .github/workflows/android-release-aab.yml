@@ -31,10 +31,10 @@ jobs:
 
       - name: Validate and prepare the existing Android signing key
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.SOWIA_UPLOAD_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.SOWIA_UPLOAD_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_KEYSTORE_TYPE: JKS
         run: |
           set -euo pipefail
@@ -88,9 +88,9 @@ jobs:
           SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
           SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
           SOWIA_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_SUPABASE_ANON_KEY }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.SOWIA_UPLOAD_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           python - <<'PY'
