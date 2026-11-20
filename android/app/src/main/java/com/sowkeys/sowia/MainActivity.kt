@@ -79,7 +79,6 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                 modifier = Modifier
                     .fillMaxSize()
                     .safeDrawingPadding()
-                    .verticalScroll(rememberScrollState())
                     .padding(20.dp),
             ) {
                 if (screen != "Accueil") {
@@ -88,8 +87,14 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan),
                     ) { Text("←  Retour") }
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(12.dp))
                 }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                ) {
                 Text("SOW IA", color = Cyan, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 Text("Executive Intelligence Suite", color = Muted, fontSize = 13.sp)
                 Spacer(Modifier.height(24.dp))
@@ -102,7 +107,7 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        "Socle Android natif — connexion sécurisée en préparation",
+                        "Connexion sécurisée, assistant IA et documents privés",
                         color = Muted,
                         modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
                     )
@@ -206,7 +211,8 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                     }
                 }
                 Spacer(Modifier.height(24.dp))
-                Text("SOW IA • Android 0.2.0 • Version de préparation", color = Muted, fontSize = 11.sp)
+                Text("SOW IA • Android 0.2.10 • Modules en intégration", color = Muted, fontSize = 11.sp)
+                }
             }
         }
     }
