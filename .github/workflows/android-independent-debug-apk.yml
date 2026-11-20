@@ -1,0 +1,73 @@
+name: SOW IA independent Android preview APK
+
+on:
+  push:
+    branches:
+      - android/independent-signed-apk-20261120
+    paths:
+      - ".github/workflows/android-independent-debug-apk.yml"
+      - "android/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-preview:
+    name: Build installable preview APK (no new secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      - name: Build independently installable debug APK
+        env:
+          SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
+          SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
+          SOWIA_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_SUPABASE_ANON_KEY }}
+        run: gradle -p android :app:assembleLegacyDebug
+
+      - name: Verify APK identity and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find android/app/build/outputs/apk/legacy/debug -maxdepth 1 -name '*.apk' -print -quit)"
+          if [[ -z "$APK" ]]; then
+            echo "::error::Preview APK was not produced."
+            exit 1
+          fi
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose "$APK"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          "$AAPT" dump badging "$APK" | grep -F "package: name='com.sowkeys.sowia.parallel'"
+          mkdir -p release-output
+          cp "$APK" release-output/SOWIA-independent-preview.apk
+          cat > release-output/INSTALLATION.txt <<'EOF'
+          SOW IA — version Android indépendante de prévisualisation
+          Identifiant : com.sowkeys.sowia.parallel
+          Signature : signature Android de débogage automatique.
+          Cette APK est installable à côté de la version Google Play.
+          Important : cette version n'est pas une version de production. Une future mise à jour signée avec une autre clé devra être désinstallée puis réinstallée.
+          EOF
+
+      - name: Upload preview APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sowia-independent-preview-apk
+          path: release-output/*
+          if-no-files-found: error
+          retention-days: 30
