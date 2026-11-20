@@ -43,6 +43,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          PREVIEW_STORE_PASSWORD="$(openssl rand -hex 24)"
+          PREVIEW_KEY_PASSWORD="$(openssl rand -hex 24)"
           keytool -genkeypair -noprompt \
             -keystore "$RUNNER_TEMP/sowia-preview.keystore" \
             -storetype JKS \
@@ -58,9 +60,6 @@ jobs:
             echo "ANDROID_KEY_ALIAS=sowia-preview"
             echo "ANDROID_KEY_PASSWORD=$PREVIEW_KEY_PASSWORD"
           } >> "$GITHUB_ENV"
-        env:
-          PREVIEW_STORE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}-SowiaPreview-Store-2026
-          PREVIEW_KEY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}-SowiaPreview-Key-2026
 
       - name: Validate public Supabase build configuration
         env:
