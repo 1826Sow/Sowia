@@ -1,0 +1,81 @@
+name: SOW IA new Play listing Android preview
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "android/**"
+      - ".github/workflows/android-new-play-preview.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-new-listing-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      - name: Validate existing backend configuration
+        env:
+          SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
+          SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
+          SOWIA_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from urllib.parse import urlparse
+          value = os.environ.get("SOWIA_SUPABASE_URL", "").strip()
+          key = (os.environ.get("SOWIA_SUPABASE_PUBLISHABLE_KEY", "").strip()
+                 or os.environ.get("SOWIA_SUPABASE_ANON_KEY", "").strip())
+          parsed = urlparse(value)
+          if parsed.scheme != "https" or parsed.hostname != "qegcopordeqjiechmbhg.supabase.co" or parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+              raise SystemExit("SOWIA_SUPABASE_URL must be the configured project root HTTPS URL.")
+          if not key:
+              raise SystemExit("Existing Supabase publishable/anon key is missing.")
+          print("Existing SOW IA backend configuration validated.")
+          PY
+
+      - name: Build the new listing debug APK
+        run: gradle -p android :app:assemblePlayNewDebug
+
+      - name: Verify application ID and APK signature
+        run: |
+          set -euo pipefail
+          APK="$(find android/app/build/outputs/apk/playNew/debug -maxdepth 1 -name '*.apk' -print -quit)"
+          if [ -z "$APK" ]; then
+            echo "::error::The new listing debug APK was not produced."
+            exit 1
+          fi
+          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest application-id "$APK" > "$RUNNER_TEMP/application-id.txt"
+          ACTUAL="$(cat "$RUNNER_TEMP/application-id.txt")"
+          if [ "$ACTUAL" != "com.sowkeys.sowia.mobile" ]; then
+            echo "::error::Unexpected application ID: $ACTUAL"
+            exit 1
+          fi
+          apksigner verify "$APK"
+          mkdir -p preview-output
+          cp "$APK" preview-output/SOWIA-new-listing-preview-debug.apk
+          sha256sum preview-output/SOWIA-new-listing-preview-debug.apk
+          echo "New listing package ID and debug APK signature verified."
+
+      - name: Upload preview APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sowia-new-play-listing-preview-apk
+          path: preview-output/SOWIA-new-listing-preview-debug.apk
+          if-no-files-found: error
+          retention-days: 14
