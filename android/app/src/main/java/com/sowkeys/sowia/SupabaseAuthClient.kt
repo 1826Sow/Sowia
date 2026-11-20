@@ -7,6 +7,7 @@ import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -23,6 +24,14 @@ data class SowiaSession(
     val email: String,
     val expiresAt: Long = 0L,
 )
+
+// Shared process-wide gate: login, refresh and logout must never race while
+// rotating or removing the persisted refresh token.
+internal object SessionOperationGate {
+    private val mutex = Mutex()
+
+    suspend fun <T> withLock(block: suspend () -> T): T = mutex.withLock { block() }
+}
 
 private class SupabaseRequestException(
     val statusCode: Int,
@@ -43,33 +52,35 @@ class SupabaseAuthClient(context: Context) {
 
     suspend fun signIn(email: String, password: String): SowiaSession =
         withContext(Dispatchers.IO) {
-            check(isConfigured) {
-                "Configuration Supabase absente. Le service de connexion n'est pas encore activé."
+            SessionOperationGate.withLock {
+                check(isConfigured) {
+                    "Configuration Supabase absente. Le service de connexion n'est pas encore activé."
+                }
+                require(email.isNotBlank() && password.isNotBlank()) {
+                    "Saisissez votre adresse e-mail et votre mot de passe."
+                }
+                val response = request(
+                    "/auth/v1/token?grant_type=password",
+                    JSONObject().put("email", email.trim()).put("password", password),
+                    null,
+                )
+                val user = response.optJSONObject("user")
+                    ?: throw IllegalStateException("Réponse d'authentification invalide.")
+                val session = SowiaSession(
+                    accessToken = response.optString("access_token"),
+                    refreshToken = response.optString("refresh_token"),
+                    userId = user.optString("id"),
+                    email = user.optString("email", email.trim()),
+                    expiresAt = response.optLong("expires_at").takeIf { it > 0L }
+                        ?: (System.currentTimeMillis() / 1000L + response.optLong("expires_in", 3600L)),
+                )
+                require(session.accessToken.isNotBlank() && session.refreshToken.isNotBlank() &&
+                    session.userId.isNotBlank()) {
+                    "La session reçue est incomplète."
+                }
+                saveSession(session)
+                session
             }
-            require(email.isNotBlank() && password.isNotBlank()) {
-                "Saisissez votre adresse e-mail et votre mot de passe."
-            }
-            val response = request(
-                "/auth/v1/token?grant_type=password",
-                JSONObject().put("email", email.trim()).put("password", password),
-                null,
-            )
-            val user = response.optJSONObject("user")
-                ?: throw IllegalStateException("Réponse d'authentification invalide.")
-            val session = SowiaSession(
-                accessToken = response.optString("access_token"),
-                refreshToken = response.optString("refresh_token"),
-                userId = user.optString("id"),
-                email = user.optString("email", email.trim()),
-                expiresAt = response.optLong("expires_at").takeIf { it > 0L }
-                    ?: (System.currentTimeMillis() / 1000L + response.optLong("expires_in", 3600L)),
-            )
-            require(session.accessToken.isNotBlank() && session.refreshToken.isNotBlank() &&
-                session.userId.isNotBlank()) {
-                "La session reçue est incomplète."
-            }
-            saveSession(session)
-            session
         }
 
     fun currentSession(): SowiaSession? = runCatching {
@@ -86,7 +97,12 @@ class SupabaseAuthClient(context: Context) {
 
 
     suspend fun refreshSession(): SowiaSession? = withContext(Dispatchers.IO) {
-        val previous = currentSession() ?: return@withContext null
+        SessionOperationGate.withLock { refreshSessionLocked() }
+    }
+
+    // Caller must hold SessionOperationGate for the complete refresh lifecycle.
+    private suspend fun refreshSessionLocked(): SowiaSession? {
+        val previous = currentSession() ?: return null
         val response = try {
             request(
                 "/auth/v1/token?grant_type=refresh_token",
@@ -96,7 +112,7 @@ class SupabaseAuthClient(context: Context) {
         } catch (error: SupabaseRequestException) {
             if (error.statusCode == 400 || error.statusCode == 401) {
                 preferences.edit().remove("session").apply()
-                return@withContext null
+                return null
             }
             throw error
         }
@@ -113,20 +129,17 @@ class SupabaseAuthClient(context: Context) {
             "Le renouvellement de session a renvoyé une réponse incomplète."
         }
         saveSession(refreshed)
-        refreshed
+        return refreshed
     }
 
 
-    suspend fun validSession(): SowiaSession? {
-        refreshMutex.lock()
-        try {
-            // Re-read after acquiring the lock: another request may already have
-            // rotated the refresh token while this request was waiting.
-            val session = currentSession() ?: return null
+    suspend fun validSession(): SowiaSession? = withContext(Dispatchers.IO) {
+        SessionOperationGate.withLock {
+            // Re-read after acquiring the shared gate: another operation may have
+            // rotated or removed the session while this request was waiting.
+            val session = currentSession() ?: return@withLock null
             val now = System.currentTimeMillis() / 1000L
-            return if (session.expiresAt > now + 60L) session else refreshSession()
-        } finally {
-            refreshMutex.unlock()
+            if (session.expiresAt > now + 60L) session else refreshSessionLocked()
         }
     }
 
@@ -250,11 +263,15 @@ class SupabaseAuthClient(context: Context) {
     }
 
     suspend fun signOut() = withContext(Dispatchers.IO) {
-        val session = currentSession()
-        if (session != null && isConfigured) {
-            runCatching { request("/auth/v1/logout", JSONObject(), session.accessToken) }
+        SessionOperationGate.withLock {
+            // Keep the lock through remote logout and local removal so an in-flight
+            // refresh cannot persist a newly rotated session after this removal.
+            val session = currentSession()
+            if (session != null && isConfigured) {
+                runCatching { request("/auth/v1/logout", JSONObject(), session.accessToken) }
+            }
+            preferences.edit().remove("session").apply()
         }
-        preferences.edit().remove("session").apply()
     }
 
     private fun saveSession(session: SowiaSession) {
@@ -348,8 +365,6 @@ class SupabaseAuthClient(context: Context) {
     }
 
     companion object {
-        // One lock shared by every SupabaseAuthClient instance in this app process.
-        private val refreshMutex = Mutex()
         private const val KEY_ALIAS = "sowia.supabase.session.v1"
     }
 }
