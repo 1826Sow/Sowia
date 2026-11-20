@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -276,6 +277,8 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
             documents.clear()
             documents.addAll(loaded)
             status = if (loaded.isEmpty()) "Aucun PDF dans cet espace pour le moment." else loaded.size.toString() + " document(s) chargé(s)."
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (error: Exception) {
             // Never leave a previous private document listing visible when the
             // session check or the storage refresh fails.
