@@ -249,6 +249,9 @@ private fun AccountPanel(onLoginSuccess: () -> Unit) {
             } finally {
                 busy = false
             }
+            // A valid session restored from encrypted local storage must leave
+            // the account screen just like a fresh successful sign-in.
+            if (session != null) onLoginSuccess()
         }
     }
 
