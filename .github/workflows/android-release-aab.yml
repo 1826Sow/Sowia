@@ -35,7 +35,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          ANDROID_KEYSTORE_TYPE: JKS
+        shell: bash
         run: |
           set -euo pipefail
           for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
@@ -44,44 +44,87 @@ jobs:
               exit 1
             fi
           done
+
           KEYSTORE_PATH="$RUNNER_TEMP/sowia-existing-upload-key"
-          if ! printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"; then
-            echo "::error::The existing keystore secret could not be decoded. No signing key was generated or changed."
-            exit 1
-          fi
-          if [ ! -s "$KEYSTORE_PATH" ]; then
-            echo "::error::The decoded keystore is empty. No signing key was generated or changed."
-            exit 1
-          fi
+          export ANDROID_KEYSTORE_BASE64
+          python3 - <<'PY'
+          import base64, os, re
+          from pathlib import Path
+          value = "".join(os.environ["ANDROID_KEYSTORE_BASE64"].strip().split())
+          value = re.sub(r"[^A-Za-z0-9+/=_-]", "", value)
+          value = value.replace("-", "+").replace("_", "/").rstrip("=")
+          if not value:
+              raise SystemExit("The existing keystore secret contains no Base64 data.")
+          value += "=" * (-len(value) % 4)
+          try:
+              raw = base64.b64decode(value, validate=True)
+          except Exception:
+              raise SystemExit("The existing keystore secret is not valid Base64.")
+          if not raw:
+              raise SystemExit("The decoded existing keystore is empty.")
+          Path(os.environ["RUNNER_TEMP"], "sowia-existing-upload-key").write_bytes(raw)
+          print("Existing keystore decoded; no signing material was changed.")
+          PY
 
-          # The original Play upload certificate is a JKS and must remain unchanged.
           EXPECTED_CERT_SHA256="A967AA50C0257BFF7D7EFA0D102035A61AAE4A0A085717702152BECCADF304F4"
-          ACTUAL_CERT_SHA256="$(keytool -list -v -keystore "$KEYSTORE_PATH" -storetype JKS -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" 2>/dev/null | awk -F": " '/SHA256:/{gsub(/:/,"",$2); print toupper($2); exit}')"
-          if [ -z "$ACTUAL_CERT_SHA256" ]; then
-            echo "::error::The existing JKS could not be opened with the configured store password and alias. No signing material was changed."
+          STORE_TYPE=""
+          STORE_PASSWORD=""
+          for candidate_password in "$ANDROID_KEYSTORE_PASSWORD" "$ANDROID_KEY_PASSWORD"; do
+            for candidate_type in JKS PKCS12; do
+              if keytool -list -storetype "$candidate_type" -keystore "$KEYSTORE_PATH" -storepass "$candidate_password" >/dev/null 2>&1; then
+                STORE_TYPE="$candidate_type"
+                STORE_PASSWORD="$candidate_password"
+                break 2
+              fi
+            done
+          done
+          if [ -z "$STORE_TYPE" ]; then
+            echo "::error::The existing keystore file decoded correctly, but neither configured password opens it as JKS or PKCS12. No signing material was changed."
             exit 1
           fi
-          if [ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]; then
-            echo "::error::The certificate fingerprint does not match the original Play upload certificate. Release signing is stopped to protect app updates."
-            exit 1
-          fi
-          VALIDATED_TYPE="JKS"
+          echo "Existing keystore opened successfully (format: $STORE_TYPE)."
 
-          # Test the private-key password by signing a disposable empty JAR; never alter the keystore.
-          python - <<'PY'
+          KEY_ALIAS="$ANDROID_KEY_ALIAS"
+          if ! keytool -list -storetype "$STORE_TYPE" -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+            ALIASES="$(keytool -list -v -storetype "$STORE_TYPE" -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" 2>/dev/null | awk -F': ' '/^Alias name:/{print $2}')"
+            ALIAS_COUNT="$(printf '%s\n' "$ALIASES" | sed '/^$/d' | wc -l | tr -d ' ')"
+            if [ "$ALIAS_COUNT" != "1" ]; then
+              echo "::error::The keystore opens, but the configured alias is absent and there is not exactly one alias to identify safely."
+              exit 1
+            fi
+            KEY_ALIAS="$ALIASES"
+          fi
+
+          ACTUAL_CERT_SHA256="$(keytool -list -v -storetype "$STORE_TYPE" -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" 2>/dev/null | awk -F': ' '/SHA256:/{gsub(/:/,"",$2); print toupper($2); exit}')"
+          if [ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::The existing keystore certificate does not match the registered Play upload certificate. Release signing is stopped."
+            exit 1
+          fi
+          echo "Registered Play upload certificate fingerprint verified."
+
+          python3 - <<'PY'
           from zipfile import ZipFile
           with ZipFile("signing-probe.jar", "w"):
               pass
           PY
-          if ! jarsigner -keystore "$KEYSTORE_PATH" -storetype "$VALIDATED_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -keypass "$ANDROID_KEY_PASSWORD" signing-probe.jar "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
-            echo "::error::The keystore and alias are valid, but the private-key password does not unlock the existing key. No signing material was changed."
-            exit 1
+          KEY_PASSWORD="$ANDROID_KEY_PASSWORD"
+          if ! jarsigner -keystore "$KEYSTORE_PATH" -storetype "$STORE_TYPE" -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD" signing-probe.jar "$KEY_ALIAS" >/dev/null 2>&1; then
+            if ! jarsigner -keystore "$KEYSTORE_PATH" -storetype "$STORE_TYPE" -storepass "$STORE_PASSWORD" -keypass "$STORE_PASSWORD" signing-probe.jar "$KEY_ALIAS" >/dev/null 2>&1; then
+              echo "::error::The original keystore and certificate are correct, but neither configured password unlocks the private key."
+              exit 1
+            fi
+            KEY_PASSWORD="$STORE_PASSWORD"
           fi
           rm -f signing-probe.jar
 
-          echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
-          echo "ANDROID_KEYSTORE_TYPE=$VALIDATED_TYPE" >> "$GITHUB_ENV"
-          echo "Existing keystore, alias, and private-key password validated (format: $VALIDATED_TYPE). No signing material was changed."
+          {
+            echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH"
+            echo "ANDROID_KEYSTORE_TYPE=$STORE_TYPE"
+            echo "ANDROID_KEYSTORE_PASSWORD=$STORE_PASSWORD"
+            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "Original Play upload key, certificate, alias, and private-key access verified. No signing material was modified."
 
       - name: Validate Supabase configuration and build current release AAB
         env:
