@@ -538,13 +538,14 @@ private fun RegistryPanel(onOpenAccount: () -> Unit, onOpenConversation: (String
                 })
                 status = "Données actualisées depuis votre espace sécurisé."
             } catch (error: Exception) {
+                // Never leave previously loaded private rows visible after a failed refresh.
+                conversations.clear()
+                projects.clear()
                 if (auth.currentSession() == null) {
-                    conversations.clear()
-                    projects.clear()
                     signedIn = false
                     status = "Session expirée. Reconnectez-vous pour retrouver vos données."
                 } else {
-                    status = error.message ?: "Impossible de charger vos données."
+                    status = error.message ?: "Actualisation impossible. Réessayez."
                 }
             } finally {
                 busy = false
