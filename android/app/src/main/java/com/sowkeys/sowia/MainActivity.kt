@@ -65,6 +65,7 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
         "Assistant",
         "Mes échanges & projets",
         "Laboratoire PDF",
+        "Mémoire de l'assistant",
         "Compte & paramètres",
     )
     fun navigate(destination: String) {
@@ -208,6 +209,7 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                                         "Assistant" -> "Assistant IA"
                                         "Mes échanges & projets" -> "Mes échanges et projets"
                                         "Laboratoire PDF" -> "Rubrique PDF"
+                                        "Mémoire de l'assistant" -> "Ma mémoire"
                                         "Compte & paramètres" -> "Paramètres et connexion"
                                         else -> item
                                     },
@@ -240,6 +242,7 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                         "Assistant" -> AssistantPanel(initialSessionId = selectedConversationId, workspaceId = selectedWorkspace, onOpenAccount = { navigate("Compte & paramètres") })
                         "Mes échanges & projets" -> RegistryPanel(onOpenAccount = { navigate("Compte & paramètres") }, onOpenConversation = { id, space -> selectedConversationId = id; selectedWorkspace = space; navigate("Assistant") })
                         "Laboratoire PDF" -> PdfLabPanel(onOpenAccount = { navigate("Compte & paramètres") })
+                        "Mémoire de l'assistant" -> MemoryPanel(workspaceId = selectedWorkspace, onOpenAccount = { navigate("Compte & paramètres") })
                         else -> Card(colors = CardDefaults.cardColors(containerColor = Panel)) {
                             Column(Modifier.padding(18.dp)) {
                                 Text("Rubrique en préparation", color = Cyan, fontWeight = FontWeight.Bold)
@@ -250,7 +253,7 @@ private fun SowiaPrototype(openLogin: Boolean = false) {
                     }
                 }
                 Spacer(Modifier.height(24.dp))
-                Text("SOW IA • Android 0.2.12 • Modules en intégration", color = Muted, fontSize = 11.sp)
+                Text("SOW IA • Android 0.2.13 • Modules en intégration", color = Muted, fontSize = 11.sp)
                 }
             }
         }
@@ -418,6 +421,132 @@ private fun AccountPanel(onLoginSuccess: () -> Unit) {
     }
 }
 
+
+@Composable
+private fun MemoryPanel(workspaceId: String, onOpenAccount: () -> Unit) {
+    val context = LocalContext.current
+    val auth = remember(context) { SupabaseAuthClient(context) }
+    val scope = rememberCoroutineScope()
+    val session = remember { auth.currentSession() }
+    val items = remember { mutableStateListOf<org.json.JSONObject>() }
+    var draft by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+
+    suspend fun refreshMemory() {
+        val notes = auth.loadMemoryItems(workspaceId)
+        items.clear()
+        items.addAll(notes)
+    }
+
+    LaunchedEffect(session?.userId, workspaceId) {
+        if (session != null) {
+            busy = true
+            try {
+                refreshMemory()
+                status = if (items.isEmpty()) "Aucune note enregistrée dans cet espace." else ""
+            } catch (error: Exception) {
+                status = error.message ?: "Chargement de la mémoire impossible."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    Card(colors = CardDefaults.cardColors(containerColor = Panel)) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Mémoire intelligente SOW IA", color = Cyan, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+            Text(
+                "L'assistant retient progressivement les préférences de travail, projets suivis, objectifs et consignes utiles. Les espaces personnel et professionnel restent séparés. Vous pouvez consulter, ajouter ou supprimer chaque note.",
+                color = Muted,
+            )
+            if (session == null) {
+                Text("Connectez-vous pour consulter votre mémoire privée.", color = Color.White)
+                Button(onClick = onOpenAccount, modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy)) {
+                    Text("Ouvrir Compte & paramètres")
+                }
+            } else {
+                Text(if (workspaceId == "professional") "Mémoire professionnelle" else "Mémoire personnelle",
+                    color = Color.White, fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { if (it.length <= 320) draft = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Ajouter une note à retenir") },
+                    placeholder = { Text("Ex. Je préfère des réponses courtes et des étapes concrètes.") },
+                    minLines = 2,
+                    maxLines = 4,
+                )
+                Text("${draft.length}/320 caractères", color = Muted, fontSize = 11.sp)
+                Button(
+                    onClick = {
+                        busy = true
+                        scope.launch {
+                            try {
+                                auth.addMemoryItem(draft, workspaceId)
+                                draft = ""
+                                refreshMemory()
+                                status = "Note ajoutée à votre mémoire."
+                            } catch (error: Exception) {
+                                status = error.message ?: "Ajout impossible."
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    enabled = !busy && draft.trim().length >= 12,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                ) { Text(if (busy) "Enregistrement…" else "Ajouter à ma mémoire") }
+
+                if (items.isEmpty()) Text("Les notes utiles apparaîtront ici après vos échanges.", color = Muted)
+                items.forEach { item ->
+                    Card(colors = CardDefaults.cardColors(containerColor = Navy)) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(item.optString("content"), color = Color.White)
+                            TextButton(
+                                onClick = {
+                                    busy = true
+                                    scope.launch {
+                                        try {
+                                            auth.deleteMemoryItem(item.optString("id"), workspaceId)
+                                            refreshMemory()
+                                            status = "Note supprimée."
+                                        } catch (error: Exception) {
+                                            status = error.message ?: "Suppression impossible."
+                                        } finally {
+                                            busy = false
+                                        }
+                                    }
+                                },
+                                enabled = !busy,
+                            ) { Text("Supprimer cette note", color = Cyan) }
+                        }
+                    }
+                }
+                OutlinedButton(
+                    onClick = {
+                        busy = true
+                        scope.launch {
+                            try {
+                                refreshMemory()
+                                status = "Mémoire actualisée."
+                            } catch (error: Exception) {
+                                status = error.message ?: "Actualisation impossible."
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Actualiser la mémoire", color = Cyan) }
+            }
+            if (status.isNotBlank()) Text(status, color = Cyan)
+        }
+    }
+}
 
 private data class ChatLine(val role: String, val content: String)
 

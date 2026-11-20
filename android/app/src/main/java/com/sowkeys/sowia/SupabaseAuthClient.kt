@@ -145,6 +145,89 @@ class SupabaseAuthClient(context: Context) {
     suspend fun loadProjects(workspaceId: String = "personal"): List<JSONObject> =
         loadRows("sowia_projects", "id,title,description,status,workspace_id,updated_at", workspaceId)
 
+    suspend fun loadMemoryItems(workspaceId: String = "personal"): List<JSONObject> =
+        withContext(Dispatchers.IO) {
+            check(isConfigured) { "Configuration Supabase absente." }
+            val session = currentSession()
+                ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
+            require(workspaceId == "personal" || workspaceId == "professional")
+            val url = URL(
+                BuildConfig.SUPABASE_URL.trimEnd('/') +
+                    "/rest/v1/sowia_memory_items?select=id,content,created_at&workspace_id=eq.$workspaceId&user_id=eq.${session.userId}&order=created_at.desc&limit=50"
+            )
+            val body = memoryHttp(url, "GET", session, null)
+            val array = org.json.JSONArray(body)
+            (0 until array.length()).mapNotNull { array.optJSONObject(it) }
+        }
+
+    suspend fun addMemoryItem(content: String, workspaceId: String = "personal") =
+        withContext(Dispatchers.IO) {
+            check(isConfigured) { "Configuration Supabase absente." }
+            val session = currentSession()
+                ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
+            require(workspaceId == "personal" || workspaceId == "professional")
+            val note = content.trim()
+            require(note.length in 12..320) { "Une note doit contenir entre 12 et 320 caractères." }
+            val url = URL(BuildConfig.SUPABASE_URL.trimEnd('/') + "/rest/v1/sowia_memory_items")
+            memoryHttp(
+                url,
+                "POST",
+                session,
+                JSONObject().put("user_id", session.userId)
+                    .put("workspace_id", workspaceId)
+                    .put("content", note),
+            )
+        }
+
+    suspend fun deleteMemoryItem(id: String, workspaceId: String = "personal") =
+        withContext(Dispatchers.IO) {
+            check(isConfigured) { "Configuration Supabase absente." }
+            val session = currentSession()
+                ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
+            require(workspaceId == "personal" || workspaceId == "professional")
+            require(id.matches(Regex("[0-9a-fA-F-]{36}"))) { "Identifiant de mémoire invalide." }
+            val url = URL(
+                BuildConfig.SUPABASE_URL.trimEnd('/') +
+                    "/rest/v1/sowia_memory_items?id=eq.$id&workspace_id=eq.$workspaceId&user_id=eq.${session.userId}"
+            )
+            memoryHttp(url, "DELETE", session, null)
+        }
+
+    private fun memoryHttp(
+        url: URL,
+        method: String,
+        session: SowiaSession,
+        body: JSONObject?,
+    ): String {
+        val connection = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = method
+            connectTimeout = 12000
+            readTimeout = 15000
+            setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
+            setRequestProperty("Authorization", "Bearer ${session.accessToken}")
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Prefer", "return=minimal")
+            if (body != null) {
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+            }
+        }
+        return try {
+            if (body != null) {
+                connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            }
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val response = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (status !in 200..299) {
+                throw IllegalStateException("Opération mémoire refusée (HTTP $status).")
+            }
+            response
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     private suspend fun loadRows(table: String, fields: String, workspaceId: String): List<JSONObject> =
         withContext(Dispatchers.IO) {
             check(isConfigured) { "Configuration Supabase absente." }
