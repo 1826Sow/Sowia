@@ -66,6 +66,7 @@ async function rememberUsefulFacts(
         temperature: 0.1,
         max_tokens: 240,
       }),
+      signal: AbortSignal.timeout(10000),
     });
     if (!response.ok) return;
     const payload = await response.json();
