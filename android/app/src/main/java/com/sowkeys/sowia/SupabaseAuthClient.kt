@@ -289,7 +289,14 @@ class SupabaseAuthClient(context: Context) {
             if (status !in 200..299) {
                 val message = runCatching {
                     val error = JSONObject(text)
-                    error.optString("msg").ifBlank { error.optString("error_description") }
+                    val code = error.optString("code").takeIf { it.isNotBlank() }
+                    val detail = error.optString("msg")
+                        .ifBlank { error.optString("error_description") }
+                        .ifBlank { error.optString("message") }
+                    listOfNotNull(
+                        code?.let { "[$it]" },
+                        detail.takeIf { it.isNotBlank() },
+                    ).joinToString(" ")
                 }.getOrDefault("")
                 throw SupabaseRequestException(
                     status,
