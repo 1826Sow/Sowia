@@ -129,7 +129,7 @@ class SupabaseAuthClient(context: Context) {
             "Le renouvellement de session a renvoyé une réponse incomplète."
         }
         saveSession(refreshed)
-        refreshed
+        return refreshed
     }
 
 
