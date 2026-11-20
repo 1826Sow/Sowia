@@ -209,6 +209,27 @@ class SupabaseAuthClient(context: Context) {
             .firstOrNull() ?: throw IllegalStateException("Le projet n'a pas été renvoyé par le serveur.")
     }
 
+    suspend fun updateProject(
+        projectId: Long,
+        title: String,
+        description: String,
+        workspaceId: String = "personal",
+    ) = withContext(Dispatchers.IO) {
+        require(projectId > 0L) { "Identifiant de projet invalide." }
+        require(title.trim().length in 1..160) { "Le titre doit contenir entre 1 et 160 caractères." }
+        require(description.length <= 4000) { "La description est trop longue (4 000 caractères maximum)." }
+        require(workspaceId == "personal" || workspaceId == "professional") { "Espace de travail invalide." }
+        val session = validSession() ?: throw IllegalStateException("Connectez-vous dans Compte & paramètres.")
+        val path = "/rest/v1/sowia_projects?id=eq.$projectId&user_id=eq.${session.userId}&workspace_id=eq.$workspaceId"
+        val updated = projectRequest(
+            "PATCH",
+            path,
+            JSONObject().put("title", title.trim()).put("description", description.trim()),
+            session,
+        )
+        check(updated.size == 1) { "Le projet n'a pas été modifié. Vérifiez vos droits et actualisez la liste." }
+    }
+
     suspend fun updateProjectStatus(
         projectId: Long,
         status: String,

@@ -500,6 +500,9 @@ private fun RegistryPanel(onOpenAccount: () -> Unit, onOpenConversation: (String
     var signedIn by remember { mutableStateOf(auth.currentSession() != null) }
     var newProjectTitle by remember { mutableStateOf("") }
     var newProjectDescription by remember { mutableStateOf("") }
+    var editingProjectId by remember { mutableStateOf<Long?>(null) }
+    var editProjectTitle by remember { mutableStateOf("") }
+    var editProjectDescription by remember { mutableStateOf("") }
 
     fun reload() {
         if (!signedIn) return
@@ -685,6 +688,93 @@ private fun RegistryPanel(onOpenAccount: () -> Unit, onOpenConversation: (String
                         Text(item.title, color = Color.White, fontWeight = FontWeight.SemiBold)
                         if (item.detail.isNotBlank()) Text(item.detail, color = Muted, fontSize = 12.sp)
                         if (item.status.isNotBlank()) Text("État : ${item.status}", color = Cyan, fontSize = 11.sp)
+                        if (item.projectId == editingProjectId) {
+                            OutlinedTextField(
+                                value = editProjectTitle,
+                                onValueChange = { editProjectTitle = it.take(160) },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Nom du projet") },
+                                singleLine = true,
+                                enabled = !busy,
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Navy),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = Navy,
+                                    unfocusedTextColor = Navy,
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = Color.White,
+                                    focusedLabelColor = Navy,
+                                    unfocusedLabelColor = Navy,
+                                    focusedBorderColor = Cyan,
+                                    unfocusedBorderColor = Navy,
+                                    cursorColor = Cyan,
+                                ),
+                            )
+                            OutlinedTextField(
+                                value = editProjectDescription,
+                                onValueChange = { editProjectDescription = it.take(4000) },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Description du projet") },
+                                minLines = 2,
+                                maxLines = 4,
+                                enabled = !busy,
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Navy),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = Navy,
+                                    unfocusedTextColor = Navy,
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = Color.White,
+                                    focusedLabelColor = Navy,
+                                    unfocusedLabelColor = Navy,
+                                    focusedBorderColor = Cyan,
+                                    unfocusedBorderColor = Navy,
+                                    cursorColor = Cyan,
+                                ),
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = {
+                                        val id = item.projectId ?: return@Button
+                                        busy = true
+                                        scope.launch {
+                                            try {
+                                                auth.updateProject(id, editProjectTitle, editProjectDescription, workspace)
+                                                val refreshed = auth.loadProjects(workspace)
+                                                projects.clear()
+                                                projects.addAll(refreshed.map {
+                                                    RegistryEntry(
+                                                        title = it.optString("title", "Projet"),
+                                                        detail = it.optString("description"),
+                                                        status = it.optString("status"),
+                                                        projectId = it.optLong("id").takeIf { rowId -> rowId > 0L },
+                                                    )
+                                                })
+                                                editingProjectId = null
+                                                status = "Projet modifié et enregistré."
+                                            } catch (error: Exception) {
+                                                status = error.message ?: "Modification du projet impossible."
+                                            } finally {
+                                                busy = false
+                                            }
+                                        }
+                                    },
+                                    enabled = !busy && editProjectTitle.isNotBlank() && item.projectId != null,
+                                    colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Navy),
+                                ) { Text(if (busy) "Enregistrement…" else "Enregistrer") }
+                                OutlinedButton(
+                                    onClick = { editingProjectId = null },
+                                    enabled = !busy,
+                                ) { Text("Annuler") }
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = {
+                                    editingProjectId = item.projectId
+                                    editProjectTitle = item.title
+                                    editProjectDescription = item.detail
+                                },
+                                enabled = !busy && item.projectId != null,
+                            ) { Text("Modifier le projet") }
+                        }
                         val nextStatus = when (item.status) {
                             "En cours" -> "À tester"
                             "À tester" -> "Validé"
