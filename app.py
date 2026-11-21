@@ -1703,6 +1703,7 @@ elif page == "Hub SOWIA":
     )
     st.divider()
     st.markdown("### 👤 Espace Personnel")
+    st.image("assets/workspaces/personal.svg", use_container_width=True)
     st.caption("Vos outils quotidiens, votre mémoire et vos documents privés.")
     personal_items = [
         ("💬 Assistant IA", "Assistant IA", "Dialoguer avec SOW IA"),
@@ -1721,6 +1722,7 @@ elif page == "Hub SOWIA":
                               on_click=go_to_page, args=(destination,))
     st.divider()
     st.markdown("### 🏢 Espace Professionnel")
+    st.image("assets/workspaces/professional.svg", use_container_width=True)
     if premium_active:
         st.caption("Votre espace professionnel Premium est disponible. Les données restent séparées de l’espace personnel.")
         st.markdown("#### 📊 Indicateurs professionnels")
