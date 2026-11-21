@@ -4677,6 +4677,7 @@ elif page == "SOWIA GLOBAL DECISION ENGINE":
 elif page == "SOWIA GLOBAL COLLABORATION HUB":
     st.subheader("🤝 SOW IA GLOBAL COLLABORATION HUB")
     st.caption("Espace de projets partagés entre organisations et applications partenaires, avec invitation et consentement explicites.")
+    st.image("assets/sections/collaboration-hub.svg", use_container_width=True)
     st.warning("Les contributions financières sont des déclarations, pas des paiements vérifiés. Aucun transfert, contrat, message externe ou engagement financier n'est exécuté par ce module.")
     if not cloud_mode or current_user is None:
         st.info("Connectez-vous à votre compte sécurisé pour créer des projets et recevoir des invitations.")
@@ -6556,6 +6557,7 @@ elif page == "Bourse aux applications":
 elif page == "SOW IA Business Club":
     st.subheader("🏛️ SOW IA BUSINESS CLUB")
     st.caption("Un réseau professionnel international. Votre profil n'apparaît dans l'annuaire que si vous activez explicitement sa publication.")
+    st.image("assets/sections/business-club.svg", use_container_width=True)
     st.markdown(
         '<div class="partner-intro"><h3>Rencontres professionnelles utiles</h3>'
         '<p>Présentez votre entreprise, découvrez des profils complémentaires et envoyez des demandes de rencontre. '
@@ -7173,6 +7175,7 @@ elif page == "Opportunités et revenus":
         "Pilotez les niches commerciales, les offres et les prévisions. "
         "Les montants saisis ici sont des estimations, pas des ventes encaissées."
     )
+    st.image("assets/sections/opportunities.svg", use_container_width=True)
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre espace sécurisé pour enregistrer durablement vos opportunités.")
     else:
