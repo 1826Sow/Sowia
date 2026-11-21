@@ -292,6 +292,9 @@ The additive migrations are now prepared in the review branch:
 - `20261121120000_sowia_nex_private_rpcs.sql`: privileged implementations moved to the non-exposed `private` schema, with public `SECURITY INVOKER` RPC wrappers;
 - `20261121130000_sowia_nex_admin_verification.sql`: admin-only, append-only verification attestations and a guarded moderation RPC;
 - `20261121140000_harden_nex_offer_admission.sql`: existing bilateral offer creation and response now require both apps to retain all four verification attestations.
+- `20261121150000_optimize_nex_verification_rls.sql`: keep the new admin-audit RLS check initplan-friendly.
+
+The application now exposes a dedicated Missions commerciales tab and an admin attestation panel. The existing public directory, matching, and offer selectors exclude applications without all four attestations. Existing offer-creation and offer-response RPCs also re-check the attestations server-side, including at response time.
 
 The migration sequence was applied only to the dedicated `SOWIA - TEST` Supabase project. It was not applied to production. The test project contains two distinct test owners and their existing app listings; workflow checks were run inside transactions and rolled back.
 
@@ -307,3 +310,4 @@ Verified test results:
 The NIGHT EXCHANGE screen now includes a commercial-missions tab with mission creation, bilateral approvals, guarded lifecycle actions and participant-only audit history. The admin moderation screen can record the four attestations. The catalogue and offer selectors now exclude applications that lack any required attestation.
 
 **Attestation limitation:** the four statuses are controlled administrative attestations. They are not an automated identity provider, cryptographic signature verifier, build attestation service, or malware scanner. Do not mark an application verified until an independent review has actually been performed. Production remains gated on those real verification services, security review, RLS review, and explicit deployment approval. No payments or remote partner-code execution are enabled.
+The Supabase test-project advisor review reports no new RLS-initplan or missing-foreign-key-index warnings for the mission and verification tables. Three older SECURITY DEFINER advisories remain in pre-existing integration-administration/professional-access functions; the global leaked-password protection warning is also pre-existing and was not changed as part of this scoped work.
