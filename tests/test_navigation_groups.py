@@ -19,7 +19,8 @@ def test_navigation_groups_keep_every_page_once_and_in_a_clear_folder():
     assert "Finance & investissements" in pages
     assert "Revenus & paiements" in pages
     assert "Abonnement" in pages
-    assert len(groups) == 9
+    assert len(groups) == 10
+    assert "Bourse aux applications" in groups["🌙 Bourse aux applications"]
     assert "Mes échanges & projets" in groups["📚 Échanges & projets"]
     assert "Historique" in groups["📚 Échanges & projets"]
     assert max(map(len, groups.values())) <= 9
