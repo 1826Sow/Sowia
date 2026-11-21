@@ -6624,8 +6624,10 @@ elif page == "Bourse aux applications":
                                 )
                             for reason in partner.get("match_reasons") or []:
                                 st.caption("Pourquoi ce résultat : " + str(reason))
-                            if partner.get("verification_state") != "verified":
-                                st.caption("Vérification indépendante de l’application non confirmée.")
+                            st.caption(
+                                "Identité du propriétaire, contrôle de l’application, "
+                                "revue de sécurité et signature éditeur : contrôles requis."
+                            )
                 else:
                     st.info("Aucune application approuvée n’est disponible pour lancer une simulation.")
             if not market_apps:
