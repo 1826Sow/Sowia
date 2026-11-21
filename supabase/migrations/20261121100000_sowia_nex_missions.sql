@@ -139,7 +139,7 @@ returns uuid
 language plpgsql
 security definer
 set search_path = pg_catalog, public, pg_temp
-as $$
+as $function$
 declare
     v_actor uuid := auth.uid();
     v_provider_user uuid;
@@ -212,14 +212,14 @@ begin
     ) values (v_id, v_actor, 'mission_proposed', null, 'proposed', v_hash);
     return v_id;
 end;
-$$;
+$function$;
 
 create or replace function public.sowia_nex_approve_mission(p_mission_id uuid)
 returns text
 language plpgsql
 security definer
 set search_path = pg_catalog, extensions, pg_temp
-as $$
+as $function$
 declare
     v_actor uuid := auth.uid();
     v_row public.sowia_nex_missions%rowtype;
@@ -273,7 +273,7 @@ begin
     end if;
     return v_status;
 end;
-$$;
+$function$;
 
 create or replace function public.sowia_nex_transition_mission(
     p_mission_id uuid,
@@ -284,7 +284,7 @@ returns text
 language plpgsql
 security definer
 set search_path = pg_catalog, extensions, pg_temp
-as $$
+as $function$
 declare
     v_actor uuid := auth.uid();
     v_row public.sowia_nex_missions%rowtype;
@@ -344,7 +344,7 @@ begin
     );
     return v_next;
 end;
-$$;
+$function$;
 
 revoke all on function public.sowia_nex_create_mission(uuid, uuid, text, text, text, numeric, text, timestamptz) from public, anon;
 revoke all on function public.sowia_nex_approve_mission(uuid) from public, anon;
