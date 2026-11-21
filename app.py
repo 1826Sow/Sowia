@@ -91,11 +91,13 @@ st.markdown(
     /* Blend Streamlit's native top controls into SOW IA and let them scroll with the app. */
     .stApp, [data-testid="stAppViewContainer"] { position: relative !important; }
     header[data-testid="stHeader"] {
-      position: absolute !important;
-      top: 0 !important;
+      /* Keep the native header in document flow: below Android's safe area and scrollable. */
+      position: relative !important;
+      top: auto !important;
       left: 0 !important;
       right: 0 !important;
       width: 100% !important;
+      padding-top: max(env(safe-area-inset-top, 0px), 12px) !important;
       background: linear-gradient(180deg, #071426 0%, #0a1b31 100%) !important;
       border-bottom: 1px solid rgba(0,220,235,.18) !important;
       box-shadow: none !important;
@@ -116,8 +118,12 @@ st.markdown(
     section[data-testid="stSidebar"] [data-testid="stRadio"] label { border-radius: 11px; padding: .38rem .55rem; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { background: rgba(0,205,225,.16); border: 1px solid rgba(0,220,235,.45); }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color: #75f2ff !important; font-weight: 750; }
-    /* Keep the native sidebar toggle in its original Streamlit position; add only the Menu label and styling. */
+    /* Keep the native Menu control in normal flow so it never overlays the Android status bar. */
     :is([data-testid="stSidebarCollapseButton"], [data-testid="stExpandSidebarButton"], button[data-testid="stSidebarCollapseButton"], button[data-testid="stExpandSidebarButton"]) {
+      position: static !important;
+      inset: auto !important;
+      transform: none !important;
+      margin: .35rem .65rem !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
@@ -308,7 +314,7 @@ st.markdown(
     [data-testid="stFileUploader"] button { min-height: 44px !important; touch-action: manipulation !important; }
     @media (max-width: 760px) {
       /* Leave clear space below Streamlit's floating Menu control on phones. */
-      [data-testid="stMainBlockContainer"] { padding: 4.35rem .75rem 2rem !important; }
+      [data-testid="stMainBlockContainer"] { padding: 1.25rem .75rem 2rem !important; }
       [data-testid="stMainBlockContainer"] [data-testid="stButton"] button {
         min-height: 3.15rem !important;
         font-size: .92rem !important;
