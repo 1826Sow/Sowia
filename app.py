@@ -1400,6 +1400,9 @@ st.markdown(
 st.write("")
 
 if page == "Accueil":
+    sowia_home_brand_cols = st.columns([1, 2, 1])
+    with sowia_home_brand_cols[1]:
+        st.image("assets/sowia-brain-brand.svg", width=320)
     st.subheader("Bienvenue dans SOW IA")
     st.caption("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.")
     # The project hub is deliberately the first major block on the home page.
