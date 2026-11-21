@@ -240,3 +240,34 @@ Do not publish a market-share percentage until the denominator, geography, time 
 5. **Monetize carefully:** activate commissions, subscriptions or API billing only through separately reviewed, authorized and tested implementations.
 
 This is a product and commercial strategy, not a claim that these capabilities, payments, customer demand or revenue are currently live.
+
+## 13. Commercial mission lifecycle — domain prototype
+
+A first pure-Python domain module now defines a bounded, non-financial mission lifecycle in `night_exchange_commercial.py`. It is intentionally separate from the existing application registry, event ledger and payment ledger.
+
+### 13.1 States and controls
+
+- `proposed`: a structured quote exists; no commitment or work authorization exists.
+- `accepted`: requester and provider owners have both approved the exact same canonical terms hash.
+- `in_progress`: only the provider owner can start after bilateral approval.
+- `delivered`: only the provider owner can mark the deliverable as submitted.
+- `completed`: only the requester owner can accept the submitted deliverable.
+- `cancelled`: cancellation is limited to the proposed or accepted stage.
+- `disputed`: a party can raise a bounded dispute after delivery; it does not imply a refund or payment action.
+
+The domain layer validates distinct owners and applications, a positive quoted amount, a three-letter currency code, bounded text and immutable terms digests. The digest and both owner approvals are rechecked before every post-acceptance transition. A changed quote or scope blocks progression.
+
+### 13.2 Commercial reporting boundaries
+
+The summary function reports mission counts and quoted value by currency only. A quote is not a sale, completed work is not proof of payment, and neither is recognized revenue. Payment status remains explicitly disabled. The module performs no database writes, messaging, external execution, settlement, refunds or money movement.
+
+### 13.3 Integration gates still outstanding
+
+This is a tested-in-source domain prototype, not a live persistent mission register. Before exposing it in the application, implement and independently review:
+- additive Supabase tables referencing the existing application registry and any confirmed proposal records;
+- server-side RPCs for atomic state transitions, immutable terms, owner authorization, idempotency and append-only audit events;
+- explicit RLS, grants and tests using two real authenticated owners;
+- a disposable Supabase integration test before any production migration;
+- a separate payment and legal review before any paid settlement feature.
+
+No production schema, secrets, existing workflows or payment settings were changed by this prototype. Do not claim live commercial missions, market share or recognized revenue until the persistent integration is deployed and verified.
