@@ -6609,10 +6609,19 @@ elif page == "Bourse aux applications":
                                 "**" + str(partner.get("app_name") or "Application partenaire")
                                 + "** — " + str(partner.get("country") or "Pays non renseigné")
                             )
-                            st.caption(
-                                "Fiche approuvée · Correspondance exacte : "
-                                + str(partner.get("service") or selected_service)
-                            )
+                            skill = partner.get("skill")
+                            if skill:
+                                st.caption(
+                                    "Compétence normalisée : "
+                                    + str(skill.get("label_fr") or partner.get("service") or selected_service)
+                                    + " · Domaine : " + str(skill.get("category_id") or "non classé")
+                                    + " · Niveau de contrôle : " + str(skill.get("risk_level") or "à évaluer")
+                                )
+                            else:
+                                st.caption(
+                                    "Service personnalisé · Correspondance exacte : "
+                                    + str(partner.get("service") or selected_service)
+                                )
                             for reason in partner.get("match_reasons") or []:
                                 st.caption("Pourquoi ce résultat : " + str(reason))
                             if partner.get("verification_state") != "verified":
