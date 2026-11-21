@@ -90,3 +90,65 @@ def test_confirm_domain_control_rejects_expired_or_replayed_challenge():
             challenge, authenticated_owner_id="user-1", dns_txt_records=txt,
             checked_at=NOW + timedelta(minutes=1), consumed_at=NOW,
         )
+
+
+
+def test_server_dns_resolver_uses_fixed_endpoint_and_returns_txt(monkeypatch):
+    from types import SimpleNamespace
+    import requests
+    from sowia_partner_verification import resolve_domain_challenge_txt
+
+    captured = {}
+    def fake_get(url, **kwargs):
+        captured["url"] = url
+        captured.update(kwargs)
+        return SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {
+                "Status": 0,
+                "Answer": [
+                    {"name": "_sowia-verification.example.com.", "type": 16,
+                     "TTL": 60, "data": '"sowia-verification=abc123"'}
+                ],
+            },
+        )
+    monkeypatch.setattr(requests, "get", fake_get)
+    assert resolve_domain_challenge_txt("example.com") == ["sowia-verification=abc123"]
+    assert captured["url"] == "https://cloudflare-dns.com/dns-query"
+    assert captured["params"] == {"name": "_sowia-verification.example.com", "type": "TXT"}
+    assert captured["allow_redirects"] is False
+    assert captured["timeout"] == (3.0, 5.0)
+
+
+def test_server_dns_resolver_rejects_invalid_timeout_and_dns_status(monkeypatch):
+    from types import SimpleNamespace
+    import requests
+    from sowia_partner_verification import (
+        PartnerVerificationError, resolve_domain_challenge_txt,
+    )
+    with pytest.raises(PartnerVerificationError):
+        resolve_domain_challenge_txt("example.com", timeout=30)
+
+    monkeypatch.setattr(
+        requests, "get",
+        lambda *args, **kwargs: SimpleNamespace(
+            raise_for_status=lambda: None, json=lambda: {"Status": 3, "Answer": []}
+        ),
+    )
+    with pytest.raises(PartnerVerificationError):
+        resolve_domain_challenge_txt("example.com")
+
+
+def test_dns_confirmation_uses_server_resolver_and_still_binds_owner(monkeypatch):
+    import sowia_partner_verification as verification
+    challenge = issue_domain_challenge(owner_id="user-1", domain="example.com", now=NOW)
+    record = domain_challenge_dns_record(challenge)["value"]
+    monkeypatch.setattr(verification, "resolve_domain_challenge_txt", lambda domain: [record])
+    proof = verification.confirm_domain_control_via_dns(
+        challenge, authenticated_owner_id="user-1", checked_at=NOW + timedelta(minutes=1)
+    )
+    assert proof["verified"] is True
+    with pytest.raises(PartnerVerificationError):
+        verification.confirm_domain_control_via_dns(
+            challenge, authenticated_owner_id="user-2", checked_at=NOW + timedelta(minutes=1)
+        )
