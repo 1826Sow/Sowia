@@ -158,3 +158,10 @@ The current read-only discovery path now applies these additional safeguards:
 - The SOW IA discovery panel displays the matched service, why the partner appeared, and the verification caveat.
 
 These changes remain read-only. They do not contact partner applications, publish orders, share user documents, authorize integrations, execute tasks or initiate payments. Automated CI status for this latest change has not yet been reported; the implementation must be treated as pending test validation until the repository checks complete.
+
+
+## 10. Phase A — shared skill vocabulary
+
+The first versioned skill vocabulary is `1.0.0`. It defines canonical identifiers, French display labels, domain categories, aliases and a risk tier for a deliberately limited set of common capabilities. Matching resolves known aliases to the same canonical skill identifier; unknown custom services are matched only by exact normalized text and are never guessed into a category.
+
+Every catalogue entry requires human approval before any future execution. The initial catalogue excludes regulated or high-risk financial services such as payment processing, money transfers, custody, lending, investment advice, securities trading and gambling. The catalogue is a code-level, read-only vocabulary at this stage; it does not change database schemas or grant a capability to any application. The partner results show the normalized skill and its declared control tier when a known skill is matched.
