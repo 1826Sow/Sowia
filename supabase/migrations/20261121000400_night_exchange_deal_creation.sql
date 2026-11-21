@@ -47,6 +47,10 @@ begin
         raise exception 'authentication required' using errcode = '42501';
     end if;
 
+    if not public.sowia_has_professional_access() then
+        raise exception 'active Premium access required' using errcode = '42501';
+    end if;
+
     if p_creator_app_id is null
        or p_counterparty_app_id is null
        or p_creator_app_id = p_counterparty_app_id
