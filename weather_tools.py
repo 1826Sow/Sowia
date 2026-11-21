@@ -35,7 +35,7 @@ def extract_weather_location(prompt):
         return None
     # Prefer the last explicit place preposition (e.g. « demain à Paris »).
     matches = list(re.finditer(
-        r"\b(?:à|a|de|du|des|pour|in|for)\s+([^,?!;.]+)",
+        r"\b(?:à|a|de|du|des|pour|in|for)\b\s+([^,?!;.]+)",
         text, flags=re.IGNORECASE,
     ))
     candidate = matches[-1].group(1).strip() if matches else ""
