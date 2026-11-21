@@ -1687,10 +1687,13 @@ elif page == "Hub SOWIA":
     for index, (label, destination, description) in enumerate(hub_quick_access):
         with quick_cols[index % 2]:
             with st.container(border=True):
+                if destination == "SOWIA NIGHT EXCHANGE":
+                    st.image("assets/sections/night-exchange.svg", use_container_width=True)
                 st.markdown(f"**{label.replace('SOWIA', 'SOW IA').replace('Sowia', 'SOW IA')}**")
                 st.caption(description.replace("SOWIA", "SOW IA").replace("Sowia", "SOW IA"))
                 st.button("Ouvrir", key=f"hub_quick_{index}", use_container_width=True,
                           on_click=go_to_page, args=(destination,))
+    st.image("assets/sections/final-tech.svg", use_container_width=True)
     st.markdown("#### 🧪 Final Tech")
     st.caption("Espace Final Tech — protocole de double approbation et contrôles associés.")
     st.link_button(
