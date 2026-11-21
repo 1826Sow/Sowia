@@ -21,7 +21,7 @@ def test_normalize_domain_accepts_https_origin_and_idn():
 
 @pytest.mark.parametrize("value", [
     "", "http://example.com", "https://user@example.com",
-    "https://example.com:8443", "https://example.com/path",
+    "https://example.com:8443", "https://example.com:abc", "https://example.com:", "https://example.com/path",
     "example.com/path", "127.0.0.1", "localhost", "bad..example",
 ])
 def test_normalize_domain_rejects_unsafe_or_non_origin_inputs(value):
