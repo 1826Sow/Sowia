@@ -6,7 +6,9 @@ access/refresh tokens remain in per-session client memory and are never
 written to this SQLite store.
 """
 from settings import get_setting
+import base64
 import hashlib
+import json
 import re
 import sqlite3
 import time
@@ -233,8 +235,41 @@ def _supabase_project_url():
     return urlunsplit((parts.scheme, parts.netloc, "", "", ""))
 
 
+def _supabase_public_key():
+    """Return only a public anon/publishable key; reject server-role secrets."""
+    key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
+    if not key:
+        raise RuntimeError(
+            "Supabase n'est pas configuré : fournissez la clé publique "
+            "SUPABASE_ANON_KEY ou SOWIA_SUPABASE_PUBLISHABLE_KEY."
+        )
+    if key.startswith("sb_secret_"):
+        raise RuntimeError(
+            "Une clé secrète serveur a été fournie à la place de la clé publique Supabase."
+        )
+    # Legacy anon keys are JWTs. Refuse a service_role JWT even if it was
+    # accidentally stored under a public-key setting name.
+    parts = key.split(".")
+    if len(parts) == 3:
+        try:
+            payload = parts[1] + "=" * (-len(parts[1]) % 4)
+            claims = json.loads(base64.urlsafe_b64decode(payload.encode("ascii")))
+        except (ValueError, UnicodeError, json.JSONDecodeError):
+            claims = {}
+        if isinstance(claims, dict) and claims.get("role") == "service_role":
+            raise RuntimeError(
+                "La clé service_role est interdite dans l'application Android et le client public."
+            )
+    return key
+
+
 def configuration_ready():
-    return bool(get_setting("SUPABASE_URL") and get_setting("SUPABASE_ANON_KEY"))
+    if not get_setting("SUPABASE_URL"):
+        return False
+    try:
+        return bool(_supabase_public_key())
+    except RuntimeError:
+        return False
 
 
 def email_is_allowed(email, allowed_emails):
@@ -253,12 +288,7 @@ def email_is_allowed(email, allowed_emails):
 def create_user_client(browser_id):
     """Create a per-session PKCE client; service-role keys are never accepted."""
     url = _supabase_project_url()
-    key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
-    if not key:
-        raise RuntimeError(
-            "Supabase n'est pas configuré. Renseignez SUPABASE_ANON_KEY "
-            "dans les secrets de l'hébergeur."
-        )
+    key = _supabase_public_key()
 
     # Persist only the one-time PKCE verifier across the external GitHub
     # redirect. Session tokens remain in memory in this browser session.
@@ -283,9 +313,7 @@ def create_email_user_client():
     its PKCE flow unchanged.
     """
     url = _supabase_project_url()
-    key = str(get_setting("SUPABASE_ANON_KEY", "")).strip()
-    if not key:
-        raise RuntimeError("SUPABASE_ANON_KEY est absent des secrets de l'hébergeur.")
+    key = _supabase_public_key()
 
     from supabase import ClientOptions, create_client
 
