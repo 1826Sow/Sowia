@@ -88,3 +88,10 @@ Le workflow GitHub `.github/workflows/deploy-paypal-webhook.yml` cible explicite
 
 
 Le webhook récurrent utilise aussi la table `sowia_paypal_subscription_blocks` pour gérer les blocages d'accès. Elle est également absente du schéma public du projet TEST inspecté. Cette table doit être incluse dans l'inventaire et la préparation des migrations avant tout test du webhook ; ne pas déployer la fonction seule en espérant que le schéma soit complet.
+
+
+### Dépendances SQL du webhook — point bloquant supplémentaire
+
+La revue des migrations versionnées dans `supabase/migrations/` montre que les migrations `20261114000200_paypal_webhook_idempotency.sql` et `20261114000300_paypal_webhook_processing_lease.sql` modifient la table `sowia_paypal_webhook_events` (index unique et bail de traitement), mais aucune migration de ce dossier ne crée cette table. Le code de `paypal-webhook` utilise également `sowia_paypal_subscription_blocks`; cette table est absente du schéma TEST contrôlé. Il faut donc identifier ou écrire une migration de base manquante et vérifier son schéma/RLS avant d'appliquer les migrations additives. Ne pas exécuter isolément les migrations 140002/140003 : elles échoueraient si la table d'événements n'existe pas.
+
+Le projet TEST a été contrôlé par une requête de lecture seule sur `to_regclass` : `sowia_entitlements` existe ; `sowia_subscriptions`, `sowia_paypal_catalog`, `sowia_paypal_webhook_events`, `sowia_paypal_subscription_blocks` et `sowia_financial_transactions` n'existent pas. Aucune donnée n'a été modifiée.
