@@ -1782,7 +1782,7 @@ elif page == "Hub SOWIA":
                           on_click=go_to_page, args=(destination,))
     st.image("assets/sections/final-tech.svg", use_container_width=True)
     st.markdown(
-        '<style>div[data-testid="stMarkdown"]:has(h4.sowia-final-tech-marker) h4{font-size:clamp(2rem,6vw,3rem)!important;font-weight:850!important;line-height:1.12!important;}</style>',
+        '<style>div[data-testid="stMarkdown"]:has(h4) h4{font-size:clamp(2rem,6vw,3rem)!important;font-weight:850!important;line-height:1.12!important;}</style>',
         unsafe_allow_html=True,
     )
     st.markdown("#### 🧪 Final Tech")
