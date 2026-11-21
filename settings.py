@@ -2,14 +2,28 @@
 import os
 
 
+_SETTING_ALIASES = {
+    "SUPABASE_URL": ("SOWIA_SUPABASE_URL",),
+    "SUPABASE_ANON_KEY": (
+        "SOWIA_SUPABASE_PUBLISHABLE_KEY",
+        "SOWIA_SUPABASE_ANON_KEY",
+    ),
+}
+
+
 def get_setting(name, default=""):
-    """Environment variables take precedence; Streamlit secrets are the hosted fallback."""
-    value = os.getenv(name)
-    if value is not None and value != "":
-        return value
+    """Environment variables take precedence; public Supabase build names are aliases."""
+    candidates = (name,) + _SETTING_ALIASES.get(name, ())
+    for candidate in candidates:
+        value = os.getenv(candidate)
+        if value is not None and value != "":
+            return value
     try:
         import streamlit as st
-        value = st.secrets.get(name, default)
-        return default if value is None else value
+        for candidate in candidates:
+            value = st.secrets.get(candidate)
+            if value is not None and value != "":
+                return value
     except Exception:
-        return default
+        pass
+    return default
