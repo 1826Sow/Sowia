@@ -161,12 +161,30 @@ def propose_exchange(match: dict, *, owner_approval_required: bool = True) -> Pr
     )
 
 
+def _service_values(value):
+    """Normalize service declarations supplied as text or a list of strings."""
+    if isinstance(value, str):
+        raw_values = value.replace("\\n", ",").replace(";", ",").split(",")
+    elif isinstance(value, (list, tuple, set)):
+        raw_values = list(value)
+    else:
+        return set()
+    normalized = set()
+    for item in raw_values:
+        if not isinstance(item, str):
+            continue
+        service = " ".join(item.split()).casefold()
+        if service and len(service) <= 120:
+            normalized.add(service)
+    return normalized
+
+
 def discover_service_partners(source_app_id: str, service: str,
                               approved_app_records: Iterable[dict]) -> list[dict]:
-    """Find approved apps offering one exact service wanted by a source app.
+    """Find approved, enabled apps offering one exact service.
 
-    This is a read-only discovery preview. It does not create orders, contact
-    partners, authorize integrations, or initiate payments.
+    Fail closed: a record must explicitly have status='approved'. This is a
+    read-only directory query; it does not contact partners or execute work.
     """
     source_id = _clean_text(source_app_id, "Application initiatrice", 128)
     requested_service = _clean_text(service, "Service recherché", 120).casefold()
@@ -176,24 +194,42 @@ def discover_service_partners(source_app_id: str, service: str,
         if not isinstance(record, dict):
             continue
         app_id = str(record.get("id") or "").strip()
-        if not app_id or app_id == source_id or app_id in seen:
+        if not app_id or len(app_id) > 128 or app_id == source_id or app_id in seen:
             continue
-        if record.get("status", "approved") != "approved":
+        # Never treat missing or unknown moderation state as approval.
+        if record.get("status") != "approved" or record.get("enabled", True) is not True:
             continue
-        offered = {
-            " ".join(part.casefold().split())
-            for part in str(record.get("services_offered") or "").replace(";", ",").replace("\\n", ",").split(",")
-            if part.strip()
-        }
+        offered = _service_values(record.get("services_offered"))
         if requested_service not in offered:
             continue
+        app_name = record.get("app_name")
+        if not isinstance(app_name, str) or not app_name.strip():
+            app_name = "Application sans nom"
+        country = record.get("country")
+        if not isinstance(country, str):
+            country = ""
+        categories = record.get("categories")
+        if not isinstance(categories, (list, tuple)):
+            categories = []
+        safe_categories = [
+            " ".join(str(item).split())[:80]
+            for item in categories
+            if isinstance(item, str) and item.strip()
+        ][:12]
         seen.add(app_id)
         partners.append({
             "app_id": app_id,
-            "app_name": str(record.get("app_name") or "Application sans nom"),
-            "country": str(record.get("country") or ""),
+            "app_name": " ".join(app_name.split())[:160],
+            "country": " ".join(country.split())[:100],
+            "categories": safe_categories,
             "service": requested_service,
             "match_type": "service_exact",
+            "match_reasons": ["Le service recherché correspond exactement à un service déclaré."],
+            "listing_status": "approved",
+            "verification_state": (
+                "verified" if record.get("verification_status") == "verified"
+                else "not_independently_verified"
+            ),
             "simulation": True,
         })
     return sorted(partners, key=lambda item: (item["app_name"].casefold(), item["app_id"]))
