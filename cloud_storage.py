@@ -789,8 +789,17 @@ def list_approved_night_exchange_apps(client, user, country=None, limit=100):
     _user_id(user)
     query = (
         client.table("sowia_night_exchange_apps")
-        .select("id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,status,updated_at")
+        .select(
+            "id,app_name,country,timezone,categories,services_offered,services_wanted,"
+            "night_start,night_end,status,owner_verification_status,"
+            "application_verification_status,security_review_status,"
+            "publisher_signature_status,verified_at,updated_at"
+        )
         .eq("status", "approved")
+        .eq("owner_verification_status", "verified")
+        .eq("application_verification_status", "verified")
+        .eq("security_review_status", "passed")
+        .eq("publisher_signature_status", "verified")
     )
     if country:
         query = query.ilike("country", str(country).strip()[:100])
