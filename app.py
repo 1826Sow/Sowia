@@ -142,6 +142,7 @@ st.markdown(
       :is([data-testid="stSidebarCollapseButton"], [data-testid="stExpandSidebarButton"], button[data-testid="stSidebarCollapseButton"], button[data-testid="stExpandSidebarButton"]) {
         min-width: 5.35rem !important;
         min-height: 2.45rem !important;
+        transform: translateY(24px) !important; /* Keep the menu below Android's status bar and clock. */
       }
     }
     .hero { position: relative; overflow: hidden; padding: clamp(1.35rem, 3vw, 2.25rem); border: 1px solid rgba(0,220,235,.30); border-radius: 24px; background: radial-gradient(circle at 88% 12%, rgba(0,220,235,.22), transparent 30%), radial-gradient(circle at 6% 100%, rgba(40,95,160,.24), transparent 32%), linear-gradient(120deg, #07172b 0%, #102b4a 58%, #10465a 100%); box-shadow: 0 18px 42px rgba(0,0,0,.28); margin: .35rem 0 1.35rem; }
