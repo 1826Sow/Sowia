@@ -422,7 +422,7 @@ def sign_in_email_password(client, email, password):
     refresh_token = getattr(session, "refresh_token", None) if session is not None else None
     if access_token and refresh_token:
         client.auth.set_session(access_token, refresh_token)
-    else:
+    elif callable(getattr(client.auth, "get_session", None)):
         stored_session = client.auth.get_session()
         if stored_session is None:
             raise RuntimeError("Supabase a accepté la connexion mais la session n'a pas pu être conservée.")
