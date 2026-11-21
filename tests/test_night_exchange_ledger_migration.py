@@ -68,19 +68,19 @@ class NightExchangeLedgerMigrationTests(unittest.TestCase):
     def test_clients_cannot_update_deal_state_or_event_history(self):
         self.assertRegex(
             self.sql,
-            r"grant select, insert on public\\.sowia_nex_deals to authenticated",
+            r"grant select, insert on public\.sowia_nex_deals to authenticated",
         )
         self.assertRegex(
             self.sql,
-            r"grant select, insert on public\\.sowia_nex_deal_events to authenticated",
+            r"grant select, insert on public\.sowia_nex_deal_events to authenticated",
         )
         self.assertNotRegex(
             self.sql,
-            r"grant [^;]*\\bupdate\\b[^;]* on public\\.sowia_nex_(?:deals|deal_events) to authenticated",
+            r"grant [^;]*\bupdate\b[^;]* on public\.sowia_nex_(?:deals|deal_events) to authenticated",
         )
         self.assertNotRegex(
             self.sql,
-            r"grant [^;]*\\bdelete\\b[^;]* on public\\.sowia_nex_(?:deals|deal_events) to authenticated",
+            r"grant [^;]*\bdelete\b[^;]* on public\.sowia_nex_(?:deals|deal_events) to authenticated",
         )
 
     def test_no_public_or_anonymous_table_access(self):
