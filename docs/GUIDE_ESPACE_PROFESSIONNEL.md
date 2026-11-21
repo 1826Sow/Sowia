@@ -72,3 +72,10 @@ Le texte extrait d'un PDF sélectionné est conservé dans la session pour l'ana
 Le parcours PayPal Live a été autorisé et un test de paiement a été déclaré validé par le propriétaire. Cela ne suffit pas à confirmer que le parcours est actuellement opérationnel en production : la configuration des secrets côté hébergeur et serveur, la réception des webhooks et l'attribution effective des droits Premium doivent être vérifiées séparément.
 
 Aucun paiement réel ne doit être effectué pour un simple contrôle technique. Ne considérez jamais un retour navigateur comme une preuve de paiement. Les secrets PayPal doivent rester dans les gestionnaires de secrets prévus et ne doivent jamais être ajoutés au dépôt GitHub.
+
+
+### Contrôle de l'environnement SOWIA - TEST
+
+Lors du contrôle du 21 novembre 2026, le projet Supabase de test ne présentait pas les fonctions Edge `paypal-one-time` et `paypal-webhook` dans la liste des fonctions déployées. Les migrations PayPal du dépôt n'apparaissaient pas non plus dans son historique de migrations. Le parcours PayPal ne doit donc pas être considéré comme déployé et vérifié sur cet environnement. Ce constat concerne uniquement le projet de test inspecté ; il ne permet pas de conclure sur un éventuel autre projet Supabase.
+
+Avant toute activation sur un environnement cible, appliquer et vérifier les migrations requises, déployer les fonctions correspondantes, configurer les secrets côté Edge Function sans les exposer, puis vérifier le traitement des webhooks et l'attribution des droits Premium. Ne pas déployer partiellement la fonction ou activer les paiements si ces prérequis ne sont pas réunis.
