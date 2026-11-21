@@ -1,30 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-label="SOW IA Night Exchange, écosystème mondial connecté">
 <defs>
- <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#050d24"/><stop offset=".55" stop-color="#10244b"/><stop offset="1" stop-color="#030817"/></linearGradient>
- <radialGradient id="glow"><stop stop-color="#16d9ff" stop-opacity=".55"/><stop offset="1" stop-color="#16d9ff" stop-opacity="0"/></radialGradient>
+ <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#030817"/><stop offset=".48" stop-color="#0a1c3b"/><stop offset="1" stop-color="#080d25"/></linearGradient>
+ <radialGradient id="glow"><stop stop-color="#13dfff" stop-opacity=".5"/><stop offset="1" stop-color="#13dfff" stop-opacity="0"/></radialGradient>
  <linearGradient id="gold"><stop stop-color="#fff0b2"/><stop offset=".5" stop-color="#d8a84d"/><stop offset="1" stop-color="#fff0b2"/></linearGradient>
- <filter id="blur"><feGaussianBlur stdDeviation="18"/></filter>
+ <filter id="blur"><feGaussianBlur stdDeviation="20"/></filter>
+ <pattern id="stars" width="130" height="110" patternUnits="userSpaceOnUse"><circle cx="13" cy="18" r="1.5" fill="#b8f5ff" opacity=".7"/><circle cx="88" cy="72" r="1" fill="#f5d58a" opacity=".8"/><circle cx="115" cy="25" r="1" fill="#b8f5ff" opacity=".5"/></pattern>
 </defs>
-<rect width="1200" height="600" rx="34" fill="url(#bg)"/>
-<circle cx="830" cy="285" r="270" fill="url(#glow)"/>
-<g opacity=".28" stroke="#45dfff" fill="none"><path d="M0 420 Q260 280 520 420T1200 360"/><path d="M0 470 Q260 330 520 470T1200 410"/><path d="M0 520 Q260 380 520 520T1200 460"/></g>
-<g transform="translate(810 275)" fill="none" stroke-linecap="round">
- <ellipse rx="250" ry="105" stroke="#1de0ff" stroke-width="2" opacity=".75" transform="rotate(-28)"/>
- <ellipse rx="250" ry="105" stroke="#d8ad59" stroke-width="2" opacity=".8" transform="rotate(32)"/>
- <ellipse rx="180" ry="210" stroke="#51dfff" stroke-width="1.5" opacity=".5" transform="rotate(72)"/>
- <circle r="116" stroke="#e8bd69" stroke-width="2" opacity=".9"/>
- <circle r="83" fill="#07152f" stroke="#27dfff" stroke-width="3"/>
- <path d="M-42 -35 Q-76 -65 -70 -12 Q-102 22 -54 43 Q-43 79 0 55 Q40 79 54 43 Q102 22 70 -12 Q76 -65 42 -35 Q20 -70 0 -42 Q-20 -70 -42 -35Z" fill="#0c3157" stroke="#36dcff" stroke-width="3"/>
- <path d="M0 -42V56 M-48 -18L-10 2L-34 35 M48 -18L10 2L34 35" stroke="#9af2ff" stroke-width="3"/>
+<rect width="1200" height="600" rx="34" fill="url(#bg)"/><rect width="1200" height="600" rx="34" fill="url(#stars)"/>
+<circle cx="850" cy="285" r="300" fill="url(#glow)"/><circle cx="850" cy="285" r="220" fill="#13dfff" opacity=".09" filter="url(#blur)"/>
+<g transform="translate(850 286)" fill="none" stroke-linecap="round">
+ <ellipse rx="250" ry="105" stroke="#1de0ff" stroke-width="2.5" opacity=".8" transform="rotate(-28)"/>
+ <ellipse rx="250" ry="105" stroke="url(#gold)" stroke-width="2" opacity=".9" transform="rotate(32)"/>
+ <ellipse rx="180" ry="210" stroke="#51dfff" stroke-width="1.5" opacity=".55" transform="rotate(72)"/>
+ <circle r="116" stroke="url(#gold)" stroke-width="2.5"/><circle r="88" fill="#07152f" stroke="#27dfff" stroke-width="3"/>
+ <path d="M-42-35Q-76-65-70-12Q-102 22-54 43Q-43 79 0 55Q40 79 54 43Q102 22 70-12Q76-65 42-35Q20-70 0-42Q-20-70-42-35Z" fill="#0c3157" stroke="#36dcff" stroke-width="3"/>
+ <path d="M0-42V56M-48-18L-10 2L-34 35M48-18L10 2L34 35" stroke="#9af2ff" stroke-width="3"/>
  <g fill="#f4cc79" stroke="none"><circle cx="-226" cy="-70" r="8"/><circle cx="230" cy="58" r="7"/><circle cx="60" cy="-220" r="6"/><circle cx="-78" cy="215" r="6"/></g>
 </g>
-<g fill="#b5eefa" opacity=".85"><circle cx="110" cy="100" r="2"/><circle cx="260" cy="80" r="3"/><circle cx="520" cy="130" r="2"/><circle cx="690" cy="80" r="2"/><circle cx="1080" cy="120" r="3"/><circle cx="1020" cy="480" r="2"/></g>
-<text x="72" y="102" fill="#f3cc7a" font-family="Arial,sans-serif" font-size="22" letter-spacing="7">L'ÉCOSYSTÈME MONDIAL</text>
-<text x="72" y="190" fill="#ffffff" font-family="Arial,sans-serif" font-size="62" font-weight="700" letter-spacing="1">NIGHT EXCHANGE</text>
-<text x="76" y="242" fill="#69e6ff" font-family="Arial,sans-serif" font-size="25" letter-spacing="5">CONNECT · SHARE · GROW</text>
-<path d="M76 290H440" stroke="url(#gold)" stroke-width="3"/>
-<text x="76" y="345" fill="#d9e9ff" font-family="Arial,sans-serif" font-size="25">Un espace vivant pour les idées,</text>
-<text x="76" y="382" fill="#d9e9ff" font-family="Arial,sans-serif" font-size="25">les rencontres et les opportunités.</text>
-<text x="76" y="530" fill="#f2c978" font-family="Arial,sans-serif" font-size="25" font-weight="700" letter-spacing="8">SOW IA</text>
-<text x="210" y="530" fill="#8aa6ca" font-family="Arial,sans-serif" font-size="15" letter-spacing="3">GLOBAL CONNECTIONS</text>
+<g fill="none" stroke="#36dff7" stroke-opacity=".38" stroke-width="1.5"><path d="M570 130L660 175L700 250M560 440L675 390L720 330M1010 120L1080 180L1140 170M1020 455L1090 405L1160 420"/><path d="M0 440Q260 300 520 440T1200 380M0 490Q260 350 520 490T1200 430"/></g>
+<g fill="#c1f7ff"><circle cx="570" cy="130" r="4"/><circle cx="560" cy="440" r="4"/><circle cx="1140" cy="170" r="4"/><circle cx="1160" cy="420" r="4"/></g>
+<text x="72" y="102" fill="#f3cc7a" font-family="Arial,sans-serif" font-size="21" letter-spacing="7">L'ÉCOSYSTÈME MONDIAL</text>
+<text x="68" y="190" fill="#fff" font-family="Arial,sans-serif" font-size="61" font-weight="800" letter-spacing="1">NIGHT EXCHANGE</text>
+<text x="74" y="244" fill="#69e6ff" font-family="Arial,sans-serif" font-size="24" letter-spacing="3">CONNECTER. ÉCHANGER. RAYONNER.</text>
+<path d="M76 286H450" stroke="url(#gold)" stroke-width="3"/>
+<text x="76" y="350" fill="#d8eaff" font-family="Arial,sans-serif" font-size="24">Un carrefour d'opportunités sans frontières.</text>
+<text x="76" y="398" fill="#8fcddd" font-family="Arial,sans-serif" font-size="15" letter-spacing="3">GLOBAL NETWORK  ·  SHARED OPPORTUNITIES</text>
 </svg>
