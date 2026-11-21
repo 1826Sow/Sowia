@@ -15,6 +15,7 @@ Le registre n'est pas un système de paiement autonome et ne doit jamais déclar
 
 - Une migration additive proposée crée les dossiers commerciaux et le journal d'événements append-only.
 - Une seconde migration proposée ajoute une fonction de transition atomique avec contrôle du participant, verrouillage de ligne et clé d'idempotence.
+- Une troisième migration proposée journalise automatiquement chaque création de proposition via un trigger interne, sans réutiliser la clé d'idempotence des transitions.
 - Les migrations ne sont pas appliquées à Supabase ; aucune donnée ni configuration de production n'a été modifiée.
 - Le prototype Streamlit et l'interface Android ne sont pas encore raccordés au registre.
 
@@ -38,6 +39,7 @@ Chaque transition valide met à jour le statut et insère son événement `statu
 ## Journal et sécurité
 
 - Les événements restent append-only ; aucune fonction cliente ne peut les modifier ou les supprimer.
+- Chaque nouvelle proposition génère automatiquement un événement `proposal_created` dans le journal.
 - La fonction utilise `SECURITY DEFINER` avec `search_path` vide, des noms d'objets qualifiés et vérifie `auth.uid()` ainsi que la participation au dossier.
 - L'exécution est révoquée à `public` et `anon`, puis accordée uniquement à `authenticated`.
 - La fonction ne peut pas confirmer un paiement, un remboursement ou une commission.
