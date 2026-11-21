@@ -221,6 +221,11 @@ def test_partner_discovery_matches_known_skill_aliases_and_explains_reason():
 
     rows = [{
         "id": "provider", "app_name": "Analytica", "status": "approved",
+        "owner_verification_status": "verified",
+        "application_verification_status": "verified",
+        "security_review_status": "passed",
+        "publisher_signature_status": "verified",
+        "enabled": True, "security_suspended": False,
         "services_offered": "Analyse de données",
     }]
     match = discover_service_partners("requester", "data analysis", rows)[0]
@@ -235,6 +240,11 @@ def test_partner_discovery_keeps_custom_services_exact_only():
 
     rows = [{
         "id": "provider", "app_name": "Custom", "status": "approved",
+        "owner_verification_status": "verified",
+        "application_verification_status": "verified",
+        "security_review_status": "passed",
+        "publisher_signature_status": "verified",
+        "enabled": True, "security_suspended": False,
         "services_offered": "bespoke legacy connector",
     }]
     assert discover_service_partners("requester", "bespoke legacy connector", rows)
