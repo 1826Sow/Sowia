@@ -99,15 +99,15 @@ def test_discover_service_partners_returns_only_approved_exact_service_matches()
 
     rows = [
         {"id": "app-a", "app_name": "Initiator", "services_offered": "rides",
-         "services_wanted": "payment processing", "status": "approved"},
+         "services_wanted": "translation", "status": "approved"},
         {"id": "app-b", "app_name": "Payment API", "country": "France",
-         "services_offered": "payment processing, fraud checks", "status": "approved"},
+         "services_offered": "translation, fraud checks", "status": "approved", "owner_verification_status": "verified", "application_verification_status": "verified", "security_review_status": "passed", "publisher_signature_status": "verified"},
         {"id": "app-c", "app_name": "Pending API",
-         "services_offered": "payment processing", "status": "pending"},
+         "services_offered": "translation", "status": "pending"},
         {"id": "app-d", "app_name": "Different API",
-         "services_offered": "payment gateway", "status": "approved"},
+         "services_offered": "payment gateway", "status": "approved", "owner_verification_status": "verified", "application_verification_status": "verified", "security_review_status": "passed", "publisher_signature_status": "verified"},
     ]
-    matches = discover_service_partners("app-a", "payment processing", rows)
+    matches = discover_service_partners("app-a", "translation", rows)
     assert [item["app_id"] for item in matches] == ["app-b"]
     assert matches[0]["simulation"] is True
 
@@ -134,7 +134,7 @@ def test_partner_discovery_fails_closed_for_missing_or_unknown_approval():
          "services_offered": "translation"},
     ]
     matches = discover_service_partners("source", "translation", rows)
-    assert [item["app_id"] for item in matches] == ["approved"]
+    assert matches == []
 
 
 def test_partner_discovery_supports_list_declarations_and_disabled_filter():
@@ -142,7 +142,10 @@ def test_partner_discovery_supports_list_declarations_and_disabled_filter():
 
     rows = [
         {"id": "enabled", "app_name": "Enabled", "status": "approved",
-         "enabled": True, "services_offered": [" Data Analysis ", "translation"]},
+         "enabled": True, "owner_verification_status": "verified",
+         "application_verification_status": "verified", "security_review_status": "passed",
+         "publisher_signature_status": "verified",
+         "services_offered": [" Data Analysis ", "translation"]},
         {"id": "disabled", "app_name": "Disabled", "status": "approved",
          "enabled": False, "services_offered": ["data analysis"]},
     ]
@@ -156,6 +159,10 @@ def test_partner_discovery_exposes_explainable_match_and_verification_state():
     rows = [{
         "id": "provider", "app_name": "Provider", "status": "approved",
         "verification_status": "verified",
+        "owner_verification_status": "verified",
+        "application_verification_status": "verified",
+        "security_review_status": "passed",
+        "publisher_signature_status": "verified",
         "categories": ["AI", "Data"],
         "services_offered": "data analysis",
     }]
@@ -166,16 +173,14 @@ def test_partner_discovery_exposes_explainable_match_and_verification_state():
     assert match["simulation"] is True
 
 
-def test_partner_discovery_does_not_claim_verification_from_approval_alone():
+def test_partner_discovery_does_not_admit_approval_without_security_evidence():
     from night_exchange_economy import discover_service_partners
 
     rows = [{
         "id": "provider", "app_name": "Provider", "status": "approved",
         "services_offered": "data analysis",
     }]
-    match = discover_service_partners("source", "data analysis", rows)[0]
-    assert match["listing_status"] == "approved"
-    assert match["verification_state"] == "not_independently_verified"
+    assert discover_service_partners("source", "data analysis", rows) == []
 
 
 def test_shared_skill_catalog_is_versioned_and_requires_human_approval():
