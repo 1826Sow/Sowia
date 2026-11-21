@@ -9,6 +9,10 @@ on:
     paths:
       - '.github/workflows/android-permanent-release.yml'
       - 'android/**'
+      - 'app.py'
+      - 'settings.py'
+      - 'sowia_supabase_auth.py'
+      - 'tests/**'
 
 permissions:
   contents: read
