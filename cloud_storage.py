@@ -937,6 +937,107 @@ def list_night_exchange_events(client, user, workspace_id="professional",
     )
 
 
+# SOWIA NIGHT EXCHANGE — persistent bilateral commercial missions.
+
+def create_night_exchange_mission(
+    client, user, provider_app_id, requester_app_id, title, scope,
+    deliverable, quoted_amount, currency, due_at=None
+):
+    """Create a persistent mission proposal; SQL verifies both app owners and approvals."""
+    _user_id(user)
+    from decimal import Decimal, InvalidOperation
+    try:
+        amount = Decimal(str(quoted_amount))
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValueError("Montant du devis invalide.") from None
+    if not amount.is_finite() or amount <= 0:
+        raise ValueError("Le montant du devis doit être positif.")
+    if not provider_app_id or not requester_app_id:
+        raise ValueError("Deux applications sont requises.")
+    if not isinstance(currency, str) or len(currency.strip()) != 3 or not currency.strip().isalpha():
+        raise ValueError("Code devise ISO à trois lettres attendu.")
+    if due_at is not None and not isinstance(due_at, str):
+        raise ValueError("L'échéance doit être une date ISO ou être vide.")
+    return client.rpc("sowia_nex_create_mission", {
+        "p_provider_app_id": str(provider_app_id),
+        "p_requester_app_id": str(requester_app_id),
+        "p_title": title,
+        "p_scope": scope,
+        "p_deliverable": deliverable,
+        "p_quoted_amount": str(amount),
+        "p_currency": currency.strip().upper(),
+        "p_due_at": due_at,
+    }).execute().data
+
+
+def approve_night_exchange_mission(client, user, mission_id):
+    """Approve the exact immutable terms as the authenticated mission owner."""
+    _user_id(user)
+    if not mission_id:
+        raise ValueError("Identifiant de mission requis.")
+    return client.rpc("sowia_nex_approve_mission", {
+        "p_mission_id": str(mission_id),
+    }).execute().data
+
+
+def transition_night_exchange_mission(client, user, mission_id, action, reason=None):
+    """Request one server-guarded lifecycle transition; no payment action exists."""
+    _user_id(user)
+    allowed = {"start", "deliver", "accept_delivery", "cancel", "dispute"}
+    if action not in allowed:
+        raise ValueError("Transition de mission inconnue.")
+    if action == "dispute":
+        if not isinstance(reason, str) or not 1 <= len(reason.strip()) <= 1000:
+            raise ValueError("Un motif de litige de 1 à 1000 caractères est requis.")
+    elif reason is not None:
+        raise ValueError("Un motif est accepté uniquement pour un litige.")
+    return client.rpc("sowia_nex_transition_mission", {
+        "p_mission_id": str(mission_id),
+        "p_action": action,
+        "p_reason": reason.strip() if isinstance(reason, str) else None,
+    }).execute().data
+
+
+def list_my_night_exchange_missions(client, user, limit=100):
+    """List missions involving the signed-in user; RLS independently enforces access."""
+    user_id = _user_id(user)
+    cap = min(max(int(limit), 1), 200)
+    columns = (
+        "id,requester_user_id,provider_user_id,requester_app_id,provider_app_id,"
+        "terms,terms_hash,requester_approved_hash,provider_approved_hash,status,"
+        "delivered_at,completed_at,cancelled_at,dispute_reason,created_at,updated_at"
+    )
+    sent = (
+        client.table("sowia_nex_missions").select(columns)
+        .eq("requester_user_id", user_id)
+        .order("created_at", desc=True).limit(cap).execute().data or []
+    )
+    received = (
+        client.table("sowia_nex_missions").select(columns)
+        .eq("provider_user_id", user_id)
+        .order("created_at", desc=True).limit(cap).execute().data or []
+    )
+    unique = {str(row.get("id")): row for row in sent + received}
+    return sorted(
+        unique.values(), key=lambda row: str(row.get("created_at") or ""), reverse=True
+    )[:cap]
+
+
+def list_night_exchange_mission_events(client, user, mission_id, limit=200):
+    """Read an immutable mission audit trail; database RLS checks participation."""
+    _user_id(user)
+    if not mission_id:
+        raise ValueError("Identifiant de mission requis.")
+    return (
+        client.table("sowia_nex_mission_events")
+        .select("id,mission_id,actor_user_id,event_type,previous_status,new_status,terms_hash,event_details,created_at")
+        .eq("mission_id", str(mission_id))
+        .order("created_at", desc=True)
+        .limit(min(max(int(limit), 1), 500))
+        .execute().data or []
+)
+
+
 # SOWIA GLOBAL CONNECT — consent-based professional introductions.
 def create_global_connection_request(client, user, public_id, message):
     """Send a request to a published profile; recipient identity is resolved server-side."""
