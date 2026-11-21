@@ -129,6 +129,12 @@ def transition_mission(record, actor_user_id, action, *, reason=None):
     if not (requester or provider):
         raise MissionError("Acteur non autorisé sur cette mission.")
     status = result.get("status")
+    if status in {"accepted", "in_progress", "delivered", "completed", "disputed"}:
+        digest = canonical_terms_hash(result.get("terms"))
+        if (digest != result.get("terms_hash")
+                or result.get("requester_approved_hash") != digest
+                or result.get("provider_approved_hash") != digest):
+            raise MissionError("Conditions ou approbations incohérentes : transition bloquée.")
     if action == "start":
         if not provider or status != "accepted":
             raise MissionError("Seul le prestataire peut démarrer une mission acceptée.")
