@@ -27,8 +27,8 @@ drop policy if exists "nex_app_verification_admin_read" on public.sowia_nex_app_
 create policy "nex_app_verification_admin_read"
     on public.sowia_nex_app_verification_events for select to authenticated
     using (
-        coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin'
-        or coalesce(auth.jwt() -> 'app_metadata' ->> 'sowia_admin', '') = 'true'
+        coalesce((select auth.jwt()) -> 'app_metadata' ->> 'role', '') = 'admin'
+        or coalesce((select auth.jwt()) -> 'app_metadata' ->> 'sowia_admin', '') = 'true'
     );
 
 revoke all on public.sowia_nex_app_verification_events from anon, authenticated;
