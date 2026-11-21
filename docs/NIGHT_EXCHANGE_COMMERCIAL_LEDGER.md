@@ -16,8 +16,9 @@ Le registre n'est pas un système de paiement autonome et ne doit jamais déclar
 - Une migration additive proposée crée les dossiers commerciaux et le journal d'événements append-only.
 - Une seconde migration proposée ajoute une fonction de transition atomique avec contrôle du participant, verrouillage de ligne et clé d'idempotence.
 - Une troisième migration proposée journalise automatiquement chaque création de proposition via un trigger interne, sans réutiliser la clé d'idempotence des transitions.
+- Une quatrième migration proposée ajoute la création de contrat par RPC : contrôle Premium serveur, deux applications approuvées, identité du partenaire dérivée depuis le registre et révocation de l'insertion directe cliente.
 - Les migrations ne sont pas appliquées à Supabase ; aucune donnée ni configuration de production n'a été modifiée.
-- Le prototype Streamlit comporte maintenant un onglet « Registre commercial » raccordé aux helpers Supabase : création d'une proposition via RPC, liste des contrats, transitions autorisées et consultation du journal.
+- Le prototype Streamlit comporte maintenant un onglet « Registre commercial » raccordé aux helpers Supabase : création de propositions via RPC, liste des contrats, transitions autorisées et consultation du journal.
 - La persistance reste indisponible tant que les migrations nécessaires ne sont pas appliquées sur un projet Supabase de test. L'interface affiche alors un diagnostic et ne bascule pas sur un stockage local trompeur.
 - L'interface Android n'est pas encore raccordée à ce registre.
 
@@ -57,7 +58,7 @@ Chaque transition valide met à jour le statut et insère son événement `statu
 
 ## Dépendances et ordre de migration
 
-1. Le registre d'applications NIGHT EXCHANGE existant doit être présent (`supabase_night_exchange_registry.sql`) afin de relier les contrats à des applications professionnelles approuvées.
+1. Le registre d'applications NIGHT EXCHANGE existant doit être présent (`supabase_night_exchange_registry.sql`) afin de relier les contrats à des applications professionnelles approuvées. La fonction d'accès Premium (`sowia_has_professional_access`) doit également être disponible.
 2. Appliquer ensuite, sur un projet Supabase de test uniquement, les migrations `20261121000100`, `20261121000200`, `20261121000300` et `20261121000400` dans l'ordre.
 3. Vérifier la création via RPC, les lectures RLS, les transitions, les refus d'accès, les répétitions d'idempotence et le journal automatique avant toute décision de déploiement.
 
