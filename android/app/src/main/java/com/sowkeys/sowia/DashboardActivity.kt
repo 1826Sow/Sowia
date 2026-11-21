@@ -1,10 +1,13 @@
 package com.sowkeys.sowia
 
 import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.webkit.CookieManager
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -13,6 +16,8 @@ import android.widget.FrameLayout
 import android.widget.ProgressBar
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 
 /**
  * Opens the existing SOW IA dashboard inside the Android application.
@@ -20,10 +25,20 @@ import androidx.activity.OnBackPressedCallback
  */
 class DashboardActivity : ComponentActivity() {
     private lateinit var webView: WebView
+    private lateinit var pdfPickerLauncher: ActivityResultLauncher<Array<String>>
+    private var pendingFileChooser: ValueCallback<Array<Uri>>? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Streamlit's st.file_uploader uses the WebView file chooser callback.
+        // Without this bridge, tapping the PDF picker appears to do nothing on Android.
+        pdfPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            val callback = pendingFileChooser
+            pendingFileChooser = null
+            callback?.onReceiveValue(uri?.let { arrayOf(it) })
+        }
 
         val container = FrameLayout(this)
         val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
@@ -35,7 +50,8 @@ class DashboardActivity : ComponentActivity() {
             settings.domStorageEnabled = true
             settings.loadsImagesAutomatically = true
             settings.allowFileAccess = false
-            settings.allowContentAccess = false
+            // Content URIs are supplied by Android's document picker, not arbitrary file paths.
+            settings.allowContentAccess = true
             settings.javaScriptCanOpenWindowsAutomatically = false
             settings.setSupportMultipleWindows(false)
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
@@ -43,6 +59,39 @@ class DashboardActivity : ComponentActivity() {
             webChromeClient = object : WebChromeClient() {
                 override fun onProgressChanged(view: WebView?, newProgress: Int) {
                     progress.visibility = if (newProgress >= 100) View.GONE else View.VISIBLE
+                }
+
+                override fun onShowFileChooser(
+                    view: WebView?,
+                    filePathCallback: ValueCallback<Array<Uri>>?,
+                    fileChooserParams: FileChooserParams?,
+                ): Boolean {
+                    if (filePathCallback == null) return false
+
+                    // Complete any abandoned picker request before opening another one.
+                    pendingFileChooser?.onReceiveValue(null)
+                    pendingFileChooser = filePathCallback
+
+                    val mimeTypes = fileChooserParams?.acceptTypes
+                        .orEmpty()
+                        .flatMap { it.split(",") }
+                        .map { it.trim() }
+                        .filter { it.contains("/") }
+                        .distinct()
+                        .ifEmpty { listOf("application/pdf") }
+
+                    return try {
+                        pdfPickerLauncher.launch(mimeTypes.toTypedArray())
+                        true
+                    } catch (_: ActivityNotFoundException) {
+                        pendingFileChooser = null
+                        filePathCallback.onReceiveValue(null)
+                        false
+                    } catch (_: IllegalStateException) {
+                        pendingFileChooser = null
+                        filePathCallback.onReceiveValue(null)
+                        false
+                    }
                 }
             }
             webViewClient = object : WebViewClient() {
@@ -52,6 +101,7 @@ class DashboardActivity : ComponentActivity() {
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     progress.visibility = View.GONE
+                    CookieManager.getInstance().flush()
                 }
 
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -79,8 +129,7 @@ class DashboardActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 // Give SOW IA's own navigation stack first priority. This makes
-                // the Android system Back button behave like the in-app Back
-                // button instead of unexpectedly leaving the dashboard.
+                // Android system Back behave like the in-app Back button.
                 webView.evaluateJavascript(
                     """(function() {
                         const button = document.querySelector(
@@ -114,6 +163,8 @@ class DashboardActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        pendingFileChooser?.onReceiveValue(null)
+        pendingFileChooser = null
         webView.stopLoading()
         webView.webChromeClient = null
         webView.webViewClient = WebViewClient()
