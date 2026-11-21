@@ -1,0 +1,118 @@
+name: SOW IA Android maintenance debug APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - android/fix-login-pdf-navigation-20261121
+    paths:
+      - '.github/workflows/android-maintenance-debug.yml'
+      - 'android/**'
+      - 'app.py'
+      - 'settings.py'
+      - 'sowia_supabase_auth.py'
+
+permissions:
+  contents: read
+
+jobs:
+  build-debug:
+    name: Build and verify the targeted Android maintenance APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Locate Android SDK and install required tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
+          if [[ -z "$SDKMANAGER" ]]; then
+            echo "::error::Android SDK command-line tools are missing."
+            exit 1
+          fi
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Validate public Supabase build configuration
+        env:
+          SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
+          SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
+          SOWIA_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_SUPABASE_ANON_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, json, os
+          from urllib.parse import urlparse
+          u = urlparse(os.environ.get("SOWIA_SUPABASE_URL", "").strip())
+          k = (os.environ.get("SOWIA_SUPABASE_PUBLISHABLE_KEY", "").strip()
+               or os.environ.get("SOWIA_SUPABASE_ANON_KEY", "").strip())
+          if u.scheme != "https" or u.hostname != "qegcopordeqjiechmbhg.supabase.co" or u.path not in ("", "/") or u.query or u.fragment:
+              raise SystemExit("Missing or invalid Supabase project URL.")
+          if not k:
+              raise SystemExit("Missing Supabase public/anon key.")
+          if k.startswith("sb_secret_"):
+              raise SystemExit("A server secret key cannot be embedded in the APK.")
+          if k.count(".") == 2:
+              try:
+                  part = k.split(".")[1]
+                  claims = json.loads(base64.urlsafe_b64decode(part + "=" * (-len(part) % 4)))
+              except Exception:
+                  claims = {}
+              if isinstance(claims, dict) and claims.get("role") == "service_role":
+                  raise SystemExit("A service_role key cannot be embedded in the APK.")
+          print("Supabase public build configuration validated.")
+          PY
+
+      - name: Build current debug APK
+        env:
+          SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
+          SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
+          SOWIA_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_SUPABASE_ANON_KEY }}
+        run: gradle -p android :app:assembleCurrentDebug
+
+      - name: Verify package and APK signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find android/app/build/outputs/apk -type f -path '*/current/debug/*.apk' -print -quit)"
+          if [[ -z "$APK" ]]; then
+            echo "::error::Current debug APK not found."
+            exit 1
+          fi
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          PACKAGE_ID="$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
+          if [[ "$PACKAGE_ID" != "com.sowkeys.sowia" ]]; then
+            echo "::error::Unexpected application ID: $PACKAGE_ID"
+            exit 1
+          fi
+          mkdir -p maintenance-output
+          cp "$APK" maintenance-output/SOW-IA-Android-maintenance.apk
+          sha256sum maintenance-output/SOW-IA-Android-maintenance.apk | tee maintenance-output/SHA256SUMS.txt
+          echo "Maintenance APK package ID and debug signature verified."
+
+      - name: Upload maintenance APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sowia-android-maintenance-apk
+          path: maintenance-output/*
+          if-no-files-found: error
+          retention-days: 30
