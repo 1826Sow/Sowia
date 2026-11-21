@@ -46,7 +46,7 @@ def test_rpc_wrappers_are_invoker_and_service_role_only():
     sql = MIGRATION.read_text(encoding="utf-8").lower()
     assert "create or replace function public.sowia_issue_nex_domain_challenge" in sql
     assert "create or replace function public.sowia_consume_nex_domain_challenge" in sql
-    assert sql.count("security invoker") == 2
+    assert len(re.findall(r"^\\s*security invoker\\s*$", sql, re.MULTILINE)) == 2
     assert "grant execute on function public.sowia_issue_nex_domain_challenge" in sql
     assert "grant execute on function public.sowia_consume_nex_domain_challenge" in sql
     assert "to service_role" in sql
