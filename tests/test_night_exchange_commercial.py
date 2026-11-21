@@ -102,3 +102,10 @@ def test_summary_reports_quotes_not_recognized_revenue():
     assert snapshot["recognized_revenue_available"] is False
     assert snapshot["payment_processing_enabled"] is False
     assert snapshot["quoted_value_by_currency"] == {"EUR": "125.50"}
+
+def test_terms_tampering_after_acceptance_blocks_execution():
+    record = approve_mission(mission(), "owner-requester")
+    record = approve_mission(record, "owner-provider")
+    record["terms"]["scope"] = "Périmètre remplacé après signature."
+    with pytest.raises(MissionError):
+        transition_mission(record, "owner-provider", "start")
