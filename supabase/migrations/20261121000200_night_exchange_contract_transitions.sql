@@ -26,6 +26,7 @@ declare
     v_deal public.sowia_nex_deals%rowtype;
     v_existing_event_id uuid;
     v_existing_deal_id uuid;
+    v_existing_payload jsonb;
     v_event_id uuid;
     v_previous_status text;
 begin
@@ -34,6 +35,7 @@ begin
     end if;
 
     if p_deal_id is null
+       or p_target_status is null
        or p_target_status not in ('accepted', 'in_progress', 'completed', 'cancelled', 'disputed')
        or p_idempotency_key is null
        or char_length(p_idempotency_key) < 16
@@ -58,8 +60,8 @@ begin
     end if;
 
     -- A retry with the same key returns the original event and never repeats a transition.
-    select id, deal_id
-      into v_existing_event_id, v_existing_deal_id
+    select id, deal_id, event_payload
+      into v_existing_event_id, v_existing_deal_id, v_existing_payload
       from public.sowia_nex_deal_events
      where actor_user_id = v_actor
        and idempotency_key = p_idempotency_key;
@@ -67,6 +69,11 @@ begin
     if found then
         if v_existing_deal_id <> p_deal_id then
             raise exception 'idempotency key already used for another deal'
+                using errcode = '23505';
+        end if;
+        if (v_existing_payload ->> 'to') is distinct from p_target_status
+           or (v_existing_payload ->> 'note') is distinct from p_note then
+            raise exception 'idempotency key reused with a different request'
                 using errcode = '23505';
         end if;
         return v_existing_event_id;
