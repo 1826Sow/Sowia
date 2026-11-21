@@ -17,7 +17,9 @@ Le registre n'est pas un système de paiement autonome et ne doit jamais déclar
 - Une seconde migration proposée ajoute une fonction de transition atomique avec contrôle du participant, verrouillage de ligne et clé d'idempotence.
 - Une troisième migration proposée journalise automatiquement chaque création de proposition via un trigger interne, sans réutiliser la clé d'idempotence des transitions.
 - Les migrations ne sont pas appliquées à Supabase ; aucune donnée ni configuration de production n'a été modifiée.
-- Le prototype Streamlit et l'interface Android ne sont pas encore raccordés au registre.
+- Le prototype Streamlit comporte maintenant un onglet « Registre commercial » raccordé aux helpers Supabase : création d'une proposition via RPC, liste des contrats, transitions autorisées et consultation du journal.
+- La persistance reste indisponible tant que les migrations nécessaires ne sont pas appliquées sur un projet Supabase de test. L'interface affiche alors un diagnostic et ne bascule pas sur un stockage local trompeur.
+- L'interface Android n'est pas encore raccordée à ce registre.
 
 ## Cycle de vie des contrats
 
@@ -53,8 +55,14 @@ Chaque transition valide met à jour le statut et insère son événement `statu
 - Commission reconnue : uniquement selon une règle explicite après livraison et paiement confirmé, en tenant compte des remboursements et litiges.
 - Échanges non monétaires : valeur déclarative séparée, jamais assimilée à du chiffre d'affaires encaissé.
 
+## Dépendances et ordre de migration
+
+1. Le registre d'applications NIGHT EXCHANGE existant doit être présent (`supabase_night_exchange_registry.sql`) afin de relier les contrats à des applications professionnelles approuvées.
+2. Appliquer ensuite, sur un projet Supabase de test uniquement, les migrations `20261121000100`, `20261121000200`, `20261121000300` et `20261121000400` dans l'ordre.
+3. Vérifier la création via RPC, les lectures RLS, les transitions, les refus d'accès, les répétitions d'idempotence et le journal automatique avant toute décision de déploiement.
+
 ## Tests et limites
 
 Les tests statiques vérifient les invariants de la migration. Ils ne remplacent pas les tests PostgreSQL réels : rôles anon/authenticated/service_role, RLS, appels concurrents, répétitions d'idempotence, refus des transitions interdites et rollback transactionnel.
 
-Aucune migration n'est appliquée en production. Aucun paiement, transfert, commission, publication publique ou approbation automatique n'est activé par cette étape.
+Aucune migration n'est appliquée en production. Aucun paiement, transfert, commission, publication publique ou approbation automatique n'est activé par cette étape. Les tests CI statiques et unitaires ne remplacent pas une validation PostgreSQL/RLS réelle.
