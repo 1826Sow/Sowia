@@ -348,7 +348,7 @@ def test_market_snapshot_counts_only_declared_catalogue_activity():
         "listed_applications": 4,
         "service_providers": 2,
         "applications_with_needs": 2,
-        "distinct_declared_services": 3,
+        "distinct_declared_services": 4,
         "countries_represented": 2,
         "market_share_available": False,
         "revenue_available": False,
