@@ -789,7 +789,7 @@ def list_approved_night_exchange_apps(client, user, country=None, limit=100):
     _user_id(user)
     query = (
         client.table("sowia_night_exchange_apps")
-        .select("id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,updated_at")
+        .select("id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,status,updated_at")
         .eq("status", "approved")
     )
     if country:
