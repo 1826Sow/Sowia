@@ -77,6 +77,13 @@ def queue_chat_submission():
     st.session_state["sowia_chat_prompt"] = ""
 
 
+def reset_signed_pdf_upload(prefix):
+    """Discard a failed one-time upload URL and reset the native file picker."""
+    for suffix in ("_signed_upload_path", "_signed_upload_url"):
+        st.session_state.pop(prefix + suffix, None)
+    st.session_state[prefix + "_pdf_upload_nonce"] = str(uuid.uuid4())
+
+
 st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-brain-icon.svg", layout="wide")
 st.markdown(
     """<style>
@@ -3367,6 +3374,13 @@ elif page == "Analyse PDF":
             upload_error = getattr(upload_result, "upload_error", None)
             if upload_error:
                 st.error("Échec du transfert PDF : " + str(upload_error)[:240])
+                st.button(
+                    "Réessayer l'import PDF",
+                    key="analysis_pdf_upload_retry",
+                    on_click=reset_signed_pdf_upload,
+                    args=("analysis",),
+                    use_container_width=True,
+                )
             if getattr(upload_result, "uploaded", False):
                 temporary_path = upload_path
                 try:
@@ -3593,6 +3607,13 @@ elif page == "Mes documents":
             upload_error = getattr(upload_result, "upload_error", None)
             if upload_error:
                 st.error("Échec du transfert PDF : " + str(upload_error)[:240])
+                st.button(
+                    "Réessayer l'import PDF",
+                    key="documents_pdf_upload_retry",
+                    on_click=reset_signed_pdf_upload,
+                    args=("documents",),
+                    use_container_width=True,
+                )
             if getattr(upload_result, "uploaded", False):
                 try:
                     temporary_bytes = download_document(
