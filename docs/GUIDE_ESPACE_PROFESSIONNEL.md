@@ -85,3 +85,6 @@ Le contrôle en lecture seule du schéma `public` a également confirmé que, pa
 
 
 Le workflow GitHub `.github/workflows/deploy-paypal-webhook.yml` cible explicitement le projet Supabase `qegcopordeqjiechmbhg` (projet `Sowia`, distinct de `SOWIA - TEST`) et exige une confirmation manuelle `DEPLOY`. Il ne doit pas être déclenché pendant la validation de test. Il ne déploie que `paypal-webhook`, pas `paypal-one-time`. La validation doit donc d'abord disposer d'un déploiement contrôlé sur le projet TEST et d'une procédure distincte pour chacune des deux fonctions ; aucune action de déploiement n'a été lancée.
+
+
+Le webhook récurrent utilise aussi la table `sowia_paypal_subscription_blocks` pour gérer les blocages d'accès. Elle est également absente du schéma public du projet TEST inspecté. Cette table doit être incluse dans l'inventaire et la préparation des migrations avant tout test du webhook ; ne pas déployer la fonction seule en espérant que le schéma soit complet.
