@@ -853,11 +853,14 @@ NAV_GROUPS = {
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents",
     ],
+    "🌙 Bourse aux applications": [
+        "Bourse aux applications",
+    ],
     "📚 Échanges & projets": [
         "Mes échanges & projets", "Historique",
     ],
     "🌐 Écosystème mondial": [
-        "Développement mondial", "SOWIA NIGHT EXCHANGE", "Bourse aux applications", "SOWIA GLOBAL ID",
+        "Développement mondial", "SOWIA NIGHT EXCHANGE", "SOWIA GLOBAL ID",
         "SOWIA GLOBAL DIRECTORY", "SOWIA GLOBAL TRUST", "SOWIA GLOBAL ADMIN & MODERATION",
     ],
     "🤝 Entreprises & opportunités": [
@@ -1672,7 +1675,7 @@ elif page == "Hub SOWIA":
         ("🧠 Continuer avec SOW IA", "Assistant IA", "Reprendre le travail avec l’assistant."),
         ("📄 Mes livrables & documents", "Mes documents", "Consulter les PDF et fichiers enregistrés."),
         ("🧪 Laboratoire PDF", "Analyse PDF", "Analyser un document ou poursuivre son traitement."),
-        ("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "Accéder à l’espace d’échanges de l’écosystème."),
+        ("🌙 Bourse aux applications — NIGHT EXCHANGE", "Bourse aux applications", "Découvrir le catalogue international des applications partenaires validées."),
     ]
     quick_cols = st.columns(2)
     for index, (label, destination, description) in enumerate(hub_quick_access):
