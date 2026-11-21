@@ -591,23 +591,26 @@ if cloud_mode:
                 "Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter "
                 "directement avec votre mot de passe, sans attendre un nouveau lien e-mail."
             )
-            with st.form("sowia_password_login_form", clear_on_submit=False):
-                password_login_email = st.text_input(
-                    "Adresse e-mail",
-                    value=str(st.session_state.get("sowia_email_login_pending", "") or ""),
-                    max_chars=254,
-                    key="sowia_password_login_email",
-                )
-                password_login_secret = st.text_input(
-                    "Mot de passe",
-                    type="password",
-                    key="sowia_password_login_secret",
-                )
-                password_login_submitted = st.form_submit_button(
-                    "VALIDER",
-                    type="primary",
-                    use_container_width=True,
-                )
+            # Keep the two fields and the submit action outside st.form.
+            # This is more reliable in Android WebView, where embedded form
+            # submission can fail to dispatch the Streamlit event after typing.
+            password_login_email = st.text_input(
+                "Adresse e-mail",
+                value=str(st.session_state.get("sowia_email_login_pending", "") or ""),
+                max_chars=254,
+                key="sowia_password_login_email",
+            )
+            password_login_secret = st.text_input(
+                "Mot de passe",
+                type="password",
+                key="sowia_password_login_secret",
+            )
+            password_login_submitted = st.button(
+                "VALIDER",
+                key="sowia_password_login_submit",
+                type="primary",
+                use_container_width=True,
+            )
             if password_login_submitted:
                 try:
                     candidate_password_email = str(password_login_email or "").strip().lower()
