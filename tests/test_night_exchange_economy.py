@@ -320,3 +320,34 @@ def test_discovery_requires_all_security_evidence_before_listing_partner():
         "services_offered": "translation",
     }]
     assert len(discover_service_partners("requester", "translation", rows)) == 1
+
+def test_market_snapshot_counts_only_declared_catalogue_activity():
+    from night_exchange_economy import summarize_market_snapshot
+
+    snapshot = summarize_market_snapshot([
+        {"id": "a", "services_offered": "translation, data analysis",
+         "services_wanted": "research", "country": "France"},
+        {"id": "b", "services_offered": ["translation"], "services_wanted": "",
+         "country": " France "},
+        {"id": "c", "services_offered": "", "services_wanted": ["design"],
+         "country": "Canada"},
+        None,
+        {"id": "d", "services_offered": 42, "services_wanted": None},
+    ])
+    assert snapshot == {
+        "listed_applications": 4,
+        "service_providers": 2,
+        "applications_with_needs": 2,
+        "distinct_declared_services": 3,
+        "countries_represented": 2,
+        "market_share_available": False,
+        "revenue_available": False,
+    }
+
+
+def test_market_snapshot_does_not_invent_market_share_or_revenue():
+    from night_exchange_economy import summarize_market_snapshot
+
+    snapshot = summarize_market_snapshot([])
+    assert snapshot["market_share_available"] is False
+    assert snapshot["revenue_available"] is False
