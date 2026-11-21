@@ -176,3 +176,61 @@ def test_partner_discovery_does_not_claim_verification_from_approval_alone():
     match = discover_service_partners("source", "data analysis", rows)[0]
     assert match["listing_status"] == "approved"
     assert match["verification_state"] == "not_independently_verified"
+
+
+def test_shared_skill_catalog_is_versioned_and_requires_human_approval():
+    from night_exchange_economy import SKILL_CATALOG_VERSION, list_skill_catalog
+
+    catalog = list_skill_catalog()
+    assert catalog
+    assert all(item["catalog_version"] == SKILL_CATALOG_VERSION for item in catalog)
+    assert all(item["human_approval_required"] is True for item in catalog)
+    assert len({item["skill_id"] for item in catalog}) == len(catalog)
+
+
+def test_skill_resolution_maps_aliases_to_same_canonical_skill():
+    from night_exchange_economy import resolve_service_skill
+
+    english = resolve_service_skill("data analysis")
+    french = resolve_service_skill("Analyse de données")
+    assert english["skill_id"] == french["skill_id"] == "data.analysis"
+    assert english["category_id"] == "data_analytics"
+
+
+def test_unknown_skill_is_not_guessed():
+    from night_exchange_economy import resolve_service_skill
+
+    assert resolve_service_skill("quantum dragon orchestration") is None
+    assert resolve_service_skill("") is None
+
+
+def test_restricted_financial_services_are_not_in_initial_skill_catalog():
+    from night_exchange_economy import resolve_service_skill
+
+    assert resolve_service_skill("payment processing") is None
+    assert resolve_service_skill("transfert d'argent") is None
+
+
+def test_partner_discovery_matches_known_skill_aliases_and_explains_reason():
+    from night_exchange_economy import discover_service_partners
+
+    rows = [{
+        "id": "provider", "app_name": "Analytica", "status": "approved",
+        "services_offered": "Analyse de données",
+    }]
+    match = discover_service_partners("requester", "data analysis", rows)[0]
+    assert match["match_type"] == "canonical_skill"
+    assert match["skill"]["skill_id"] == "data.analysis"
+    assert match["matched_service"] == "analyse de données"
+    assert "compétence normalisée" in match["match_reasons"][0]
+
+
+def test_partner_discovery_keeps_custom_services_exact_only():
+    from night_exchange_economy import discover_service_partners
+
+    rows = [{
+        "id": "provider", "app_name": "Custom", "status": "approved",
+        "services_offered": "bespoke legacy connector",
+    }]
+    assert discover_service_partners("requester", "bespoke legacy connector", rows)
+    assert discover_service_partners("requester", "legacy connector", rows) == []
