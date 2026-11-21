@@ -158,3 +158,48 @@ comment on table sowia_private.nex_domain_challenges is
     'Single-use NIGHT EXCHANGE DNS challenges. Stores only SHA-256 token digests; no client role has table access.';
 comment on table sowia_private.nex_domain_verification_audit is
     'Append-only audit events for NIGHT EXCHANGE domain challenge issuance and successful consumption.';
+
+
+-- Narrow public-schema RPC entry points for the trusted backend only.
+-- These are SECURITY INVOKER wrappers; the privileged work remains in the
+-- non-exposed schema and is reachable only by service_role.
+create or replace function public.sowia_issue_nex_domain_challenge(
+    p_owner_id uuid,
+    p_domain text,
+    p_token_hash bytea,
+    p_ttl_seconds integer default 86400
+)
+returns table (challenge_id uuid, expires_at timestamptz, dns_host text)
+language sql
+security invoker
+set search_path = ''
+as $$
+    select * from sowia_private.issue_nex_domain_challenge(
+        p_owner_id, p_domain, p_token_hash, p_ttl_seconds
+    );
+$$;
+
+create or replace function public.sowia_consume_nex_domain_challenge(
+    p_challenge_id uuid,
+    p_owner_id uuid,
+    p_domain text,
+    p_token_hash bytea
+)
+returns boolean
+language sql
+security invoker
+set search_path = ''
+as $$
+    select sowia_private.consume_nex_domain_challenge(
+        p_challenge_id, p_owner_id, p_domain, p_token_hash
+    );
+$$;
+
+revoke all on function public.sowia_issue_nex_domain_challenge(uuid, text, bytea, integer)
+    from public, anon, authenticated;
+revoke all on function public.sowia_consume_nex_domain_challenge(uuid, uuid, text, bytea)
+    from public, anon, authenticated;
+grant execute on function public.sowia_issue_nex_domain_challenge(uuid, text, bytea, integer)
+    to service_role;
+grant execute on function public.sowia_consume_nex_domain_challenge(uuid, uuid, text, bytea)
+    to service_role;
