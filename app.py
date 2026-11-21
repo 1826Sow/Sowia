@@ -317,6 +317,16 @@ st.markdown(
         letter-spacing: .015em;
         touch-action: manipulation;
       }
+      /* Stack the guided journey cards vertically on narrow screens. */
+      .st-key-home_guided_journey [data-testid="stHorizontalBlock"] {
+        flex-direction: column !important;
+        gap: .7rem !important;
+      }
+      .st-key-home_guided_journey [data-testid="column"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+      }
       /* Keep the three home discovery paths comfortable and thumb-friendly on phones. */
       .st-key-home_discovery_cards [data-testid="stHorizontalBlock"] {
         flex-direction: column !important;
@@ -1446,6 +1456,33 @@ if page == "Accueil":
                         use_container_width=True,
                         on_click=go_to_page,
                         args=(discovery_destination,),
+                    )
+    st.markdown(
+        '<section class="sowia-command-center sowia-journey-intro">'
+        '<div class="sowia-command-kicker">UN PARCOURS SIMPLE POUR AVANCER</div>'
+        '<h2>🚀 De l’idée à l’action</h2>'
+        '<p>Explorez SOW IA en trois étapes : clarifiez votre besoin, approfondissez vos recherches, puis retrouvez votre travail dans vos projets.</p>'
+        '</section>',
+        unsafe_allow_html=True,
+    )
+    with st.container(key="home_guided_journey"):
+        journey_cols = st.columns(3)
+        journey_steps = [
+            ("01 · Imaginer", "💬", "Échangez avec l’assistant pour structurer votre idée.", "Assistant IA"),
+            ("02 · Comprendre", "🌐", "Explorez des informations et des sources avec la recherche Web.", "Recherche Web"),
+            ("03 · Concrétiser", "📁", "Retrouvez vos travaux et poursuivez vos projets.", "Mes échanges & projets"),
+        ]
+        for journey_col, (journey_title, journey_icon, journey_description, journey_destination) in zip(journey_cols, journey_steps):
+            with journey_col:
+                with st.container(border=True):
+                    st.markdown(f"**{journey_icon} {journey_title}**")
+                    st.caption(journey_description)
+                    st.button(
+                        "Continuer",
+                        key=f"home_journey_{journey_destination}",
+                        use_container_width=True,
+                        on_click=go_to_page,
+                        args=(journey_destination,),
                     )
     # The project hub is deliberately the first major block on the home page.
     st.markdown(
