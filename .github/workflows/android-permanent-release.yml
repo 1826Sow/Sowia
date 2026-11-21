@@ -79,27 +79,31 @@ jobs:
             KEYSTORE_TYPES=("JKS" "PKCS12")
           fi
           KEYSTORE_TYPE=""
+          VALIDATED_STORE_PASSWORD=""
           for candidate in "${KEYSTORE_TYPES[@]}"; do
-            # Validate the keystore container and store password independently
-            # from the alias, so failures can be diagnosed without revealing secrets.
-            if keytool -list -keystore "$KEYSTORE" -storetype "$candidate" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
-              KEYSTORE_TYPE="$candidate"
-              break
-            fi
+            for candidate_password in "$ANDROID_KEYSTORE_PASSWORD" "$ANDROID_KEY_PASSWORD"; do
+              # Some existing setups use the same value for both password secrets.
+              # Test both configured values without ever printing either one.
+              if keytool -list -keystore "$KEYSTORE" -storetype "$candidate" -storepass "$candidate_password" >/dev/null 2>&1; then
+                KEYSTORE_TYPE="$candidate"
+                VALIDATED_STORE_PASSWORD="$candidate_password"
+                break 2
+              fi
+            done
           done
           if [[ -z "$KEYSTORE_TYPE" ]]; then
-            echo "::error::The keystore file could not be opened with the configured store password. Check the original keystore file and ANDROID_KEYSTORE_PASSWORD; no secret values are printed."
+            echo "::error::The keystore could not be opened using either configured password. Check the original keystore file and the two password secrets; no secret values are printed."
             exit 1
           fi
-          if ! keytool -list -keystore "$KEYSTORE" -storetype "$KEYSTORE_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+          if ! keytool -list -keystore "$KEYSTORE" -storetype "$KEYSTORE_TYPE" -storepass "$VALIDATED_STORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
             echo "::error::The keystore opened successfully, but the configured key alias was not found. Check ANDROID_KEY_ALIAS; no alias or secret value is printed."
             exit 1
           fi
-          echo "Keystore container, store password, and configured alias validated."
+          echo "Keystore container, validated password, and configured alias validated."
           {
             echo "ANDROID_KEYSTORE_PATH=$KEYSTORE"
             echo "ANDROID_KEYSTORE_TYPE=$KEYSTORE_TYPE"
-            echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+            echo "ANDROID_KEYSTORE_PASSWORD=$VALIDATED_STORE_PASSWORD"
             echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS"
             echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
           } >> "$GITHUB_ENV"
