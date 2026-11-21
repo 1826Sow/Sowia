@@ -107,3 +107,15 @@ Les deux piliers doivent s'appuyer sur le registre d'outils, les identités d'ap
 ## Périmètre du premier incrément
 
 Le premier incrément apporte une consultation météo directe via Open-Meteo sans clé API dédiée, ainsi qu'une sélection des notes mémoire les plus pertinentes pour la question en cours. Ces changements restent sur la branche de travail et ne sont pas réputés déployés tant que le PR n'est pas fusionné et l'instance publique vérifiée.
+
+
+## Incrément B1 — registre local versionné (base de validation)
+
+Le module `tool_registry.py` fournit un premier registre **en mémoire et descriptif** :
+- identifiant d'outil et version SemVer exacte, sans alias flottant ;
+- validation stricte des schémas d'entrée et de sortie (types, champs requis, champs supplémentaires, bornes et énumérations) ;
+- vérification des scopes requis avant qu'un appelant puisse obtenir une autorisation ;
+- métadonnées de fournisseur, fraîcheur, catégories de données, délai maximal, quota, coût estimé et validation humaine ;
+- copie défensive des définitions pour éviter qu'un appelant modifie les règles après enregistrement.
+
+Le registre n'exécute aucun outil, ne stocke aucune clé, ne constitue pas encore un service d'identité ou de quotas et ne remplace pas les contrôles serveur. Le descripteur météo `weather.forecast@1.0.0` est déclaré comme premier exemple ; le routage réel de la météo continue d'utiliser le chemin direct existant. Les outils à effets externes restent soumis à une approbation humaine.
