@@ -8,6 +8,8 @@ from i18n import LANGUAGES as SOWIA_LANGUAGES, translate as translate_ui
 
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
+from memory_retrieval import select_relevant_memories
+import weather_tools
 from storage import (
     add_memory as local_add_memory,
     clear_history as local_clear_history,
@@ -2293,7 +2295,7 @@ elif page == "Assistant IA":
                     height=75,
                 )
     if not API_KEY:
-        st.warning("Pour activer les réponses IA, ajoutez votre clé API dans les secrets de l'hébergement. Ne la partagez jamais sur GitHub.")
+        st.warning("Les réponses génératives nécessitent une clé API IA. Les outils directs déjà intégrés, comme la météo, peuvent fonctionner indépendamment de ce quota.")
     memories = get_app_memories()
     if memories:
         st.caption(f"{len(memories)} note(s) mémoire seront disponibles à l'assistant.")
@@ -2409,10 +2411,16 @@ elif page == "Assistant IA":
                 request_history = conversation_history + [{"role": "user", "content": prompt}]
                 with st.chat_message("assistant"):
                     try:
-                        reply = answer(
-                            request_history,
-                            memories=[item["content"] for item in memories],
-                        )
+                        # Direct weather tools run before the language model, so a
+                        # forecast does not depend on an LLM API key or token quota.
+                        weather_reply = weather_tools.answer_weather_request(prompt)
+                        if weather_reply is not None:
+                            reply = weather_reply
+                        else:
+                            reply = answer(
+                                request_history,
+                                memories=select_relevant_memories(prompt, memories, limit=10),
+                            )
                         st.markdown(reply)
                         try:
                             save_app_message("assistant", reply)
