@@ -1407,6 +1407,32 @@ if page == "Accueil":
     st.subheader("Bienvenue dans SOW IA")
     st.caption("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.")
     st.image("assets/sections/home-executive.svg", use_container_width=True)
+    st.markdown(
+        '<section class="sowia-command-center">'
+        '<div class="sowia-command-kicker">COMMENCEZ VOTRE EXPLORATION</div>'
+        '<h2>✨ Découvrez ce que SOW IA peut faire avec vous</h2>'
+        '<p>Choisissez un premier parcours et explorez les outils adaptés à vos besoins.</p>'
+        '</section>',
+        unsafe_allow_html=True,
+    )
+    discovery_cols = st.columns(3)
+    discovery_paths = [
+        ("💬 Assistant IA", "Échangez, réfléchissez et faites avancer vos idées.", "Assistant IA"),
+        ("📄 Analyse PDF", "Comprenez et exploitez vos documents.", "Analyse PDF"),
+        ("🌍 Annuaire mondial", "Explorez les acteurs et ressources de l’écosystème.", "SOWIA GLOBAL DIRECTORY"),
+    ]
+    for discovery_col, (discovery_title, discovery_description, discovery_destination) in zip(discovery_cols, discovery_paths):
+        with discovery_col:
+            with st.container(border=True):
+                st.markdown(f"**{discovery_title}**")
+                st.caption(discovery_description)
+                st.button(
+                    "Découvrir",
+                    key=f"home_discovery_{discovery_destination}",
+                    use_container_width=True,
+                    on_click=go_to_page,
+                    args=(discovery_destination,),
+                )
     # The project hub is deliberately the first major block on the home page.
     st.markdown(
         '<section class="sowia-command-center">'
