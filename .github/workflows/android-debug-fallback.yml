@@ -1,0 +1,105 @@
+name: SOW IA Android fallback debug APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - android/sowia-permanent-signing-20261121
+    paths:
+      - '.github/workflows/android-debug-fallback.yml'
+      - 'android/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build-debug:
+    name: Build installable debug APK without custom signing secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Locate Android SDK and install required tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
+          if [[ -z "$SDKMANAGER" ]]; then
+            echo "::error::Android SDK command-line tools are missing."
+            exit 1
+          fi
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Validate Supabase public build configuration
+        env:
+          SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
+          SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
+          SOWIA_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_SUPABASE_ANON_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from urllib.parse import urlparse
+          u = urlparse(os.environ.get("SOWIA_SUPABASE_URL", "").strip())
+          k = (os.environ.get("SOWIA_SUPABASE_PUBLISHABLE_KEY", "").strip()
+               or os.environ.get("SOWIA_SUPABASE_ANON_KEY", "").strip())
+          if u.scheme != "https" or u.hostname != "qegcopordeqjiechmbhg.supabase.co" or u.path not in ("", "/") or u.query or u.fragment:
+              raise SystemExit("Missing or invalid SOWIA_SUPABASE_URL secret.")
+          if not k:
+              raise SystemExit("Missing Supabase public/anon key secret.")
+          print("Supabase public build configuration is present.")
+          PY
+
+      - name: Build current debug APK using Android's generated debug certificate
+        env:
+          SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
+          SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
+          SOWIA_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_SUPABASE_ANON_KEY }}
+        run: gradle -p android :app:assembleCurrentDebug
+
+      - name: Verify package and debug signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find android/app/build/outputs/apk -type f -path '*/current/debug/*.apk' -print -quit)"
+          if [[ -z "$APK" ]]; then
+            echo "::error::Current debug APK not found."
+            exit 1
+          fi
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          PACKAGE_ID="$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
+          if [[ "$PACKAGE_ID" != "com.sowkeys.sowia" ]]; then
+            echo "::error::Unexpected application ID: $PACKAGE_ID"
+            exit 1
+          fi
+          mkdir -p fallback-output
+          cp "$APK" fallback-output/SOW-IA-Android-debug.apk
+          sha256sum fallback-output/SOW-IA-Android-debug.apk | tee fallback-output/SHA256SUMS.txt
+          echo "Debug APK package ID and signature verified."
+
+      - name: Upload installable debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sowia-android-debug-fallback
+          path: fallback-output/*
+          if-no-files-found: error
+          retention-days: 30
