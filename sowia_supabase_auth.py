@@ -19,6 +19,35 @@ _VERIFIER_SUFFIX = "-code-verifier"
 _VERIFIER_TTL_SECONDS = 600
 
 
+class _StreamlitSessionAuthStorage(SyncSupportedStorage):
+    """Keep email-auth session tokens in this user's Streamlit server session."""
+
+    _STATE_KEY = "_sowia_email_auth_storage"
+
+    def __init__(self):
+        import streamlit as st
+        self._state = st.session_state
+        if not isinstance(self._state.get(self._STATE_KEY), dict):
+            self._state[self._STATE_KEY] = {}
+
+    def get_item(self, key):
+        values = self._state.get(self._STATE_KEY, {})
+        return values.get(str(key)) if isinstance(values, dict) else None
+
+    def set_item(self, key, value):
+        values = self._state.get(self._STATE_KEY)
+        if not isinstance(values, dict):
+            values = {}
+        values[str(key)] = value
+        self._state[self._STATE_KEY] = values
+
+    def remove_item(self, key):
+        values = self._state.get(self._STATE_KEY)
+        if isinstance(values, dict):
+            values.pop(str(key), None)
+            self._state[self._STATE_KEY] = values
+
+
 class _BrowserScopedOAuthStorage(SyncSupportedStorage):
     """Supabase storage adapter: persist only short-lived PKCE verifiers."""
 
@@ -260,10 +289,14 @@ def create_email_user_client():
 
     from supabase import ClientOptions, create_client
 
+    # Unlike a transient in-memory client, this adapter survives Streamlit
+    # reruns within the same authenticated browser session. Tokens stay server-side
+    # in that user's session state and are removed on logout.
     options = ClientOptions(
+        storage=_StreamlitSessionAuthStorage(),
         flow_type="implicit",
-        persist_session=False,
-        auto_refresh_token=False,
+        persist_session=True,
+        auto_refresh_token=True,
     )
     return create_client(url, key, options=options)
 
