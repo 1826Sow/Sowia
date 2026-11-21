@@ -184,7 +184,7 @@ jobs:
           echo "Signed current-flavor AAB verified."
 
       - name: Upload signed AAB
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sowia-android-current-release-aab
           path: release-output/SOWIA-current-release.aab

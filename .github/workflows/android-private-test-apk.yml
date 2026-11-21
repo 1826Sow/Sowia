@@ -59,7 +59,7 @@ jobs:
           echo "Debug APK package ID verified. This is a test build, not a Play Store release."
 
       - name: Upload private test APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sowia-android-private-test-apk
           path: release-output/*

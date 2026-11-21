@@ -110,7 +110,7 @@ jobs:
           echo "Maintenance APK package ID and debug signature verified."
 
       - name: Upload maintenance APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sowia-android-maintenance-apk
           path: maintenance-output/*
