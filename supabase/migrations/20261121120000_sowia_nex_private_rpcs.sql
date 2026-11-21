@@ -34,6 +34,9 @@ begin
     if v_actor is null then
         raise exception 'Authentification requise' using errcode = '42501';
     end if;
+    if not public.sowia_has_professional_access() then
+        raise exception 'Accès Premium requis' using errcode = '42501';
+    end if;
     if p_provider_app_id is null or p_requester_app_id is null
        or p_provider_app_id = p_requester_app_id then
         raise exception 'Deux applications distinctes sont requises' using errcode = '22023';
@@ -110,6 +113,9 @@ begin
     if v_actor is null then
         raise exception 'Authentification requise' using errcode = '42501';
     end if;
+    if not public.sowia_has_professional_access() then
+        raise exception 'Accès Premium requis' using errcode = '42501';
+    end if;
     select * into v_row from public.sowia_nex_missions
      where id = p_mission_id for update;
     if not found or v_actor not in (v_row.requester_user_id, v_row.provider_user_id) then
@@ -175,6 +181,9 @@ declare
 begin
     if v_actor is null then
         raise exception 'Authentification requise' using errcode = '42501';
+    end if;
+    if not public.sowia_has_professional_access() then
+        raise exception 'Accès Premium requis' using errcode = '42501';
     end if;
     select * into v_row from public.sowia_nex_missions
      where id = p_mission_id for update;
