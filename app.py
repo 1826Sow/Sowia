@@ -3345,19 +3345,19 @@ elif page == "Analyse PDF":
         upload_path = st.session_state.get("analysis_signed_upload_path")
         signed_url = st.session_state.get("analysis_signed_upload_url")
         if not upload_path or not signed_url:
-            if st.button("Préparer un nouvel envoi PDF", type="primary", key="prepare_analysis_pdf_upload"):
-                try:
-                    upload_path, signed_url = create_signed_pdf_upload(
-                        supabase_client,
-                        current_user,
-                        st.session_state.get("workspace_id", "personal"),
-                    )
-                    st.session_state["analysis_signed_upload_path"] = upload_path
-                    st.session_state["analysis_signed_upload_url"] = signed_url
-                    st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
-                    st.rerun()
-                except Exception as exc:
-                    st.error("Impossible de préparer le transfert sécurisé. Vérifiez la connexion Supabase puis réessayez.")
+            try:
+                upload_path, signed_url = create_signed_pdf_upload(
+                    supabase_client,
+                    current_user,
+                    st.session_state.get("workspace_id", "personal"),
+                )
+                st.session_state["analysis_signed_upload_path"] = upload_path
+                st.session_state["analysis_signed_upload_url"] = signed_url
+                st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
+                st.rerun()
+            except Exception as exc:
+                st.error("Impossible de préparer le transfert sécurisé. Vérifiez la connexion Supabase puis réessayez.")
+                st.caption("Diagnostic : " + type(exc).__name__)
         else:
             upload_result = render_direct_pdf_upload(
                 signed_url,
@@ -3571,19 +3571,19 @@ elif page == "Mes documents":
         upload_path = st.session_state.get("documents_signed_upload_path")
         signed_url = st.session_state.get("documents_signed_upload_url")
         if not upload_path or not signed_url:
-            if st.button("Préparer l'envoi d'un PDF", type="primary", key="prepare_documents_pdf_upload"):
-                try:
-                    upload_path, signed_url = create_signed_pdf_upload(
-                        supabase_client,
-                        current_user,
-                        st.session_state.get("workspace_id", "personal"),
-                    )
-                    st.session_state["documents_signed_upload_path"] = upload_path
-                    st.session_state["documents_signed_upload_url"] = signed_url
-                    st.session_state["documents_pdf_upload_nonce"] = str(uuid.uuid4())
-                    st.rerun()
-                except Exception as exc:
-                    st.error("Impossible de préparer le transfert sécurisé. Vérifiez la connexion Supabase puis réessayez.")
+            try:
+                upload_path, signed_url = create_signed_pdf_upload(
+                    supabase_client,
+                    current_user,
+                    st.session_state.get("workspace_id", "personal"),
+                )
+                st.session_state["documents_signed_upload_path"] = upload_path
+                st.session_state["documents_signed_upload_url"] = signed_url
+                st.session_state["documents_pdf_upload_nonce"] = str(uuid.uuid4())
+                st.rerun()
+            except Exception as exc:
+                st.error("Impossible de préparer le transfert sécurisé. Vérifiez la connexion Supabase puis réessayez.")
+                st.caption("Diagnostic : " + type(exc).__name__)
         else:
             upload_result = render_direct_pdf_upload(
                 signed_url,
