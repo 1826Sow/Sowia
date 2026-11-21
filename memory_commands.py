@@ -59,7 +59,7 @@ def parse_memory_command(message):
     while original_end < len(text) and unicodedata.combining(text[original_end]):
         original_end += 1
     query = text[original_end:]
-    query = re.sub(r"^[\s:;,.—-?¿]+|[\s:;,.—-?¿]+$", "", query)
+    query = re.sub(r"^[\s:;,.—?¿-]+|[\s:;,.—?¿-]+$", "", query)
     if not query or len(query) > 300:
         return None
     return {"action": action, "query": query}
