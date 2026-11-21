@@ -56,6 +56,8 @@ def parse_memory_command(message):
     if end_position >= len(source_positions):
         return None
     original_end = source_positions[end_position] + 1
+    while original_end < len(text) and unicodedata.combining(text[original_end]):
+        original_end += 1
     query = text[original_end:]
     query = re.sub(r"^[\s:;,.—-?¿]+|[\s:;,.—-?¿]+$", "", query)
     if not query or len(query) > 300:
