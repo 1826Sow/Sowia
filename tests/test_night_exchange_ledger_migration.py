@@ -58,11 +58,12 @@ class NightExchangeLedgerMigrationTests(unittest.TestCase):
         self.assertIn("raise exception 'night exchange events are append-only'", self.sql)
 
     def test_commission_is_a_forecast_not_recognized_revenue(self):
-        self.assertRegex(
-            self.sql,
+        commission_column = re.search(
             r"planned_commission numeric\(18,2\).*?generated always as",
+            self.sql,
             re.S,
         )
+        self.assertIsNotNone(commission_column)
         self.assertIn("planned_commission is not recognized revenue", self.sql)
 
     def test_clients_cannot_update_deal_state_or_event_history(self):
