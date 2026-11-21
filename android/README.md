@@ -1,27 +1,35 @@
-# SOW IA — prototype Android
+# SOW IA — application Android
 
-This is an **early native Android UI scaffold**, separate from the existing Streamlit web app.
+Le dépôt contient un client Android natif Kotlin/Gradle qui ouvre le tableau de bord SOW IA hébergé dans un WebView sécurisé. Il s'agit d'une enveloppe Android connectée au service web existant, et non encore d'une application entièrement native.
 
-## Included
-- Kotlin + Jetpack Compose application shell
-- Midnight-blue / cyan visual foundation
-- Home screen with the initial SOW IA sections
-- Visible in-app Back control and Android system Back handling
-- Explicit placeholder state: no private data or live service is connected
+## Fonctionnalités présentes dans le code
 
-## Not included yet
-- Supabase native OAuth/PKCE sign-in or sign-out
-- SOW IA API endpoints
-- Conversations, project registry, PDF upload, AI or web search integration
-- Production signing, APK/AAB release, Play Store submission
+- Identifiant Android principal : `com.sowkeys.sowia` ; variante parallèle distincte pour les tests.
+- Écran de lancement Android et activité de tableau de bord.
+- Chargement HTTPS du tableau de bord Streamlit existant.
+- JavaScript et stockage DOM activés pour la compatibilité Streamlit ; contenu mixte HTTP bloqué et accès arbitraire aux fichiers locaux désactivé.
+- Sélecteur de documents Android relié au mécanisme de chargement de fichiers du WebView, pour permettre la sélection d'un PDF.
+- Gestion du bouton Retour Android, avec priorité à la navigation interne SOW IA puis à l'historique WebView.
+- Module Kotlin de laboratoire PDF et client Supabase présents dans le dépôt ; leur intégration complète dans le parcours de lancement et leurs tests sur appareil restent à vérifier.
 
-No server secrets belong in this Android project. The existing Streamlit application remains unchanged.
+## Limites à ne pas masquer
 
-## Build
-Open the `android/` folder in Android Studio with JDK 17 and Android SDK 35 installed. Let Gradle sync, then run the `app` configuration on an emulator or Android device.
+- L'assistant, l'historique, les espaces personnel/professionnel et les outils métier restent servis par l'application web ; ils ne sont pas encore tous réimplémentés en écrans natifs.
+- Le contrat d'intégration native Supabase PKCE et les endpoints mobiles décrits dans la documentation sont des exigences de conception, pas la preuve que tous ces services sont déployés.
+- Une compilation réussie ne prouve pas le bon fonctionnement sur appareil : authentification, session, import PDF, navigation Retour, reprise réseau et téléchargement doivent être testés sur un téléphone réel.
+- Aucun APK/AAB n'est considéré comme livrable Google Play tant que la compilation, la signature avec le certificat d'envoi déjà enregistré et les contrôles de distribution ne sont pas vérifiés.
 
-This scaffold must pass a real Android build and device tests before it is considered installable or release-ready.
+## Sécurité
 
-## Native integration contract
+- Ne jamais intégrer de clé Supabase `service_role`, de clé fournisseur IA, de secret PayPal ou de secret webhook dans l'application.
+- La configuration mobile embarquée se limite à l'URL Supabase HTTPS et à la clé publique anon/publishable ; les autorisations de données reposent sur l'identité utilisateur et RLS.
+- Ne jamais générer, remplacer ou modifier le certificat de signature permanent sans décision explicite du propriétaire.
 
-Before connecting authentication or private data, follow [`docs/ANDROID_NATIVE_INTEGRATION_CONTRACT.md`](../docs/ANDROID_NATIVE_INTEGRATION_CONTRACT.md). It defines the Supabase PKCE, RLS, server-side AI, PDF, and Play Store security boundaries. Proposed API paths in that document are design contracts only; they are not deployed endpoints.
+## Compilation et vérification
+
+Le projet Android se trouve dans ce dossier. Il utilise Gradle, Kotlin, Jetpack Compose et JDK 17. Les workflows GitHub Actions du dépôt proposent des builds de test et des builds de distribution. Un APK de débogage est réservé aux essais ; la publication Google Play nécessite un AAB signé avec le certificat d'envoi déjà enregistré, puis les vérifications et validations Play Console.
+
+## Documentation de référence
+
+- [Contrat d'intégration Android natif](../docs/ANDROID_NATIVE_INTEGRATION_CONTRACT.md)
+- [Feuille de route de distribution mobile et internationale](../docs/DISTRIBUTION_MOBILE_ET_INTERNATIONALE.md)
