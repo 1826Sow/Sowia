@@ -1676,6 +1676,7 @@ elif page == "Hub SOWIA":
         ("🧠 Continuer avec SOW IA", "Assistant IA", "Reprendre le travail avec l’assistant."),
         ("📄 Mes livrables & documents", "Mes documents", "Consulter les PDF et fichiers enregistrés."),
         ("🧪 Laboratoire PDF", "Analyse PDF", "Analyser un document ou poursuivre son traitement."),
+        ("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "Gérer les propositions bilatérales et les intégrations entre applications."),
         ("🌙 Bourse aux applications — NIGHT EXCHANGE", "Bourse aux applications", "Découvrir le catalogue international des applications partenaires validées."),
     ]
     quick_cols = st.columns(2)
