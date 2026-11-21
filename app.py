@@ -6609,6 +6609,14 @@ elif page == "Bourse aux applications":
                                 "**" + str(partner.get("app_name") or "Application partenaire")
                                 + "** — " + str(partner.get("country") or "Pays non renseigné")
                             )
+                            st.caption(
+                                "Fiche approuvée · Correspondance exacte : "
+                                + str(partner.get("service") or selected_service)
+                            )
+                            for reason in partner.get("match_reasons") or []:
+                                st.caption("Pourquoi ce résultat : " + str(reason))
+                            if partner.get("verification_state") != "verified":
+                                st.caption("Vérification indépendante de l’application non confirmée.")
                 else:
                     st.info("Aucune application approuvée n’est disponible pour lancer une simulation.")
             if not market_apps:
