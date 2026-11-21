@@ -78,7 +78,26 @@ class DashboardActivity : ComponentActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (webView.canGoBack()) webView.goBack() else finish()
+                // Give SOW IA's own navigation stack first priority. This makes
+                // the Android system Back button behave like the in-app Back
+                // button instead of unexpectedly leaving the dashboard.
+                webView.evaluateJavascript(
+                    """(function() {
+                        const button = document.querySelector(
+                            '.st-key-sowia_navigation_back button'
+                        );
+                        if (button && !button.disabled) {
+                            button.click();
+                            return true;
+                        }
+                        return false;
+                    })();""",
+                    { handled ->
+                        if (handled != "true") {
+                            if (webView.canGoBack()) webView.goBack() else finish()
+                        }
+                    },
+                )
             }
         })
 
