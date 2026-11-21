@@ -55,6 +55,7 @@ import sowia_business_card
 import project_registry_ui
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
+from memory_commands import parse_memory_command, find_memory_matches, find_exact_memory_matches
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
 from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_authenticated_session_state, logout_authenticated_session
 
@@ -2349,63 +2350,103 @@ elif page == "Assistant IA":
                 except Exception:
                     pass
         else:
-            # A cloud message must be persisted before invoking the AI. This avoids
-            # presenting a reply for a turn that cannot be recovered from history.
-            try:
-                save_app_message("user", prompt)
-                if not conversation_history and cloud_mode and current_user is not None:
-                    try:
-                        cloud_storage.touch_conversation(
-                            supabase_client, current_user, st.session_state.session_id,
-                            st.session_state.get("workspace_id", "personal"),
-                            title=prompt[:100].strip() or "Nouvelle conversation",
-                        )
-                    except Exception:
-                        pass
-            except Exception as save_error:
-                # The callback already cleared the visible input. Restore the
-                # original draft on the next rerun instead of losing user text.
-                safe_code = str(getattr(save_error, "code", "") or "").strip()[:80]
-                diagnostic = type(save_error).__name__
-                if safe_code:
-                    diagnostic += f" · code {safe_code}"
-                st.session_state["sowia_chat_prompt_restore"] = prompt
-                st.session_state["sowia_chat_save_error"] = diagnostic
-                st.rerun()
-            else:
+            memory_command = parse_memory_command(prompt)
+            if memory_command is not None:
                 render_accessible_message("user", prompt)
-                request_history = conversation_history + [{"role": "user", "content": prompt}]
-                with st.chat_message("assistant"):
-                    try:
-                        reply = answer(
-                            request_history,
-                            memories=[item["content"] for item in memories],
-                        )
-                        st.markdown(reply)
-                        try:
-                            save_app_message("assistant", reply)
-                        except Exception as save_error:
-                            pending_responses = st.session_state.setdefault(
-                                "sowia_pending_assistant_responses", {}
+                try:
+                    if not cloud_mode or current_user is None:
+                        raise RuntimeError("Connexion Supabase requise pour gérer la mémoire persistante.")
+                    command_memories = get_app_memories()
+                    if memory_command["action"] == "recall":
+                        matches = find_memory_matches(command_memories, memory_command["query"])
+                        if matches:
+                            memory_reply = "Voici les informations retrouvées dans votre mémoire :\n\n" + "\n".join(
+                                f"• {item['content']}" for item in matches[:5]
                             )
-                            pending_responses[str(st.session_state.session_id)] = reply
-                            st.warning(
-                                "La réponse est affichée et conservée dans cette conversation, "
-                                "mais son enregistrement dans l’historique a échoué. "
-                                "Vous pourrez réessayer sans relancer la demande. Diagnostic : "
-                                + type(save_error).__name__
-                            )
-                    except Exception as exc:
-                        error_text = str(exc)
-                        if "429" in error_text or "insufficient_quota" in error_text or "quota" in error_text.lower():
-                            st.warning("Le service IA est temporairement indisponible : le crédit API du fournisseur IA est épuisé ou le quota est atteint. Vous pouvez continuer à créer et télécharger des PDF sans utiliser l'IA.")
-                        elif "401" in error_text or "invalid_api_key" in error_text:
-                            st.error("La clé API du fournisseur IA n'est pas reconnue. Vérifiez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit.")
+                            if len(matches) > 5:
+                                memory_reply += f"\n\n({len(matches) - 5} autre(s) résultat(s) non affiché(s).)"
                         else:
-                            st.error(
-                                "Une erreur inattendue est survenue pendant la réponse de l'assistant. "
-                                "Réessayez dans quelques instants."
+                            memory_reply = "Je n’ai trouvé aucune note correspondant à cette recherche dans votre mémoire."
+                    else:
+                        matches = find_exact_memory_matches(command_memories, memory_command["query"])
+                        if len(matches) == 1:
+                            target = matches[0]
+                            delete_app_memory(target["id"])
+                            remaining = get_app_memories()
+                            if any(str(item.get("id")) == str(target["id"]) for item in remaining):
+                                raise RuntimeError("La suppression n’a pas pu être vérifiée.")
+                            memory_reply = "La note correspondante a été supprimée de votre mémoire. Les autres notes sont conservées."
+                        elif len(matches) > 1:
+                            memory_reply = "Plusieurs notes correspondent à cette demande. Aucune n’a été supprimée. Précisez une expression plus distinctive."
+                        else:
+                            memory_reply = "Je n’ai trouvé aucune note correspondante ; rien n’a été supprimé."
+                    render_accessible_message("assistant", memory_reply)
+                    try:
+                        save_app_message("user", prompt)
+                        save_app_message("assistant", memory_reply)
+                    except Exception:
+                        st.caption("La commande mémoire a été exécutée, mais son échange n’a pas été entièrement ajouté à l’historique.")
+                except Exception as memory_error:
+                    memory_reply = "Je n’ai pas pu terminer cette commande mémoire. Aucune réussite n’est annoncée. Diagnostic : " + type(memory_error).__name__
+                    render_accessible_message("assistant", memory_reply)
+            else:
+                # A cloud message must be persisted before invoking the AI. This avoids
+                # presenting a reply for a turn that cannot be recovered from history.
+                try:
+                    save_app_message("user", prompt)
+                    if not conversation_history and cloud_mode and current_user is not None:
+                        try:
+                            cloud_storage.touch_conversation(
+                                supabase_client, current_user, st.session_state.session_id,
+                                st.session_state.get("workspace_id", "personal"),
+                                title=prompt[:100].strip() or "Nouvelle conversation",
                             )
+                        except Exception:
+                            pass
+                except Exception as save_error:
+                    # The callback already cleared the visible input. Restore the
+                    # original draft on the next rerun instead of losing user text.
+                    safe_code = str(getattr(save_error, "code", "") or "").strip()[:80]
+                    diagnostic = type(save_error).__name__
+                    if safe_code:
+                        diagnostic += f" · code {safe_code}"
+                    st.session_state["sowia_chat_prompt_restore"] = prompt
+                    st.session_state["sowia_chat_save_error"] = diagnostic
+                    st.rerun()
+                else:
+                    render_accessible_message("user", prompt)
+                    request_history = conversation_history + [{"role": "user", "content": prompt}]
+                    with st.chat_message("assistant"):
+                        try:
+                            reply = answer(
+                                request_history,
+                                memories=[item["content"] for item in memories],
+                            )
+                            st.markdown(reply)
+                            try:
+                                save_app_message("assistant", reply)
+                            except Exception as save_error:
+                                pending_responses = st.session_state.setdefault(
+                                    "sowia_pending_assistant_responses", {}
+                                )
+                                pending_responses[str(st.session_state.session_id)] = reply
+                                st.warning(
+                                    "La réponse est affichée et conservée dans cette conversation, "
+                                    "mais son enregistrement dans l’historique a échoué. "
+                                    "Vous pourrez réessayer sans relancer la demande. Diagnostic : "
+                                    + type(save_error).__name__
+                                )
+                        except Exception as exc:
+                            error_text = str(exc)
+                            if "429" in error_text or "insufficient_quota" in error_text or "quota" in error_text.lower():
+                                st.warning("Le service IA est temporairement indisponible : le crédit API du fournisseur IA est épuisé ou le quota est atteint. Vous pouvez continuer à créer et télécharger des PDF sans utiliser l'IA.")
+                            elif "401" in error_text or "invalid_api_key" in error_text:
+                                st.error("La clé API du fournisseur IA n'est pas reconnue. Vérifiez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit.")
+                            else:
+                                st.error(
+                                    "Une erreur inattendue est survenue pendant la réponse de l'assistant. "
+                                    "Réessayez dans quelques instants."
+                                )
     active_clear_session_id = str(st.session_state.session_id)
     pending_clear_session_id = st.session_state.get("sowia_confirm_clear_conversation")
     if pending_clear_session_id and pending_clear_session_id != active_clear_session_id:
@@ -7121,7 +7162,7 @@ elif page == "SOW IA Business Club":
                                 invitation = build_meeting_invitation(meeting, invite_language)
                                 st.download_button(
                                     "✉️ Télécharger l'invitation",
-                                    f"{invitation['subject']}\\n\\n{invitation['body']}",
+                                    f"{invitation['subject']}\n\n{invitation['body']}",
                                     file_name=f"sowia-invitation-{meeting['id']}.txt",
                                     mime="text/plain",
                                     key=f"club_invite_download_{meeting['id']}",
@@ -7697,10 +7738,10 @@ elif page == "Finance & investissements":
             st.info("Ajoutez une première position pour commencer le suivi de vos actifs, y compris Bitcoin et Ethereum.")
         with st.expander("Périmètre et prochaines évolutions"):
             st.markdown(
-                "- Données de marché sous licence et cotations crypto multi-plateformes à connecter.\\n"
-                "- Import sécurisé de relevés et historique des transactions à développer.\\n"
-                "- Conversion multi-devises, frais, fiscalité et analyse de risque à compléter.\\n"
-                "- Alertes, veille mondiale et comparaison des actifs à développer.\\n"
+                "- Données de marché sous licence et cotations crypto multi-plateformes à connecter.\n"
+                "- Import sécurisé de relevés et historique des transactions à développer.\n"
+                "- Conversion multi-devises, frais, fiscalité et analyse de risque à compléter.\n"
+                "- Alertes, veille mondiale et comparaison des actifs à développer.\n"
                 "- Toute recommandation personnalisée réglementée ou exécution d'ordre nécessite un cadre autorisé."
             )
     except Exception:
