@@ -775,7 +775,7 @@ def list_my_night_exchange_apps(client, user, workspace_id="professional", limit
     """List only the authenticated user's records, including moderation status."""
     return (
         client.table("sowia_night_exchange_apps")
-        .select("id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,status,moderation_note,created_at,updated_at")
+        .select("id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,status,moderation_note,owner_verification_status,application_verification_status,security_review_status,publisher_signature_status,verified_at,created_at,updated_at")
         .eq("user_id", _user_id(user))
         .eq("workspace_id", _workspace_id(workspace_id))
         .order("updated_at", desc=True)
@@ -789,8 +789,17 @@ def list_approved_night_exchange_apps(client, user, country=None, limit=100):
     _user_id(user)
     query = (
         client.table("sowia_night_exchange_apps")
-        .select("id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,updated_at")
+        .select(
+            "id,app_name,country,timezone,categories,services_offered,services_wanted,"
+            "night_start,night_end,status,owner_verification_status,"
+            "application_verification_status,security_review_status,"
+            "publisher_signature_status,verified_at,updated_at"
+        )
         .eq("status", "approved")
+        .eq("owner_verification_status", "verified")
+        .eq("application_verification_status", "verified")
+        .eq("security_review_status", "passed")
+        .eq("publisher_signature_status", "verified")
     )
     if country:
         query = query.ilike("country", str(country).strip()[:100])
@@ -819,11 +828,33 @@ def list_night_exchange_apps_for_admin(client, user, limit=200):
         raise PermissionError("Accès administrateur requis.")
     return (
         client.table("sowia_night_exchange_apps")
-        .select("id,user_id,workspace_id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,status,created_at,updated_at")
-        .in_("status", ["pending", "rejected", "suspended"])
+        .select("id,user_id,workspace_id,app_name,country,timezone,categories,services_offered,services_wanted,night_start,night_end,status,moderation_note,owner_verification_status,application_verification_status,security_review_status,publisher_signature_status,verified_at,created_at,updated_at")
         .order("created_at", desc=False)
         .limit(min(max(int(limit), 1), 500))
         .execute().data
+    )
+
+
+def list_verified_night_exchange_partner_apps(client, user, limit=100):
+    """List approved, independently attested partner apps excluding the caller's own apps."""
+    owner_id = _user_id(user)
+    return (
+        client.table("sowia_night_exchange_apps")
+        .select(
+            "id,app_name,country,timezone,categories,services_offered,services_wanted,"
+            "status,owner_verification_status,application_verification_status,"
+            "security_review_status,publisher_signature_status,verified_at,updated_at"
+        )
+        .eq("workspace_id", "professional")
+        .eq("status", "approved")
+        .eq("owner_verification_status", "verified")
+        .eq("application_verification_status", "verified")
+        .eq("security_review_status", "passed")
+        .eq("publisher_signature_status", "verified")
+        .neq("user_id", owner_id)
+        .order("updated_at", desc=True)
+        .limit(min(max(int(limit), 1), 200))
+        .execute().data or []
     )
 
 
@@ -935,6 +966,147 @@ def list_night_exchange_events(client, user, workspace_id="professional",
         .limit(min(max(int(limit), 1), 1000))
         .execute().data
     )
+
+
+# SOWIA NIGHT EXCHANGE — persistent bilateral commercial missions.
+
+def create_night_exchange_mission(
+    client, user, provider_app_id, requester_app_id, title, scope,
+    deliverable, quoted_amount, currency, due_at=None
+):
+    """Create a persistent mission proposal; SQL verifies both app owners and approvals."""
+    _user_id(user)
+    from decimal import Decimal, InvalidOperation
+    try:
+        amount = Decimal(str(quoted_amount))
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValueError("Montant du devis invalide.") from None
+    if not amount.is_finite() or amount <= 0:
+        raise ValueError("Le montant du devis doit être positif.")
+    if not provider_app_id or not requester_app_id:
+        raise ValueError("Deux applications sont requises.")
+    import re
+    if not isinstance(currency, str) or not re.fullmatch(r"[A-Za-z]{3}", currency.strip()):
+        raise ValueError("Code devise ISO à trois lettres attendu.")
+    if due_at is not None and not isinstance(due_at, str):
+        raise ValueError("L'échéance doit être une date ISO ou être vide.")
+    return client.rpc("sowia_nex_create_mission", {
+        "p_provider_app_id": str(provider_app_id),
+        "p_requester_app_id": str(requester_app_id),
+        "p_title": title,
+        "p_scope": scope,
+        "p_deliverable": deliverable,
+        "p_quoted_amount": str(amount),
+        "p_currency": currency.strip().upper(),
+        "p_due_at": due_at,
+    }).execute().data
+
+
+def approve_night_exchange_mission(client, user, mission_id):
+    """Approve the exact immutable terms as the authenticated mission owner."""
+    _user_id(user)
+    if not mission_id:
+        raise ValueError("Identifiant de mission requis.")
+    return client.rpc("sowia_nex_approve_mission", {
+        "p_mission_id": str(mission_id),
+    }).execute().data
+
+
+def transition_night_exchange_mission(client, user, mission_id, action, reason=None):
+    """Request one server-guarded lifecycle transition; no payment action exists."""
+    _user_id(user)
+    if not mission_id:
+        raise ValueError("Identifiant de mission requis.")
+    allowed = {"start", "deliver", "accept_delivery", "cancel", "dispute"}
+    if action not in allowed:
+        raise ValueError("Transition de mission inconnue.")
+    if action == "dispute":
+        if not isinstance(reason, str) or not 1 <= len(reason.strip()) <= 1000:
+            raise ValueError("Un motif de litige de 1 à 1000 caractères est requis.")
+    elif reason is not None:
+        raise ValueError("Un motif est accepté uniquement pour un litige.")
+    return client.rpc("sowia_nex_transition_mission", {
+        "p_mission_id": str(mission_id),
+        "p_action": action,
+        "p_reason": reason.strip() if isinstance(reason, str) else None,
+    }).execute().data
+
+
+def admin_verify_night_exchange_app(
+    client, user, app_id, owner_status, application_status,
+    security_status, signature_status, review_note=""
+):
+    """Record an admin attestation; SQL enforces admin identity and append-only audit."""
+    _user_id(user)
+    metadata = getattr(user, "app_metadata", None) or {}
+    if not (metadata.get("sowia_admin") is True or metadata.get("role") == "admin"):
+        raise PermissionError("Accès administrateur requis.")
+    allowed = {
+        "owner": {"unverified", "verified", "rejected"},
+        "application": {"unverified", "verified", "rejected"},
+        "security": {"pending", "passed", "failed"},
+        "signature": {"unverified", "verified", "revoked"},
+    }
+    if owner_status not in allowed["owner"]:
+        raise ValueError("État de vérification du propriétaire invalide.")
+    if application_status not in allowed["application"]:
+        raise ValueError("État de vérification de l'application invalide.")
+    if security_status not in allowed["security"]:
+        raise ValueError("État de revue de sécurité invalide.")
+    if signature_status not in allowed["signature"]:
+        raise ValueError("État de signature éditeur invalide.")
+    if not isinstance(review_note, str) or len(review_note) > 1000:
+        raise ValueError("Note de vérification invalide.")
+    if not app_id:
+        raise ValueError("Identifiant d'application requis.")
+    return client.rpc("sowia_admin_verify_nex_app", {
+        "p_app_id": str(app_id),
+        "p_owner_verification_status": owner_status,
+        "p_application_verification_status": application_status,
+        "p_security_review_status": security_status,
+        "p_publisher_signature_status": signature_status,
+        "p_review_note": review_note.strip(),
+    }).execute().data
+
+
+def list_my_night_exchange_missions(client, user, limit=100):
+    """List missions involving the signed-in user; RLS independently enforces access."""
+    user_id = _user_id(user)
+    cap = min(max(int(limit), 1), 200)
+    columns = (
+        "id,requester_user_id,provider_user_id,requester_app_id,provider_app_id,"
+        "terms,terms_hash,requester_approved_hash,provider_approved_hash,status,"
+        "delivered_at,completed_at,cancelled_at,dispute_reason,created_at,updated_at"
+    )
+    sent = (
+        client.table("sowia_nex_missions").select(columns)
+        .eq("requester_user_id", user_id)
+        .order("created_at", desc=True).limit(cap).execute().data or []
+    )
+    received = (
+        client.table("sowia_nex_missions").select(columns)
+        .eq("provider_user_id", user_id)
+        .order("created_at", desc=True).limit(cap).execute().data or []
+    )
+    unique = {str(row.get("id")): row for row in sent + received}
+    return sorted(
+        unique.values(), key=lambda row: str(row.get("created_at") or ""), reverse=True
+    )[:cap]
+
+
+def list_night_exchange_mission_events(client, user, mission_id, limit=200):
+    """Read an immutable mission audit trail; database RLS checks participation."""
+    _user_id(user)
+    if not mission_id:
+        raise ValueError("Identifiant de mission requis.")
+    return (
+        client.table("sowia_nex_mission_events")
+        .select("id,mission_id,actor_user_id,event_type,previous_status,new_status,terms_hash,event_details,created_at")
+        .eq("mission_id", str(mission_id))
+        .order("created_at", desc=True)
+        .limit(min(max(int(limit), 1), 500))
+        .execute().data or []
+)
 
 
 # SOWIA GLOBAL CONNECT — consent-based professional introductions.

@@ -19,7 +19,7 @@ def test_hub_exposes_existing_workspaces_and_honest_project_status_scope():
     assert '("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE"' in source
     assert "Le registre persistant est accessible dans « Mes échanges & projets »" in source
     assert "Les conversations anciennes et les fichiers existants ne sont pas importés automatiquement" in source
-    assert "Consulter la documentation Final Tech" in source
+    assert "Consulter le protocole Final Tech" in source
 
 
 def test_mobile_back_control_stays_reachable_after_scrolling():
