@@ -1,0 +1,25 @@
+# NIGHT EXCHANGE — contrôle de propriété du domaine partenaire
+
+## Objectif
+Empêcher qu'une application tierce s'inscrive en se faisant passer pour une marque, un éditeur ou un service qu'elle ne contrôle pas. L'approbation d'une fiche ne doit jamais reposer uniquement sur le nom, le logo ou une adresse e-mail déclarés.
+
+## Barrière de vérification proposée
+1. Le compte authentifié soumet le domaine officiel de l'application.
+2. SOW IA crée un défi aléatoire à durée limitée, lié au compte et au domaine.
+3. Le demandeur publie une valeur TXT sous `_sowia-verification.<domaine>`.
+4. Un service de confiance côté serveur interroge le DNS public et compare la valeur exacte.
+5. Le serveur consomme le défi une seule fois dans une transaction atomique et conserve une preuve horodatée.
+6. La fiche reste en attente d'une revue humaine de l'identité de l'éditeur, des permissions, de la sécurité et de la conformité. Le contrôle DNS prouve le contrôle technique du domaine au moment du test ; il ne prouve pas à lui seul l'identité juridique ni l'autorisation d'utiliser une marque.
+
+## Règles anti-contournement
+- Aucun statut `approved` ni `verified` ne peut être écrit par le navigateur ou un compte partenaire.
+- Toute modification du domaine ou du propriétaire invalide la preuve et renvoie la fiche en modération.
+- Les défis expirent, sont liés au compte et au domaine, et ne sont consommables qu'une fois.
+- Les réponses DNS doivent provenir d'un résolveur serveur de confiance, jamais du formulaire ou du navigateur.
+- Les domaines ressemblants, homographes, domaines jetables et preuves de marque font l'objet d'une revue humaine complémentaire.
+- Un signalement entraîne une enquête confidentielle et une décision humaine motivée ; aucun score automatique ne doit déclarer une fraude.
+
+## État de cette livraison
+Le module `sowia_partner_verification.py` fournit des règles Python testables pour normaliser un domaine, émettre un défi TXT et vérifier une réponse DNS fournie par un résolveur serveur de confiance. Les tests couvrent les domaines invalides, l'usurpation de compte, les preuves incorrectes, l'expiration et le rejeu.
+
+**Ce n'est pas encore une vérification en production.** Le module ne contacte pas le DNS, ne persiste pas les défis et n'est pas relié à l'interface, à Supabase ou à la modération. Avant activation, il faut un résolveur côté serveur, une table privée de défis, une consommation atomique, des droits RLS/RPC testés et une revue humaine. Ne jamais faire confiance à des enregistrements DNS transmis par le client.
