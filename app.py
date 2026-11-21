@@ -4068,6 +4068,7 @@ elif page == "Abonnement":
 elif page == "SOWIA GLOBAL ID":
     st.subheader("🪪 SOW IA GLOBAL ID")
     st.caption("Votre identité professionnelle internationale, sous votre contrôle.")
+    st.image("assets/sections/global-id.svg", use_container_width=True)
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre compte sécurisé pour créer et conserver votre carte SOW IA.")
     else:
@@ -4226,6 +4227,7 @@ elif page == "SOWIA GLOBAL ID":
 elif page == "SOWIA GLOBAL DIRECTORY":
     st.subheader("🌐 SOW IA GLOBAL DIRECTORY")
     st.caption("Découvrez les entreprises et applications qui ont choisi de publier leur carte professionnelle SOW IA.")
+    st.image("assets/sections/global-directory.svg", use_container_width=True)
     st.markdown(
         '<div class="partner-intro"><h3>Un réseau professionnel ouvert sur le monde</h3>'
         '<p>Recherchez des partenaires par pays, langue, secteur et spécialité. '
@@ -5923,6 +5925,7 @@ elif page == "SOWIA GLOBAL ADMIN & MODERATION":
 elif page == "SOWIA GLOBAL TRUST":
     st.subheader("🛡️ SOW IA GLOBAL TRUST")
     st.caption("Un cadre de confiance fondé sur les collaborations acceptées, des évaluations réciproques et des signalements confidentiels.")
+    st.image("assets/sections/global-trust.svg", use_container_width=True)
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre compte SOW IA pour accéder à GLOBAL TRUST.")
     else:
