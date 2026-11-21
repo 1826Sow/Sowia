@@ -47,17 +47,16 @@ create unique index if not exists sowia_nex_one_pending_offer_per_pair
 alter table public.sowia_night_exchange_offers enable row level security;
 drop policy if exists "Require Premium for NIGHT EXCHANGE offers"
     on public.sowia_night_exchange_offers;
-create policy "Require Premium for NIGHT EXCHANGE offers"
-    on public.sowia_night_exchange_offers for all to authenticated
-    using (public.sowia_has_professional_access())
-    with check (public.sowia_has_professional_access());
 drop policy if exists "nex_offers_select_participants"
     on public.sowia_night_exchange_offers;
 create policy "nex_offers_select_participants"
     on public.sowia_night_exchange_offers for select to authenticated
     using (
-        sender_user_id = (select auth.uid())
-        or recipient_user_id = (select auth.uid())
+        (select public.sowia_has_professional_access())
+        and (
+            sender_user_id = (select auth.uid())
+            or recipient_user_id = (select auth.uid())
+        )
     );
 
 revoke all on public.sowia_night_exchange_offers from anon, authenticated;
