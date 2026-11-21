@@ -20,7 +20,7 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $function$
 declare
     is_admin boolean := (
         coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin'
@@ -47,7 +47,7 @@ begin
     new.updated_at := now();
     return new;
 end;
-$;
+$function$;
 
 create table if not exists public.sowia_nex_missions (
     id uuid primary key default gen_random_uuid(),
