@@ -1687,13 +1687,35 @@ elif page == "Hub SOWIA":
                 st.caption(description.replace("SOWIA", "SOW IA").replace("Sowia", "SOW IA"))
                 st.button("Ouvrir", key=f"hub_quick_{index}", use_container_width=True,
                           on_click=go_to_page, args=(destination,))
-    st.markdown("#### 🧪 Final Tech")
-    st.caption("Espace Final Tech — protocole de double approbation et contrôles associés.")
-    st.link_button(
-        "Consulter la documentation Final Tech",
-        "https://github.com/1826Sow/Sowia/blob/main/docs/FINAL_TEC_DUAL_APPROVAL_PROTOCOL.md",
-        use_container_width=True,
-    )
+    st.markdown("### Les deux piliers stratégiques de SOW IA")
+    pillar_cols = st.columns(2)
+    with pillar_cols[0]:
+        with st.container(border=True):
+            st.markdown("#### 🌙 SOW IA NIGHT EXCHANGE")
+            st.caption(
+                "L’économie entre applications : découverte de partenaires, "
+                "services proposés ou recherchés et échanges encadrés."
+            )
+            st.button(
+                "Ouvrir NIGHT EXCHANGE",
+                key="hub_pillar_night_exchange",
+                use_container_width=True,
+                on_click=go_to_page,
+                args=("SOWIA NIGHT EXCHANGE",),
+            )
+    with pillar_cols[1]:
+        with st.container(border=True):
+            st.markdown("#### 🧪 Final Tech")
+            st.caption(
+                "Le protocole de sécurité et de double approbation indépendante "
+                "pour les opérations sensibles. Spécification préparatoire : "
+                "les contrôles de production ne sont pas déclarés activés."
+            )
+            st.link_button(
+                "Consulter le protocole Final Tech",
+                "https://github.com/1826Sow/Sowia/blob/main/docs/FINAL_TEC_DUAL_APPROVAL_PROTOCOL.md",
+                use_container_width=True,
+            )
     st.divider()
     st.markdown("### 👤 Espace Personnel")
     st.caption("Vos outils quotidiens, votre mémoire et vos documents privés.")
