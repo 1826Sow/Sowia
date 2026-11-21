@@ -1242,25 +1242,27 @@ if privacy_screen:
 
 with st.sidebar:
     active_page = st.session_state.get("page_nav", "Hub SOWIA")
-    if "nav_category" not in st.session_state:
-        st.session_state.nav_category = category_for_page(active_page)
-    else:
-        st.session_state.nav_category = category_for_page(active_page)
-    st.selectbox(
-        "📁 Dossier de navigation",
-        list(NAV_GROUPS.keys()),
-        key="nav_category",
-        format_func=lambda value: translate_ui(value.replace("SOWIA", "SOW IA"), language),
-        on_change=choose_navigation_category,
-    )
-    selected_pages = NAV_GROUPS[st.session_state.nav_category]
-    page = st.selectbox(
-        "🧭 Outil à ouvrir",
-        selected_pages,
-        key="page_nav",
-        format_func=lambda value: translate_ui(value.replace("SOWIA", "SOW IA"), language),
-        on_change=sync_navigation_category,
-    )
+    st.session_state.nav_category = category_for_page(active_page)
+    st.markdown("### 🧭 Navigation SOW IA")
+    st.caption("Toutes les catégories et leurs rubriques sont accessibles ici.")
+    for category_index, (category_name, category_pages) in enumerate(NAV_GROUPS.items()):
+        with st.expander(
+            translate_ui(category_name.replace("SOWIA", "SOW IA"), language),
+            expanded=True,
+        ):
+            for page_index, page_name in enumerate(category_pages):
+                is_current_page = page_name == active_page
+                st.button(
+                    ("● " if is_current_page else "") + translate_ui(
+                        page_name.replace("SOWIA", "SOW IA"), language
+                    ),
+                    key=f"sowia_nav_item_{category_index}_{page_index}",
+                    on_click=go_to_page,
+                    args=(page_name,),
+                    use_container_width=True,
+                    type="primary" if is_current_page else "secondary",
+                )
+    page = st.session_state.get("page_nav", "Hub SOWIA")
 
 # Keep the current page synchronized after initial load and programmatic routes.
 if st.session_state.get("sowia_current_page") not in [item for group in NAV_GROUPS.values() for item in group]:
