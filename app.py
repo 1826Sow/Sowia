@@ -6549,6 +6549,37 @@ elif page == "Bourse aux applications":
                     ]).casefold()
                 ]
             st.metric("Applications approuvées affichées", len(market_apps))
+            market_snapshot = night_exchange_economy.summarize_market_snapshot(market_apps)
+            st.markdown("#### 📊 Tableau de bord — activité du marché")
+            st.caption(
+                "Instantané du catalogue actuellement affiché (limite de 200 fiches et filtres actifs). "
+                "Ces volumes décrivent les déclarations du catalogue, pas des ventes ni des transactions."
+            )
+            snapshot_cols = st.columns(4)
+            snapshot_cols[0].metric(
+                "Applications prestataires", market_snapshot["service_providers"]
+            )
+            snapshot_cols[1].metric(
+                "Applications avec besoins", market_snapshot["applications_with_needs"]
+            )
+            snapshot_cols[2].metric(
+                "Services déclarés distincts", market_snapshot["distinct_declared_services"]
+            )
+            snapshot_cols[3].metric(
+                "Pays représentés", market_snapshot["countries_represented"]
+            )
+            st.info(
+                "Part de marché et chiffre d’affaires : non mesurables à ce stade. "
+                "Le catalogue ne contient pas encore de registre fiable des missions gagnées, "
+                "livrées et acceptées ni de transactions rapprochées. Aucun revenu n’est simulé."
+            )
+            previous_market_matches = st.session_state.get("nex_economy_last_matches")
+            if previous_market_matches is not None:
+                st.caption(
+                    "Dernière recherche de partenaires (simulation en lecture seule) : "
+                    + str(len(previous_market_matches)) + " correspondance(s). "
+                    "Ce chiffre n’est pas un nombre de missions remportées."
+                )
             with st.expander("🤖 Découverte entre applications — simulation", expanded=False):
                 st.caption(
                     "Choisissez une application et l’un de ses besoins déclarés. "
