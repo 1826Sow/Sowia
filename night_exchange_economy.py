@@ -159,3 +159,41 @@ def propose_exchange(match: dict, *, owner_approval_required: bool = True) -> Pr
         state="awaiting_owner_approval" if owner_approval_required else "proposal_only",
         simulation=True,
     )
+
+
+def discover_service_partners(source_app_id: str, service: str,
+                              approved_app_records: Iterable[dict]) -> list[dict]:
+    """Find approved apps offering one exact service wanted by a source app.
+
+    This is a read-only discovery preview. It does not create orders, contact
+    partners, authorize integrations, or initiate payments.
+    """
+    source_id = _clean_text(source_app_id, "Application initiatrice", 128)
+    requested_service = _clean_text(service, "Service recherché", 120).casefold()
+    partners = []
+    seen = set()
+    for record in approved_app_records:
+        if not isinstance(record, dict):
+            continue
+        app_id = str(record.get("id") or "").strip()
+        if not app_id or app_id == source_id or app_id in seen:
+            continue
+        if record.get("status", "approved") != "approved":
+            continue
+        offered = {
+            " ".join(part.casefold().split())
+            for part in str(record.get("services_offered") or "").replace(";", ",").replace("\\n", ",").split(",")
+            if part.strip()
+        }
+        if requested_service not in offered:
+            continue
+        seen.add(app_id)
+        partners.append({
+            "app_id": app_id,
+            "app_name": str(record.get("app_name") or "Application sans nom"),
+            "country": str(record.get("country") or ""),
+            "service": requested_service,
+            "match_type": "service_exact",
+            "simulation": True,
+        })
+    return sorted(partners, key=lambda item: (item["app_name"].casefold(), item["app_id"]))
