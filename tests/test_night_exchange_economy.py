@@ -234,3 +234,13 @@ def test_partner_discovery_keeps_custom_services_exact_only():
     }]
     assert discover_service_partners("requester", "bespoke legacy connector", rows)
     assert discover_service_partners("requester", "legacy connector", rows) == []
+
+
+def test_partner_discovery_excludes_restricted_financial_services_even_as_custom_labels():
+    from night_exchange_economy import discover_service_partners
+
+    rows = [{
+        "id": "payment-provider", "app_name": "Payment Provider",
+        "status": "approved", "services_offered": "payment processing",
+    }]
+    assert discover_service_partners("requester", "payment processing", rows) == []
