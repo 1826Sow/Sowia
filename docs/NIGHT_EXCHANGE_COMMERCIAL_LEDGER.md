@@ -11,61 +11,48 @@ Construire un registre vérifiable des opérations NIGHT EXCHANGE afin de suivre
 
 Le registre n'est pas un système de paiement autonome et ne doit jamais déclarer un revenu encaissé sur la seule base d'une offre acceptée ou d'une livraison déclarée.
 
-## Constat sur le dépôt au 21 novembre 2026
+## État du dépôt
 
-- Le prototype Streamlit NIGHT EXCHANGE sait présenter une fiche et une simulation de compatibilité, mais les brouillons et plafonds ne sont pas persistés.
-- Les scripts SQL racine `supabase_night_exchange_registry.sql` et `supabase_night_exchange_events.sql` sont des propositions séparées, pas une migration versionnée dans `supabase/migrations/`.
-- Le registre commercial append-only demandé n'est pas encore livré ni relié à l'interface.
-- Le grand livre financier PayPal existant est distinct : il ne doit pas être détourné pour enregistrer des échanges non monétaires.
-- La preuve DNS de domaine est préparée dans une PR indépendante ; elle ne vaut ni approbation juridique ni autorisation de paiement.
+- Une migration additive proposée crée les dossiers commerciaux et le journal d'événements append-only.
+- Une seconde migration proposée ajoute une fonction de transition atomique avec contrôle du participant, verrouillage de ligne et clé d'idempotence.
+- Les migrations ne sont pas appliquées à Supabase ; aucune donnée ni configuration de production n'a été modifiée.
+- Le prototype Streamlit et l'interface Android ne sont pas encore raccordés au registre.
 
-## Modèle de données cible
+## Cycle de vie des contrats
 
-### 1. Dossier commercial
+Transitions prévues dans la fonction serveur `sowia_nex_transition_deal` :
 
-Chaque opération reçoit un identifiant stable et une clé d'idempotence. Elle référence les partenaires, leurs fiches d'application, l'espace de travail, le type d'opération, le périmètre convenu, la devise et les montants.
+| État initial | État cible | Autorisation |
+|---|---|---|
+| proposed | accepted | contrepartie uniquement |
+| proposed | cancelled | créateur uniquement |
+| accepted | in_progress | l'un des deux participants |
+| accepted | cancelled | l'un des deux participants |
+| in_progress | completed | contrepartie uniquement |
+| proposed / accepted / in_progress | disputed | l'un des deux participants |
 
-États métier proposés :
-`proposed → accepted → in_progress → completed`
-avec sorties contrôlées vers `cancelled` ou `disputed`. Une opération contestée ne doit pas être comptée comme livrée tant que le litige n'est pas résolu.
+Toute autre transition est rejetée. Une contestation ne peut pas être résolue par cette fonction ; la résolution exige une procédure de confiance distincte.
 
-### 2. Journal d'événements immuable
+Chaque transition valide met à jour le statut et insère son événement `status_changed` dans la même transaction. Le verrou `FOR UPDATE` sérialise les transitions concurrentes sur un dossier. La clé d'idempotence, unique par acteur, permet de renvoyer l'événement initial lors d'une répétition sans rejouer la transition.
 
-Chaque changement important produit un événement horodaté : création, acceptation de chaque partie, démarrage, livraison, validation de livraison, contestation, résolution, confirmation de paiement ou remboursement. Les événements sont append-only ; les corrections passent par un nouvel événement, jamais par l'effacement de l'historique.
+## Journal et sécurité
 
-### 3. Séparation entre valeur et revenu reconnu
+- Les événements restent append-only ; aucune fonction cliente ne peut les modifier ou les supprimer.
+- La fonction utilise `SECURITY DEFINER` avec `search_path` vide, des noms d'objets qualifiés et vérifie `auth.uid()` ainsi que la participation au dossier.
+- L'exécution est révoquée à `public` et `anon`, puis accordée uniquement à `authenticated`.
+- La fonction ne peut pas confirmer un paiement, un remboursement ou une commission.
+- Les droits directs du client sur les tables restent limités ; aucun secret `service_role` n'est placé dans l'application.
+
+## Séparation financière
 
 - Valeur contractuelle : montant convenu, sans présumer d'un encaissement.
-- Commission prévue : calcul déterministe à partir d'un taux en points de base figé au moment de l'accord.
-- Paiement confirmé : uniquement après validation côté serveur du prestataire ou preuve comptable autorisée.
+- Commission prévue : calcul déterministe à partir du taux convenu.
+- Paiement confirmé : uniquement après validation serveur du prestataire ou preuve comptable autorisée.
 - Commission reconnue : uniquement selon une règle explicite après livraison et paiement confirmé, en tenant compte des remboursements et litiges.
 - Échanges non monétaires : valeur déclarative séparée, jamais assimilée à du chiffre d'affaires encaissé.
 
-### 4. Indicateurs
+## Tests et limites
 
-Le tableau de bord pourra présenter le volume d'opérations par état, les échanges acceptés et terminés, la valeur contractuelle, les encaissements confirmés, les remboursements, les commissions reconnues, les partenaires actifs et les tendances par pays/période.
+Les tests statiques vérifient les invariants de la migration. Ils ne remplacent pas les tests PostgreSQL réels : rôles anon/authenticated/service_role, RLS, appels concurrents, répétitions d'idempotence, refus des transitions interdites et rollback transactionnel.
 
-La part de marché ne sera jamais inventée à partir des seules données internes : elle nécessite un dénominateur externe documenté, daté et comparable.
-
-## Exigences de sécurité
-
-- Tables exposées en `public` protégées par RLS ; droits SQL et politiques RLS testés séparément.
-- Les clients authentifiés ne peuvent ni créer ni modifier des écritures financières, ni insérer des événements de paiement.
-- Écritures sensibles réservées au backend de confiance ; aucune clé `service_role` ou clé secrète dans Android, Streamlit client ou navigateur.
-- Isolation par propriétaire, partenaire et espace de travail ; aucun accès transversal par simple connaissance d'un UUID.
-- Idempotence sur les références externes et les webhooks.
-- Montants en `numeric`, devises ISO 4217, taux de commission figé à l'accord.
-- Aucun paiement, transfert, commission, publication publique ou approbation automatique activé par cette étape.
-
-## Séquence de livraison
-
-1. Revue du schéma existant et confirmation des migrations réellement appliquées en environnement de test.
-2. Migration additive versionnée pour le dossier commercial et le journal immuable.
-3. Tests SQL RLS allow/deny pour anon, authenticated et service_role, plus tests de transitions, idempotence, montants, remboursements et litiges.
-4. Fonctions serveur typées pour enregistrer les événements et faire évoluer les états.
-5. Lecture agrégée du registre dans le tableau de bord NIGHT EXCHANGE, sans modifier les fonctions existantes.
-6. Revue sécurité et validation en environnement isolé avant toute proposition de déploiement Supabase.
-
-## Hors périmètre de cette spécification
-
-Cette branche ne modifie ni l'application, ni les secrets, ni les paramètres Supabase, ni les données de production, ni les paiements. Elle ne prétend pas livrer un registre opérationnel. La migration et l'intégration restent à réaliser et à vérifier avant activation.
+Aucune migration n'est appliquée en production. Aucun paiement, transfert, commission, publication publique ou approbation automatique n'est activé par cette étape.
