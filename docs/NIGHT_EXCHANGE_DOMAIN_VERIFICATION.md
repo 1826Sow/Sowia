@@ -22,4 +22,14 @@ Empêcher qu'une application tierce s'inscrive en se faisant passer pour une mar
 ## État de cette livraison
 Le module `sowia_partner_verification.py` fournit des règles Python testables pour normaliser un domaine, émettre un défi TXT et vérifier une réponse DNS fournie par un résolveur serveur de confiance. Les tests couvrent les domaines invalides, l'usurpation de compte, les preuves incorrectes, l'expiration et le rejeu.
 
-**Ce n'est pas encore une vérification en production.** Le module ne contacte pas le DNS, ne persiste pas les défis et n'est pas relié à l'interface, à Supabase ou à la modération. Avant activation, il faut un résolveur côté serveur, une table privée de défis, une consommation atomique, des droits RLS/RPC testés et une revue humaine. Ne jamais faire confiance à des enregistrements DNS transmis par le client.
+**Ce n'est pas encore une vérification en production.** Le module ne contacte pas le DNS et n'est pas relié à l'interface, à Supabase ou à la modération.
+
+Une migration préparatoire est maintenant proposée dans `supabase/migrations/20261121190000_night_exchange_domain_challenges.sql`. Elle prévoit :
+- un schéma non exposé `sowia_private`, inaccessible aux rôles clients ;
+- le stockage du seul condensat SHA-256 du jeton, jamais du jeton TXT en clair ;
+- des défis liés à un compte et un domaine, avec expiration ;
+- une consommation atomique par mise à jour conditionnelle, empêchant le rejeu concurrent ;
+- une piste d'audit pour l'émission et la consommation réussie ;
+- des fonctions exécutables uniquement par `service_role`, qui doit rester exclusivement côté serveur.
+
+**Cette migration est un fichier de proposition dans GitHub : elle n'a pas été appliquée à Supabase.** L'intégration reste bloquée jusqu'à la mise en place du résolveur DNS de confiance, aux tests SQL/RLS sur un environnement isolé, à la revue humaine et à la validation du déploiement. Ne jamais faire confiance à des enregistrements DNS transmis par le client.
