@@ -245,11 +245,15 @@ def resolve_service_skill(value):
 
 
 def _services_compatible(requested, offered):
+    requested_label = _normalize_skill_label(requested)
+    offered_label = _normalize_skill_label(offered)
+    if requested_label in _RESTRICTED_SERVICE_LABELS or offered_label in _RESTRICTED_SERVICE_LABELS:
+        return False, "restricted"
     requested_skill = resolve_service_skill(requested)
     offered_skill = resolve_service_skill(offered)
     if requested_skill and offered_skill:
         return requested_skill["skill_id"] == offered_skill["skill_id"], "canonical_skill"
-    return _normalize_skill_label(requested) == _normalize_skill_label(offered), "exact_custom"
+    return requested_label == offered_label, "exact_custom"
 
 
 def _service_values(value):
