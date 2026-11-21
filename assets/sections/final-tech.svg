@@ -1,28 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-label="SOW IA Final Tech, validation et sécurité">
 <defs>
- <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#040b1d"/><stop offset=".6" stop-color="#14264a"/><stop offset="1" stop-color="#050b19"/></linearGradient>
- <linearGradient id="cyan"><stop stop-color="#54f0ff"/><stop offset="1" stop-color="#168dff"/></linearGradient>
+ <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#030918"/><stop offset=".55" stop-color="#102348"/><stop offset="1" stop-color="#050b1c"/></linearGradient>
+ <linearGradient id="cyan"><stop stop-color="#b8fbff"/><stop offset=".48" stop-color="#35dff4"/><stop offset="1" stop-color="#168dff"/></linearGradient>
  <linearGradient id="gold"><stop stop-color="#fff0b2"/><stop offset=".5" stop-color="#d9a84c"/><stop offset="1" stop-color="#fff0b2"/></linearGradient>
- <radialGradient id="aura"><stop stop-color="#1acfff" stop-opacity=".42"/><stop offset="1" stop-color="#1acfff" stop-opacity="0"/></radialGradient>
+ <radialGradient id="aura"><stop stop-color="#1acfff" stop-opacity=".48"/><stop offset="1" stop-color="#1acfff" stop-opacity="0"/></radialGradient>
+ <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0H0V48" fill="none" stroke="#3fd9f1" stroke-opacity=".08"/></pattern>
+ <filter id="glow"><feGaussianBlur stdDeviation="17"/></filter>
 </defs>
-<rect width="1200" height="600" rx="34" fill="url(#bg)"/>
-<circle cx="850" cy="285" r="290" fill="url(#aura)"/>
-<g transform="translate(835 285)">
- <path d="M0 -220L190 -145V8Q180 150 0 225Q-180 150 -190 8V-145Z" fill="#07162e" stroke="url(#gold)" stroke-width="4"/>
- <path d="M0 -178L150 -120V8Q140 125 0 183Q-140 125 -150 8V-120Z" fill="#0b2548" stroke="#28dfff" stroke-width="3"/>
- <path d="M-78 -5L-22 54L91 -72" fill="none" stroke="url(#cyan)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
- <circle cx="0" cy="0" r="220" fill="none" stroke="#35dfff" stroke-width="2" stroke-dasharray="5 15" opacity=".7"/>
- <g fill="#f0c979"><circle cx="-210" cy="-95" r="7"/><circle cx="205" cy="100" r="7"/><circle cx="0" cy="-245" r="6"/></g>
+<rect width="1200" height="600" rx="34" fill="url(#bg)"/><rect width="1200" height="600" rx="34" fill="url(#grid)"/>
+<circle cx="850" cy="285" r="300" fill="url(#aura)"/><circle cx="850" cy="285" r="190" fill="#21cfff" opacity=".12" filter="url(#glow)"/>
+<g transform="translate(850 285)">
+ <circle r="245" fill="none" stroke="#36dfff" stroke-width="2" stroke-dasharray="4 16" opacity=".65"/>
+ <circle r="216" fill="none" stroke="url(#gold)" stroke-width="1.5" opacity=".65"/>
+ <path d="M0-220L190-145V8Q180 150 0 225Q-180 150-190 8V-145Z" fill="#07162e" stroke="url(#gold)" stroke-width="4"/>
+ <path d="M0-178L150-120V8Q140 125 0 183Q-140 125-150 8V-120Z" fill="#0b2548" stroke="#28dfff" stroke-width="3"/>
+ <path d="M-78-5L-22 54L91-72" fill="none" stroke="url(#cyan)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+ <circle r="125" fill="none" stroke="#9bf5ff" stroke-opacity=".22" stroke-width="1"/>
+ <g fill="#f0c979"><circle cx="-210" cy="-95" r="7"/><circle cx="205" cy="100" r="7"/><circle cx="0" cy="-245" r="6"/><circle cx="0" cy="245" r="5"/></g>
 </g>
-<g stroke="#39dfff" fill="none" opacity=".5"><path d="M570 100H680L730 150"/><path d="M550 480H680L730 430"/><path d="M1030 150H1130V240"/><path d="M1030 420H1130V330"/></g>
+<g stroke="#39dfff" fill="none" opacity=".55" stroke-width="2"><path d="M570 100H680L730 150M550 480H680L730 430M1030 150H1130V240M1030 420H1130V330"/><path d="M620 285H700M1000 285H1080"/></g>
 <g fill="#9cefff"><circle cx="570" cy="100" r="5"/><circle cx="550" cy="480" r="5"/><circle cx="1130" cy="240" r="5"/><circle cx="1130" cy="330" r="5"/></g>
-<text x="72" y="102" fill="#f3cc7a" font-family="Arial,sans-serif" font-size="22" letter-spacing="7">ENGINEERING · CONTROL · TRUST</text>
-<text x="72" y="190" fill="#ffffff" font-family="Arial,sans-serif" font-size="68" font-weight="700">FINAL TECH</text>
-<text x="76" y="244" fill="#69e6ff" font-family="Arial,sans-serif" font-size="24" letter-spacing="4">PRECISION. SECURITY. VALIDATION.</text>
+<text x="72" y="102" fill="#f3cc7a" font-family="Arial,sans-serif" font-size="21" letter-spacing="7">ENGINEERING · CONTROL · TRUST</text>
+<text x="68" y="190" fill="#fff" font-family="Arial,sans-serif" font-size="68" font-weight="800">FINAL TECH</text>
+<text x="74" y="244" fill="#69e6ff" font-family="Arial,sans-serif" font-size="23" letter-spacing="3">PRECISION. SECURITY. VALIDATION.</text>
 <path d="M76 290H445" stroke="url(#gold)" stroke-width="3"/>
 <text x="76" y="348" fill="#d9e9ff" font-family="Arial,sans-serif" font-size="25">La dernière ligne de contrôle :</text>
-<text x="76" y="386" fill="#d9e9ff" font-family="Arial,sans-serif" font-size="25">vérifier, approuver, sécuriser.</text>
-<g transform="translate(78 455)"><rect width="250" height="46" rx="23" fill="#102d4e" stroke="#36dfff"/><circle cx="25" cy="23" r="7" fill="#55eaff"/><text x="48" y="30" fill="#e9f8ff" font-family="Arial,sans-serif" font-size="16" letter-spacing="2">DOUBLE APPROBATION</text></g>
-<text x="76" y="550" fill="#f2c978" font-family="Arial,sans-serif" font-size="25" font-weight="700" letter-spacing="8">SOW IA</text>
-<text x="210" y="550" fill="#8aa6ca" font-family="Arial,sans-serif" font-size="15" letter-spacing="3">FINAL CONTROL SYSTEM</text>
+<text x="76" y="388" fill="#d9e9ff" font-family="Arial,sans-serif" font-size="25">vérifier, approuver, sécuriser.</text>
+<text x="76" y="455" fill="#8fcddd" font-family="Arial,sans-serif" font-size="15" letter-spacing="3">DOUBLE APPROVAL  ·  VERIFIED OPERATIONS</text>
 </svg>
