@@ -22,6 +22,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 /**
  * Opens the existing SOW IA dashboard inside the Android application.
  * No credentials or JavaScript bridge are injected by the native shell.
+ * The document picker is delegated to Android's system document provider.
  */
 class DashboardActivity : ComponentActivity() {
     private lateinit var webView: WebView
