@@ -1405,6 +1405,7 @@ if page == "Accueil":
         st.image("assets/sowia-brain-brand.svg", width=320)
     st.subheader("Bienvenue dans SOW IA")
     st.caption("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.")
+    st.image("assets/sections/home-executive.svg", use_container_width=True)
     # The project hub is deliberately the first major block on the home page.
     st.markdown(
         '<section class="sowia-command-center">'
