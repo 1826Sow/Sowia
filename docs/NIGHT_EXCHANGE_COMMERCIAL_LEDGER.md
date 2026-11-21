@@ -34,7 +34,7 @@ Transitions prévues dans la fonction serveur `sowia_nex_transition_deal` :
 
 Toute autre transition est rejetée. Une contestation ne peut pas être résolue par cette fonction ; la résolution exige une procédure de confiance distincte.
 
-Chaque transition valide met à jour le statut et insère son événement `status_changed` dans la même transaction. Le verrou `FOR UPDATE` sérialise les transitions concurrentes sur un dossier. La clé d'idempotence, unique par acteur, permet de renvoyer l'événement initial lors d'une répétition sans rejouer la transition.
+Chaque transition valide met à jour le statut et insère son événement `status_changed` dans la même transaction. Le verrou `FOR UPDATE` sérialise les transitions concurrentes sur un dossier. La clé d'idempotence, unique par acteur, permet de renvoyer l'événement initial lors d'une répétition sans rejouer la transition. Si la même clé est réutilisée avec un autre dossier, un autre état cible ou une autre note, la requête est rejetée.
 
 ## Journal et sécurité
 
