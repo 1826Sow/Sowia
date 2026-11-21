@@ -6357,7 +6357,14 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 approved_offer_apps = cloud_storage.list_approved_night_exchange_apps(
                     supabase_client, current_user, limit=200
                 )
-                own_approved = [row for row in own_offer_apps if row.get("status") == "approved"]
+                own_approved = [
+                    row for row in own_offer_apps
+                    if row.get("status") == "approved"
+                    and row.get("owner_verification_status") == "verified"
+                    and row.get("application_verification_status") == "verified"
+                    and row.get("security_review_status") == "passed"
+                    and row.get("publisher_signature_status") == "verified"
+                ]
                 current_user_id = str(cloud_storage._user_id(current_user))
                 own_app_ids = {str(row.get("id")) for row in own_offer_apps}
                 if own_approved and approved_offer_apps:
