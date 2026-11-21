@@ -383,7 +383,9 @@ def summarize_market_snapshot(app_records: Iterable[dict]) -> dict:
         wanted = _service_values(row.get("services_wanted"))
         providers += bool(offered)
         requesters += bool(wanted)
+        # Count both supply and demand declarations in the catalogue taxonomy.
         services.update(offered)
+        services.update(wanted)
         country = row.get("country")
         if isinstance(country, str) and country.strip():
             countries.add(" ".join(country.split()).casefold())
