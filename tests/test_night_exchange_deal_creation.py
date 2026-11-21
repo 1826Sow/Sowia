@@ -51,6 +51,12 @@ class NightExchangeDealCreationMigrationTests(unittest.TestCase):
     def test_approved_app_rows_are_locked_during_creation(self):
         self.assertEqual(self.sql.count("for share;"), 2)
 
+    def test_idempotent_replay_precedes_new_deal_premium_gate(self):
+        replay = self.sql.index("return v_existing.id")
+        premium = self.sql.index("if not public.sowia_has_professional_access()")
+        self.assertLess(replay, premium)
+        self.assertIn("btrim(p_idempotency_key) = ''", self.sql)
+
     def test_creation_is_additive(self):
         self.assertIn("add column if not exists", self.sql)
         self.assertNotIn("drop table", self.sql)
