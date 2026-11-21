@@ -119,3 +119,15 @@ Le module `tool_registry.py` fournit un premier registre **en mémoire et descri
 - copie défensive des définitions pour éviter qu'un appelant modifie les règles après enregistrement.
 
 Le registre n'exécute aucun outil, ne stocke aucune clé, ne constitue pas encore un service d'identité ou de quotas et ne remplace pas les contrôles serveur. Le descripteur météo `weather.forecast@1.0.0` est déclaré comme premier exemple ; le routage réel de la météo continue d'utiliser le chemin direct existant. Les outils à effets externes restent soumis à une approbation humaine.
+
+
+## Incrément A2 — calcul et conversions directs
+
+Le module `direct_tools.py` ajoute des capacités déterministes sans appel au modèle :
+- calcul arithmétique limité à une grammaire AST sûre (pas de `eval`, d'import ni d'accès aux fichiers) ;
+- limites de longueur, de profondeur, de puissance et de magnitude pour éviter les expressions abusives ;
+- conversions usuelles de longueur, masse, volume et température ;
+- reconnaissance de demandes simples en français et en anglais ;
+- routage avant l'appel au modèle, avec un message explicite en cas d'expression invalide.
+
+Les opérations sont locales et sans coût fournisseur. Ce premier incrément ne remplace pas une calculatrice scientifique ni un moteur d'unités exhaustif. Les nouvelles demandes doivent passer les tests avant d'être considérées comme validées.
