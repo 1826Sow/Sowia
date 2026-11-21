@@ -139,7 +139,7 @@ jobs:
           echo "Release APK package ID and v2/v3 signatures verified."
 
       - name: Upload permanent signed APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sowia-android-permanent-signed
           path: release-output/*

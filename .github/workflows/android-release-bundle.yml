@@ -175,7 +175,7 @@ jobs:
           [[ "$ACTUAL_FINGERPRINT" == "$EXPECTED_FINGERPRINT" ]]
 
       - name: Upload signed current APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sowia-android-current-compatible-apk
           path: android/app/build/outputs/apk/current/release/*.apk
@@ -183,7 +183,7 @@ jobs:
           retention-days: 7
 
       - name: Upload signed legacy APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sowia-android-legacy-compatible-apk
           path: android/app/build/outputs/apk/legacy/release/*.apk
@@ -191,7 +191,7 @@ jobs:
           retention-days: 7
 
       - name: Upload signed Android App Bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sowia-android-release-signed
           path: android/app/build/outputs/bundle/currentRelease/*.aab
@@ -216,7 +216,7 @@ jobs:
       - name: Build installable debug APK
         run: gradle -p android :app:assembleDebug
       - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sowia-android-debug-apk
           path: android/app/build/outputs/apk/*/debug/*.apk
