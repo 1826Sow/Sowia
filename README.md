@@ -2,9 +2,9 @@
 
 **SOW IA** est une application web d'intelligence artificielle construite avec Streamlit. Son nom public est « SOW IA ».
 
-Consulter la [vision produit et feuille de route maîtresse](docs/VISION_ET_FEUILLE_DE_ROUTE.md)
+Consulter la [vision produit et feuille de route maîtresse](docs/VISION_ET_FEUILLE_DE_ROUTE.md) pour le périmètre complet : intelligence financière, marchés mondiaux, météo-économie, vérification de l'information, développement international, Club Privé et projet ultérieur de carte Gold.
 
-Consulter également la [feuille de route développeurs et agents IA](docs/PLATEFORME_DEVELOPPEURS_ET_AGENTS_IA.md) pour le registre d'outils, les connecteurs, la mémoire contextualisée, les API et l'interopérabilité des agents. pour le périmètre complet : intelligence financière, marchés mondiaux, météo-économie, vérification de l'information, développement international, Club Privé et projet ultérieur de carte Gold.
+Consulter également la [feuille de route développeurs et agents IA](docs/PLATEFORME_DEVELOPPEURS_ET_AGENTS_IA.md) pour le registre d'outils, les connecteurs, la mémoire contextualisée, les API et l'interopérabilité des agents.
 
 **Projet de distribution multi-plateforme :** consulter la [feuille de route mobile et internationale](docs/DISTRIBUTION_MOBILE_ET_INTERNATIONALE.md). Elle décrit les étapes envisagées pour le web, Android/Google Play et iOS/App Store. Il s'agit d'un plan de travail, pas d'une annonce de publication : aucun binaire Android/iOS ni validation de store n'est déclaré disponible à ce stade.
 
