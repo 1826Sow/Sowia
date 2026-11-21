@@ -1,14 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 520" role="img" aria-label="Logo SOW IA, cerveau neuronal lumineux bleu et cyan">
-<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#061326"/><stop offset="1" stop-color="#0b2948"/></linearGradient><linearGradient id="brain" x2="1" y2="1"><stop stop-color="#b9faff"/><stop offset=".45" stop-color="#24bfff"/><stop offset="1" stop-color="#0874c9"/></linearGradient><filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 520" role="img" aria-label="SOW IA — assistant intelligent, cerveau lumineux et identité bleu électrique et or">
+<defs>
+ <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#040d20"/><stop offset=".55" stop-color="#071d39"/><stop offset="1" stop-color="#102c4b"/></linearGradient>
+ <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".42" stop-color="#a9c8e8"/><stop offset=".72" stop-color="#f4fbff"/><stop offset="1" stop-color="#7897b7"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff1a8"/><stop offset=".38" stop-color="#f6b938"/><stop offset=".72" stop-color="#fff0a0"/><stop offset="1" stop-color="#a96a12"/></linearGradient>
+ <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e0ffff"/><stop offset=".45" stop-color="#26d8ff"/><stop offset="1" stop-color="#0876d6"/></linearGradient>
+ <radialGradient id="halo"><stop stop-color="#087dce" stop-opacity=".52"/><stop offset="1" stop-color="#07182d" stop-opacity="0"/></radialGradient>
+ <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
 <rect width="720" height="520" rx="34" fill="url(#bg)"/>
-<g fill="none" stroke="#1cbfff" stroke-width="3" opacity=".32"><circle cx="360" cy="206" r="176"/><circle cx="360" cy="206" r="194" stroke-dasharray="4 14"/></g>
-<g filter="url(#glow)" stroke="url(#brain)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none">
-<path d="M351 73c-42-39-102-12-105 35-43-8-75 23-69 63-38 18-42 71-10 97-18 43 10 85 54 86 15 42 65 54 100 26 13 14 23 19 30 19z"/>
-<path d="M369 73c42-39 102-12 105 35 43-8 75 23 69 63 38 18 42 71 10 97 18 43-10 85-54 86-15 42-65 54-100 26-13 14-23 19-30 19z"/>
-<path d="M360 75v326M245 145l48 21-8 49 45 23-19 49 49 31M475 145l-48 21 8 49-45 23 19 49-49 31"/>
-<path d="M257 265l-42 22m250-22 42 22M290 111l31 37m109-37-31 37M284 333l41-18m111 18-41-18"/>
+<ellipse cx="360" cy="218" rx="260" ry="218" fill="url(#halo)"/>
+<g fill="none" stroke="url(#gold)" stroke-width="5" opacity=".95"><path d="M52 255C105 35 601 15 672 241" /><path d="M35 286C166 460 568 455 690 270" stroke-width="2" opacity=".65"/></g>
+<g fill="none" stroke="#27d9ff" opacity=".55"><circle cx="360" cy="206" r="184" stroke-dasharray="3 12" stroke-width="2"/><path d="M85 192Q360 -18 635 192" stroke-width="2"/></g>
+<!-- Neural crown -->
+<g filter="url(#glow)" fill="none" stroke="url(#cyan)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+ <path d="M250 204c-34-13-42-53-18-78-6-37 30-62 61-47 21-42 77-45 104-11 38-24 83 4 80 46 35 20 34 68 1 86"/>
+ <path d="M269 167l35 13 15-39 42 19 20-42 37 30 40-15M291 91l10 41 39 8 6 43 42 14 25 39"/>
+ <path d="M360 64v145M250 126l45 26m150-29-41 30M281 202l43-19m111 20-44-20"/>
 </g>
-<g fill="#7df7ff" filter="url(#glow)"><circle cx="245" cy="145" r="8"/><circle cx="475" cy="145" r="8"/><circle cx="285" cy="215" r="7"/><circle cx="435" cy="215" r="7"/><circle cx="360" cy="326" r="9"/><circle cx="215" cy="287" r="7"/><circle cx="505" cy="287" r="7"/></g>
-<path d="M105 258c108 99 395 109 510-5" fill="none" stroke="#20d9f2" stroke-width="7" opacity=".85"/>
-<text x="360" y="470" text-anchor="middle" fill="#f3fbff" font-family="Arial,sans-serif" font-size="68" font-weight="800" letter-spacing="2">SOW <tspan fill="#12d8f1">IA</tspan></text>
+<g fill="#b9fbff" filter="url(#glow)"><circle cx="250" cy="126" r="7"/><circle cx="292" cy="91" r="7"/><circle cx="397" cy="72" r="7"/><circle cx="478" cy="114" r="7"/><circle cx="455" cy="205" r="7"/><circle cx="360" cy="209" r="8"/><circle cx="324" cy="181" r="6"/></g>
+<!-- Elegant AI profile -->
+<path d="M306 180c-8-34 7-71 38-91 32-21 79-13 101 16 14 18 19 41 16 64l-9 30 18 20c6 7 3 15-6 18l-17 5c-4 24-19 42-44 51l-2 30-77 0 12-45c-22-17-35-47-30-76z" fill="url(#silver)" stroke="#d7f7ff" stroke-width="3"/>
+<path d="M316 170c5-46 37-76 75-76 25 0 44 12 56 31-20-8-39-9-56-3-24 9-39 26-49 50-8 20-11 40-10 60-15-17-21-39-16-62z" fill="#07172e"/>
+<path d="M345 181c15-9 31-10 46-3" fill="none" stroke="#0b4b83" stroke-width="5" stroke-linecap="round"/>
+<path d="M398 213c10 6 21 6 31 0" fill="none" stroke="#0879b9" stroke-width="4" stroke-linecap="round"/>
+<circle cx="390" cy="190" r="7" fill="#16cfff" filter="url(#glow)"/>
+<path d="M316 179c-31-3-48 18-44 47 3 22 18 36 40 36" fill="none" stroke="url(#gold)" stroke-width="15"/>
+<circle cx="292" cy="222" r="44" fill="#06152b" stroke="url(#gold)" stroke-width="8"/>
+<circle cx="292" cy="222" r="34" fill="none" stroke="#1acfff" stroke-width="3" filter="url(#glow)"/>
+<text x="292" y="228" text-anchor="middle" fill="#f5fbff" font-family="Arial,sans-serif" font-size="15" font-weight="700">SOW IA</text>
+<path d="M320 275c-2 35 17 56 43 64" fill="none" stroke="url(#gold)" stroke-width="10" stroke-linecap="round"/>
+<path d="M360 318l-24 25 25-7 24 7z" fill="url(#gold)"/>
+<!-- Wordmark -->
+<text x="360" y="422" text-anchor="middle" font-family="Arial,sans-serif" font-size="82" font-weight="900" letter-spacing="3" fill="url(#silver)" stroke="#07182b" stroke-width="2" paint-order="stroke">SOW <tspan fill="url(#gold)">IA</tspan></text>
+<path d="M112 444H608" stroke="url(#gold)" stroke-width="2" opacity=".9"/>
+<text x="360" y="478" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" font-weight="600" letter-spacing="1.5" fill="#d9f5ff">VOTRE ASSISTANT IA INTELLIGENT</text>
 </svg>
