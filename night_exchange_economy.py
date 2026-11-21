@@ -161,6 +161,97 @@ def propose_exchange(match: dict, *, owner_approval_required: bool = True) -> Pr
     )
 
 
+
+# Shared, versioned skill vocabulary. Unknown labels remain custom and never
+# receive an inferred category or trust level.
+SKILL_CATALOG_VERSION = "1.0.0"
+_SKILL_DEFINITIONS = (
+    ("ai.text_generation", "IA et automatisation", "ai_automation", "standard",
+     ("rédaction assistée", "ai writing", "text generation")),
+    ("ai.translation", "Traduction", "translation_localization", "standard",
+     ("translation", "localisation", "localization")),
+    ("software.api_integration", "Intégration API", "software_development", "elevated",
+     ("api integration", "integration api", "connecteurs api")),
+    ("software.testing", "Tests logiciels", "software_development", "standard",
+     ("software testing", "tests automatisés", "automated testing")),
+    ("data.analysis", "Analyse de données", "data_analytics", "elevated",
+     ("data analysis", "analyse de données", "data analytics")),
+    ("data.visualization", "Visualisation de données", "data_analytics", "standard",
+     ("data visualization", "visualisation de données", "dashboards")),
+    ("marketing.campaigns", "Campagnes marketing", "marketing_commerce", "elevated",
+     ("marketing campaigns", "campagnes publicitaires", "campaign management")),
+    ("creative.design", "Design graphique", "creative_production", "standard",
+     ("graphic design", "design graphique", "visual design")),
+    ("creative.video", "Production vidéo", "creative_production", "standard",
+     ("video production", "montage vidéo", "video editing")),
+    ("business.documents", "Traitement de documents", "business_operations", "elevated",
+     ("document processing", "traitement documentaire", "document management")),
+    ("business.reporting", "Rapports et tableaux de bord", "business_operations", "standard",
+     ("business reporting", "reporting", "rapports d'activité")),
+    ("research.web", "Recherche documentaire", "research_intelligence", "standard",
+     ("web research", "recherche web", "recherche documentaire")),
+    ("support.customer", "Assistance client", "customer_support", "elevated",
+     ("customer support", "service client", "customer service")),
+)
+_RESTRICTED_SERVICE_LABELS = frozenset({
+    "payment processing", "traitement des paiements", "money transfer",
+    "transfert d'argent", "custody", "conservation de fonds", "lending",
+    "credit issuance", "octroi de crédit", "investment advice",
+    "conseil en investissement", "securities trading", "trading de titres",
+    "gambling", "jeux d'argent",
+})
+
+
+def _normalize_skill_label(value):
+    if not isinstance(value, str):
+        return ""
+    return " ".join(value.split()).casefold()
+
+
+def list_skill_catalog():
+    """Return a detached, read-only-friendly view of the shared skill vocabulary."""
+    return [
+        {
+            "skill_id": skill_id,
+            "label_fr": label,
+            "category_id": category,
+            "risk_level": risk,
+            "catalog_version": SKILL_CATALOG_VERSION,
+            "aliases": list(aliases),
+            "human_approval_required": True,
+        }
+        for skill_id, label, category, risk, aliases in _SKILL_DEFINITIONS
+    ]
+
+
+def resolve_service_skill(value):
+    """Resolve a declared label to a known skill; never guess unknown labels."""
+    normalized = _normalize_skill_label(value)
+    if not normalized or normalized in _RESTRICTED_SERVICE_LABELS:
+        return None
+    for skill_id, label, category, risk, aliases in _SKILL_DEFINITIONS:
+        accepted = {_normalize_skill_label(label), _normalize_skill_label(skill_id)}
+        accepted.update(_normalize_skill_label(alias) for alias in aliases)
+        if normalized in accepted:
+            return {
+                "skill_id": skill_id,
+                "label_fr": label,
+                "category_id": category,
+                "risk_level": risk,
+                "catalog_version": SKILL_CATALOG_VERSION,
+                "human_approval_required": True,
+            }
+    return None
+
+
+def _services_compatible(requested, offered):
+    requested_skill = resolve_service_skill(requested)
+    offered_skill = resolve_service_skill(offered)
+    if requested_skill and offered_skill:
+        return requested_skill["skill_id"] == offered_skill["skill_id"], "canonical_skill"
+    return _normalize_skill_label(requested) == _normalize_skill_label(offered), "exact_custom"
+
+
 def _service_values(value):
     """Normalize service declarations supplied as text or a list of strings."""
     if isinstance(value, str):
@@ -200,8 +291,19 @@ def discover_service_partners(source_app_id: str, service: str,
         if record.get("status") != "approved" or record.get("enabled", True) is not True:
             continue
         offered = _service_values(record.get("services_offered"))
-        if requested_service not in offered:
+        compatible_services = [
+            (candidate, *_services_compatible(requested_service, candidate))
+            for candidate in offered
+        ]
+        compatible_services = [
+            item for item in compatible_services if item[1]
+        ]
+        if not compatible_services:
             continue
+        matched_service, _, match_type = sorted(
+            compatible_services, key=lambda item: (item[2] != "canonical_skill", item[0])
+        )[0]
+        resolved_skill = resolve_service_skill(requested_service)
         app_name = record.get("app_name")
         if not isinstance(app_name, str) or not app_name.strip():
             app_name = "Application sans nom"
@@ -223,8 +325,14 @@ def discover_service_partners(source_app_id: str, service: str,
             "country": " ".join(country.split())[:100],
             "categories": safe_categories,
             "service": requested_service,
-            "match_type": "service_exact",
-            "match_reasons": ["Le service recherché correspond exactement à un service déclaré."],
+            "matched_service": matched_service,
+            "match_type": match_type,
+            "skill": resolved_skill,
+            "match_reasons": [
+                "Correspondance par compétence normalisée."
+                if match_type == "canonical_skill"
+                else "Correspondance exacte sur un service personnalisé."
+            ],
             "listing_status": "approved",
             "verification_state": (
                 "verified" if record.get("verification_status") == "verified"
