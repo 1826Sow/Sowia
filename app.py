@@ -6014,7 +6014,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
         nex_is_admin = isinstance(nex_metadata, dict) and (
             nex_metadata.get("sowia_admin") is True or nex_metadata.get("role") == "admin"
         )
-        nex_tabs = ["🌐 Annuaire approuvé", "🤝 Matching SOWIA", "🏷️ Inscrire une application", "📂 Mes applications", "🌍 Horloge mondiale", "💡 Opportunités intelligentes", "☀️ Rapport matinal", "📨 Propositions"]
+        nex_tabs = ["🌐 Annuaire approuvé", "🤝 Matching SOWIA", "🏷️ Inscrire une application", "📂 Mes applications", "🌍 Horloge mondiale", "💡 Opportunités intelligentes", "☀️ Rapport matinal", "📨 Propositions", "📑 Registre commercial"]
         if nex_is_admin:
             nex_tabs.extend(["🛡️ Modération", "🔐 Validation des intégrations"])
         nex_tab_views = st.tabs(nex_tabs)
@@ -6372,8 +6372,210 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 st.error("Le module de propositions n’est pas disponible.")
                 st.caption(f"Diagnostic : {type(exc).__name__}")
 
+        with nex_tab_views[8]:
+            st.markdown("#### Registre commercial NIGHT EXCHANGE")
+            st.caption("Créez des contrats entre applications professionnelles approuvées, suivez leur progression et consultez leur historique. Les paiements ne sont pas encaissés dans ce registre.")
+            try:
+                own_deal_apps = [
+                    row for row in cloud_storage.list_my_night_exchange_apps(
+                        supabase_client, current_user, workspace_id="professional", limit=200
+                    ) if row.get("status") == "approved"
+                ]
+                approved_deal_apps = cloud_storage.list_approved_night_exchange_apps(
+                    supabase_client, current_user, limit=200
+                )
+                own_deal_labels = {
+                    f"{row['app_name']} · {row['country']}": row for row in own_deal_apps
+                }
+                own_deal_ids = {str(row.get("id")) for row in own_deal_apps}
+                partner_deal_labels = {
+                    f"{row['app_name']} · {row['country']}": row
+                    for row in approved_deal_apps
+                    if str(row.get("id")) not in own_deal_ids
+                }
+                if own_deal_labels and partner_deal_labels:
+                    with st.form("nex_commercial_deal_form", clear_on_submit=False):
+                        selected_creator_app = st.selectbox(
+                            "Votre application approuvée", list(own_deal_labels),
+                            key="nex_deal_creator_app",
+                        )
+                        selected_counterparty_app = st.selectbox(
+                            "Application partenaire", list(partner_deal_labels),
+                            key="nex_deal_counterparty_app",
+                        )
+                        deal_title = st.text_input(
+                            "Titre du contrat", max_chars=160, key="nex_deal_title",
+                        )
+                        deal_description = st.text_area(
+                            "Description et conditions", max_chars=4000,
+                            key="nex_deal_description",
+                        )
+                        deal_kind_label = st.selectbox(
+                            "Nature de l'accord",
+                            ["Prestation rémunérée", "Échange non monétaire"],
+                            key="nex_deal_kind",
+                        )
+                        deal_amount = st.number_input(
+                            "Montant convenu (EUR)", min_value=0.0, step=0.01,
+                            key="nex_deal_amount",
+                            disabled=deal_kind_label == "Échange non monétaire",
+                        )
+                        deal_commission = st.number_input(
+                            "Commission prévue (points de base)", min_value=0,
+                            max_value=10000, step=25, key="nex_deal_commission",
+                            disabled=deal_kind_label == "Échange non monétaire",
+                            help="100 points de base = 1 %. Il s'agit d'une prévision, pas d'un revenu encaissé.",
+                        )
+                        create_deal_clicked = st.form_submit_button(
+                            "Créer la proposition de contrat", type="primary",
+                            use_container_width=True,
+                        )
+                    if create_deal_clicked:
+                        try:
+                            import hashlib
+                            request_signature = hashlib.sha256(
+                                "|".join([
+                                    str(own_deal_labels[selected_creator_app]["id"]),
+                                    str(partner_deal_labels[selected_counterparty_app]["id"]),
+                                    deal_title.strip(),
+                                    deal_description,
+                                    str(deal_kind_label),
+                                    str(deal_amount),
+                                    str(deal_commission),
+                                ]).encode("utf-8")
+                            ).hexdigest()
+                            create_key_name = "nex_deal_create_key_" + request_signature
+                            create_key = st.session_state.setdefault(
+                                create_key_name, str(uuid.uuid4())
+                            )
+                            deal_kind_value = (
+                                "non_monetary" if deal_kind_label == "Échange non monétaire"
+                                else "monetary"
+                            )
+                            created_deal_id = cloud_storage.create_night_exchange_deal(
+                                supabase_client, current_user,
+                                own_deal_labels[selected_creator_app]["id"],
+                                partner_deal_labels[selected_counterparty_app]["id"],
+                                deal_title, deal_description, deal_kind_value,
+                                "0.00" if deal_kind_value == "non_monetary" else str(deal_amount),
+                                "EUR", 0 if deal_kind_value == "non_monetary" else int(deal_commission),
+                                create_key,
+                            )
+                            st.session_state.pop(create_key_name, None)
+                            st.success("Proposition de contrat créée et journalisée.")
+                            st.rerun()
+                        except Exception as exc:
+                            st.error("La proposition de contrat n’a pas été créée.")
+                            st.caption("Diagnostic : " + type(exc).__name__)
+                else:
+                    st.info("Pour créer un contrat, il faut une application professionnelle approuvée à votre nom et une application partenaire approuvée appartenant à un autre compte.")
+
+                st.markdown("#### Mes contrats")
+                current_deal_user_id = str(cloud_storage._user_id(current_user))
+                my_commercial_deals = cloud_storage.list_my_night_exchange_deals(
+                    supabase_client, current_user, limit=100
+                )
+                if not my_commercial_deals:
+                    st.info("Aucun contrat commercial enregistré pour le moment.")
+                deal_app_names = {
+                    str(row.get("id")): row.get("app_name") or "Application"
+                    for row in own_deal_apps + approved_deal_apps
+                }
+                deal_status_labels = {
+                    "proposed": "Proposition en attente",
+                    "accepted": "Accepté",
+                    "in_progress": "En cours",
+                    "completed": "Terminé",
+                    "cancelled": "Annulé",
+                    "disputed": "Contesté",
+                }
+                for deal in my_commercial_deals:
+                    deal_id = str(deal.get("id"))
+                    is_creator = str(deal.get("created_by")) == current_deal_user_id
+                    is_counterparty = str(deal.get("counterparty_user_id")) == current_deal_user_id
+                    creator_app_name = deal_app_names.get(str(deal.get("creator_app_id")), "Application émettrice")
+                    counterparty_app_name = deal_app_names.get(str(deal.get("counterparty_app_id")), "Application partenaire")
+                    with st.container(border=True):
+                        st.markdown(
+                            f"**{deal.get('title') or 'Contrat'}** · "
+                            f"{deal_status_labels.get(deal.get('status'), deal.get('status'))}"
+                        )
+                        st.caption(f"{creator_app_name} ↔ {counterparty_app_name}")
+                        if deal.get("deal_kind") == "non_monetary":
+                            st.write("Échange non monétaire")
+                        else:
+                            st.write(
+                                f"Montant convenu : {deal.get('agreed_amount')} {deal.get('currency')} · "
+                                f"Commission prévue : {deal.get('planned_commission')} {deal.get('currency')}"
+                            )
+                        if deal.get("description"):
+                            st.write(deal.get("description"))
+                        actions = []
+                        status = deal.get("status")
+                        if status == "proposed" and is_counterparty:
+                            actions.append(("accepted", "Accepter"))
+                        if status == "proposed" and is_creator:
+                            actions.append(("cancelled", "Annuler"))
+                        if status == "accepted":
+                            actions.extend([("in_progress", "Démarrer"), ("cancelled", "Annuler")])
+                        if status == "in_progress" and is_counterparty:
+                            actions.append(("completed", "Confirmer la livraison"))
+                        if status in {"proposed", "accepted", "in_progress"}:
+                            actions.append(("disputed", "Ouvrir un litige"))
+                        if actions:
+                            action_cols = st.columns(min(len(actions), 3))
+                            for index, (target_status, action_label) in enumerate(actions):
+                                with action_cols[index % len(action_cols)]:
+                                    if st.button(
+                                        action_label,
+                                        key=f"nex_deal_action_{deal_id}_{target_status}",
+                                        use_container_width=True,
+                                    ):
+                                        try:
+                                            key_name = f"nex_deal_transition_key_{deal_id}_{target_status}"
+                                            transition_key = st.session_state.setdefault(
+                                                key_name, str(uuid.uuid4())
+                                            )
+                                            cloud_storage.transition_night_exchange_deal(
+                                                supabase_client, current_user, deal_id,
+                                                target_status, transition_key,
+                                            )
+                                            st.session_state.pop(key_name, None)
+                                            st.success("État du contrat actualisé et événement journalisé.")
+                                            st.rerun()
+                                        except Exception as exc:
+                                            st.error("Cette transition a été refusée ou n’a pas pu être confirmée.")
+                                            st.caption("Diagnostic : " + type(exc).__name__)
+                        with st.expander("Historique du contrat"):
+                            try:
+                                deal_events = cloud_storage.list_night_exchange_deal_events(
+                                    supabase_client, current_user, deal_id, limit=100
+                                )
+                                if not deal_events:
+                                    st.info("Aucun événement disponible.")
+                                for event in deal_events:
+                                    event_payload = event.get("event_payload") or {}
+                                    if event.get("event_type") == "status_changed":
+                                        event_label = (
+                                            f"{deal_status_labels.get(event_payload.get('from'), event_payload.get('from'))}"
+                                            f" → {deal_status_labels.get(event_payload.get('to'), event_payload.get('to'))}"
+                                        )
+                                    elif event.get("event_type") == "proposal_created":
+                                        event_label = "Proposition créée"
+                                    else:
+                                        event_label = str(event.get("event_type"))
+                                    st.caption(f"{event.get('created_at')} · {event_label}")
+                                    if event_payload.get("note"):
+                                        st.write(event_payload.get("note"))
+                            except Exception as exc:
+                                st.error("Historique non disponible.")
+                                st.caption("Diagnostic : " + type(exc).__name__)
+            except Exception as exc:
+                st.error("Le registre commercial n’est pas encore disponible.")
+                st.caption("Vérifiez que les migrations NIGHT EXCHANGE correspondantes ont été appliquées sur un environnement de test. Diagnostic : " + type(exc).__name__)
+
         if nex_is_admin:
-            with nex_tab_views[8]:
+            with nex_tab_views[9]:
                 st.markdown("#### Console de modération des applications")
                 st.caption("Les décisions de modération sont contrôlées par une fonction SQL qui vérifie le rôle administrateur signé.")
                 try:
@@ -6410,7 +6612,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
                     st.error("La console de modération n’est pas disponible. Vérifiez la migration et les droits administrateur Supabase.")
                     st.caption(f"Diagnostic : {type(exc).__name__}")
 
-            with nex_tab_views[9]:
+            with nex_tab_views[10]:
                 st.markdown("#### Validation administrative des intégrations")
                 st.caption("Cette file ne contient que les propositions acceptées dont l’intégration attend une décision administrative. La validation SQL contrôle également les deux applications.")
                 try:
