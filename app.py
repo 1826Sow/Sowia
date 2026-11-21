@@ -1619,8 +1619,19 @@ if page == "Accueil":
             ("Aide", "Aide et utilisation"),
         ]),
     ]
+    home_folder_art = {
+        "👤 01 · Personnel & documents": "assets/categories/personnel.svg",
+        "🌐 02 · Écosystème mondial": "assets/categories/global.svg",
+        "🤝 03 · Entreprises & opportunités": "assets/categories/business.svg",
+        "🧠 04 · Intelligence & stratégie": "assets/categories/intelligence.svg",
+        "💶 05 · SOW IA FINANCIAL HUB": "assets/categories/finance.svg",
+        "🛡️ 06 · Administration & assistance": "assets/categories/admin.svg",
+    }
     for folder_title, folder_items in home_folders:
         with st.expander(folder_title, expanded=False):
+            art_cols = st.columns([1, 2, 1])
+            with art_cols[1]:
+                st.image(home_folder_art[folder_title], use_container_width=True)
             folder_cols = st.columns(2)
             for index, (destination, description) in enumerate(folder_items):
                 with folder_cols[index % 2]:
