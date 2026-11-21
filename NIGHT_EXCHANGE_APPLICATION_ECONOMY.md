@@ -271,3 +271,15 @@ This is a tested-in-source domain prototype, not a live persistent mission regis
 - a separate payment and legal review before any paid settlement feature.
 
 No production schema, secrets, existing workflows or payment settings were changed by this prototype. Do not claim live commercial missions, market share or recognized revenue until the persistent integration is deployed and verified.
+
+## 14. Persistent mission register — migration prepared, deployment gated
+
+An additive Supabase migration is prepared at `supabase/migrations/20261121100000_sowia_nex_missions.sql`. It creates:
+- `sowia_nex_missions`: mission parties, linked approved professional app listings, structured quote terms, SHA-256 terms digest, bilateral approval digests and guarded lifecycle state;
+- `sowia_nex_mission_events`: append-only lifecycle audit events.
+
+Authenticated clients receive participant-only read access. Direct client writes to both tables are revoked. Creation, bilateral approval and lifecycle transitions are exposed only through narrowly scoped security-definer RPCs. The database checks the authenticated caller, ownership of the requesting app, approval of both listings, distinct owners, quote bounds, exact terms digest and actor/state transition rules. The RPCs never move money or execute partner code.
+
+Client wrappers were added to `cloud_storage.py` for creating, approving, transitioning, listing missions and reading their audit events. Unit tests cover RPC selection, input validation and authentication preconditions.
+
+**Deployment is not performed by this commit.** The migration must first be reviewed and applied only to a dedicated disposable Supabase test project, then exercised with two real authenticated test owners and RLS-isolation tests. Production deployment remains blocked until that verification passes. Do not add production secrets or change existing Supabase settings to enable this work.
