@@ -6432,8 +6432,21 @@ elif page == "SOWIA NIGHT EXCHANGE":
                         )
                     if create_deal_clicked:
                         try:
+                            import hashlib
+                            request_signature = hashlib.sha256(
+                                "|".join([
+                                    str(own_deal_labels[selected_creator_app]["id"]),
+                                    str(partner_deal_labels[selected_counterparty_app]["id"]),
+                                    deal_title.strip(),
+                                    deal_description,
+                                    str(deal_kind_label),
+                                    str(deal_amount),
+                                    str(deal_commission),
+                                ]).encode("utf-8")
+                            ).hexdigest()
+                            create_key_name = "nex_deal_create_key_" + request_signature
                             create_key = st.session_state.setdefault(
-                                "nex_deal_create_idempotency_key", str(uuid.uuid4())
+                                create_key_name, str(uuid.uuid4())
                             )
                             deal_kind_value = (
                                 "non_monetary" if deal_kind_label == "Échange non monétaire"
@@ -6448,7 +6461,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
                                 "EUR", 0 if deal_kind_value == "non_monetary" else int(deal_commission),
                                 create_key,
                             )
-                            st.session_state.pop("nex_deal_create_idempotency_key", None)
+                            st.session_state.pop(create_key_name, None)
                             st.success("Proposition de contrat créée et journalisée.")
                             st.rerun()
                         except Exception as exc:
