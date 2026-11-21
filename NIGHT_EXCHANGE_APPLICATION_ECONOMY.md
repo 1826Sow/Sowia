@@ -165,3 +165,6 @@ These changes remain read-only. They do not contact partner applications, publis
 The first versioned skill vocabulary is `1.0.0`. It defines canonical identifiers, French display labels, domain categories, aliases and a risk tier for a deliberately limited set of common capabilities. Matching resolves known aliases to the same canonical skill identifier; unknown custom services are matched only by exact normalized text and are never guessed into a category.
 
 Every catalogue entry requires human approval before any future execution. The initial catalogue excludes regulated or high-risk financial services such as payment processing, money transfers, custody, lending, investment advice, securities trading and gambling. The catalogue is a code-level, read-only vocabulary at this stage; it does not change database schemas or grant a capability to any application. The partner results show the normalized skill and its declared control tier when a known skill is matched.
+
+
+The discovery matcher also rejects explicitly restricted service labels rather than allowing them to fall through as exact custom services. This prevents excluded payment, money-transfer, custody, lending, investment-advice, securities-trading and gambling labels from entering the initial partner matching flow.
