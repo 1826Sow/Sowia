@@ -954,7 +954,8 @@ def create_night_exchange_mission(
         raise ValueError("Le montant du devis doit être positif.")
     if not provider_app_id or not requester_app_id:
         raise ValueError("Deux applications sont requises.")
-    if not isinstance(currency, str) or not __import__("re").fullmatch(r"[A-Za-z]{3}", currency.strip()):
+    import re
+    if not isinstance(currency, str) or not re.fullmatch(r"[A-Za-z]{3}", currency.strip()):
         raise ValueError("Code devise ISO à trois lettres attendu.")
     if due_at is not None and not isinstance(due_at, str):
         raise ValueError("L'échéance doit être une date ISO ou être vide.")
