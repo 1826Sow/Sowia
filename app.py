@@ -1242,25 +1242,31 @@ if privacy_screen:
 
 with st.sidebar:
     active_page = st.session_state.get("page_nav", "Hub SOWIA")
-    if "nav_category" not in st.session_state:
-        st.session_state.nav_category = category_for_page(active_page)
-    else:
-        st.session_state.nav_category = category_for_page(active_page)
-    st.selectbox(
-        "📁 Dossier de navigation",
-        list(NAV_GROUPS.keys()),
-        key="nav_category",
-        format_func=lambda value: translate_ui(value.replace("SOWIA", "SOW IA"), language),
-        on_change=choose_navigation_category,
-    )
-    selected_pages = NAV_GROUPS[st.session_state.nav_category]
-    page = st.selectbox(
-        "🧭 Outil à ouvrir",
-        selected_pages,
-        key="page_nav",
-        format_func=lambda value: translate_ui(value.replace("SOWIA", "SOW IA"), language),
-        on_change=sync_navigation_category,
-    )
+    st.session_state.nav_category = category_for_page(active_page)
+    st.markdown("### 🧭 Navigation SOW IA")
+    st.caption("Toutes les catégories et leurs rubriques sont accessibles ici.")
+    for category_index, (category_name, category_pages) in enumerate(NAV_GROUPS.items()):
+        with st.expander(
+            translate_ui(category_name.replace("SOWIA", "SOW IA"), language),
+            expanded=True,
+        ):
+            for page_index, page_name in enumerate(category_pages):
+                is_current_page = page_name == active_page
+                st.button(
+                    ("● " if is_current_page else "") + translate_ui(
+                        (
+                            "🌙 NIGHT EXCHANGE · Bourse aux applications"
+                            if page_name == "SOWIA NIGHT EXCHANGE"
+                            else page_name.replace("SOWIA", "SOW IA")
+                        ), language
+                    ),
+                    key=f"sowia_nav_item_{category_index}_{page_index}",
+                    on_click=go_to_page,
+                    args=(page_name,),
+                    use_container_width=True,
+                    type="primary" if is_current_page else "secondary",
+                )
+    page = st.session_state.get("page_nav", "Hub SOWIA")
 
 # Keep the current page synchronized after initial load and programmatic routes.
 if st.session_state.get("sowia_current_page") not in [item for group in NAV_GROUPS.values() for item in group]:
@@ -1760,7 +1766,7 @@ elif page == "Hub SOWIA":
         ("🧠 Continuer avec SOW IA", "Assistant IA", "Reprendre le travail avec l’assistant."),
         ("📄 Mes livrables & documents", "Mes documents", "Consulter les PDF et fichiers enregistrés."),
         ("🧪 Laboratoire PDF", "Analyse PDF", "Analyser un document ou poursuivre son traitement."),
-        ("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "Accéder à l’espace d’échanges de l’écosystème."),
+        ("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "La bourse internationale des applications et services numériques."),
     ]
     quick_cols = st.columns(2)
     for index, (label, destination, description) in enumerate(hub_quick_access):
@@ -1769,11 +1775,17 @@ elif page == "Hub SOWIA":
                 if destination == "SOWIA NIGHT EXCHANGE":
                     st.image("assets/sections/night-exchange.svg", use_container_width=True)
                 st.markdown(f"**{label.replace('SOWIA', 'SOW IA').replace('Sowia', 'SOW IA')}**")
+                if destination == "SOWIA NIGHT EXCHANGE":
+                    st.markdown("**BOURSE AUX APPLICATIONS**")
                 st.caption(description.replace("SOWIA", "SOW IA").replace("Sowia", "SOW IA"))
                 st.button("Ouvrir", key=f"hub_quick_{index}", use_container_width=True,
                           on_click=go_to_page, args=(destination,))
     st.image("assets/sections/final-tech.svg", use_container_width=True)
-    st.markdown("#### 🧪 Final Tech")
+    st.markdown(
+        '<style>.sowia-final-tech-title{font-size:clamp(2rem,6vw,3rem);font-weight:850;line-height:1.12;letter-spacing:.02em;margin:.35rem 0 .6rem;}</style>'
+        '<div class="sowia-final-tech-title">🧪 FINAL TECH</div>',
+        unsafe_allow_html=True,
+    )
     st.caption("Espace Final Tech — protocole de double approbation et contrôles associés.")
     st.link_button(
         "Consulter la documentation Final Tech",
@@ -6103,7 +6115,13 @@ elif page == "SOWIA GLOBAL TRUST":
 
 
 elif page == "SOWIA NIGHT EXCHANGE":
-    st.subheader("🌙 SOW IA NIGHT EXCHANGE")
+    st.markdown(
+        '<div style="font-size:clamp(1.8rem,5.5vw,2.7rem);font-weight:850;line-height:1.12;'
+        'margin:.25rem 0 .4rem;">🌙 NIGHT EXCHANGE</div>'
+        '<div style="font-size:clamp(1.25rem,4vw,1.8rem);font-weight:800;line-height:1.2;'
+        'margin-bottom:.6rem;">BOURSE AUX APPLICATIONS</div>',
+        unsafe_allow_html=True,
+    )
     st.caption("Place de marché nocturne internationale pour applications et services numériques.")
     st.image("assets/sections/night-exchange.svg", use_container_width=True)
     if not premium_active:

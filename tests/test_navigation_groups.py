@@ -28,6 +28,10 @@ def test_navigation_groups_keep_every_page_once_and_in_a_clear_folder():
 
 def test_final_tech_section_label_is_displayed_without_renaming_sowia():
     source = Path("app.py").read_text(encoding="utf-8")
-    assert 'st.markdown("#### 🧪 Final Tech")' in source
+    assert 'class="sowia-final-tech-title">🧪 FINAL TECH</div>' in source
+    assert "font-size:clamp(2rem,6vw,3rem)" in source
+    assert "NIGHT EXCHANGE · Bourse aux applications" in source
+    assert "**BOURSE AUX APPLICATIONS**" in source
+    assert "BOURSE AUX APPLICATIONS</div>" in source
     assert '"Consulter la documentation Final Tech"' in source
     assert 'APP_NAME = "SOW IA"' in Path("config.py").read_text(encoding="utf-8")
