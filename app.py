@@ -55,6 +55,7 @@ import sowia_business_card
 import project_registry_ui
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
+from memory_commands import parse_memory_command, find_memory_matches, find_exact_memory_matches
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
 from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_authenticated_session_state, logout_authenticated_session
 
@@ -2348,10 +2349,50 @@ elif page == "Assistant IA":
                 except Exception:
                     pass
         else:
-            # A cloud message must be persisted before invoking the AI. This avoids
-            # presenting a reply for a turn that cannot be recovered from history.
-            try:
-                save_app_message("user", prompt)
+            memory_command = parse_memory_command(prompt)
+            if memory_command is not None:
+                render_accessible_message("user", prompt)
+                try:
+                    if not cloud_mode or current_user is None:
+                        raise RuntimeError("Connexion Supabase requise pour gérer la mémoire persistante.")
+                    command_memories = get_app_memories()
+                    if memory_command["action"] == "recall":
+                        matches = find_memory_matches(command_memories, memory_command["query"])
+                        if matches:
+                            memory_reply = "Voici les informations retrouvées dans votre mémoire :\\n\\n" + "\\n".join(
+                                f"• {item['content']}" for item in matches[:5]
+                            )
+                            if len(matches) > 5:
+                                memory_reply += f"\\n\\n({len(matches) - 5} autre(s) résultat(s) non affiché(s).)"
+                        else:
+                            memory_reply = "Je n’ai trouvé aucune note correspondant à cette recherche dans votre mémoire."
+                    else:
+                        matches = find_exact_memory_matches(command_memories, memory_command["query"])
+                        if len(matches) == 1:
+                            target = matches[0]
+                            delete_app_memory(target["id"])
+                            remaining = get_app_memories()
+                            if any(str(item.get("id")) == str(target["id"]) for item in remaining):
+                                raise RuntimeError("La suppression n’a pas pu être vérifiée.")
+                            memory_reply = "La note correspondante a été supprimée de votre mémoire. Les autres notes sont conservées."
+                        elif len(matches) > 1:
+                            memory_reply = "Plusieurs notes correspondent à cette demande. Aucune n’a été supprimée. Précisez une expression plus distinctive."
+                        else:
+                            memory_reply = "Je n’ai trouvé aucune note correspondante ; rien n’a été supprimé."
+                    render_accessible_message("assistant", memory_reply)
+                    try:
+                        save_app_message("user", prompt)
+                        save_app_message("assistant", memory_reply)
+                    except Exception:
+                        st.caption("La commande mémoire a été exécutée, mais son échange n’a pas été entièrement ajouté à l’historique.")
+                except Exception as memory_error:
+                    memory_reply = "Je n’ai pas pu terminer cette commande mémoire. Aucune réussite n’est annoncée. Diagnostic : " + type(memory_error).__name__
+                    render_accessible_message("assistant", memory_reply)
+            else:
+                # A cloud message must be persisted before invoking the AI. This avoids
+                # presenting a reply for a turn that cannot be recovered from history.
+                try:
+                    save_app_message("user", prompt)
                 if not conversation_history and cloud_mode and current_user is not None:
                     try:
                         cloud_storage.touch_conversation(
