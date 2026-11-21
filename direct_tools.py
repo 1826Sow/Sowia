@@ -99,13 +99,13 @@ def convert_units(value, source_unit, target_unit):
     return result
 
 
-_NUMBER = r"[-+]?(?:\\d+(?:[.,]\\d*)?|[.,]\\d+)"
+_NUMBER = r"[-+]?(?:\d+(?:[.,]\d*)?|[.,]\d+)"
 _UNIT = r"[a-zA-Z°]+"
 _CONVERSION = re.compile(
-    rf"^\\s*(?:convert(?:is|ir|issez)?\\s+)?({_NUMBER})\\s*({_UNIT})\\s+(?:en|vers|to)\\s+({_UNIT})\\s*[?.!]*\\s*$",
+    rf"^\s*(?:convert(?:is|ir|issez)?\s+)?({_NUMBER})\s*({_UNIT})\s+(?:en|vers|to)\s+({_UNIT})\s*[?.!]*\s*$",
     re.IGNORECASE,
 )
-_CALC_PREFIX = re.compile(r"^\\s*(?:calcule(?:r|z)?|combien font|what is|calculate)\\s+(.+?)[?.!]*\\s*$", re.IGNORECASE)
+_CALC_PREFIX = re.compile(r"^\s*(?:calcule(?:r|z)?|combien font|what is|calculate)\s+(.+?)[?.!]*\s*$", re.IGNORECASE)
 
 
 def answer_direct_request(prompt):
