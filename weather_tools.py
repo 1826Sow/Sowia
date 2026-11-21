@@ -43,6 +43,9 @@ def extract_weather_location(prompt):
         weather_match = re.search(_WEATHER_WORDS + r"\s+(.+)$", text, flags=re.IGNORECASE)
         candidate = weather_match.group(1).strip() if weather_match else ""
     candidate = re.split(r"\s+" + _TIME_WORDS + r"\b", candidate, maxsplit=1, flags=re.IGNORECASE)[0]
+    # A time expression alone (for example « demain ») is not a city.
+    if candidate and re.fullmatch(_TIME_WORDS, candidate.strip(), flags=re.IGNORECASE):
+        return None
     candidate = re.sub(r"\b(?:quelle|quel|est|sera|fera|fait-il|fait|à|a|de|du|des|pour|in|for)\b", " ", candidate, flags=re.IGNORECASE)
     candidate = " ".join(candidate.strip(" .?!,:;()[]").split())
     if not candidate or len(candidate) > 100:
