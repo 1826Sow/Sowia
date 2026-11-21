@@ -6161,7 +6161,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
                     st.success("Candidature enregistrée. Son statut est « En attente de validation ».")
                     st.session_state["nex_last_created_at"] = datetime.now(timezone.utc).isoformat()
                 except Exception as exc:
-                    st.error("Enregistrement impossible. Si la migration n’a pas encore été appliquée, exécutez d’abord supabase_night_exchange_registry.sql dans Supabase.")
+                    st.error("Enregistrement impossible. Vérifiez le registre NIGHT EXCHANGE et l’application des migrations de sécurité et de missions Supabase.")
                     st.caption(f"Diagnostic : {type(exc).__name__}")
 
         with nex_tab_views[3]:
