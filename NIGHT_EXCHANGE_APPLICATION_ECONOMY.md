@@ -168,3 +168,21 @@ Every catalogue entry requires human approval before any future execution. The i
 
 
 The discovery matcher also rejects explicitly restricted service labels rather than allowing them to fall through as exact custom services. This prevents excluded payment, money-transfer, custody, lending, investment-advice, securities-trading and gambling labels from entering the initial partner matching flow.
+
+
+## 11. Anti-malicious application admission policy
+
+NIGHT EXCHANGE must not admit an application into partner discovery solely because a profile exists or a moderator marked its listing approved. The admission policy is fail-closed and requires all of the following independent evidence:
+
+1. Listing moderation approval.
+2. Verified identity of the accountable owner or publisher.
+3. Verified control of the submitted application and its declared publisher identity.
+4. A passed security review of the application package, permissions and declared endpoints.
+5. A verified publisher signature and integrity check for the submitted build.
+6. The application is enabled and not security-suspended.
+
+Missing, unknown, expired or failed evidence means the application is excluded from discovery. A security suspension immediately makes it ineligible. Re-verification is required after a material application update or a change in publisher identity, signing key or requested permissions.
+
+The admission evaluator added to the code is a fail-closed policy gate only. It does not itself verify a real-world identity, inspect binaries, validate a cryptographic signature, scan for malware or prove runtime safety. Those checks require a trusted onboarding service, isolated package-analysis infrastructure, a controlled signing/attestation process, server-side enforcement and operational security review. Until those systems exist and their evidence is stored and independently verified, applications cannot be represented as security-cleared. This is intentionally safer than trusting self-declared metadata.
+
+Additional planned controls before any connector execution: sandboxing, strict network egress allowlists, least-privilege short-lived credentials, per-task scopes, secret isolation, runtime monitoring, revocation, incident response and a platform-wide kill switch. No connector execution or payments are enabled by this policy change.
