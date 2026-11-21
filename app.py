@@ -46,6 +46,7 @@ import financial_ledger
 import decision_benchmark_ui
 import sowia_prioritization
 import sowia_night_exchange
+import night_exchange_economy
 import sowia_global_id
 import sowia_global_directory
 import sowia_global_connect
@@ -6507,6 +6508,68 @@ elif page == "Bourse aux applications":
                     ]).casefold()
                 ]
             st.metric("Applications approuvées affichées", len(market_apps))
+            with st.expander("🤖 Découverte entre applications — simulation", expanded=False):
+                st.caption(
+                    "Choisissez une application et l’un de ses besoins déclarés. "
+                    "SOW IA recherche les applications approuvées qui proposent exactement ce service. "
+                    "Simulation en lecture seule : aucun agent n’est contacté, aucun ordre n’est publié et aucun paiement n’est déclenché."
+                )
+                if market_apps:
+                    source_labels = {
+                        f"{item.get('app_name') or 'Application'} — {item.get('country') or 'Pays non renseigné'} [{str(item.get('id'))[:8]}]": item
+                        for item in market_apps
+                    }
+                    source_label = st.selectbox(
+                        "Application initiatrice",
+                        list(source_labels),
+                        key="nex_economy_source_app",
+                    )
+                    source_record = source_labels[source_label]
+                    wanted_services = sorted({
+                        " ".join(part.casefold().split())
+                        for part in str(source_record.get("services_wanted") or "")
+                            .replace(";", ",").replace("\\n", ",").split(",")
+                        if part.strip()
+                    })
+                    if wanted_services:
+                        selected_service = st.selectbox(
+                            "Service recherché par cette application",
+                            wanted_services,
+                            key="nex_economy_service",
+                        )
+                        if st.button(
+                            "Rechercher des applications partenaires",
+                            key="nex_economy_discover",
+                            use_container_width=True,
+                        ):
+                            try:
+                                service_matches = night_exchange_economy.discover_service_partners(
+                                    str(source_record.get("id") or ""),
+                                    selected_service,
+                                    market_apps,
+                                )
+                                st.session_state["nex_economy_last_matches"] = service_matches
+                                st.session_state["nex_economy_last_source"] = source_label
+                                st.session_state["nex_economy_last_service"] = selected_service
+                            except (ValueError, TypeError):
+                                st.error("La recherche de partenaires n’a pas pu être effectuée.")
+                    else:
+                        st.info("Cette application n’a déclaré aucun service recherché dans sa fiche.")
+                    previous_matches = st.session_state.get("nex_economy_last_matches")
+                    if previous_matches is not None:
+                        st.caption(
+                            "Résultats de la simulation : "
+                            + str(st.session_state.get("nex_economy_last_service") or "")
+                        )
+                        if not previous_matches:
+                            st.info("Aucune application approuvée ne propose exactement ce service pour le moment.")
+                        for partner in previous_matches:
+                            st.write(
+                                "**" + str(partner.get("app_name") or "Application partenaire")
+                                + "** — " + str(partner.get("country") or "Pays non renseigné")
+                            )
+                else:
+                    st.info("Aucune application approuvée n’est disponible pour lancer une simulation.")
             if not market_apps:
                 st.info("Aucune application approuvée ne correspond à ces filtres pour le moment.")
             else:
