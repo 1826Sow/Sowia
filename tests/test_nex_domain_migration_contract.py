@@ -51,4 +51,3 @@ def test_rpc_wrappers_are_invoker_and_service_role_only():
     assert "grant execute on function public.sowia_consume_nex_domain_challenge" in sql
     assert "to service_role" in sql
     assert "grant execute on function public.sowia_issue_nex_domain_challenge(uuid, text, bytea, integer) to authenticated" not in sql
-}
