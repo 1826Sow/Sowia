@@ -12,10 +12,10 @@ def _normalize(value):
 def parse_memory_command(message):
     """Recognize explicit recall/forget commands; ordinary chat is left untouched."""
     text = str(message or "").strip()
-    lowered = text.casefold()
+    lowered = _normalize(text)
     commands = (
-        ("forget", ("oublie dans ma memoire", "oublie de ma memoire", "oublie cette note", "oublie :")),
-        ("recall", ("retrouve dans ma memoire", "cherche dans ma memoire", "recherche dans ma memoire", "qu'ai-je memorise sur", "qu’est-ce que j’ai memorise sur", "rappelle-moi ce que tu sais sur")),
+        ("forget", ("oublie dans ma memoire", "oublie de ma memoire", "oublie cette note", "oublie")),
+        ("recall", ("retrouve dans ma memoire", "cherche dans ma memoire", "recherche dans ma memoire", "qu ai je memorise sur", "qu est ce que j ai memorise sur", "rappelle moi ce que tu sais sur")),
     )
     matches = []
     for action, markers in commands:
