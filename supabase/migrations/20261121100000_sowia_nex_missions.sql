@@ -2,7 +2,52 @@
 -- Additive only. No payment processing, settlement, or third-party execution.
 begin;
 
-create extension if not exists pgcrypto with schema extensions;
+create extension if not exists pgcrypto;
+
+-- Verification evidence is admin-controlled. Partner owners cannot self-certify.
+alter table public.sowia_night_exchange_apps
+    add column if not exists owner_verification_status text not null default 'unverified'
+        check (owner_verification_status in ('unverified','verified','rejected')),
+    add column if not exists application_verification_status text not null default 'unverified'
+        check (application_verification_status in ('unverified','verified','rejected')),
+    add column if not exists security_review_status text not null default 'pending'
+        check (security_review_status in ('pending','passed','failed')),
+    add column if not exists publisher_signature_status text not null default 'unverified'
+        check (publisher_signature_status in ('unverified','verified','revoked'));
+
+create or replace function public.sowia_nex_guard_app_listing()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $
+declare
+    is_admin boolean := (
+        coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') = 'admin'
+        or coalesce(auth.jwt() -> 'app_metadata' ->> 'sowia_admin', '') = 'true'
+    );
+begin
+    if tg_op = 'INSERT' then
+        new.status := 'pending';
+        new.verified_at := null;
+        new.moderation_note := null;
+        new.owner_verification_status := 'unverified';
+        new.application_verification_status := 'unverified';
+        new.security_review_status := 'pending';
+        new.publisher_signature_status := 'unverified';
+    elsif not is_admin then
+        new.status := 'pending';
+        new.verified_at := null;
+        new.moderation_note := null;
+        new.owner_verification_status := 'unverified';
+        new.application_verification_status := 'unverified';
+        new.security_review_status := 'pending';
+        new.publisher_signature_status := 'unverified';
+    end if;
+    new.updated_at := now();
+    return new;
+end;
+$;
 
 create table if not exists public.sowia_nex_missions (
     id uuid primary key default gen_random_uuid(),
@@ -93,7 +138,7 @@ create or replace function public.sowia_nex_create_mission(
 returns uuid
 language plpgsql
 security definer
-set search_path = pg_catalog, extensions, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare
     v_actor uuid := auth.uid();
@@ -124,14 +169,22 @@ begin
 
     select user_id, status into v_requester_app_owner, v_requester_app_status
       from public.sowia_night_exchange_apps
-     where id = p_requester_app_id and workspace_id = 'professional';
+     where id = p_requester_app_id and workspace_id = 'professional'
+       and owner_verification_status = 'verified'
+       and application_verification_status = 'verified'
+       and security_review_status = 'passed'
+       and publisher_signature_status = 'verified';
     if not found or v_requester_app_owner <> v_actor or v_requester_app_status <> 'approved' then
         raise exception 'Application demandeuse non autorisée ou non approuvée' using errcode = '42501';
     end if;
 
     select user_id, status into v_provider_user, v_provider_app_status
       from public.sowia_night_exchange_apps
-     where id = p_provider_app_id and workspace_id = 'professional';
+     where id = p_provider_app_id and workspace_id = 'professional'
+       and owner_verification_status = 'verified'
+       and application_verification_status = 'verified'
+       and security_review_status = 'passed'
+       and publisher_signature_status = 'verified';
     if not found or v_provider_app_status <> 'approved' or v_provider_user = v_actor then
         raise exception 'Application prestataire non approuvée ou propriétaire identique' using errcode = '42501';
     end if;
@@ -144,7 +197,7 @@ begin
         'currency', upper(btrim(p_currency)),
         'due_at', p_due_at
     );
-    v_hash := encode(extensions.digest(convert_to(v_terms::text, 'UTF8'), 'sha256'), 'hex');
+    v_hash := encode(public.digest(convert_to(v_terms::text, 'UTF8'), 'sha256'), 'hex');
 
     insert into public.sowia_nex_missions (
         requester_user_id, provider_user_id, requester_app_id, provider_app_id,
