@@ -370,3 +370,29 @@ def discover_service_partners(source_app_id: str, service: str,
             "simulation": True,
         })
     return sorted(partners, key=lambda item: (item["app_name"].casefold(), item["app_id"]))
+
+def summarize_market_snapshot(app_records: Iterable[dict]) -> dict:
+    """Return transparent catalogue activity counts; never infer revenue or market share."""
+    records = [row for row in app_records if isinstance(row, dict)]
+    providers = 0
+    requesters = 0
+    services = set()
+    countries = set()
+    for row in records:
+        offered = _service_values(row.get("services_offered"))
+        wanted = _service_values(row.get("services_wanted"))
+        providers += bool(offered)
+        requesters += bool(wanted)
+        services.update(offered)
+        country = row.get("country")
+        if isinstance(country, str) and country.strip():
+            countries.add(" ".join(country.split()).casefold())
+    return {
+        "listed_applications": len(records),
+        "service_providers": providers,
+        "applications_with_needs": requesters,
+        "distinct_declared_services": len(services),
+        "countries_represented": len(countries),
+        "market_share_available": False,
+        "revenue_available": False,
+    }
