@@ -65,6 +65,24 @@ class NightExchangeLedgerMigrationTests(unittest.TestCase):
         )
         self.assertIn("planned_commission is not recognized revenue", self.sql)
 
+    def test_clients_cannot_update_deal_state_or_event_history(self):
+        self.assertRegex(
+            self.sql,
+            r"grant select, insert on public\\.sowia_nex_deals to authenticated",
+        )
+        self.assertRegex(
+            self.sql,
+            r"grant select, insert on public\\.sowia_nex_deal_events to authenticated",
+        )
+        self.assertNotRegex(
+            self.sql,
+            r"grant [^;]*\\bupdate\\b[^;]* on public\\.sowia_nex_(?:deals|deal_events) to authenticated",
+        )
+        self.assertNotRegex(
+            self.sql,
+            r"grant [^;]*\\bdelete\\b[^;]* on public\\.sowia_nex_(?:deals|deal_events) to authenticated",
+        )
+
     def test_no_public_or_anonymous_table_access(self):
         self.assertIn("revoke all on public.sowia_nex_deals from anon, authenticated", self.sql)
         self.assertIn("revoke all on public.sowia_nex_deal_events from anon, authenticated", self.sql)
