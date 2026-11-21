@@ -22,7 +22,7 @@ Empêcher qu'une application tierce s'inscrive en se faisant passer pour une mar
 ## État de cette livraison
 Le module `sowia_partner_verification.py` fournit des règles Python testables pour normaliser un domaine, émettre un défi TXT, interroger un résolveur DNS-over-HTTPS fixe côté serveur (Cloudflare, délai borné, redirections désactivées) et vérifier la réponse DNS. Les tests couvrent les domaines invalides, l'usurpation de compte, les preuves incorrectes, l'expiration et le rejeu.
 
-**Ce n'est pas encore une vérification en production.** Le module ne contacte pas le DNS et n'est pas relié à l'interface, à Supabase ou à la modération.
+**Ce n'est pas encore une vérification en production.** Le module contient désormais un résolveur DNS-over-HTTPS côté serveur, à endpoint fixe, avec délai borné et redirections désactivées. Cette fonction est testable, mais elle n'est pas encore appelée par l'interface ni reliée à la persistance Supabase ou à la modération. La preuve DNS seule ne consomme pas le défi : la consommation doit passer par le RPC protégé, après validation de la réponse DNS.
 
 Une migration préparatoire est maintenant proposée dans `supabase/migrations/20261121190000_night_exchange_domain_challenges.sql`. Elle prévoit :
 - un schéma non exposé `sowia_private`, inaccessible aux rôles clients ;
