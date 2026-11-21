@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - android/sowia-permanent-signing-20261121
+      - android/fix-login-pdf-navigation-20261121
     paths:
       - '.github/workflows/android-permanent-release.yml'
       - 'android/**'
@@ -99,7 +100,18 @@ jobs:
               raise SystemExit("Missing or invalid SOWIA_SUPABASE_URL secret.")
           if not k:
               raise SystemExit("Missing Supabase public/anon key secret.")
-          print("Supabase public build configuration is present.")
+          if k.startswith("sb_secret_"):
+              raise SystemExit("A server secret key cannot be embedded in the Android APK.")
+          if k.count(".") == 2:
+              import base64, json
+              try:
+                  part = k.split(".")[1]
+                  claims = json.loads(base64.urlsafe_b64decode(part + "=" * (-len(part) % 4)))
+              except Exception:
+                  claims = {}
+              if isinstance(claims, dict) and claims.get("role") == "service_role":
+                  raise SystemExit("A service_role key cannot be embedded in the Android APK.")
+          print("Supabase public build configuration is present; server secrets are rejected.")
           PY
 
       - name: Build release APK
