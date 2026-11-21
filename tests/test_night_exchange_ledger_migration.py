@@ -64,7 +64,7 @@ class NightExchangeLedgerMigrationTests(unittest.TestCase):
             re.S,
         )
         self.assertIsNotNone(commission_column)
-        self.assertIn("planned_commission is not recognized revenue", self.sql)
+        self.assertIn("planned commission is not recognized revenue", self.sql)
 
     def test_clients_cannot_update_deal_state_or_event_history(self):
         self.assertRegex(
