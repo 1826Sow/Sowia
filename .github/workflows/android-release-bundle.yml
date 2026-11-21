@@ -97,7 +97,7 @@ jobs:
           PY
           KEYSTORE="$RUNNER_TEMP/sowia-original-upload.keystore"
           STORE_TYPE=""
-          PASSWORD_CANDIDATES=("$STORE_PASSWORD" "$KEY_PASSWORD")
+          PASSWORD_CANDIDATES=("$STORE_PASSWORD" "$KEY_PASSWORD" "$SOWIA_UPLOAD_KEYSTORE_PASSWORD" "$SOWIA_UPLOAD_KEY_PASSWORD" "$ANDROID_KEYSTORE_PASSWORD" "$ANDROID_KEY_PASSWORD")
           for candidate_password in "${PASSWORD_CANDIDATES[@]}"; do
             for candidate_type in JKS PKCS12; do
               if keytool -list -storetype "$candidate_type" -keystore "$KEYSTORE" -storepass "$candidate_password" >/dev/null 2>&1; then
@@ -130,17 +130,18 @@ jobs:
             echo "::error::The configured upload key does not match the registered SOW IA certificate. No release APK will be produced."
             exit 1
           fi
-          if ! keytool -certreq -storetype "$STORE_TYPE" -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD" -alias "$KEY_ALIAS" -dname "CN=SOWIA Android Upload" -file "$RUNNER_TEMP/sowia-signing-check.csr" >/dev/null 2>&1; then
+          KEY_PASSWORD=""
+          for candidate_key_password in "${PASSWORD_CANDIDATES[@]}"; do
+            [[ -n "$candidate_key_password" ]] || continue
+            if keytool -certreq -storetype "$STORE_TYPE" -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -keypass "$candidate_key_password" -alias "$KEY_ALIAS" -dname "CN=SOWIA Android Upload" -file "$RUNNER_TEMP/sowia-signing-check.csr" >/dev/null 2>&1; then
+              KEY_PASSWORD="$candidate_key_password"
+              break
+            fi
             rm -f "$RUNNER_TEMP/sowia-signing-check.csr"
-            if [[ "$KEY_PASSWORD" == "$STORE_PASSWORD" ]]; then
-              echo "::error::The keystore opens, but the private-key password is invalid."
-              exit 1
-            fi
-            if ! keytool -certreq -storetype "$STORE_TYPE" -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -keypass "$STORE_PASSWORD" -alias "$KEY_ALIAS" -dname "CN=SOWIA Android Upload" -file "$RUNNER_TEMP/sowia-signing-check.csr" >/dev/null 2>&1; then
-              echo "::error::The keystore opens, but neither configured password unlocks its private key."
-              exit 1
-            fi
-            KEY_PASSWORD="$STORE_PASSWORD"
+          done
+          if [[ -z "$KEY_PASSWORD" ]]; then
+            echo "::error::The original keystore and certificate are valid, but none of the existing configured password fields unlocks the private key."
+            exit 1
           fi
 
           {
