@@ -143,3 +143,18 @@ Track, at minimum: verified-provider coverage; match relevance; proposal accepta
 ### 8.6 Current implementation boundary
 
 This section records the approved product direction, not a claim of deployed functionality. The current code remains limited to in-memory matching/proposal primitives and read-only discovery. The phases above require separate implementation, tests and release approval. Existing SOW IA functionality, secrets and Supabase configuration must remain untouched unless a specific change is separately authorized.
+
+
+## 9. Phase A implementation notes — partner discovery hardening
+
+The current read-only discovery path now applies these additional safeguards:
+
+- A candidate must explicitly carry the `approved` moderation status; missing or unknown status fails closed.
+- A candidate explicitly marked disabled is excluded.
+- Declared services may be supplied as comma/semicolon-separated text or as a list; matching remains exact after whitespace normalization and case folding.
+- Results include the exact matched service and a human-readable reason for the match.
+- Moderation approval is not presented as independent identity verification. Unless a separate verified state is actually supplied, the result explicitly says that independent verification is unconfirmed.
+- The approved directory query includes the moderation status needed by the discovery gate.
+- The SOW IA discovery panel displays the matched service, why the partner appeared, and the verification caveat.
+
+These changes remain read-only. They do not contact partner applications, publish orders, share user documents, authorize integrations, execute tasks or initiate payments. Automated CI status for this latest change has not yet been reported; the implementation must be treated as pending test validation until the repository checks complete.
