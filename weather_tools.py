@@ -18,7 +18,7 @@ WEATHER_CODES = {
     85: "averses de neige faibles", 86: "fortes averses de neige",
     95: "orage", 96: "orage avec grêle faible", 99: "orage avec forte grêle",
 }
-_TIME_WORDS = r"(?:demain|aujourd'hui|aujourd’hui|ce soir|cette nuit|cette semaine|week[- ]?end|la semaine prochaine|sur les?\s+\d+\s+jours)"
+_TIME_WORDS = r"(?:demain|tomorrow|today|tonight|aujourd'hui|aujourd’hui|ce soir|cette nuit|cette semaine|this week|next week|this weekend|week[- ]?end|la semaine prochaine|sur les?\s+\d+\s+jours)"
 _WEATHER_WORDS = r"(?:météo|meteo|temps qu'il fait|prévisions météo|previsions meteo|weather|forecast)"
 
 
