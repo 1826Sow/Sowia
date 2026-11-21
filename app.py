@@ -6065,7 +6065,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
         nex_is_admin = isinstance(nex_metadata, dict) and (
             nex_metadata.get("sowia_admin") is True or nex_metadata.get("role") == "admin"
         )
-        nex_tabs = ["🌐 Annuaire approuvé", "🤝 Matching SOWIA", "🏷️ Inscrire une application", "📂 Mes applications", "🌍 Horloge mondiale", "💡 Opportunités intelligentes", "☀️ Rapport matinal", "📨 Propositions"]
+        nex_tabs = ["🌐 Annuaire approuvé", "🤝 Matching SOWIA", "🏷️ Inscrire une application", "📂 Mes applications", "🌍 Horloge mondiale", "💡 Opportunités intelligentes", "☀️ Rapport matinal", "📨 Propositions", "📑 Missions commerciales"]
         if nex_is_admin:
             nex_tabs.extend(["🛡️ Modération", "🔐 Validation des intégrations"])
         nex_tab_views = st.tabs(nex_tabs)
@@ -6423,8 +6423,242 @@ elif page == "SOWIA NIGHT EXCHANGE":
                 st.error("Le module de propositions n’est pas disponible.")
                 st.caption(f"Diagnostic : {type(exc).__name__}")
 
+        with nex_tab_views[8]:
+            st.markdown("#### Missions commerciales bilatérales")
+            st.caption(
+                "Transformez une mise en relation en mission cadrée : devis, périmètre, livrable et double accord. "
+                "Aucun paiement ni accès distant à une application n’est déclenché."
+            )
+            try:
+                current_user_id = str(cloud_storage._user_id(current_user))
+                own_mission_apps = cloud_storage.list_my_night_exchange_apps(
+                    supabase_client, current_user, workspace_id="professional", limit=200
+                )
+                own_verified_apps = [
+                    row for row in own_mission_apps
+                    if row.get("status") == "approved"
+                    and row.get("owner_verification_status") == "verified"
+                    and row.get("application_verification_status") == "verified"
+                    and row.get("security_review_status") == "passed"
+                    and row.get("publisher_signature_status") == "verified"
+                ]
+                partner_mission_apps = cloud_storage.list_verified_night_exchange_partner_apps(
+                    supabase_client, current_user, limit=200
+                )
+
+                st.markdown("##### Créer une proposition de mission")
+                st.caption(
+                    "Seules vos applications professionnelles approuvées et attestées, ainsi que les partenaires "
+                    "vérifiés appartenant à un autre compte, peuvent être sélectionnés."
+                )
+                if own_verified_apps and partner_mission_apps:
+                    own_mission_labels = {
+                        f"{row['app_name']} · {row['country']}": row
+                        for row in own_verified_apps
+                    }
+                    partner_mission_labels = {
+                        f"{row['app_name']} · {row['country']}": row
+                        for row in partner_mission_apps
+                    }
+                    with st.form("nex_create_mission_form", clear_on_submit=True):
+                        selected_requester = st.selectbox(
+                            "Votre application demandeuse",
+                            list(own_mission_labels),
+                            key="nex_mission_requester_app",
+                        )
+                        selected_provider = st.selectbox(
+                            "Application prestataire",
+                            list(partner_mission_labels),
+                            key="nex_mission_provider_app",
+                        )
+                        mission_title = st.text_input(
+                            "Titre de la mission", max_chars=160, key="nex_mission_title"
+                        )
+                        mission_scope = st.text_area(
+                            "Périmètre et conditions", max_chars=3000, key="nex_mission_scope"
+                        )
+                        mission_deliverable = st.text_area(
+                            "Livrable attendu", max_chars=1000, key="nex_mission_deliverable"
+                        )
+                        quote_cols = st.columns(2)
+                        with quote_cols[0]:
+                            mission_amount = st.number_input(
+                                "Devis indicatif", min_value=0.01, value=50.00,
+                                step=5.00, format="%.2f", key="nex_mission_amount"
+                            )
+                        with quote_cols[1]:
+                            mission_currency = st.selectbox(
+                                "Devise du devis", ["EUR", "USD", "GBP", "CHF", "CAD"],
+                                key="nex_mission_currency"
+                            )
+                        mission_submitted = st.form_submit_button(
+                            "Proposer la mission", type="primary", use_container_width=True
+                        )
+                    if mission_submitted:
+                        try:
+                            mission_id = cloud_storage.create_night_exchange_mission(
+                                supabase_client, current_user,
+                                partner_mission_labels[selected_provider]["id"],
+                                own_mission_labels[selected_requester]["id"],
+                                mission_title, mission_scope, mission_deliverable,
+                                mission_amount, mission_currency,
+                            )
+                            st.success("Proposition enregistrée. L’autre propriétaire doit approuver exactement les mêmes conditions.")
+                            st.caption("Identifiant de mission : " + str(mission_id))
+                            st.rerun()
+                        except Exception as exc:
+                            st.error("La proposition n’a pas pu être enregistrée. Le serveur a refusé toute application non admissible ou toute condition invalide.")
+                            st.caption(f"Diagnostic : {type(exc).__name__}")
+                elif not own_verified_apps:
+                    st.info("Aucune de vos applications n’a encore passé les quatre contrôles requis. Consultez le suivi des applications ou la modération.")
+                else:
+                    st.info("Aucun partenaire externe ne possède encore les validations nécessaires pour recevoir une mission.")
+
+                st.divider()
+                st.markdown("##### Mes missions envoyées et reçues")
+                my_missions = cloud_storage.list_my_night_exchange_missions(
+                    supabase_client, current_user, limit=200
+                )
+                if not my_missions:
+                    st.info("Aucune mission enregistrée pour le moment.")
+                status_labels = {
+                    "proposed": "Proposée — double accord attendu",
+                    "accepted": "Acceptée par les deux parties",
+                    "in_progress": "En cours",
+                    "delivered": "Livrée — validation du demandeur attendue",
+                    "completed": "Terminée et acceptée",
+                    "cancelled": "Annulée",
+                    "disputed": "En litige",
+                }
+                for mission in my_missions:
+                    mission_id = str(mission.get("id"))
+                    requester_side = str(mission.get("requester_user_id")) == current_user_id
+                    provider_side = str(mission.get("provider_user_id")) == current_user_id
+                    terms = mission.get("terms") if isinstance(mission.get("terms"), dict) else {}
+                    state = str(mission.get("status") or "unknown")
+                    with st.container(border=True):
+                        st.markdown(f"**{terms.get('title') or 'Mission sans titre'}**")
+                        st.caption(
+                            f"{'Demandeur' if requester_side else 'Prestataire'} · "
+                            f"{status_labels.get(state, state)} · "
+                            f"{terms.get('quoted_amount', '—')} {terms.get('currency', '')}"
+                        )
+                        st.write("Périmètre : " + str(terms.get("scope") or "—"))
+                        st.write("Livrable attendu : " + str(terms.get("deliverable") or "—"))
+                        requester_ok = mission.get("requester_approved_hash") == mission.get("terms_hash")
+                        provider_ok = mission.get("provider_approved_hash") == mission.get("terms_hash")
+                        st.caption(
+                            "Accords : demandeur " + ("✓" if requester_ok else "en attente")
+                            + " · prestataire " + ("✓" if provider_ok else "en attente")
+                        )
+                        action_cols = st.columns(3)
+                        if state == "proposed":
+                            needs_approval = (requester_side and not requester_ok) or (provider_side and not provider_ok)
+                            if needs_approval:
+                                with action_cols[0]:
+                                    if st.button("Approuver les conditions", key=f"nex_mission_approve_{mission_id}", use_container_width=True):
+                                        try:
+                                            cloud_storage.approve_night_exchange_mission(
+                                                supabase_client, current_user, mission_id
+                                            )
+                                            st.success("Votre accord a été enregistré.")
+                                            st.rerun()
+                                        except Exception as exc:
+                                            st.error("L’approbation a été refusée.")
+                                            st.caption(f"Diagnostic : {type(exc).__name__}")
+                            with action_cols[1]:
+                                if st.button("Annuler", key=f"nex_mission_cancel_{mission_id}", use_container_width=True):
+                                    try:
+                                        cloud_storage.transition_night_exchange_mission(
+                                            supabase_client, current_user, mission_id, "cancel"
+                                        )
+                                        st.rerun()
+                                    except Exception as exc:
+                                        st.error("L’annulation n’a pas été enregistrée.")
+                                        st.caption(f"Diagnostic : {type(exc).__name__}")
+                        elif state == "accepted":
+                            if provider_side:
+                                with action_cols[0]:
+                                    if st.button("Démarrer la mission", key=f"nex_mission_start_{mission_id}", use_container_width=True):
+                                        try:
+                                            cloud_storage.transition_night_exchange_mission(
+                                                supabase_client, current_user, mission_id, "start"
+                                            )
+                                            st.rerun()
+                                        except Exception as exc:
+                                            st.error("Le démarrage a été refusé.")
+                                            st.caption(f"Diagnostic : {type(exc).__name__}")
+                            with action_cols[1]:
+                                if st.button("Annuler", key=f"nex_mission_cancel_{mission_id}", use_container_width=True):
+                                    try:
+                                        cloud_storage.transition_night_exchange_mission(
+                                            supabase_client, current_user, mission_id, "cancel"
+                                        )
+                                        st.rerun()
+                                    except Exception as exc:
+                                        st.error("L’annulation n’a pas été enregistrée.")
+                                        st.caption(f"Diagnostic : {type(exc).__name__}")
+                        elif state == "in_progress" and provider_side:
+                            st.caption("La déclaration de livraison est une étape de suivi. Le dépôt sécurisé de fichiers de preuve sera raccordé dans une étape ultérieure.")
+                            if st.button("Déclarer le livrable remis", key=f"nex_mission_deliver_{mission_id}", use_container_width=True):
+                                try:
+                                    cloud_storage.transition_night_exchange_mission(
+                                        supabase_client, current_user, mission_id, "deliver"
+                                    )
+                                    st.rerun()
+                                except Exception as exc:
+                                    st.error("La déclaration de livraison a été refusée.")
+                                    st.caption(f"Diagnostic : {type(exc).__name__}")
+                        elif state == "delivered" and requester_side:
+                            if st.button("Accepter le livrable", key=f"nex_mission_accept_{mission_id}", use_container_width=True):
+                                try:
+                                    cloud_storage.transition_night_exchange_mission(
+                                        supabase_client, current_user, mission_id, "accept_delivery"
+                                    )
+                                    st.rerun()
+                                except Exception as exc:
+                                    st.error("L’acceptation n’a pas été enregistrée.")
+                                    st.caption(f"Diagnostic : {type(exc).__name__}")
+                        if state in {"delivered", "completed"}:
+                            with st.expander("Ouvrir un litige"):
+                                dispute_reason = st.text_area(
+                                    "Motif du litige", max_chars=1000,
+                                    key=f"nex_mission_dispute_reason_{mission_id}"
+                                )
+                                if st.button("Déclarer un litige", key=f"nex_mission_dispute_{mission_id}"):
+                                    try:
+                                        cloud_storage.transition_night_exchange_mission(
+                                            supabase_client, current_user, mission_id,
+                                            "dispute", dispute_reason
+                                        )
+                                        st.rerun()
+                                    except Exception as exc:
+                                        st.error("Le litige n’a pas été enregistré.")
+                                        st.caption(f"Diagnostic : {type(exc).__name__}")
+                        with st.expander("Historique d’audit de cette mission"):
+                            mission_events = cloud_storage.list_night_exchange_mission_events(
+                                supabase_client, current_user, mission_id, limit=200
+                            )
+                            if mission_events:
+                                for event in mission_events:
+                                    st.caption(
+                                        f"{event.get('created_at') or '—'} · "
+                                        f"{event.get('event_type') or 'événement'} · "
+                                        f"{event.get('previous_status') or '—'} → "
+                                        f"{event.get('new_status') or '—'}"
+                                    )
+                            else:
+                                st.info("Aucun événement d’audit disponible.")
+                st.caption(
+                    "Les devis ne constituent pas un chiffre d’affaires reconnu. "
+                    "Aucun paiement, transfert de fonds, partage de données ou exécution distante n’est activé."
+                )
+            except Exception as exc:
+                st.error("Le registre des missions n’est pas disponible. Vérifiez que les migrations NIGHT EXCHANGE ont été appliquées.")
+                st.caption(f"Diagnostic : {type(exc).__name__}")
+
         if nex_is_admin:
-            with nex_tab_views[8]:
+            with nex_tab_views[9]:
                 st.markdown("#### Console de modération des applications")
                 st.caption("Les décisions de modération sont contrôlées par une fonction SQL qui vérifie le rôle administrateur signé.")
                 try:
@@ -6457,11 +6691,71 @@ elif page == "SOWIA NIGHT EXCHANGE":
                                         except Exception as exc:
                                             st.error("Décision refusée par le contrôle de sécurité ou indisponible.")
                                             st.caption(f"Diagnostic : {type(exc).__name__}")
+                            if app.get("status") == "approved":
+                                st.markdown("**Attestations de sécurité — contrôle administratif manuel**")
+                                st.caption(
+                                    "Ne marquez un élément comme vérifié qu’après contrôle indépendant. "
+                                    "La vérification cryptographique automatique des signatures et l’analyse anti-malware ne sont pas encore intégrées."
+                                )
+                                owner_values = ["unverified", "verified", "rejected"]
+                                app_values = ["unverified", "verified", "rejected"]
+                                security_values = ["pending", "passed", "failed"]
+                                signature_values = ["unverified", "verified", "revoked"]
+                                owner_current = app.get("owner_verification_status") or "unverified"
+                                app_current = app.get("application_verification_status") or "unverified"
+                                security_current = app.get("security_review_status") or "pending"
+                                signature_current = app.get("publisher_signature_status") or "unverified"
+                                verify_cols = st.columns(4)
+                                with verify_cols[0]:
+                                    owner_status = st.selectbox(
+                                        "Identité propriétaire", owner_values,
+                                        index=owner_values.index(owner_current) if owner_current in owner_values else 0,
+                                        key=f"nex_verify_owner_{app['id']}"
+                                    )
+                                with verify_cols[1]:
+                                    application_status = st.selectbox(
+                                        "Contrôle application", app_values,
+                                        index=app_values.index(app_current) if app_current in app_values else 0,
+                                        key=f"nex_verify_application_{app['id']}"
+                                    )
+                                with verify_cols[2]:
+                                    security_status = st.selectbox(
+                                        "Revue sécurité", security_values,
+                                        index=security_values.index(security_current) if security_current in security_values else 0,
+                                        key=f"nex_verify_security_{app['id']}"
+                                    )
+                                with verify_cols[3]:
+                                    signature_status = st.selectbox(
+                                        "Signature éditeur", signature_values,
+                                        index=signature_values.index(signature_current) if signature_current in signature_values else 0,
+                                        key=f"nex_verify_signature_{app['id']}"
+                                    )
+                                verification_note = st.text_area(
+                                    "Justificatif / note de contrôle", max_chars=1000,
+                                    key=f"nex_verify_note_{app['id']}"
+                                )
+                                if st.button(
+                                    "Enregistrer les attestations",
+                                    key=f"nex_verify_save_{app['id']}",
+                                    use_container_width=True
+                                ):
+                                    try:
+                                        cloud_storage.admin_verify_night_exchange_app(
+                                            supabase_client, current_user, app["id"],
+                                            owner_status, application_status,
+                                            security_status, signature_status,
+                                            verification_note
+                                        )
+                                        st.success("Attestations enregistrées et journalisées.")
+                                        st.rerun()
+                                    except Exception as exc:
+                                        st.error("Les attestations n’ont pas été enregistrées.")
+                                        st.caption(f"Diagnostic : {type(exc).__name__}")
                 except Exception as exc:
                     st.error("La console de modération n’est pas disponible. Vérifiez la migration et les droits administrateur Supabase.")
                     st.caption(f"Diagnostic : {type(exc).__name__}")
 
-            with nex_tab_views[9]:
+            with nex_tab_views[10]:
                 st.markdown("#### Validation administrative des intégrations")
                 st.caption("Cette file ne contient que les propositions acceptées dont l’intégration attend une décision administrative. La validation SQL contrôle également les deux applications.")
                 try:
