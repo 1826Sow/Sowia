@@ -86,6 +86,7 @@ def clear_authenticated_session_state(session_state):
     clear_private_session_state(session_state)
     for key in (
         "sowia_supabase_client",
+        "_sowia_email_auth_storage",
         "sowia_authenticated_user_id",
         "sowia_github_login_url",
         # Account-scoped UI state must not carry into the next login.
