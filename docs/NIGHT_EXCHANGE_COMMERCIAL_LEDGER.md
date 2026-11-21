@@ -17,9 +17,9 @@ Le registre n'est pas un système de paiement autonome et ne doit jamais déclar
 - Une seconde migration proposée ajoute une fonction de transition atomique avec contrôle du participant, verrouillage de ligne et clé d'idempotence.
 - Une troisième migration proposée journalise automatiquement chaque création de proposition via un trigger interne, sans réutiliser la clé d'idempotence des transitions.
 - Une quatrième migration proposée ajoute la création de contrat par RPC : contrôle Premium serveur, deux applications approuvées, identité du partenaire dérivée depuis le registre et révocation de l'insertion directe cliente.
-- Les migrations ne sont pas appliquées à Supabase ; aucune donnée ni configuration de production n'a été modifiée.
+- Les quatre migrations ont été appliquées au projet isolé `SOWIA - TEST` (`mrbmoavotzcuzvnhfjla`) uniquement ; aucune migration ni donnée de production n'a été modifiée.
 - Le prototype Streamlit comporte maintenant un onglet « Registre commercial » raccordé aux helpers Supabase : création de propositions via RPC, liste des contrats, transitions autorisées et consultation du journal.
-- La persistance reste indisponible tant que les migrations nécessaires ne sont pas appliquées sur un projet Supabase de test. L'interface affiche alors un diagnostic et ne bascule pas sur un stockage local trompeur.
+- Vérification du projet de test : les deux tables, les deux RPC et le trigger d'audit sont présents ; RLS est activé sur les deux tables ; `authenticated` ne possède ni UPDATE ni DELETE direct, et ne peut plus insérer directement un contrat.
 - L'interface Android n'est pas encore raccordée à ce registre.
 
 ## Cycle de vie des contrats
@@ -64,6 +64,6 @@ Chaque transition valide met à jour le statut et insère son événement `statu
 
 ## Tests et limites
 
-Les tests statiques vérifient les invariants de la migration. Ils ne remplacent pas les tests PostgreSQL réels : rôles anon/authenticated/service_role, RLS, appels concurrents, répétitions d'idempotence, refus des transitions interdites et rollback transactionnel.
+Les tests CI Python/syntaxe sont réussis. Les quatre migrations ont été appliquées au projet isolé `SOWIA - TEST` et leur présence a été vérifiée par introspection PostgreSQL. Un contrôle sans session confirme que les deux RPC refusent les appels non authentifiés. Les tests complets avec deux comptes distincts, RLS sous sessions authentifiées, appels concurrents, répétitions d'idempotence et rollback transactionnel restent à exécuter.
 
-Aucune migration n'est appliquée en production. Aucun paiement, transfert, commission, publication publique ou approbation automatique n'est activé par cette étape. Les tests CI statiques et unitaires ne remplacent pas une validation PostgreSQL/RLS réelle.
+Aucune migration n'est appliquée en production. Aucun paiement, transfert, commission, publication publique ou approbation automatique n'est activé par cette étape. Les contrôles Supabase signalent les RPC `SECURITY DEFINER` attendues et protégées par `auth.uid()` avec exécution réservée à `authenticated` ; ce point reste inclus dans la revue de sécurité avant déploiement.
