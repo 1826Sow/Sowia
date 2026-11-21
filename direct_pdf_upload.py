@@ -1,86 +1,21 @@
-"""Direct-to-Supabase PDF upload component for Android-friendly transfer."""
-import streamlit as st
+"""Reliable Android-compatible PDF upload through Streamlit's native file picker.
+
+The file is selected by the browser, transferred to the Streamlit backend, then
+sent to a short-lived Supabase signed upload URL. No service-role key is exposed.
+"""
+from types import SimpleNamespace
 from uuid import uuid4
+
+import requests
+import streamlit as st
+
 from document_storage import BUCKET_NAME, _workspace, _user_prefix
 
-HTML = """
-<div class="sowia-upload">
-  <label for="sowia-pdf-file">Choisir un fichier PDF</label>
-  <input id="sowia-pdf-file" type="file" accept="application/pdf,.pdf" />
-  <button id="sowia-pdf-send" type="button" disabled>Envoyer le PDF</button>
-  <p id="sowia-pdf-status" role="status">Sélectionnez un PDF (10 Mo maximum).</p>
-</div>
-"""
-CSS = """
-.sowia-upload { display:grid; gap:.75rem; color:var(--st-text-color); }
-.sowia-upload label { font-weight:600; }
-.sowia-upload input { width:100%; min-height:44px; }
-.sowia-upload button { min-height:46px; border:0; border-radius:10px; padding:.65rem 1rem; color:white; background:var(--st-primary-color); font-weight:600; }
-.sowia-upload button:disabled { opacity:.55; }
-.sowia-upload p { margin:0; font-size:.9rem; }
-"""
-JS = """
-export default function({ parentElement, data, setStateValue }) {
-  const input = parentElement.querySelector("#sowia-pdf-file");
-  const button = parentElement.querySelector("#sowia-pdf-send");
-  const status = parentElement.querySelector("#sowia-pdf-status");
-  let selectedFile = null;
-  let busy = false;
-  input.addEventListener("change", () => {
-    selectedFile = input.files && input.files.length ? input.files[0] : null;
-    setStateValue("uploaded", false);
-    setStateValue("upload_error", null);
-    const validName = selectedFile && selectedFile.name.toLowerCase().endsWith(".pdf");
-    const validSize = selectedFile && selectedFile.size > 0 && selectedFile.size <= 10 * 1024 * 1024;
-    if (!selectedFile) {
-      status.textContent = "Aucun fichier reçu du sélecteur Android. Réessayez ou choisissez un autre PDF.";
-      button.disabled = true;
-    } else if (!validName) {
-      status.textContent = "Le fichier reçu n'est pas un PDF. Choisissez un fichier .pdf.";
-      button.disabled = true;
-    } else if (!validSize) {
-      status.textContent = "Le PDF doit peser au maximum 10 Mo.";
-      button.disabled = true;
-    } else {
-      status.textContent = "Fichier reçu : " + selectedFile.name + " · " + (selectedFile.size / 1048576).toFixed(2) + " Mo";
-      button.disabled = false;
-    }
-  });
-  button.onclick = async () => {
-    if (busy) return;
-    if (!selectedFile) { status.textContent = "Choisissez d'abord un fichier PDF."; return; }
-    if (!data?.signed_url) { status.textContent = "Erreur : autorisation temporaire absente. Touchez « Préparer un nouvel envoi PDF »."; return; }
-    if (!data?.apikey) { status.textContent = "Erreur : clé publique Supabase non transmise au composant. Vérifiez le secret SUPABASE_ANON_KEY."; return; }
-    busy = true; button.disabled = true; setStateValue("upload_error", null); status.textContent = "Envoi sécurisé en cours…";
-    try {
-      // Supabase Storage requires the project API key even for signed uploads.
-      // Send the PDF bytes directly; multipart FormData is not accepted here.
-      const response = await fetch(data.signed_url, {
-        method: "PUT",
-        headers: {
-          "apikey": data.apikey,
-          "Content-Type": "application/pdf",
-          "x-upsert": "false",
-          "cache-control": "max-age=3600"
-        },
-        body: selectedFile
-      });
-      if (!response.ok) throw new Error("Réponse Supabase HTTP " + response.status);
-      status.textContent = "PDF transmis. Vérification par SOW IA…";
-      setStateValue("file_name", selectedFile.name);
-      setStateValue("file_size", selectedFile.size);
-      setStateValue("uploaded", true);
-    } catch (error) {
-      status.textContent = "Échec du transfert : " + (error?.message || "erreur réseau") + ". Vous pouvez réessayer sans sélectionner à nouveau le fichier.";
-      setStateValue("upload_error", String(error?.message || "Erreur réseau").slice(0, 240));
-    } finally {
-      busy = false;
-      button.disabled = !selectedFile || !selectedFile.name.toLowerCase().endsWith(".pdf") || selectedFile.size <= 0 || selectedFile.size > 10 * 1024 * 1024;
-    }
-  };
-}
-"""
+MAX_PDF_BYTES = 10 * 1024 * 1024
+
+
 def create_signed_pdf_upload(client, user, workspace_id="personal"):
+    """Create a private, one-time upload destination for the authenticated user."""
     prefix = _user_prefix(user)
     workspace = _workspace(workspace_id)
     path = f"{prefix}/{workspace}/analyse_{uuid4().hex}.pdf"
@@ -93,14 +28,63 @@ def create_signed_pdf_upload(client, user, workspace_id="personal"):
         raise RuntimeError("Autorisation temporaire Supabase invalide.")
     return path, signed_url
 
-def render_direct_pdf_upload(signed_url, api_key, key):
-    uploader = st.components.v2.component(name="sowia_direct_pdf_upload", html=HTML, css=CSS, js=JS)
-    return uploader(
-        data={"signed_url": signed_url, "apikey": api_key},
-        default={"uploaded": False, "file_name": None, "file_size": None, "upload_error": None},
-        on_uploaded_change=lambda: None,
-        on_file_name_change=lambda: None,
-        on_file_size_change=lambda: None,
-        on_upload_error_change=lambda: None,
-        key=key, width="stretch", height=150,
+
+def render_direct_pdf_upload(signed_url, api_key=None, key="sowia_pdf_upload"):
+    """Render a native Android-friendly picker and upload via the signed URL.
+
+    Streamlit's native uploader handles Android document-provider intents more
+    consistently than a custom JavaScript file input embedded in a component.
+    """
+    del api_key  # A signed upload URL is itself the temporary authorization.
+    selected = st.file_uploader(
+        "Choisir un fichier PDF depuis votre téléphone",
+        type=["pdf"],
+        accept_multiple_files=False,
+        key=key + "_file",
+        help="PDF uniquement · 10 Mo maximum.",
     )
+    if selected is None:
+        st.caption("Choisissez un PDF, puis touchez « Envoyer le PDF ».")
+        return SimpleNamespace(uploaded=False, file_name=None, file_size=None, upload_error=None)
+
+    filename = str(getattr(selected, "name", "") or "document.pdf")
+    payload = selected.getvalue()
+    if not filename.lower().endswith(".pdf"):
+        st.error("Seuls les fichiers PDF sont acceptés.")
+        return SimpleNamespace(uploaded=False, file_name=filename, file_size=len(payload), upload_error="Format non PDF.")
+    if not payload or len(payload) > MAX_PDF_BYTES:
+        st.error("Le PDF doit contenir des données et peser au maximum 10 Mo.")
+        return SimpleNamespace(uploaded=False, file_name=filename, file_size=len(payload), upload_error="Taille PDF invalide.")
+    if b"%PDF-" not in payload[:1024]:
+        st.error("Le fichier sélectionné ne semble pas être un PDF valide.")
+        return SimpleNamespace(uploaded=False, file_name=filename, file_size=len(payload), upload_error="Signature PDF invalide.")
+
+    st.caption(f"Fichier sélectionné : {filename} · {len(payload) / 1048576:.2f} Mo")
+    if not st.button("Envoyer le PDF", type="primary", key=key + "_send", use_container_width=True):
+        return SimpleNamespace(uploaded=False, file_name=filename, file_size=len(payload), upload_error=None)
+
+    if not isinstance(signed_url, str) or not signed_url.startswith("https://"):
+        error = "Lien temporaire Supabase absent ou invalide. Préparez un nouvel envoi."
+        st.error(error)
+        return SimpleNamespace(uploaded=False, file_name=filename, file_size=len(payload), upload_error=error)
+
+    try:
+        with st.spinner("Transfert sécurisé du PDF vers Supabase…"):
+            response = requests.put(
+                signed_url,
+                data=payload,
+                headers={
+                    "Content-Type": "application/pdf",
+                    "x-upsert": "false",
+                    "cache-control": "max-age=3600",
+                },
+                timeout=(15, 120),
+            )
+            response.raise_for_status()
+        st.success("PDF transmis. Vérification et lecture par SOW IA…")
+        return SimpleNamespace(uploaded=True, file_name=filename, file_size=len(payload), upload_error=None)
+    except requests.RequestException as exc:
+        detail = getattr(getattr(exc, "response", None), "text", "") or str(exc)
+        error = ("Transfert Supabase refusé : " + detail)[:240]
+        st.error(error)
+        return SimpleNamespace(uploaded=False, file_name=filename, file_size=len(payload), upload_error=error)
