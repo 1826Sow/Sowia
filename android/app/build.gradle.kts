@@ -41,6 +41,7 @@ val hasReleaseSigning = signingStoreFile.isNotBlank() &&
     signingKeyAlias.isNotBlank() &&
     signingKeyPassword.isNotBlank()
 
+// SOW IA targeted maintenance release 0.2.14
 android {
     namespace = "com.sowkeys.sowia"
     compileSdk = 36
@@ -60,7 +61,7 @@ android {
         create("current") {
             dimension = "identity"
             applicationId = "com.sowkeys.sowia"
-            versionCode = 17
+            versionCode = 18
             versionName = "0.2.14"
         }
         create("legacy") {
