@@ -155,3 +155,79 @@ def confirm_domain_control_from_dns(
         "challenge_id": challenge.challenge_id,
         "verified_at": checked.isoformat(),
     }
+
+
+def resolve_domain_challenge_txt(domain: str, *, timeout: float = 5.0) -> list[str]:
+    """Resolve the challenge TXT through a fixed server-side DNS-over-HTTPS resolver.
+
+    The resolver endpoint is intentionally not caller-configurable (to prevent
+    SSRF). Call only from trusted server code, never from browser-supplied
+    domain records. A short bounded timeout limits resource consumption.
+    """
+    import requests
+
+    normalized = normalize_partner_domain(domain)
+    try:
+        timeout_value = float(timeout)
+    except (TypeError, ValueError):
+        raise PartnerVerificationError("Délai DNS invalide.") from None
+    if not 1.0 <= timeout_value <= 10.0:
+        raise PartnerVerificationError("Délai DNS hors limites.")
+
+    host = f"_sowia-verification.{normalized}"
+    try:
+        response = requests.get(
+            "https://cloudflare-dns.com/dns-query",
+            params={"name": host, "type": "TXT"},
+            headers={"accept": "application/dns-json"},
+            timeout=(min(3.0, timeout_value), timeout_value),
+            allow_redirects=False,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise PartnerVerificationError("Le service de résolution DNS est indisponible.") from exc
+
+    if not isinstance(payload, dict) or payload.get("Status") != 0:
+        raise PartnerVerificationError("La réponse DNS est invalide ou le domaine ne répond pas.")
+    answers = payload.get("Answer", [])
+    if not isinstance(answers, list) or len(answers) > 64:
+        raise PartnerVerificationError("Réponse DNS trop volumineuse ou invalide.")
+
+    records = []
+    for answer in answers:
+        if not isinstance(answer, dict) or answer.get("type") != 16:
+            continue
+        data = answer.get("data")
+        if not isinstance(data, str):
+            continue
+        # This challenge is deliberately shorter than the DNS TXT 255-byte
+        # string limit, so it must arrive as one quoted character-string.
+        value = data.strip()
+        if len(value) >= 2 and value[0] == value[-1] == '"':
+            value = value[1:-1]
+        if value and len(value) <= 255:
+            records.append(value)
+    return records
+
+
+def confirm_domain_control_via_dns(
+    challenge: DomainChallenge,
+    *,
+    authenticated_owner_id: str,
+    checked_at: datetime,
+) -> dict:
+    """Resolve the TXT proof server-side, then validate it against the challenge.
+
+    Persistent atomic consumption must still be performed by the protected
+    Supabase RPC; this function alone never marks a partner as approved.
+    """
+    if not isinstance(challenge, DomainChallenge):
+        raise PartnerVerificationError("Défi de vérification invalide.")
+    records = resolve_domain_challenge_txt(challenge.domain)
+    return confirm_domain_control_from_dns(
+        challenge,
+        authenticated_owner_id=authenticated_owner_id,
+        dns_txt_records=records,
+        checked_at=checked_at,
+    )
