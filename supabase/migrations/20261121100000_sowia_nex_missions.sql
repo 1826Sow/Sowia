@@ -78,7 +78,7 @@ create policy "nex_mission_events_participants_read"
 revoke all on public.sowia_nex_missions from anon, authenticated;
 revoke all on public.sowia_nex_mission_events from anon, authenticated;
 grant select on public.sowia_nex_missions, public.sowia_nex_mission_events to authenticated;
-grant usage, select on sequence public.sowia_nex_mission_events_id_seq to authenticated;
+-- No client sequence privileges: inserts occur only inside the guarded RPCs.
 
 create or replace function public.sowia_nex_create_mission(
     p_provider_app_id uuid,
