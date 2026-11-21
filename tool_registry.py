@@ -105,7 +105,7 @@ class ToolRegistry:
             raise ToolRegistryError("Une définition ToolSpec est requise.")
         if not re.fullmatch(r"[a-z][a-z0-9_.-]{1,63}", spec.tool_id or ""):
             raise ToolRegistryError("Identifiant d'outil invalide.")
-        if not re.fullmatch(r"\\d+\\.\\d+\\.\\d+", spec.version or ""):
+        if not re.fullmatch(r"\d+\.\d+\.\d+", spec.version or ""):
             raise ToolRegistryError("La version doit suivre le format semver X.Y.Z.")
         if not spec.description or not spec.description.strip():
             raise ToolRegistryError("La description de l'outil est obligatoire.")
