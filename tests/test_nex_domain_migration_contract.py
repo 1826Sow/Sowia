@@ -23,7 +23,7 @@ def test_domain_challenge_storage_is_non_exposed_and_server_only():
 
 def test_only_token_digest_is_persisted_and_challenge_has_expiry():
     sql = MIGRATION.read_text(encoding="utf-8").lower()
-    assert re.search(r"token_hash\\s+bytea\\s+not null\\s+check\\s*\\(octet_length\\(token_hash\\)\\s*=\\s*32\\)", sql)
+    assert re.search(r"token_hash\s+bytea\s+not null\s+check\s*\(octet_length\(token_hash\)\s*=\s*32\)", sql)
     assert "token text" not in sql
     assert "expires_at timestamptz not null" in sql
     assert "check (expires_at > issued_at)" in sql
