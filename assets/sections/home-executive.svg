@@ -1,1 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 390"><defs><linearGradient id="bg"><stop stop-color="#07152d"/><stop offset=".58" stop-color="#10344d"/><stop offset="1" stop-color="#1b5260"/></linearGradient><linearGradient id="gold"><stop stop-color="#42d8e9"/><stop offset="1" stop-color="#e5bb68"/></linearGradient><radialGradient id="glow"><stop stop-color="#2fc8df" stop-opacity=".28"/><stop offset="1" stop-color="#2fc8df" stop-opacity="0"/></radialGradient></defs><rect width="1200" height="390" rx="30" fill="url(#bg)"/><circle cx="930" cy="190" r="220" fill="url(#glow)"/><g fill="none" stroke="url(#gold)" stroke-width="3" opacity=".85"><circle cx="925" cy="185" r="142"/><ellipse cx="925" cy="185" rx="66" ry="142"/><ellipse cx="925" cy="185" rx="142" ry="58"/><path d="M783 185h284M925 43v284M824 84l202 202M1026 84 824 286"/></g><g fill="#48dce9"><circle cx="783" cy="185" r="8"/><circle cx="925" cy="43" r="8"/><circle cx="1067" cy="185" r="8"/><circle cx="925" cy="327" r="8"/><circle cx="824" cy="84" r="7"/><circle cx="1026" cy="286" r="7"/></g><g fill="none" stroke="#49d8e8" stroke-width="2" opacity=".45"><path d="M710 85 780 125 750 200 820 250M1040 70l-20 70 90 45-45 80"/></g><text x="74" y="112" fill="#9beaf0" font-family="Arial,sans-serif" font-size="18" font-weight="700" letter-spacing="5">VOTRE CENTRE DE PILOTAGE</text><text x="70" y="190" fill="#fff" font-family="Arial,sans-serif" font-size="66" font-weight="700">SOW IA</text><text x="75" y="240" fill="#d5eaf0" font-family="Arial,sans-serif" font-size="26">Une intelligence au service de vos projets.</text><path d="M76 272h430" stroke="#dfb96d" stroke-width="4"/><text x="76" y="322" fill="#a8d8e2" font-family="Arial,sans-serif" font-size="18" letter-spacing="2">PERSONNEL · PROFESSIONNEL · INTERNATIONAL</text><g fill="#fff" opacity=".75"><circle cx="650" cy="70" r="3"/><circle cx="690" cy="315" r="3"/><circle cx="1110" cy="100" r="3"/><circle cx="1090" cy="300" r="3"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 390" role="img" aria-label="SOW IA, centre de pilotage intelligent">
+<defs>
+ <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#030b1d"/><stop offset=".52" stop-color="#0b2442"/><stop offset="1" stop-color="#123f55"/></linearGradient>
+ <linearGradient id="metal"><stop stop-color="#8df5ff"/><stop offset=".48" stop-color="#38cde8"/><stop offset="1" stop-color="#f0c979"/></linearGradient>
+ <radialGradient id="aura"><stop stop-color="#1bd9ff" stop-opacity=".36"/><stop offset="1" stop-color="#1bd9ff" stop-opacity="0"/></radialGradient>
+ <filter id="soft"><feGaussianBlur stdDeviation="16"/></filter>
+ <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse"><path d="M42 0H0V42" fill="none" stroke="#69dff3" stroke-opacity=".08"/></pattern>
+</defs>
+<rect width="1200" height="390" rx="30" fill="url(#bg)"/><rect width="1200" height="390" rx="30" fill="url(#grid)"/>
+<ellipse cx="930" cy="190" rx="285" ry="250" fill="url(#aura)"/>
+<circle cx="930" cy="190" r="175" fill="none" stroke="#35d9f2" stroke-opacity=".13" stroke-width="28" filter="url(#soft)"/>
+<g transform="translate(930 190)" fill="none" stroke="url(#metal)">
+ <circle r="146" stroke-width="2.5" opacity=".85"/><circle r="120" stroke-width="1.5" stroke-dasharray="3 10" opacity=".8"/>
+ <ellipse rx="66" ry="146" stroke-width="2"/><ellipse rx="146" ry="58" stroke-width="2" transform="rotate(-24)"/><ellipse rx="146" ry="58" stroke-width="2" transform="rotate(24)"/>
+ <path d="M-168 0H168M0-168V168M-119-119L119 119M119-119L-119 119" stroke-width="1.5" opacity=".55"/>
+ <path d="M-92 0Q-45-92 0-38Q45-92 92 0Q45 92 0 38Q-45 92-92 0Z" fill="#0c3452" stroke="#5be9f6" stroke-width="3"/>
+ <path d="M0-38V38M-48-7L-12 12L-35 43M48-7L12 12L35 43" stroke="#b4f8ff" stroke-width="3" stroke-linecap="round"/>
+</g>
+<g fill="#9af5ff"><circle cx="762" cy="190" r="5"/><circle cx="930" cy="22" r="5"/><circle cx="1098" cy="190" r="5"/><circle cx="930" cy="358" r="5"/><circle cx="810" cy="70" r="3"/><circle cx="1050" cy="310" r="3"/></g>
+<path d="M690 68L748 108L724 172M1080 72L1040 125L1112 170M700 315L770 278L744 225" fill="none" stroke="#42d9ee" stroke-opacity=".35" stroke-width="2"/>
+<text x="72" y="91" fill="#f0ca7b" font-family="Arial,sans-serif" font-size="17" font-weight="700" letter-spacing="5">VOTRE CENTRE DE PILOTAGE</text>
+<text x="68" y="184" fill="#fff" font-family="Arial,sans-serif" font-size="72" font-weight="800" letter-spacing="2">SOW IA</text>
+<text x="74" y="231" fill="#d9f3fa" font-family="Arial,sans-serif" font-size="25">Une intelligence au service de vos projets.</text>
+<path d="M76 260H485" stroke="url(#metal)" stroke-width="3"/>
+<text x="76" y="309" fill="#a9dce8" font-family="Arial,sans-serif" font-size="16" letter-spacing="2.5">PERSONNEL  ·  PROFESSIONNEL  ·  INTERNATIONAL</text>
+<text x="76" y="350" fill="#6ecfe2" font-family="Arial,sans-serif" font-size="12" letter-spacing="3">THINK  ·  CREATE  ·  DECIDE</text>
+</svg>
