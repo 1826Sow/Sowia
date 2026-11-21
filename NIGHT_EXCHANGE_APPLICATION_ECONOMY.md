@@ -284,3 +284,26 @@ Client wrappers were added to `cloud_storage.py` for creating, approving, transi
 
 **Deployment is not performed by this commit.** The migration must first be reviewed and applied only to a dedicated disposable Supabase test project, then exercised with two real authenticated test owners and RLS-isolation tests. Production deployment remains blocked until that verification passes. Do not add production secrets or change existing Supabase settings to enable this work.
 The migration also adds admin-controlled partner evidence fields to the existing app registry (owner verification, application-control verification, security review and publisher-signature status). New and partner-edited listings are reset to unverified/pending by the existing registry guard trigger; only a trusted admin can set the evidence fields. Mission creation requires both apps to be approved and all four evidence fields to pass. These fields are moderation attestations, not an automated cryptographic publisher-signature verifier or malware scanner; those verification services remain a prerequisite before production admission.
+
+## 15. Test-environment validation and application workflow
+
+The additive migrations are now prepared in the review branch:
+- `20261121100000_sowia_nex_missions.sql`: persistent mission tables, RLS, partner-evidence columns and server-guarded lifecycle RPCs;
+- `20261121120000_sowia_nex_private_rpcs.sql`: privileged implementations moved to the non-exposed `private` schema, with public `SECURITY INVOKER` RPC wrappers;
+- `20261121130000_sowia_nex_admin_verification.sql`: admin-only, append-only verification attestations and a guarded moderation RPC;
+- `20261121140000_harden_nex_offer_admission.sql`: existing bilateral offer creation and response now require both apps to retain all four verification attestations.
+
+The migration sequence was applied only to the dedicated `SOWIA - TEST` Supabase project. It was not applied to production. The test project contains two distinct test owners and their existing app listings; workflow checks were run inside transactions and rolled back.
+
+Verified test results:
+- a complete mission progressed from proposed to completed with seven audit events;
+- an unrelated user saw zero mission rows and zero mission-event rows;
+- authenticated clients had no direct INSERT/UPDATE privilege on the mission table and no DELETE privilege on the event table;
+- an unverified listing was rejected by the mission-creation RPC;
+- an unverified listing was also rejected by the legacy offer-creation RPC;
+- after admin attestations, the legacy offer workflow succeeded, and its recipient-side event was written;
+- a non-admin caller was rejected by the admin verification RPC.
+
+The NIGHT EXCHANGE screen now includes a commercial-missions tab with mission creation, bilateral approvals, guarded lifecycle actions and participant-only audit history. The admin moderation screen can record the four attestations. The catalogue and offer selectors now exclude applications that lack any required attestation.
+
+**Attestation limitation:** the four statuses are controlled administrative attestations. They are not an automated identity provider, cryptographic signature verifier, build attestation service, or malware scanner. Do not mark an application verified until an independent review has actually been performed. Production remains gated on those real verification services, security review, RLS review, and explicit deployment approval. No payments or remote partner-code execution are enabled.
