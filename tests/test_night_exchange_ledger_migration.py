@@ -61,6 +61,7 @@ class NightExchangeLedgerMigrationTests(unittest.TestCase):
         self.assertRegex(
             self.sql,
             r"planned_commission numeric\(18,2\).*?generated always as",
+            re.S,
         )
         self.assertIn("planned_commission is not recognized revenue", self.sql)
 
