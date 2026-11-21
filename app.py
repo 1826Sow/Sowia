@@ -91,11 +91,13 @@ st.markdown(
     /* Blend Streamlit's native top controls into SOW IA and let them scroll with the app. */
     .stApp, [data-testid="stAppViewContainer"] { position: relative !important; }
     header[data-testid="stHeader"] {
-      position: absolute !important;
-      top: 0 !important;
+      /* Keep the header in document flow, below Android's safe area and scrollable. */
+      position: relative !important;
+      top: auto !important;
       left: 0 !important;
       right: 0 !important;
       width: 100% !important;
+      padding-top: max(env(safe-area-inset-top, 0px), 12px) !important;
       background: linear-gradient(180deg, #071426 0%, #0a1b31 100%) !important;
       border-bottom: 1px solid rgba(0,220,235,.18) !important;
       box-shadow: none !important;
@@ -116,8 +118,12 @@ st.markdown(
     section[data-testid="stSidebar"] [data-testid="stRadio"] label { border-radius: 11px; padding: .38rem .55rem; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) { background: rgba(0,205,225,.16); border: 1px solid rgba(0,220,235,.45); }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) p { color: #75f2ff !important; font-weight: 750; }
-    /* Keep the native sidebar toggle in its original Streamlit position; add only the Menu label and styling. */
+    /* Keep the native Menu control in normal document flow; never overlay Android's status bar. */
     :is([data-testid="stSidebarCollapseButton"], [data-testid="stExpandSidebarButton"], button[data-testid="stSidebarCollapseButton"], button[data-testid="stExpandSidebarButton"]) {
+      position: static !important;
+      inset: auto !important;
+      transform: none !important;
+      margin: .35rem .65rem !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
@@ -142,7 +148,6 @@ st.markdown(
       :is([data-testid="stSidebarCollapseButton"], [data-testid="stExpandSidebarButton"], button[data-testid="stSidebarCollapseButton"], button[data-testid="stExpandSidebarButton"]) {
         min-width: 5.35rem !important;
         min-height: 2.45rem !important;
-        transform: translateY(24px) !important; /* Keep the menu below Android's status bar and clock. */
       }
     }
     .hero { position: relative; overflow: hidden; padding: clamp(1.35rem, 3vw, 2.25rem); border: 1px solid rgba(0,220,235,.30); border-radius: 24px; background: radial-gradient(circle at 88% 12%, rgba(0,220,235,.22), transparent 30%), radial-gradient(circle at 6% 100%, rgba(40,95,160,.24), transparent 32%), linear-gradient(120deg, #07172b 0%, #102b4a 58%, #10465a 100%); box-shadow: 0 18px 42px rgba(0,0,0,.28); margin: .35rem 0 1.35rem; }
