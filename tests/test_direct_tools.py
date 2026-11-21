@@ -27,6 +27,12 @@ def test_calculator_rejects_unsafe_or_invalid_expressions(expression):
         calculate(expression)
 
 
+
+def test_calculator_rejects_oversized_integer_literal():
+    with pytest.raises(DirectToolError, match="hors limites"):
+        calculate("9" * 200)
+
+
 def test_calculator_rejects_long_expression():
     with pytest.raises(DirectToolError):
         calculate("1+" * 110 + "1")
