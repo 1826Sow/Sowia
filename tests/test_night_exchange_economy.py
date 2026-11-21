@@ -160,7 +160,7 @@ def test_partner_discovery_exposes_explainable_match_and_verification_state():
         "services_offered": "data analysis",
     }]
     match = discover_service_partners("source", "data analysis", rows)[0]
-    assert match["match_type"] == "service_exact"
+    assert match["match_type"] == "canonical_skill"
     assert match["match_reasons"]
     assert match["verification_state"] == "verified"
     assert match["simulation"] is True
