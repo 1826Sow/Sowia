@@ -2,6 +2,10 @@ name: SOW IA Android private test APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/android-private-test-apk.yml'
+      - 'android/**'
   push:
     branches:
       - main
