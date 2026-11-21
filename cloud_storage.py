@@ -855,6 +855,7 @@ def list_verified_night_exchange_partner_apps(client, user, limit=100):
         .order("updated_at", desc=True)
         .limit(min(max(int(limit), 1), 200))
         .execute().data or []
+    )
 
 
 # SOWIA NIGHT EXCHANGE — bilateral offers and administrative integration review.
