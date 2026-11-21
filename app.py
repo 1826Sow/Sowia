@@ -2168,12 +2168,51 @@ elif page == "Hub SOWIA":
             ("Aide", "Consulter les indications d'utilisation"),
         ]),
     ]
-    for section_title, section_items in home_sections:
+    def render_home_rubrique_art(title, group_index, item_index):
+        """Render a lightweight, distinct SVG illustration for each home rubrique."""
+        palettes = [
+            ("#14b8a6", "#164e63"), ("#38bdf8", "#1d4ed8"),
+            ("#a78bfa", "#5b21b6"), ("#fbbf24", "#b45309"),
+            ("#fb7185", "#9f1239"),
+        ]
+        start, end = palettes[group_index % len(palettes)]
+        art_id = f"sowia-rubrique-{group_index}-{item_index}"
+        initial = html.escape((title.strip()[:1] or "S").upper())
+        return (
+            '<div style="height:76px;max-width:100%;margin:.25rem 0 .55rem;'
+            'border:1px solid rgba(125,211,252,.20);border-radius:13px;overflow:hidden;'
+            'background:linear-gradient(115deg,#0b1d34,#102f50);">'
+            f'<svg viewBox="0 0 320 76" width="100%" height="76" role="img" '
+            f'aria-label="Illustration de {html.escape(title)}" xmlns="http://www.w3.org/2000/svg">'
+            f'<defs><linearGradient id="{art_id}" x1="0" y1="0" x2="1" y2="1">'
+            f'<stop offset="0" stop-color="{start}"/><stop offset="1" stop-color="{end}"/>'
+            '</linearGradient></defs>'
+            f'<circle cx="270" cy="10" r="66" fill="url(#{art_id})" opacity=".32"/>'
+            f'<circle cx="222" cy="82" r="48" fill="{start}" opacity=".18"/>'
+            f'<path d="M0 62 Q72 20 142 62 T320 45 V76 H0Z" fill="url(#{art_id})" opacity=".25"/>'
+            f'<rect x="17" y="13" width="48" height="48" rx="14" fill="url(#{art_id})"/>'
+            f'<text x="41" y="46" text-anchor="middle" font-size="27" font-weight="800" '
+            f'font-family="Arial,sans-serif" fill="#fff">{initial}</text>'
+            '<path d="M91 25h84M91 38h126M91 51h64" stroke="#d9f5ff" '
+            'stroke-width="5" stroke-linecap="round" opacity=".78"/>'
+            '<circle cx="285" cy="24" r="5" fill="#d9f5ff" opacity=".8"/>'
+            '</svg></div>'
+        )
+
+    for section_index, (section_title, section_items) in enumerate(home_sections):
         with st.expander(section_title, expanded=False):
             for item_start in range(0, len(section_items), 2):
                 item_cols = st.columns(2)
-                for item_col, (destination, description) in zip(item_cols, section_items[item_start:item_start + 2]):
+                for item_offset, (item_col, (destination, description)) in enumerate(
+                    zip(item_cols, section_items[item_start:item_start + 2])
+                ):
                     with item_col:
+                        st.markdown(
+                            render_home_rubrique_art(
+                                destination, section_index, item_start + item_offset
+                            ),
+                            unsafe_allow_html=True,
+                        )
                         st.markdown(f"**{destination}**")
                         st.caption(description)
                         st.button(
