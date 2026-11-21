@@ -51,6 +51,9 @@ class NightExchangeContractTransitionTests(unittest.TestCase):
         )
         self.assertIn("retry with the same key returns the original event", self.sql)
         self.assertIn("idempotency key already used for another deal", self.sql)
+        self.assertIn("idempotency key reused with a different request", self.sql)
+        self.assertIn("(v_existing_payload ->> 'to') is distinct from p_target_status", self.sql)
+        self.assertIn("p_target_status is null", self.sql)
 
     def test_clients_cannot_use_rpc_for_financial_confirmation(self):
         self.assertNotIn("'payment_confirmed'", self.sql)
