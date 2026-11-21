@@ -47,10 +47,6 @@ begin
         raise exception 'authentication required' using errcode = '42501';
     end if;
 
-    if not public.sowia_has_professional_access() then
-        raise exception 'active Premium access required' using errcode = '42501';
-    end if;
-
     if p_creator_app_id is null
        or p_counterparty_app_id is null
        or p_creator_app_id = p_counterparty_app_id
@@ -67,6 +63,7 @@ begin
        or p_commission_bps is null
        or p_commission_bps not between 0 and 10000
        or p_idempotency_key is null
+       or btrim(p_idempotency_key) = ''
        or char_length(p_idempotency_key) not between 16 and 128 then
         raise exception 'invalid commercial deal request' using errcode = '22023';
     end if;
@@ -101,6 +98,10 @@ begin
                 using errcode = '23505';
         end if;
         return v_existing.id;
+    end if;
+
+    if not public.sowia_has_professional_access() then
+        raise exception 'active Premium access required' using errcode = '42501';
     end if;
 
     select user_id
