@@ -30,6 +30,6 @@ Une migration préparatoire est maintenant proposée dans `supabase/migrations/2
 - des défis liés à un compte et un domaine, avec expiration ;
 - une consommation atomique par mise à jour conditionnelle, empêchant le rejeu concurrent ;
 - une piste d'audit pour l'émission et la consommation réussie ;
-- des fonctions exécutables uniquement par `service_role`, qui doit rester exclusivement côté serveur.
+- des fonctions internes dans `sowia_private` et de simples points d'entrée RPC `SECURITY INVOKER` dans `public`, exécutables uniquement par `service_role` ; cette clé doit rester exclusivement côté serveur.
 
 **Cette migration est un fichier de proposition dans GitHub : elle n'a pas été appliquée à Supabase.** L'intégration reste bloquée jusqu'à la mise en place du résolveur DNS de confiance, aux tests SQL/RLS sur un environnement isolé, à la revue humaine et à la validation du déploiement. Ne jamais faire confiance à des enregistrements DNS transmis par le client.
