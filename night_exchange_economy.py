@@ -274,6 +274,32 @@ def _service_values(value):
     return normalized
 
 
+def assess_partner_admission(record: dict) -> dict:
+    """Fail-closed admission gate; declarations alone never establish trust.
+
+    This is a policy evaluator, not a real identity or malware scanner. The
+    required evidence fields must be supplied by a separately verified
+    onboarding process before a listing can be discoverable.
+    """
+    if not isinstance(record, dict):
+        return {"eligible": False, "reason": "invalid_record"}
+    checks = {
+        "moderation_approved": record.get("status") == "approved",
+        "owner_identity_verified": record.get("owner_verification_status") == "verified",
+        "application_control_verified": record.get("application_verification_status") == "verified",
+        "security_review_passed": record.get("security_review_status") == "passed",
+        "signature_verified": record.get("publisher_signature_status") == "verified",
+        "enabled": record.get("enabled", True) is True,
+        "not_suspended": record.get("security_suspended") is not True,
+    }
+    missing = [name for name, passed in checks.items() if not passed]
+    return {
+        "eligible": not missing,
+        "reason": "all_admission_checks_passed" if not missing else "admission_evidence_missing_or_failed",
+        "failed_checks": missing,
+    }
+
+
 def discover_service_partners(source_app_id: str, service: str,
                               approved_app_records: Iterable[dict]) -> list[dict]:
     """Find approved, enabled apps offering one exact service.
@@ -292,7 +318,8 @@ def discover_service_partners(source_app_id: str, service: str,
         if not app_id or len(app_id) > 128 or app_id == source_id or app_id in seen:
             continue
         # Never treat missing or unknown moderation state as approval.
-        if record.get("status") != "approved" or record.get("enabled", True) is not True:
+        admission = assess_partner_admission(record)
+        if not admission["eligible"]:
             continue
         offered = _service_values(record.get("services_offered"))
         compatible_services = [
@@ -338,10 +365,8 @@ def discover_service_partners(source_app_id: str, service: str,
                 else "Correspondance exacte sur un service personnalisé."
             ],
             "listing_status": "approved",
-            "verification_state": (
-                "verified" if record.get("verification_status") == "verified"
-                else "not_independently_verified"
-            ),
+            "verification_state": "verified",
+            "security_review_state": "passed",
             "simulation": True,
         })
     return sorted(partners, key=lambda item: (item["app_name"].casefold(), item["app_id"]))
