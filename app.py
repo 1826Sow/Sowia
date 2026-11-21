@@ -320,7 +320,8 @@ st.markdown(
       .hero { padding: 1.25rem 1.05rem; border-radius: 18px; }
       .hero h1 { font-size: 2.15rem; }
       .hero p { font-size: .98rem; }
-      .hero-chip { font-size: .72rem; }
+      .hero-meta { gap: .4rem; margin-top: .95rem; }
+      .hero-chip { flex: 1 1 auto; justify-content: center; text-align: center; font-size: .72rem; line-height: 1.35; padding: .42rem .62rem; }
       .trust-row { grid-template-columns: 1fr; gap: .55rem; }
       .trust-item { min-height: auto; padding: .8rem .9rem; }
       div[role="radiogroup"] { flex-wrap: wrap !important; gap: .35rem !important; }
