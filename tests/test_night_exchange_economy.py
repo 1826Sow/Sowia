@@ -120,3 +120,59 @@ def test_discover_service_partners_excludes_source_and_rejects_empty_service():
     assert discover_service_partners("app-a", "payment processing", rows) == []
     with pytest.raises(EconomyError):
         discover_service_partners("app-a", " ", rows)
+
+
+
+def test_partner_discovery_fails_closed_for_missing_or_unknown_approval():
+    from night_exchange_economy import discover_service_partners
+
+    rows = [
+        {"id": "missing-status", "app_name": "Unknown", "services_offered": "translation"},
+        {"id": "pending", "app_name": "Pending", "status": "pending",
+         "services_offered": "translation"},
+        {"id": "approved", "app_name": "Approved", "status": "approved",
+         "services_offered": "translation"},
+    ]
+    matches = discover_service_partners("source", "translation", rows)
+    assert [item["app_id"] for item in matches] == ["approved"]
+
+
+def test_partner_discovery_supports_list_declarations_and_disabled_filter():
+    from night_exchange_economy import discover_service_partners
+
+    rows = [
+        {"id": "enabled", "app_name": "Enabled", "status": "approved",
+         "enabled": True, "services_offered": [" Data Analysis ", "translation"]},
+        {"id": "disabled", "app_name": "Disabled", "status": "approved",
+         "enabled": False, "services_offered": ["data analysis"]},
+    ]
+    matches = discover_service_partners("source", "data analysis", rows)
+    assert [item["app_id"] for item in matches] == ["enabled"]
+
+
+def test_partner_discovery_exposes_explainable_match_and_verification_state():
+    from night_exchange_economy import discover_service_partners
+
+    rows = [{
+        "id": "provider", "app_name": "Provider", "status": "approved",
+        "verification_status": "verified",
+        "categories": ["AI", "Data"],
+        "services_offered": "data analysis",
+    }]
+    match = discover_service_partners("source", "data analysis", rows)[0]
+    assert match["match_type"] == "service_exact"
+    assert match["match_reasons"]
+    assert match["verification_state"] == "verified"
+    assert match["simulation"] is True
+
+
+def test_partner_discovery_does_not_claim_verification_from_approval_alone():
+    from night_exchange_economy import discover_service_partners
+
+    rows = [{
+        "id": "provider", "app_name": "Provider", "status": "approved",
+        "services_offered": "data analysis",
+    }]
+    match = discover_service_partners("source", "data analysis", rows)[0]
+    assert match["listing_status"] == "approved"
+    assert match["verification_state"] == "not_independently_verified"
