@@ -1231,8 +1231,26 @@ if st.session_state.get("sowia_current_page") not in [item for group in NAV_GROU
 elif st.session_state.get("sowia_current_page") != page:
     st.session_state["sowia_current_page"] = page
 
-# Navigation principale : le bouton Retour dispose de sa propre ligne,
-# séparée du menu latéral natif de Streamlit et facile à toucher sur mobile.
+# Navigation globale : ce bouton est rendu avant le contenu de chaque rubrique.
+# Il reste visible en haut pendant le défilement, y compris dans NIGHT EXCHANGE.
+st.markdown(
+    """<style>
+    section[data-testid="stMain"] .st-key-sowia_navigation_back {
+      position: sticky !important;
+      top: 0.35rem !important;
+      z-index: 100002 !important;
+      padding: 0.25rem 0 0.45rem 0 !important;
+      background: var(--background-color, #0b1726) !important;
+    }
+    section[data-testid="stMain"] .st-key-sowia_navigation_back button {
+      min-height: 48px !important;
+      width: 100% !important;
+      font-weight: 750 !important;
+      touch-action: manipulation !important;
+    }
+    </style>""",
+    unsafe_allow_html=True,
+)
 with st.container():
     st.button(
         "←  RETOUR À LA PAGE PRÉCÉDENTE",
@@ -1299,22 +1317,34 @@ st.components.v1.html(
         };
         if (!host.__sowiaAndroidBackHandlerInstalled) {
           host.__sowiaAndroidBackHandlerInstalled = true;
-          host.addEventListener("popstate", () => {
+          const triggerAppBack = () => {
             try {
-              // Always keep the user inside the current app document while
-              // Streamlit processes the in-app Back action.
-              pushGuard();
-              const buttons = Array.from(host.document.querySelectorAll("button"));
               const backButton = host.document.querySelector(
                 ".st-key-sowia_navigation_back button"
-              ) || buttons.find((button) =>
-                (button.innerText || "").toUpperCase().includes("RETOUR À LA PAGE PRÉCÉDENTE")
               );
               if (backButton && !backButton.disabled) {
                 backButton.click();
+                return true;
               }
             } catch (error) {
-              // Fail safely: the visible in-app Back control remains available.
+              // The visible in-app Back control remains the fallback.
+            }
+            return false;
+          };
+          host.addEventListener("popstate", () => {
+            // Re-arm the history guard so Android/browser Back stays in SOW IA.
+            pushGuard();
+            triggerAppBack();
+          }, true);
+          // Keyboard Back shortcuts used by some Android keyboards/WebViews.
+          host.addEventListener("keydown", (event) => {
+            const isBack = event.key === "Escape" ||
+              event.key === "BrowserBack" ||
+              event.keyCode === 4 ||
+              (event.altKey && event.key === "ArrowLeft");
+            if (isBack) {
+              event.preventDefault();
+              triggerAppBack();
             }
           }, true);
         }
