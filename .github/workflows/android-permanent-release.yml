@@ -71,12 +71,27 @@ jobs:
             echo "::error::Decoded keystore file is empty."
             exit 1
           fi
-          KEYSTORE_TYPE="${ANDROID_KEYSTORE_TYPE:-JKS}"
-          if ! KEYTOOL_OUTPUT="$(keytool -list -keystore "$KEYSTORE" -storetype "$KEYSTORE_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" 2>&1)"; then
-            echo "::error::Keystore validation failed. Diagnostic follows; no secret values are printed."
+          # Respect an explicitly configured type. If it is unset, detect the
+          # original keystore format without exposing passwords or key material.
+          if [[ -n "${ANDROID_KEYSTORE_TYPE:-}" ]]; then
+            KEYSTORE_TYPES=("$ANDROID_KEYSTORE_TYPE")
+          else
+            KEYSTORE_TYPES=("JKS" "PKCS12")
+          fi
+          KEYSTORE_TYPE=""
+          KEYTOOL_OUTPUT=""
+          for candidate in "${KEYSTORE_TYPES[@]}"; do
+            if KEYTOOL_OUTPUT="$(keytool -list -keystore "$KEYSTORE" -storetype "$candidate" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" 2>&1)"; then
+              KEYSTORE_TYPE="$candidate"
+              break
+            fi
+          done
+          if [[ -z "$KEYSTORE_TYPE" ]]; then
+            echo "::error::Keystore validation failed for the configured or detected formats. No secret values are printed."
             printf '%s\\n' "$KEYTOOL_OUTPUT" | sed -E 's/(password|secret|key)[^:]*:.*/\\1: [masqué]/Ig'
             exit 1
           fi
+          echo "Keystore format validated: $KEYSTORE_TYPE."
           {
             echo "ANDROID_KEYSTORE_PATH=$KEYSTORE"
             echo "ANDROID_KEYSTORE_TYPE=${ANDROID_KEYSTORE_TYPE:-JKS}"
