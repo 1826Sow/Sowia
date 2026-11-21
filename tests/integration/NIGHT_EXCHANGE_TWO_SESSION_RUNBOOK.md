@@ -67,3 +67,24 @@ Le parcours est validé uniquement si tous les contrôles nominaux et négatifs 
 ## État au moment de la rédaction
 
 Les tests SQL avec claims JWT simulés ont réussi et ont été annulés par ROLLBACK. Ils ne constituent pas une validation HTTP avec deux comptes réellement connectés. Les sessions réelles, le test de concurrence HTTP et la validation visuelle de l'interface restent à effectuer.
+
+## Revue CI et sécurité — 21 novembre 2026
+
+### CI du commit `75da8dea09aeb2c874fb6035d130b7e2ddac2b78`
+
+- `SOW IA quality checks` : réussi.
+- `SOWIA financial ledger checks` : réussi.
+- `PayPal subscription safety checks` : réussi.
+- Le job `Supabase real-account RLS tests` reste volontairement ignoré (`if: false`) : ce résultat n'est pas un succès de test RLS réel.
+
+### Contrôles Supabase sur SOWIA - TEST
+
+- Les trois fonctions SECURITY DEFINER signalées par l'advisor sont `sowia_has_professional_access()`, `sowia_nex_create_deal(...)` et `sowia_nex_transition_deal(...)`.
+- Pour les deux RPC NIGHT EXCHANGE, l'exécution est révoquée à `PUBLIC`, `anon` et aux droits hérités, puis accordée explicitement à `authenticated`. Le corps vérifie `auth.uid()` et les autorisations métier. L'avertissement « Signed-In Users Can Execute SECURITY DEFINER Function » reste donc documenté et doit être accepté explicitement dans la revue de sécurité, ou faire l'objet d'une architecture alternative avant déploiement.
+- L'advisor signale également que la protection Auth contre les mots de passe compromis est désactivée sur le projet TEST. Ce paramètre n'a pas été modifié. Le vérifier et l'activer dans le projet TEST avant de créer ou réinitialiser les mots de passe des comptes de test.
+- Les alertes de performance sur les index inutilisés ne justifient pas leur suppression dans une base de test peu alimentée. Les autres alertes de performance observées concernent des tables/politiques existantes et ne sont pas corrigées dans le cadre de ce PR.
+
+### Décision
+
+Ces résultats renforcent la validation statique et les contrôles du projet TEST, mais ne remplacent ni les deux sessions HTTP réelles, ni la concurrence multi-connexion, ni la vérification visuelle Streamlit. Aucun secret, paramètre de production, compte réel ou donnée de production n'a été modifié.
+
