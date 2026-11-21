@@ -317,6 +317,19 @@ st.markdown(
         letter-spacing: .015em;
         touch-action: manipulation;
       }
+      /* Keep the three home discovery paths comfortable and thumb-friendly on phones. */
+      .st-key-home_discovery_cards [data-testid="stHorizontalBlock"] {
+        flex-direction: column !important;
+        gap: .7rem !important;
+      }
+      .st-key-home_discovery_cards [data-testid="column"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+      }
+      .st-key-home_discovery_cards [data-testid="stVerticalBlockBorderWrapper"] {
+        padding: .25rem .15rem !important;
+      }
       .hero { padding: 1.25rem 1.05rem; border-radius: 18px; }
       .hero h1 { font-size: 2.15rem; }
       .hero p { font-size: .98rem; }
@@ -1415,24 +1428,25 @@ if page == "Accueil":
         '</section>',
         unsafe_allow_html=True,
     )
-    discovery_cols = st.columns(3)
-    discovery_paths = [
-        ("💬 Assistant IA", "Échangez, réfléchissez et faites avancer vos idées.", "Assistant IA"),
-        ("📄 Analyse PDF", "Comprenez et exploitez vos documents.", "Analyse PDF"),
-        ("🌍 Annuaire mondial", "Explorez les acteurs et ressources de l’écosystème.", "SOWIA GLOBAL DIRECTORY"),
-    ]
-    for discovery_col, (discovery_title, discovery_description, discovery_destination) in zip(discovery_cols, discovery_paths):
-        with discovery_col:
-            with st.container(border=True):
-                st.markdown(f"**{discovery_title}**")
-                st.caption(discovery_description)
-                st.button(
-                    "Découvrir",
-                    key=f"home_discovery_{discovery_destination}",
-                    use_container_width=True,
-                    on_click=go_to_page,
-                    args=(discovery_destination,),
-                )
+    with st.container(key="home_discovery_cards"):
+        discovery_cols = st.columns(3)
+        discovery_paths = [
+            ("💬 Assistant IA", "Échangez, réfléchissez et faites avancer vos idées.", "Assistant IA"),
+            ("📄 Analyse PDF", "Comprenez et exploitez vos documents.", "Analyse PDF"),
+            ("🌍 Annuaire mondial", "Explorez les acteurs et ressources de l’écosystème.", "SOWIA GLOBAL DIRECTORY"),
+        ]
+        for discovery_col, (discovery_title, discovery_description, discovery_destination) in zip(discovery_cols, discovery_paths):
+            with discovery_col:
+                with st.container(border=True):
+                    st.markdown(f"**{discovery_title}**")
+                    st.caption(discovery_description)
+                    st.button(
+                        "Découvrir",
+                        key=f"home_discovery_{discovery_destination}",
+                        use_container_width=True,
+                        on_click=go_to_page,
+                        args=(discovery_destination,),
+                    )
     # The project hub is deliberately the first major block on the home page.
     st.markdown(
         '<section class="sowia-command-center">'
