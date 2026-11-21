@@ -152,3 +152,27 @@ def test_dns_confirmation_uses_server_resolver_and_still_binds_owner(monkeypatch
         verification.confirm_domain_control_via_dns(
             challenge, authenticated_owner_id="user-2", checked_at=NOW + timedelta(minutes=1)
         )
+
+def test_server_dns_resolver_ignores_txt_records_for_other_names(monkeypatch):
+    from types import SimpleNamespace
+    import requests
+    from sowia_partner_verification import resolve_domain_challenge_txt
+
+    monkeypatch.setattr(
+        requests, "get",
+        lambda *args, **kwargs: SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {
+                "Status": 0,
+                "Answer": [
+                    {"name": "_other.example.com.", "type": 16,
+                     "data": '"sowia-verification=attacker-value"'},
+                    {"name": "_sowia-verification.example.com.", "type": 16,
+                     "data": '"sowia-verification=correct-value"'},
+                ],
+            },
+        ),
+    )
+    assert resolve_domain_challenge_txt("example.com") == [
+        "sowia-verification=correct-value"
+    ]
