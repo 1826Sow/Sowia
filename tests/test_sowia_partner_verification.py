@@ -85,7 +85,7 @@ def test_confirm_domain_control_rejects_expired_or_replayed_challenge():
             challenge, authenticated_owner_id="user-1", dns_txt_records=txt,
             checked_at=challenge.expires_at,
         )
-    with pytest.raises(PartnerVerificationError, match="déjà utilisé"):
+    with pytest.raises(PartnerVerificationError, match="déjà été utilisé"):
         confirm_domain_control_from_dns(
             challenge, authenticated_owner_id="user-1", dns_txt_records=txt,
             checked_at=NOW + timedelta(minutes=1), consumed_at=NOW,
