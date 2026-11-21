@@ -93,7 +93,7 @@ create or replace function public.sowia_nex_create_mission(
 returns uuid
 language plpgsql
 security definer
-set search_path = pg_catalog, public, extensions, pg_temp
+set search_path = pg_catalog, extensions, pg_temp
 as $$
 declare
     v_actor uuid := auth.uid();
@@ -165,7 +165,7 @@ create or replace function public.sowia_nex_approve_mission(p_mission_id uuid)
 returns text
 language plpgsql
 security definer
-set search_path = pg_catalog, public, extensions, pg_temp
+set search_path = pg_catalog, extensions, pg_temp
 as $$
 declare
     v_actor uuid := auth.uid();
@@ -230,7 +230,7 @@ create or replace function public.sowia_nex_transition_mission(
 returns text
 language plpgsql
 security definer
-set search_path = pg_catalog, public, extensions, pg_temp
+set search_path = pg_catalog, extensions, pg_temp
 as $$
 declare
     v_actor uuid := auth.uid();
