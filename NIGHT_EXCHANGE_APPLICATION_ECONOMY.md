@@ -291,7 +291,7 @@ The additive migrations are now prepared in the review branch:
 - `20261121100000_sowia_nex_missions.sql`: persistent mission tables, RLS, partner-evidence columns and server-guarded lifecycle RPCs;
 - `20261121120000_sowia_nex_private_rpcs.sql`: privileged implementations moved to the non-exposed `private` schema, with public `SECURITY INVOKER` RPC wrappers;
 - `20261121130000_sowia_nex_admin_verification.sql`: admin-only, append-only verification attestations and a guarded moderation RPC;
-- `20261121140000_harden_nex_offer_admission.sql`: existing bilateral offer creation and response now require both apps to retain all four verification attestations.
+- `20261121140000_harden_nex_offer_admission.sql`: creates the bilateral-offer registry if it is absent, applies participant-only read access, restricts direct client writes, adds the rejected-integration audit event, hardens offer creation/response, and keeps integration moderation behind private admin RPCs. Both apps must retain all four verification attestations.
 - `20261121150000_optimize_nex_verification_rls.sql`: keep the new admin-audit RLS check initplan-friendly.
 
 The application now exposes a dedicated Missions commerciales tab and an admin attestation panel. The existing public directory, matching, and offer selectors exclude applications without all four attestations. Existing offer-creation and offer-response RPCs also re-check the attestations server-side, including at response time.
