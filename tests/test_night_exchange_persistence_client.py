@@ -88,3 +88,32 @@ def test_mission_operations_require_authenticated_user():
             client, SimpleNamespace(id=None), "mission-1"
         )
     assert client.calls == []
+
+def test_admin_verification_requires_admin_claim_and_uses_audited_rpc():
+    client = FakeClient()
+    admin = SimpleNamespace(id="admin-user", app_metadata={"sowia_admin": True})
+    result = cloud_storage.admin_verify_night_exchange_app(
+        client, admin, "app-1", "verified", "verified", "passed",
+        "verified", "Contrôle documentaire effectué",
+    )
+    assert result == "ok"
+    assert client.calls[0].name == "sowia_admin_verify_nex_app"
+    assert client.calls[0].params["p_publisher_signature_status"] == "verified"
+
+    ordinary_user = SimpleNamespace(id="member-user", app_metadata={})
+    with pytest.raises(PermissionError):
+        cloud_storage.admin_verify_night_exchange_app(
+            client, ordinary_user, "app-1", "verified", "verified",
+            "passed", "verified",
+        )
+
+
+def test_admin_verification_rejects_invalid_attestation_before_rpc():
+    client = FakeClient()
+    admin = SimpleNamespace(id="admin-user", app_metadata={"role": "admin"})
+    with pytest.raises(ValueError):
+        cloud_storage.admin_verify_night_exchange_app(
+            client, admin, "app-1", "verified", "verified",
+            "passed", "signature_unknown",
+        )
+    assert client.calls == []
