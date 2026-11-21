@@ -41,8 +41,13 @@ def _safe_number(node, depth=0):
             raise DirectToolError("Calcul impossible (division par zéro ou dépassement numérique).") from exc
     else:
         raise DirectToolError("Expression non autorisée. Seules les opérations arithmétiques simples sont acceptées.")
-    if isinstance(value, complex) or not math.isfinite(value) or abs(value) > 1e100:
+    if isinstance(value, complex) or abs(value) > 1e100:
         raise DirectToolError("Résultat hors limites.")
+    try:
+        if not math.isfinite(value):
+            raise DirectToolError("Résultat hors limites.")
+    except OverflowError as exc:
+        raise DirectToolError("Résultat hors limites.") from exc
     return value
 
 
@@ -79,7 +84,7 @@ def convert_units(value, source_unit, target_unit):
     """Convert common length, mass, volume and temperature units."""
     try:
         number = float(value)
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, OverflowError) as exc:
         raise DirectToolError("Valeur numérique invalide.") from exc
     if not math.isfinite(number) or abs(number) > 1e100:
         raise DirectToolError("Valeur numérique hors limites.")
