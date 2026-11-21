@@ -46,6 +46,10 @@ class NightExchangeDealCreationMigrationTests(unittest.TestCase):
     def test_idempotency_rejects_payload_mismatch(self):
         self.assertIn("on conflict (created_by, idempotency_key) do nothing", self.sql)
         self.assertIn("idempotency key reused with a different deal request", self.sql)
+        self.assertIn("return an identical prior request", self.sql)
+
+    def test_approved_app_rows_are_locked_during_creation(self):
+        self.assertEqual(self.sql.count("for share;"), 2)
 
     def test_creation_is_additive(self):
         self.assertIn("add column if not exists", self.sql)
