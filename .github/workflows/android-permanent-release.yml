@@ -1,10 +1,9 @@
-name: SOW IA Android permanent signed APK
+name: SOW IA Android direct-install APK
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - android/sowia-permanent-signing-20261121
       - android/fix-login-pdf-navigation-20261121
     paths:
       - '.github/workflows/android-permanent-release.yml'
@@ -18,75 +17,120 @@ permissions:
   contents: read
 
 jobs:
-  build-release:
-    name: Build and verify permanent signed APK
+  build-signed-current-apk:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
-
-      - name: Locate Android SDK and install required tools
-        shell: bash
-        run: |
-          set -euo pipefail
-          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -n 1)"
-          if [[ -z "$SDKMANAGER" ]]; then
-            echo "::error::Android SDK command-line tools are missing."
-            exit 1
-          fi
-          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
-          yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+          java-version: "17"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.11.1'
+          gradle-version: "8.11.1"
 
-      - name: Restore permanent signing key securely
+      - name: Validate and prepare the existing registered signing key
         env:
+          SOWIA_UPLOAD_KEYSTORE_BASE64: ${{ secrets.SOWIA_UPLOAD_KEYSTORE_BASE64 }}
+          SOWIA_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEYSTORE_PASSWORD }}
+          SOWIA_UPLOAD_KEY_ALIAS: ${{ secrets.SOWIA_UPLOAD_KEY_ALIAS }}
+          SOWIA_UPLOAD_KEY_PASSWORD: ${{ secrets.SOWIA_UPLOAD_KEY_PASSWORD }}
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEYSTORE_TYPE: ${{ secrets.ANDROID_KEYSTORE_TYPE }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
-          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_PASSWORD ANDROID_KEY_ALIAS; do
+          if [[ -n "${SOWIA_UPLOAD_KEYSTORE_BASE64:-}" && -n "${SOWIA_UPLOAD_KEYSTORE_PASSWORD:-}" && -n "${SOWIA_UPLOAD_KEY_ALIAS:-}" && -n "${SOWIA_UPLOAD_KEY_PASSWORD:-}" ]]; then
+            ANDROID_KEYSTORE_BASE64="$SOWIA_UPLOAD_KEYSTORE_BASE64"
+            ANDROID_KEYSTORE_PASSWORD="$SOWIA_UPLOAD_KEYSTORE_PASSWORD"
+            ANDROID_KEY_ALIAS="$SOWIA_UPLOAD_KEY_ALIAS"
+            ANDROID_KEY_PASSWORD="$SOWIA_UPLOAD_KEY_PASSWORD"
+          fi
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
             if [[ -z "${!name:-}" ]]; then
-              echo "::error::Missing GitHub Actions secret: $name"
+              echo "::error::Required existing signing secret $name is missing. No key will be generated."
               exit 1
             fi
           done
-          KEYSTORE="$RUNNER_TEMP/sowia-release-permanent.jks"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
-          test -s "$KEYSTORE"
-          keytool -list -keystore "$KEYSTORE" -storetype "${ANDROID_KEYSTORE_TYPE:-JKS}" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
-          EXPECTED_CERT_SHA256="$(keytool -list -v -keystore "$KEYSTORE" -storetype "${ANDROID_KEYSTORE_TYPE:-JKS}" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" | awk -F': ' '/SHA256:/{gsub(/:/,"",$2); print toupper($2); exit}')"
-          if [[ ! "$EXPECTED_CERT_SHA256" =~ ^[A-F0-9]{64}$ ]]; then
-            echo "::error::Could not determine the signing certificate SHA-256 fingerprint."
+          export ANDROID_KEYSTORE_BASE64
+          KEYSTORE_PATH="$RUNNER_TEMP/sowia-original-upload-key"
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          value = "".join(os.environ["ANDROID_KEYSTORE_BASE64"].strip().split())
+          value += "=" * (-len(value) % 4)
+          try:
+              raw = base64.b64decode(value, validate=True)
+          except Exception:
+              raise SystemExit("The configured keystore secret is not valid Base64.")
+          if not raw:
+              raise SystemExit("The configured keystore is empty.")
+          Path(os.environ["RUNNER_TEMP"], "sowia-original-upload-key").write_bytes(raw)
+          PY
+
+          STORE_TYPE=""
+          STORE_PASSWORD=""
+          for candidate_password in "$ANDROID_KEYSTORE_PASSWORD" "$ANDROID_KEY_PASSWORD"; do
+            for candidate_type in JKS PKCS12; do
+              if keytool -list -storetype "$candidate_type" -keystore "$KEYSTORE_PATH" -storepass "$candidate_password" >/dev/null 2>&1; then
+                STORE_TYPE="$candidate_type"
+                STORE_PASSWORD="$candidate_password"
+                break 2
+              fi
+            done
+          done
+          if [[ -z "$STORE_TYPE" ]]; then
+            echo "::error::The existing keystore could not be opened. Signing stopped; no key was generated or replaced."
             exit 1
           fi
-          {
-            echo "ANDROID_EXPECTED_CERT_SHA256=$EXPECTED_CERT_SHA256"
-            echo "ANDROID_KEYSTORE_PATH=$KEYSTORE"
-            echo "ANDROID_KEYSTORE_TYPE=${ANDROID_KEYSTORE_TYPE:-JKS}"
-            echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
-            echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS"
-            echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
-          } >> "$GITHUB_ENV"
-          echo "Permanent signing key restored and validated."
 
-      - name: Validate Supabase public build configuration
+          KEY_ALIAS="$ANDROID_KEY_ALIAS"
+          if ! keytool -list -storetype "$STORE_TYPE" -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+            ALIASES="$(keytool -list -v -storetype "$STORE_TYPE" -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" 2>/dev/null | awk -F': ' '/^Alias name:/{print $2}')"
+            ALIAS_COUNT="$(printf '%s\n' "$ALIASES" | sed '/^$/d' | wc -l | tr -d ' ')"
+            if [[ "$ALIAS_COUNT" != "1" ]]; then
+              echo "::error::Configured alias not found and no single safe alias could be identified."
+              exit 1
+            fi
+            KEY_ALIAS="$ALIASES"
+          fi
+
+          EXPECTED_CERT_SHA256="A967AA50C0257BFF7D7EFA0D102035A61AAE4A0A085717702152BECCADF304F4"
+          ACTUAL_CERT_SHA256="$(keytool -list -v -storetype "$STORE_TYPE" -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" 2>/dev/null | awk -F': ' '/SHA256:/{gsub(/:/,"",$2); print toupper($2); exit}')"
+          if [[ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]]; then
+            echo "::error::The configured keystore does not match the registered SOW IA upload certificate. Signing stopped."
+            exit 1
+          fi
+
+          KEY_PASSWORD="$ANDROID_KEY_PASSWORD"
+          printf 'SOW IA signing probe\n' > "$RUNNER_TEMP/sowia-signing-probe.txt"
+          jar cf "$RUNNER_TEMP/sowia-signing-probe.jar" -C "$RUNNER_TEMP" sowia-signing-probe.txt
+          if ! jarsigner -keystore "$KEYSTORE_PATH" -storetype "$STORE_TYPE" -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD" "$RUNNER_TEMP/sowia-signing-probe.jar" "$KEY_ALIAS" >/dev/null 2>&1; then
+            if ! jarsigner -keystore "$KEYSTORE_PATH" -storetype "$STORE_TYPE" -storepass "$STORE_PASSWORD" -keypass "$STORE_PASSWORD" "$RUNNER_TEMP/sowia-signing-probe.jar" "$KEY_ALIAS" >/dev/null 2>&1; then
+              echo "::error::The original certificate is correct, but the configured private-key password cannot unlock it."
+              exit 1
+            fi
+            KEY_PASSWORD="$STORE_PASSWORD"
+          fi
+          rm -f "$RUNNER_TEMP/sowia-signing-probe.txt" "$RUNNER_TEMP/sowia-signing-probe.jar"
+
+          {
+            echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH"
+            echo "ANDROID_KEYSTORE_TYPE=$STORE_TYPE"
+            echo "ANDROID_KEYSTORE_PASSWORD=$STORE_PASSWORD"
+            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "Original registered signing certificate and private-key access verified. No key material was changed."
+
+      - name: Validate Supabase configuration and build installable APK
         env:
           SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
           SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
@@ -97,67 +141,65 @@ jobs:
           python3 - <<'PY'
           import os
           from urllib.parse import urlparse
-          u = urlparse(os.environ.get("SOWIA_SUPABASE_URL", "").strip())
-          k = (os.environ.get("SOWIA_SUPABASE_PUBLISHABLE_KEY", "").strip()
-               or os.environ.get("SOWIA_SUPABASE_ANON_KEY", "").strip())
-          if u.scheme != "https" or u.hostname != "qegcopordeqjiechmbhg.supabase.co" or u.path not in ("", "/") or u.query or u.fragment:
-              raise SystemExit("Missing or invalid SOWIA_SUPABASE_URL secret.")
-          if not k:
-              raise SystemExit("Missing Supabase public/anon key secret.")
-          if k.startswith("sb_secret_"):
+          url = urlparse(os.environ.get("SOWIA_SUPABASE_URL", "").strip())
+          key = (os.environ.get("SOWIA_SUPABASE_PUBLISHABLE_KEY", "").strip()
+                 or os.environ.get("SOWIA_SUPABASE_ANON_KEY", "").strip())
+          if url.scheme != "https" or url.hostname != "qegcopordeqjiechmbhg.supabase.co" or url.path not in ("", "/") or url.query or url.fragment:
+              raise SystemExit("SOWIA_SUPABASE_URL must be the HTTPS project root.")
+          if not key:
+              raise SystemExit("SOWIA_SUPABASE_PUBLISHABLE_KEY or SOWIA_SUPABASE_ANON_KEY is missing.")
+          if key.startswith("sb_secret_"):
               raise SystemExit("A server secret key cannot be embedded in the Android APK.")
-          if k.count(".") == 2:
+          if key.count(".") == 2:
               import base64, json
               try:
-                  part = k.split(".")[1]
+                  part = key.split(".")[1]
                   claims = json.loads(base64.urlsafe_b64decode(part + "=" * (-len(part) % 4)))
               except Exception:
                   claims = {}
               if isinstance(claims, dict) and claims.get("role") == "service_role":
                   raise SystemExit("A service_role key cannot be embedded in the Android APK.")
-          print("Supabase public build configuration is present; server secrets are rejected.")
+          print("Supabase project URL and public-key configuration are present; server secrets are rejected.")
           PY
+          gradle -p android :app:assembleCurrentRelease
 
-      - name: Build release APK
-        env:
-          SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
-          SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
-          SOWIA_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_SUPABASE_ANON_KEY }}
-        run: gradle -p android :app:assembleCurrentRelease
-
-      - name: Verify package, signature and certificate fingerprint
+      - name: Verify package ID and original signing certificate
         shell: bash
         run: |
           set -euo pipefail
           APK="$(find android/app/build/outputs/apk -type f -path '*/current/release/*.apk' -print -quit)"
           if [[ -z "$APK" ]]; then
-            echo "::error::Release APK not found."
+            echo "::error::No current-flavor release APK was produced."
             exit 1
           fi
-          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
-          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
-          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee "$RUNNER_TEMP/sowia-signature.txt"
-          grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" "$RUNNER_TEMP/sowia-signature.txt"
-          grep -q "Verified using v3 scheme (APK Signature Scheme v3): true" "$RUNNER_TEMP/sowia-signature.txt"
-          ACTUAL_CERT_SHA256="$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print toupper($NF); exit}' "$RUNNER_TEMP/sowia-signature.txt" | tr -d ':')"
-          if [[ "$ACTUAL_CERT_SHA256" != "$ANDROID_EXPECTED_CERT_SHA256" ]]; then
-            echo "::error::The APK certificate does not match the permanent keystore configured in GitHub Secrets."
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          APKANALYZER="$(find "$ANDROID_HOME/cmdline-tools" "$ANDROID_HOME/tools" -type f -name apkanalyzer 2>/dev/null | sort -V | tail -n 1)"
+          if [[ -z "$APKSIGNER" || -z "$APKANALYZER" ]]; then
+            echo "::error::Android SDK verification tools are unavailable on this runner."
             exit 1
           fi
-          PACKAGE_ID="$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
+          "$APKSIGNER" verify --verbose --print-certs "$APK" > "$RUNNER_TEMP/apk-signature.txt"
+          ACTUAL_CERT_SHA256="$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print toupper($2); exit}' "$RUNNER_TEMP/apk-signature.txt" | tr -d ':')"
+          EXPECTED_CERT_SHA256="A967AA50C0257BFF7D7EFA0D102035A61AAE4A0A085717702152BECCADF304F4"
+          if [[ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]]; then
+            cat "$RUNNER_TEMP/apk-signature.txt"
+            echo "::error::APK signature does not match the original registered SOW IA certificate."
+            exit 1
+          fi
+          PACKAGE_ID="$("$APKANALYZER" manifest application-id "$APK")"
           if [[ "$PACKAGE_ID" != "com.sowkeys.sowia" ]]; then
-            echo "::error::Unexpected application ID: $PACKAGE_ID"
+            echo "::error::Unexpected Android application ID: $PACKAGE_ID"
             exit 1
           fi
           mkdir -p release-output
-          cp "$APK" release-output/SOW-IA-Android-permanent.apk
-          sha256sum release-output/SOW-IA-Android-permanent.apk | tee release-output/SHA256SUMS.txt
-          echo "Release APK package ID and v2/v3 signatures verified."
+          cp "$APK" release-output/SOW-IA-Android-release.apk
+          sha256sum release-output/SOW-IA-Android-release.apk | tee release-output/SHA256SUMS.txt
+          echo "APK verified: application ID and original registered signing certificate both match."
 
-      - name: Upload permanent signed APK
+      - name: Upload production-signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: sowia-android-permanent-signed
+          name: sowia-android-current-release-apk
           path: release-output/*
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 14
