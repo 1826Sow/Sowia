@@ -20,6 +20,8 @@ class NightExchangeDealCreationMigrationTests(unittest.TestCase):
         self.assertIn("security definer", self.sql)
         self.assertIn("set search_path = ''", self.sql)
         self.assertIn("auth.uid()", self.sql)
+        self.assertIn("public.sowia_has_professional_access()", self.sql)
+        self.assertIn("active premium access required", self.sql)
         self.assertIn("from public, anon, authenticated", self.sql)
         self.assertIn("to authenticated", self.sql)
 
