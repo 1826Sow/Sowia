@@ -1,42 +1,51 @@
 # SOWIA NIGHT EXCHANGE
 
 ## Positioning
-A timezone-aware night-session marketplace for digital applications and services. It combines app discovery, service exchange, integration opportunities, visibility placements, capped paid offers and collaboration matching. It is not a securities exchange and issues no tradable financial instruments.
+A timezone-aware international marketplace for digital applications and services. It combines an approved application directory, service discovery, compatibility matching, bilateral collaboration proposals and administrative integration review. It is not a securities exchange and issues no tradable financial instruments.
 
-## Six spaces
-1. Application directory: profiles, capabilities, countries, languages, integration requirements and verification.
-2. Service exchange: reciprocal offers and requests with explicit scope, deliverables, expiry and approval by both parties.
-3. Paid services and visibility: priced offers, time slots and capped bids; no hidden bidding or guaranteed placement.
-4. Night sessions: IANA time zones, default local window 20:00–06:00, configurable per market; show local time and UTC.
-5. SOWIA matching: explainable compatibility signals, not endorsements.
-6. Morning report: session outcomes, provider-confirmed spend, offers, matches and pending approvals.
+## Product areas
+1. Application directory: application name, country, IANA time zone, categories, services offered and services wanted.
+2. Moderation: new listings are pending by default; only approved listings appear in the public catalogue. Changes by a non-admin return a listing to pending review.
+3. Night sessions: each approved application has a local session window (default 20:00–06:00); the interface displays local time and UTC without launching sessions automatically.
+4. Compatibility: explainable category and service matching, plus a separate evidence checklist. Scores are indicative and are not endorsements or forecasts.
+5. Collaboration: a professional application can send a proposal to another approved application. The recipient can accept or reject; accepted proposals may enter a separate administrative integration review.
+6. Activity report: member-visible event history for matching consultations and member-declared meeting confirmations. Payment events are reserved for trusted server-side writers.
 
-## Budget controls
-Each app sets daily, weekly and monthly caps. A trusted backend must reserve budgets atomically before a paid action. Stop spending when any cap is reached or payment status is uncertain. No payment, bid, subscription, integration, data transfer or campaign activates without explicit administrator approval. Itemize fees, taxes, currency conversion, refunds and chargebacks. Client-side checks alone are never sufficient.
+## Budget and payments — not production-enabled
+The rules module contains pure helpers for validating currency amounts, checking daily/weekly/monthly caps and selecting offers within a budget. These helpers are not, by themselves, a production spending control. Before any paid offer, bid, visibility placement or campaign can be activated, a trusted backend must atomically reserve the budget, verify provider payment status, enforce all caps, and handle refunds and chargebacks. Client-side checks are never sufficient. No paid NIGHT EXCHANGE action should be described as live until that backend workflow and its operational controls have been implemented and verified.
 
 ## Trust and privacy
-Verify app ownership and domain control. Review permissions before listing. Use least-privilege API scopes, signed webhooks, secret rotation and tenant isolation. Explain what data is shared, with whom, why and for how long; obtain consent. Add security review, reporting, suspension, appeal and audit logs. Do not bypass logins or platform terms.
+- New listings are private pending moderation; regular members cannot self-approve or self-verify.
+- Public catalogue queries are limited to approved records by database policy.
+- Activity records are append-only for authenticated clients. Members may submit only the allowed non-financial event types; payment-confirmed events require a trusted server process.
+- Administrative moderation and integration decisions must be performed through database functions that validate the signed administrator claim.
+- Ownership/domain verification, security review, dispute handling, appeals and delivery ratings require separate operational workflows; do not imply they are automated unless implemented and tested.
 
-## Operational sequence
-1. App submits listing and ownership proof.
-2. SOWIA reviews security, privacy, legal and technical fit.
-3. Approved app configures markets, night windows, caps and allowed actions.
-4. Marketplace presents compatible exchanges and paid-service offers.
-5. Both sides approve scope and terms.
-6. Backend reserves budget atomically; payment provider confirms the charge.
-7. SOWIA records the outcome and issues the morning report.
-8. Parties rate delivery or open a dispute.
+## Current implementation status
 
-## Rollout
-Phase 0: concept, rules, threat model and UX.
-Phase 1: closed pilot, manually verified apps, non-monetary matching and exchanges.
-Phase 2: limited paid services with payment provider, atomic reservations, refunds and audit logs.
-Phase 3: regional sessions, localization and partner integrations.
-Phase 4: automated monitoring after legal, privacy, security and operational review.
+### Present in the application code
+- The professional NIGHT EXCHANGE page and the separate Bourse aux applications catalogue are present in Streamlit.
+- Listing submission, member application tracking and administrator moderation are wired to the persistent application registry functions in `cloud_storage.py`.
+- The approved catalogue supports country, category and text filtering.
+- IANA time-zone session status, next-opening calculations, explainable matching and partner-evidence summaries are implemented.
+- The activity view reads the member's event ledger and reports only events actually recorded.
+- Bilateral proposal and administrative integration-review UI calls guarded database RPCs.
 
-## Current implementation boundary
-The rules module provides pure helpers for timezone checks, app matching, budget-cap checks and deterministic offer selection. Tests are supplied. It is not wired into Streamlit or Supabase. No payment provider, scheduler, app-verification workflow, background execution or production budget enforcement is connected. Run the project test suite before deployment.
+### Supabase SQL assets in the repository
+- `supabase_night_exchange_registry.sql` defines the application registry, row-level security, pending-by-default trigger and administrator review RPC. Apply and verify it in the target Supabase project before relying on registry persistence.
+- `supabase_night_exchange_events.sql` defines the append-only event ledger and member insert restrictions. Apply it after the registry script and verify its policies.
+- The application code calls additional RPCs for bilateral offers and integration review. Their database definitions and deployment state must be checked separately in the target Supabase project; the presence of client calls does not prove that those RPCs are installed.
 
+### Not yet established as production capabilities
+- No automatic night-session scheduler or background execution.
+- No ownership/domain verification automation.
+- No live paid marketplace, bidding, paid visibility placement or atomic budget reservation.
+- No end-to-end payment/refund/chargeback workflow for NIGHT EXCHANGE.
+- No proof that the SQL assets or the additional offer/integration RPCs have been applied to the production Supabase project unless a separate deployment check confirms it.
 
-## Streamlit prototype
-The professional navigation now includes a SOWIA NIGHT EXCHANGE page, gated by the existing Premium entitlement. It contains an overview, a session-only draft listing form with IANA timezone validation, a simple explainable category/service compatibility preview, and a local budget-cap configuration preview. Draft listings and budget settings are not persisted. The page does not publish apps, verify ownership, match against a live directory, create auctions, execute payments, or enforce production spending limits. The authoritative budget guard must be implemented server-side with atomic reservations before any paid workflow is enabled.
+## Safe rollout
+1. Verify the registry and event SQL assets in a non-production Supabase environment, including RLS tests for member, other-member and administrator roles.
+2. Run end-to-end tests for listing submission, moderation, approved-only visibility, matching, event restrictions and bilateral offers.
+3. Pilot non-monetary listings and proposals with manually reviewed applications.
+4. Design and security-test atomic budget reservations and payment-provider confirmation before enabling any paid workflow.
+5. Add localization, partner integrations and automation only after legal, privacy, security and operational review.
