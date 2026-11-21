@@ -82,3 +82,6 @@ Avant toute activation sur un environnement cible, appliquer et vérifier les mi
 
 
 Le contrôle en lecture seule du schéma `public` a également confirmé que, parmi les tables attendues par le parcours PayPal, seule `sowia_entitlements` existe dans le projet de test. Les tables `sowia_paypal_catalog`, `sowia_paypal_webhook_events`, `sowia_subscriptions` et `sowia_financial_transactions` n'y sont pas présentes. Il faut donc vérifier et appliquer la chaîne complète de migrations dans l'ordre prévu avant tout déploiement des fonctions ; appliquer uniquement les migrations additives de fin serait insuffisant.
+
+
+Le workflow GitHub `.github/workflows/deploy-paypal-webhook.yml` cible explicitement le projet Supabase `qegcopordeqjiechmbhg` (projet `Sowia`, distinct de `SOWIA - TEST`) et exige une confirmation manuelle `DEPLOY`. Il ne doit pas être déclenché pendant la validation de test. Il ne déploie que `paypal-webhook`, pas `paypal-one-time`. La validation doit donc d'abord disposer d'un déploiement contrôlé sur le projet TEST et d'une procédure distincte pour chacune des deux fonctions ; aucune action de déploiement n'a été lancée.
