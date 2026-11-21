@@ -4565,6 +4565,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
 elif page == "SOWIA GLOBAL DECISION ENGINE":
     st.subheader("⚖️ SOW IA GLOBAL DECISION ENGINE")
     st.caption("Comparez plusieurs options avec une grille de critères transparente et conservez la justification de votre choix.")
+    st.image("assets/sections/global-decision-engine.svg", use_container_width=True)
     st.warning("Les notes et pondérations constituent une aide à la réflexion. Elles ne remplacent pas une expertise indépendante ni une validation humaine. Aucune décision n'est exécutée automatiquement.")
     if not cloud_mode or current_user is None:
         st.info("Connectez-vous pour enregistrer vos comparaisons dans votre espace privé.")
@@ -5475,6 +5476,7 @@ elif page == "SOWIA GLOBAL LEARNING ENGINE":
 elif page == "SOWIA GLOBAL STRATEGIC FORECAST":
     st.subheader("🔭 SOW IA GLOBAL STRATEGIC FORECAST")
     st.caption("Préparez plusieurs futurs possibles à partir de vos évaluations et alertes enregistrées.")
+    st.image("assets/sections/global-strategic-forecast.svg", use_container_width=True)
     st.warning("Ces scénarios sont des hypothèses conditionnelles, pas des prédictions, probabilités ni conseils financiers ou juridiques. Les données d'entrée et les sources doivent être vérifiées par une personne.")
     if not cloud_mode or current_user is None:
         st.info("Connectez-vous pour créer et conserver vos projections dans votre espace privé.")
@@ -5574,6 +5576,7 @@ elif page == "SOWIA GLOBAL STRATEGIC FORECAST":
 elif page == "SOWIA GLOBAL INTELLIGENCE":
     st.subheader("🌐 SOW IA GLOBAL INTELLIGENCE")
     st.caption("Laboratoire de veille et d'aide à la décision pour comparer les marchés, structurer les opportunités et conserver les preuves.")
+    st.image("assets/sections/global-intelligence.svg", use_container_width=True)
     st.info("Les notes et classements sont des estimations de travail saisies par l'utilisateur. Ils ne constituent pas des statistiques de marché vérifiées ni des recommandations financières ou juridiques.")
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre compte SOW IA pour enregistrer vos évaluations dans votre espace privé.")
@@ -5688,6 +5691,7 @@ elif page == "SOWIA GLOBAL INTELLIGENCE":
 elif page == "SOWIA GLOBAL PULSE":
     st.subheader("📡 SOW IA GLOBAL PULSE")
     st.caption("Radar international de veille : lancez une recherche ciblée, conservez les sources et transmettez les signaux utiles à votre analyse stratégique.")
+    st.image("assets/sections/global-pulse.svg", use_container_width=True)
     st.info("La collecte est déclenchée manuellement. Cette version ne surveille pas les marchés en arrière-plan et n'envoie pas d'alertes automatiques. Les résultats web sont des pistes à vérifier, pas des faits certifiés.")
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre compte SOW IA pour conserver votre veille dans votre espace privé.")
