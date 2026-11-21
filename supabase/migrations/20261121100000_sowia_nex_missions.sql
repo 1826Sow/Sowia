@@ -2,7 +2,7 @@
 -- Additive only. No payment processing, settlement, or third-party execution.
 begin;
 
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 
 -- Verification evidence is admin-controlled. Partner owners cannot self-certify.
 alter table public.sowia_night_exchange_apps
@@ -197,7 +197,7 @@ begin
         'currency', upper(btrim(p_currency)),
         'due_at', p_due_at
     );
-    v_hash := encode(public.digest(convert_to(v_terms::text, 'UTF8'), 'sha256'), 'hex');
+    v_hash := encode(extensions.digest(convert_to(v_terms::text, 'UTF8'), 'sha256'), 'hex');
 
     insert into public.sowia_nex_missions (
         requester_user_id, provider_user_id, requester_app_id, provider_app_id,
