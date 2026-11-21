@@ -65,3 +65,5 @@ jobs:
           path: release-output/*
           if-no-files-found: error
           retention-days: 14
+
+# Rebuild trigger: keep this workflow ready to package the latest main-branch Android app.
