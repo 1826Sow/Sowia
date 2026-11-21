@@ -410,7 +410,23 @@ def sign_in_email_password(client, email, password):
         raise ValueError("Adresse e-mail invalide.")
     if not secret:
         raise ValueError("Saisissez votre mot de passe.")
-    return client.auth.sign_in_with_password({"email": address, "password": secret})
+    response = client.auth.sign_in_with_password({"email": address, "password": secret})
+    # Explicitly persist the returned token pair through the per-session storage
+    # adapter. This protects Streamlit reruns on Android/WebView from losing
+    # the authenticated state between the login form and the workspace render.
+    session = getattr(response, "session", None)
+    if session is None:
+        data = getattr(response, "data", None)
+        session = getattr(data, "session", None) if data is not None else None
+    access_token = getattr(session, "access_token", None) if session is not None else None
+    refresh_token = getattr(session, "refresh_token", None) if session is not None else None
+    if access_token and refresh_token:
+        client.auth.set_session(access_token, refresh_token)
+    else:
+        stored_session = client.auth.get_session()
+        if stored_session is None:
+            raise RuntimeError("Supabase a accepté la connexion mais la session n'a pas pu être conservée.")
+    return response
 
 
 def email_magic_link(client, email, redirect_to):
