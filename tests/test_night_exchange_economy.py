@@ -244,3 +244,74 @@ def test_partner_discovery_excludes_restricted_financial_services_even_as_custom
         "status": "approved", "services_offered": "payment processing",
     }]
     assert discover_service_partners("requester", "payment processing", rows) == []
+
+
+def test_partner_admission_fails_closed_without_independent_security_evidence():
+    from night_exchange_economy import assess_partner_admission
+
+    record = {"status": "approved", "services_offered": "translation"}
+    result = assess_partner_admission(record)
+    assert result["eligible"] is False
+    assert "owner_identity_verified" in result["failed_checks"]
+    assert "security_review_passed" in result["failed_checks"]
+
+
+def test_partner_admission_requires_all_independent_verification_gates():
+    from night_exchange_economy import assess_partner_admission
+
+    record = {
+        "status": "approved",
+        "owner_verification_status": "verified",
+        "application_verification_status": "verified",
+        "security_review_status": "passed",
+        "publisher_signature_status": "verified",
+        "enabled": True,
+        "security_suspended": False,
+    }
+    assert assess_partner_admission(record)["eligible"] is True
+    record["publisher_signature_status"] = "unknown"
+    assert assess_partner_admission(record)["eligible"] is False
+
+
+def test_partner_admission_rejects_suspended_or_disabled_apps():
+    from night_exchange_economy import assess_partner_admission
+
+    record = {
+        "status": "approved",
+        "owner_verification_status": "verified",
+        "application_verification_status": "verified",
+        "security_review_status": "passed",
+        "publisher_signature_status": "verified",
+        "enabled": True,
+        "security_suspended": False,
+    }
+    record["security_suspended"] = True
+    assert assess_partner_admission(record)["eligible"] is False
+    record["security_suspended"] = False
+    record["enabled"] = False
+    assert assess_partner_admission(record)["eligible"] is False
+
+
+def test_discovery_excludes_approved_but_unverified_or_unsigned_apps():
+    from night_exchange_economy import discover_service_partners
+
+    rows = [{
+        "id": "fake-app", "app_name": "Fake", "status": "approved",
+        "services_offered": "translation",
+    }]
+    assert discover_service_partners("requester", "translation", rows) == []
+
+
+def test_discovery_requires_all_security_evidence_before_listing_partner():
+    from night_exchange_economy import discover_service_partners
+
+    rows = [{
+        "id": "trusted-app", "app_name": "Trusted", "status": "approved",
+        "owner_verification_status": "verified",
+        "application_verification_status": "verified",
+        "security_review_status": "passed",
+        "publisher_signature_status": "verified",
+        "enabled": True, "security_suspended": False,
+        "services_offered": "translation",
+    }]
+    assert len(discover_service_partners("requester", "translation", rows)) == 1
