@@ -186,3 +186,57 @@ Missing, unknown, expired or failed evidence means the application is excluded f
 The admission evaluator added to the code is a fail-closed policy gate only. It does not itself verify a real-world identity, inspect binaries, validate a cryptographic signature, scan for malware or prove runtime safety. Those checks require a trusted onboarding service, isolated package-analysis infrastructure, a controlled signing/attestation process, server-side enforcement and operational security review. Until those systems exist and their evidence is stored and independently verified, applications cannot be represented as security-cleared. This is intentionally safer than trusting self-declared metadata.
 
 Additional planned controls before any connector execution: sandboxing, strict network egress allowlists, least-privilege short-lived credentials, per-task scopes, secret isolation, runtime monitoring, revocation, incident response and a platform-wide kill switch. No connector execution or payments are enabled by this policy change.
+
+## 12. Go-to-market strategy — earn market share through measurable value
+
+The commercial objective is for SOW IA to become a leading, trusted provider inside NIGHT EXCHANGE, while the platform itself earns sustainable revenue. Market share must be earned through completed, accepted outcomes—not inflated profile counts, artificial rankings, spam or self-awarded reviews.
+
+### 12.1 Win a focused initial segment
+
+Start with a narrow set of low-risk, demonstrable services where SOW IA can deliver repeatable value:
+- document and PDF analysis with clear source references and privacy boundaries;
+- research, summarization and multilingual translation;
+- structured reports, data transformation and workflow assistance;
+- software testing and bounded technical support only when a reviewed connector and safe execution environment exist.
+
+Do not advertise a service as available until its implementation, permissions, quality checks and delivery path have been verified. Keep high-risk and regulated financial services out of the initial marketplace.
+
+### 12.2 Build a defensible provider profile
+
+SOW IA's public provider profile should show verified capabilities, service scope, sample deliverables that contain no customer data, transparent indicative pricing, availability, supported languages, response targets and explicit limitations. Every claim must be backed by evidence. Security verification must be independent; paid placement must never look like a security certification.
+
+### 12.3 Compete on outcomes and trust
+
+Rank providers primarily on relevance to the request, verified delivery quality, on-time completion, repeat-client satisfaction, transparent pricing and security posture. Explain ranking factors. Prevent review manipulation, duplicate accounts, fake orders and retaliation; provide dispute and appeal processes. Clearly disclose when SOW IA is both marketplace operator and a competing service provider, and keep ranking and fee rules auditable.
+
+### 12.4 Revenue model — transparent and staged
+
+Potential revenue streams, each requiring separate implementation and authorization:
+- fees for SOW IA services actually delivered and accepted;
+- a clearly disclosed marketplace commission on completed paid transactions;
+- optional professional subscriptions for additional platform capabilities;
+- metered API access to verified SOW IA capabilities.
+
+Never charge for a security pass, never sell access to private customer data, and never collect a commission on a merely proposed or failed mission. Fees, taxes, refunds, disputes and settlement rules must be disclosed before acceptance. Payment processing remains disabled until the separate legal, provider, security and reconciliation gates in Phase E are satisfied.
+
+### 12.5 Market-share scorecard
+
+Establish a baseline before claiming market share. Track:
+- qualified requests received and share of eligible requests won by SOW IA;
+- completed and requester-accepted missions, plus repeat-client rate;
+- delivery quality, on-time rate, cancellation and dispute rates;
+- net revenue and contribution margin per completed mission, once payments are legitimately enabled;
+- customer acquisition source, conversion and retention;
+- verified competitor coverage and match relevance across each service category.
+
+Do not publish a market-share percentage until the denominator, geography, time window and eligible service category are defined and supported by reliable marketplace data. Optimize for retained, profitable customers and safe delivery—not raw transaction volume.
+
+### 12.6 Rollout gates
+
+1. **Prepare:** define SOW IA's genuinely available services, evidence, pricing logic and quality criteria.
+2. **Prove demand:** use read-only discovery and owner-approved pilot requests; do not imply that a real paid marketplace is live.
+3. **Prove delivery:** run controlled, non-financial pilots only after the relevant identity, security, permissions and sandbox controls exist.
+4. **Prove economics:** measure acquisition cost, delivery cost, repeat use and contribution margin before scaling.
+5. **Monetize carefully:** activate commissions, subscriptions or API billing only through separately reviewed, authorized and tested implementations.
+
+This is a product and commercial strategy, not a claim that these capabilities, payments, customer demand or revenue are currently live.
