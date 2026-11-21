@@ -1782,10 +1782,10 @@ elif page == "Hub SOWIA":
                           on_click=go_to_page, args=(destination,))
     st.image("assets/sections/final-tech.svg", use_container_width=True)
     st.markdown(
-        '<style>div[data-testid="stMarkdown"]:has(h4) h4{font-size:clamp(2rem,6vw,3rem)!important;font-weight:850!important;line-height:1.12!important;}</style>',
+        '<style>.sowia-final-tech-title{font-size:clamp(2rem,6vw,3rem);font-weight:850;line-height:1.12;letter-spacing:.02em;margin:.35rem 0 .6rem;}</style>'
+        '<div class="sowia-final-tech-title">🧪 FINAL TECH</div>',
         unsafe_allow_html=True,
     )
-    st.markdown("#### 🧪 Final Tech")
     st.caption("Espace Final Tech — protocole de double approbation et contrôles associés.")
     st.link_button(
         "Consulter la documentation Final Tech",
