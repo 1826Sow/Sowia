@@ -58,6 +58,7 @@ def test_conversion_rejects_incompatible_units():
 
 def test_direct_request_intents():
     assert answer_direct_request("Calcule 12 * (3 + 2)") == "Résultat : 60."
-    assert answer_direct_request("Convertis 5 km en miles") == "5 km = 3.1068559 miles."
+    # Exact international mile conversion, rounded to the formatter's 9 significant digits.
+    assert answer_direct_request("Convertis 5 km en miles") == "5 km = 3.10685596 miles."
     assert answer_direct_request("What is 10 / 2?") == "Résultat : 5."
     assert answer_direct_request("Bonjour, comment vas-tu ?") is None
