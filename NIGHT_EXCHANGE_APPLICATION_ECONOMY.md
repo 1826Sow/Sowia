@@ -294,6 +294,9 @@ The additive migrations are now prepared in the review branch:
 - `20261121140000_harden_nex_offer_admission.sql`: creates the bilateral-offer registry if it is absent, applies participant-only read access, restricts direct client writes, adds the rejected-integration audit event, hardens offer creation/response, and keeps integration moderation behind private admin RPCs. Both apps must retain all four verification attestations.
 - `20261121150000_optimize_nex_verification_rls.sql`: keep the new admin-audit RLS check initplan-friendly.
 - `20261121160000_lock_offer_participant_visibility.sql`: require Premium access and actual sender/recipient participation for offer reads; remove the broad Premium-only read policy.
+- `20261121170000_enforce_nex_mission_premium_gate.sql`: re-check the current Premium entitlement inside mission creation, approval and lifecycle transitions, not just in the UI.
+
+The test project also confirmed that a non-Premium account is denied all three mission write/transition operations.
 
 The dedicated test project confirmed that a third authenticated account with an active Premium entitlement still sees zero rows for an offer between two other owners.
 
