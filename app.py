@@ -2413,7 +2413,10 @@ elif page == "Assistant IA":
                     try:
                         # Direct weather tools run before the language model, so a
                         # forecast does not depend on an LLM API key or token quota.
-                        weather_reply = weather_tools.answer_weather_request(prompt)
+                        try:
+                            weather_reply = weather_tools.answer_weather_request(prompt)
+                        except (RuntimeError, LookupError, ValueError) as weather_error:
+                            weather_reply = "Je n'ai pas pu obtenir la météo : " + str(weather_error)
                         if weather_reply is not None:
                             reply = weather_reply
                         else:
