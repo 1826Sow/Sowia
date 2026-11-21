@@ -29,3 +29,15 @@ def test_forget_requires_query_to_identify_note():
     assert memory_commands.find_exact_memory_matches(notes, "ancien projet") == [notes[0]]
     assert memory_commands.find_exact_memory_matches(notes, "projet") == [notes[0]]
     assert memory_commands.find_exact_memory_matches(notes, "inconnu") == []
+
+
+def test_forget_query_keeps_last_letter_after_accented_marker_and_punctuation():
+    assert memory_commands.parse_memory_command(
+        "Oublie dans ma mémoire : mon ancien projet"
+    ) == {"action": "forget", "query": "mon ancien projet"}
+
+
+def test_recall_query_keeps_last_letter_after_accented_marker():
+    assert memory_commands.parse_memory_command(
+        "Retrouve dans ma mémoire mes préférences"
+    ) == {"action": "recall", "query": "mes préférences"}
