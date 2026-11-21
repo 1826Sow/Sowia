@@ -122,7 +122,7 @@ def answer_direct_request(prompt):
         raw_value, source, target = match.groups()
         value = float(raw_value.replace(",", "."))
         result = convert_units(value, source, target)
-        return f"{value:g} {source} = {result:.8g} {target}."
+        return f"{value:g} {source} = {result:.9g} {target}."
     match = _CALC_PREFIX.fullmatch(prompt)
     if match:
         result = calculate(match.group(1))
