@@ -1766,7 +1766,7 @@ elif page == "Hub SOWIA":
         ("🧠 Continuer avec SOW IA", "Assistant IA", "Reprendre le travail avec l’assistant."),
         ("📄 Mes livrables & documents", "Mes documents", "Consulter les PDF et fichiers enregistrés."),
         ("🧪 Laboratoire PDF", "Analyse PDF", "Analyser un document ou poursuivre son traitement."),
-        ("🌙 NIGHT EXCHANGE · BOURSE AUX APPLICATIONS", "SOWIA NIGHT EXCHANGE", "La bourse internationale des applications et services numériques."),
+        ("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "La bourse internationale des applications et services numériques."),
     ]
     quick_cols = st.columns(2)
     for index, (label, destination, description) in enumerate(hub_quick_access):
@@ -1775,15 +1775,17 @@ elif page == "Hub SOWIA":
                 if destination == "SOWIA NIGHT EXCHANGE":
                     st.image("assets/sections/night-exchange.svg", use_container_width=True)
                 st.markdown(f"**{label.replace('SOWIA', 'SOW IA').replace('Sowia', 'SOW IA')}**")
+                if destination == "SOWIA NIGHT EXCHANGE":
+                    st.markdown("**BOURSE AUX APPLICATIONS**")
                 st.caption(description.replace("SOWIA", "SOW IA").replace("Sowia", "SOW IA"))
                 st.button("Ouvrir", key=f"hub_quick_{index}", use_container_width=True,
                           on_click=go_to_page, args=(destination,))
     st.image("assets/sections/final-tech.svg", use_container_width=True)
     st.markdown(
-        '<div style="font-size:clamp(2rem,6vw,3rem);font-weight:850;line-height:1.12;'
-        'letter-spacing:.02em;margin:.35rem 0 .6rem;">🧪 FINAL TECH</div>',
+        '<style>div[data-testid="stMarkdown"]:has(h4.sowia-final-tech-marker) h4{font-size:clamp(2rem,6vw,3rem)!important;font-weight:850!important;line-height:1.12!important;}</style>',
         unsafe_allow_html=True,
     )
+    st.markdown("#### 🧪 Final Tech")
     st.caption("Espace Final Tech — protocole de double approbation et contrôles associés.")
     st.link_button(
         "Consulter la documentation Final Tech",
