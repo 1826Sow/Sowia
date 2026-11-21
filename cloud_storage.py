@@ -1066,7 +1066,7 @@ def admin_verify_night_exchange_app(
         "p_security_review_status": security_status,
         "p_publisher_signature_status": signature_status,
         "p_review_note": review_note.strip(),
-    }).execute()
+    }).execute().data
 
 
 def list_my_night_exchange_missions(client, user, limit=100):
