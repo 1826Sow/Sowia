@@ -35,3 +35,14 @@ def test_final_tech_section_label_is_displayed_without_renaming_sowia():
     assert "BOURSE AUX APPLICATIONS</div>" in source
     assert '"Consulter la documentation Final Tech"' in source
     assert 'APP_NAME = "SOW IA"' in Path("config.py").read_text(encoding="utf-8")
+
+
+def test_android_menu_stays_in_document_flow_below_safe_area():
+    source = Path("app.py").read_text(encoding="utf-8")
+    header = source.split('header[data-testid="stHeader"] {', 1)[1].split("}", 1)[0]
+    menu = source.split('button[data-testid="stExpandSidebarButton"]) {', 1)[1].split("}", 1)[0]
+    assert "position: relative !important" in header
+    assert "safe-area-inset-top" in header
+    assert "position: static !important" in menu
+    assert "transform: none !important" in menu
+    assert "translateY(24px)" not in source
