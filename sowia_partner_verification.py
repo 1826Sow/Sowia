@@ -1,9 +1,9 @@
 """Server-side rules for proving control of a partner application's domain.
 
-This module is a validation primitive only. It does not query DNS, persist
-challenges, authenticate callers, or approve NIGHT EXCHANGE listings. Production
-callers must obtain TXT records from a trusted server-side resolver and persist
-single-use challenge consumption in an access-controlled database transaction.
+This module provides domain validation and a bounded server-side DNS resolver.
+It does not persist challenges, authenticate callers, or approve NIGHT EXCHANGE
+listings. Production callers must persist single-use challenge consumption in
+an access-controlled database transaction.
 """
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -194,9 +194,13 @@ def resolve_domain_challenge_txt(domain: str, *, timeout: float = 5.0) -> list[s
     if not isinstance(answers, list) or len(answers) > 64:
         raise PartnerVerificationError("Réponse DNS trop volumineuse ou invalide.")
 
+    expected_name = f"{host.lower()}."
     records = []
     for answer in answers:
         if not isinstance(answer, dict) or answer.get("type") != 16:
+            continue
+        answer_name = answer.get("name")
+        if not isinstance(answer_name, str) or answer_name.lower() != expected_name:
             continue
         data = answer.get("data")
         if not isinstance(data, str):
