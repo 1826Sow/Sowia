@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="280" viewBox="0 0 720 280">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1730"/><stop offset="1" stop-color="#142d48"/></linearGradient><radialGradient id="glow"><stop stop-color="#1e7890" stop-opacity=".34"/><stop offset="1" stop-color="#1e7890" stop-opacity="0"/></radialGradient></defs>
+<rect width="720" height="280" rx="22" fill="url(#bg)"/><circle cx="315" cy="140" r="190" fill="url(#glow)"/>
+<g opacity=".12" stroke="#8ccbd5" stroke-width="1"><path d="M0 55H720M0 110H720M0 165H720M0 220H720M90 0V280M180 0V280M270 0V280M360 0V280M450 0V280M540 0V280M630 0V280"/></g>
+<g><path d='M205 215V105h190v110M255 105V65h90v40' fill='none' stroke='#56d9e8' stroke-width='8' stroke-linejoin='round'/><path d='M240 145h30v30h-30zM300 145h30v30h-30zM360 145h20v30h-20z' fill='#d9b56b'/><path d='M425 205l35-45 28 18 48-70' fill='none' stroke='#56d9e8' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></g>
+<text x="470" y="105" fill="#f0d59a" font-family="Arial,sans-serif" font-size="16" letter-spacing="3">SOW IA</text>
+<text x="470" y="145" fill="#ffffff" font-family="Arial,sans-serif" font-size="18" font-weight="700">ENTREPRISES & OPPORTUNITÉS</text>
+<text x="470" y="178" fill="#b8c9d8" font-family="Arial,sans-serif" font-size="13">Réseau · Croissance · Partenariats</text>
+<path d="M470 200h155" stroke="#d9b56b" stroke-width="3" stroke-linecap="round"/>
+<text x="470" y="235" fill="#7edbe6" font-family="Arial,sans-serif" font-size="12" letter-spacing="2">VOTRE ESPACE INTELLIGENT</text>
+</svg>
