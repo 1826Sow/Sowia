@@ -1,6 +1,6 @@
-# SOW IA
+# SOW IA — Assistant intelligent
 
-Application web d'intelligence artificielle construite avec Streamlit.
+**SOW IA** est une application web d'intelligence artificielle construite avec Streamlit. Son nom public est « SOW IA ».
 
 Consulter la [vision produit et feuille de route maîtresse](docs/VISION_ET_FEUILLE_DE_ROUTE.md) pour le périmètre complet : intelligence financière, marchés mondiaux, météo-économie, vérification de l'information, développement international, Club Privé et projet ultérieur de carte Gold.
 
