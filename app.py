@@ -6016,6 +6016,7 @@ elif page == "SOWIA GLOBAL TRUST":
 elif page == "SOWIA NIGHT EXCHANGE":
     st.subheader("🌙 SOW IA NIGHT EXCHANGE")
     st.caption("Place de marché nocturne internationale pour applications et services numériques.")
+    st.image("assets/sections/night-exchange.svg", use_container_width=True)
     if not premium_active:
         st.warning("Cet espace professionnel est réservé aux comptes Premium.")
     elif not cloud_mode or current_user is None:
