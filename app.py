@@ -10,6 +10,7 @@ from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
 from memory_retrieval import select_relevant_memories
 import weather_tools
+import direct_tools
 from storage import (
     add_memory as local_add_memory,
     clear_history as local_clear_history,
@@ -2414,10 +2415,16 @@ elif page == "Assistant IA":
                         # Direct weather tools run before the language model, so a
                         # forecast does not depend on an LLM API key or token quota.
                         try:
+                            direct_reply = direct_tools.answer_direct_request(prompt)
+                        except direct_tools.DirectToolError as direct_error:
+                            direct_reply = "Je n'ai pas pu effectuer cette opération : " + str(direct_error)
+                        try:
                             weather_reply = weather_tools.answer_weather_request(prompt)
                         except (RuntimeError, LookupError, ValueError) as weather_error:
                             weather_reply = "Je n'ai pas pu obtenir la météo : " + str(weather_error)
-                        if weather_reply is not None:
+                        if direct_reply is not None:
+                            reply = direct_reply
+                        elif weather_reply is not None:
                             reply = weather_reply
                         else:
                             reply = answer(
