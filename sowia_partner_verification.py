@@ -40,7 +40,7 @@ def normalize_partner_domain(value: str) -> str:
             custom_port = parsed.port
         except ValueError:
             raise PartnerVerificationError("Port d'origine HTTPS invalide.") from None
-        if parsed.username or parsed.password or custom_port is not None:
+        if parsed.username or parsed.password or custom_port is not None or parsed.netloc.endswith(":"):
             raise PartnerVerificationError("Identifiants et ports personnalisés interdits.")
         if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
             raise PartnerVerificationError("Fournir uniquement le domaine, sans chemin ni paramètres.")
