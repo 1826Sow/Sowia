@@ -79,12 +79,37 @@ begin
         end if;
     end if;
 
+    -- Return an identical prior request before re-checking listing status.
+    -- This preserves idempotent retries even if a listing is later suspended.
+    select *
+      into v_existing
+      from public.sowia_nex_deals
+     where created_by = v_actor
+       and idempotency_key = p_idempotency_key
+     for update;
+
+    if found then
+        if v_existing.creator_app_id is distinct from p_creator_app_id
+           or v_existing.counterparty_app_id is distinct from p_counterparty_app_id
+           or v_existing.title is distinct from btrim(p_title)
+           or v_existing.description is distinct from p_description
+           or v_existing.deal_kind is distinct from p_deal_kind
+           or v_existing.agreed_amount is distinct from v_amount
+           or v_existing.currency is distinct from v_currency
+           or v_existing.commission_bps is distinct from p_commission_bps then
+            raise exception 'idempotency key reused with a different deal request'
+                using errcode = '23505';
+        end if;
+        return v_existing.id;
+    end if;
+
     select user_id
       into v_creator_user
       from public.sowia_night_exchange_apps
      where id = p_creator_app_id
        and status = 'approved'
-       and workspace_id = 'professional';
+       and workspace_id = 'professional'
+     for share;
 
     if not found or v_creator_user is distinct from v_actor then
         raise exception 'creator app is not an approved app owned by the caller'
@@ -96,7 +121,8 @@ begin
       from public.sowia_night_exchange_apps
      where id = p_counterparty_app_id
        and status = 'approved'
-       and workspace_id = 'professional';
+       and workspace_id = 'professional'
+     for share;
 
     if not found or v_counterparty_user is null or v_counterparty_user = v_actor then
         raise exception 'counterparty app is not an approved app owned by another user'
