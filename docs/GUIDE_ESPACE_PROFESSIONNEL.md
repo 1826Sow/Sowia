@@ -69,4 +69,6 @@ Le texte extrait d'un PDF sélectionné est conservé dans la session pour l'ana
 
 ## État des paiements
 
-Les paiements restent désactivés pendant la finalisation de SOW IA. Ce guide ne demande aucune activation PayPal et ne modifie aucun réglage de paiement.
+Le parcours PayPal Live a été autorisé et un test de paiement a été déclaré validé par le propriétaire. Cela ne suffit pas à confirmer que le parcours est actuellement opérationnel en production : la configuration des secrets côté hébergeur et serveur, la réception des webhooks et l'attribution effective des droits Premium doivent être vérifiées séparément.
+
+Aucun paiement réel ne doit être effectué pour un simple contrôle technique. Ne considérez jamais un retour navigateur comme une preuve de paiement. Les secrets PayPal doivent rester dans les gestionnaires de secrets prévus et ne doivent jamais être ajoutés au dépôt GitHub.
