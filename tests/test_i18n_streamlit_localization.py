@@ -90,13 +90,10 @@ def test_placeholder_help_and_select_slider_are_localized_without_changing_value
     assert calls[-1][3]["format_func"]("Débutant") == "Español:Débutant"
 
 
-def test_markdown_headings_and_plain_catalogue_text_are_localized_but_html_is_untouched():
+def test_markdown_headings_and_html_are_localized_safely():
     calls = []
-    fake_st = SimpleNamespace(
-        markdown=lambda body, **kwargs: calls.append(body),
-        write=lambda body, **kwargs: calls.append(body),
-    )
-    translate = lambda value, language: {"Classement proposé": "Proposed ranking", "Pays": "Country"}.get(value, value)
+    fake_st = SimpleNamespace(markdown=lambda body, **kwargs: calls.append(body))
+    translate = lambda value, language: {"Classement proposé": "Proposed ranking"}.get(value, value)
     install_streamlit_localization(fake_st, translate, lambda: "English")
 
     fake_st.markdown("### Classement proposé")
@@ -106,8 +103,16 @@ def test_markdown_headings_and_plain_catalogue_text_are_localized_but_html_is_un
     fake_st.markdown(html, unsafe_allow_html=True)
     assert calls[-1] == html
 
-    fake_st.write("Pays")
-    assert calls[-1] == "Country"
+
+def test_write_preserves_dynamic_and_user_supplied_content_verbatim():
+    calls = []
+    fake_st = SimpleNamespace(write=lambda body, **kwargs: calls.append(body))
+    translate = lambda value, language: f"{language}:{value}"
+    install_streamlit_localization(fake_st, translate, lambda: "English")
+
+    user_text = "Pays — notification privée reçue"
+    fake_st.write(user_text)
+    assert calls[-1] == user_text
 
 
 def test_multiline_markdown_translates_exact_phrases_and_preserves_code_html_and_urls():
@@ -117,8 +122,8 @@ def test_multiline_markdown_translates_exact_phrases_and_preserves_code_html_and
     install_streamlit_localization(fake_st, translate, lambda: "English")
 
     fence = chr(96) * 3
-    source = "### Titre\n- Pays\n\n" + fence + "python\nPays\n" + fence + "\n<div>Pays</div>\n[site](https://example.test)"
-    expected = "### Title\n- Country\n\n" + fence + "python\nPays\n" + fence + "\n<div>Pays</div>\n[site](https://example.test)"
+    source = "### Titre\\n- Pays\\n\\n" + fence + "python\\nPays\\n" + fence + "\\n<div>Pays</div>\\n[site](https://example.test)"
+    expected = "### Title\\n- Country\\n\\n" + fence + "python\\nPays\\n" + fence + "\\n<div>Pays</div>\\n[site](https://example.test)"
     fake_st.markdown(source)
     assert calls[-1] == expected
 
