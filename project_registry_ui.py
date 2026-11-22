@@ -76,7 +76,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
             title = st.text_input(_t("Nom du projet", language), max_chars=project_registry.MAX_TITLE_LENGTH)
             description = st.text_area(_t("Description / point de reprise", language), max_chars=project_registry.MAX_DESCRIPTION_LENGTH)
             status_options = sorted(project_registry.PROJECT_STATUSES)
-            status = st.selectbox(_t("Statut initial", language), status_options, index=status_options.index("En cours"))
+            status = st.selectbox(_t("Statut initial", language), status_options, index=status_options.index("En cours"), format_func=lambda value: _t(value, language))
             attach_current_session = st.checkbox(
                 _t("Associer automatiquement la conversation en cours", language),
                 value=bool(active_session_id),
@@ -120,7 +120,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
                 st.markdown("**" + _t("Livrables associés", language) + "**")
                 for item_index, item in enumerate(deliverables):
                     if isinstance(item, dict):
-                        label = str(item.get("title") or "Livrable")
+                        label = str(item.get("title") or _t("Livrable", language))
                         url = str(item.get("url") or "").strip()
                         st.write(f"- {label}")
                         if _safe_https_url(url):
@@ -155,7 +155,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
                     conversation_ids = [None] + list(conversation_labels)
                     if linked_session_id and linked_session_id not in conversation_labels:
                         conversation_ids.append(linked_session_id)
-                        conversation_labels[linked_session_id] = "Conversation liée (historique existant)"
+                        conversation_labels[linked_session_id] = _t("Conversation liée (historique existant)", language)
                     selected_session_id = st.selectbox(
                         _t("Conversation associée", language),
                         options=conversation_ids,
@@ -176,7 +176,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
                             title=new_title, description=new_description, status=new_status,
                             conversation_session_id=selected_session_id,
                         )
-                        st.success("Projet mis à jour.")
+                        st.success(_t("Projet mis à jour.", language))
                         st.rerun()
                     except Exception as exc:
                         st.error(_t("La modification n'a pas abouti.", language))
@@ -189,9 +189,9 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
                 if add_deliverable:
                     try:
                         if not deliverable_title.strip():
-                            raise ValueError("Le nom du livrable est obligatoire.")
+                            raise ValueError(_t("Le nom du livrable est obligatoire.", language))
                         if deliverable_url and not _safe_https_url(deliverable_url):
-                            raise ValueError("Le lien doit être une adresse HTTPS complète et valide, sans identifiants intégrés.")
+                            raise ValueError(_t("Le lien doit être une adresse HTTPS complète et valide, sans identifiants intégrés.", language))
                         updated = list(deliverables)
                         updated.append({
                             "title": deliverable_title.strip(),
@@ -201,7 +201,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
                         project_registry.update_project(
                             client, user, project_id, workspace_id, deliverables=updated
                         )
-                        st.success("Livrable ajouté.")
+                        st.success(_t("Livrable ajouté.", language))
                         st.rerun()
                     except Exception as exc:
                         st.error(_t("Le livrable n'a pas été ajouté.", language))
@@ -222,7 +222,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
                 if st.button(_t("Archiver", language), key=f"archive_project_{project_id}", use_container_width=True):
                     try:
                         project_registry.archive_project(client, user, project_id, workspace_id)
-                        st.success("Projet archivé sans supprimer ses données.")
+                        st.success(_t("Projet archivé sans supprimer ses données.", language))
                         st.rerun()
                     except Exception as exc:
                         st.error(_t("L'archivage n'a pas abouti.", language))
@@ -244,13 +244,13 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
                     if st.button(_t("Restaurer", language), key=f"restore_project_{item['id']}", use_container_width=True):
                         try:
                             project_registry.restore_project(client, user, item["id"], workspace_id)
-                            st.success("Projet restauré.")
+                            st.success(_t("Projet restauré.", language))
                             st.rerun()
                         except Exception as exc:
-                            st.error("La restauration n'a pas abouti.")
+                            st.error(_t("La restauration n'a pas abouti.", language))
                             st.caption(f"Diagnostic : {type(exc).__name__}")
         except Exception as exc:
-            st.caption(f"Archives indisponibles : {type(exc).__name__}")
+            st.caption(_t("Archives indisponibles", language) + f" : {type(exc).__name__}")
 
     st.caption(
         _t("Les conversations disponibles dans cet espace peuvent être associées aux projets. Les anciens messages restent inchangés ; les conversations historiques sont enregistrées progressivement lorsqu’elles sont ouvertes.", language)
