@@ -1190,7 +1190,21 @@ if privacy_screen:
             background: rgba(5, 16, 31, .58);
             -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
-            pointer-events: none;
+            pointer-events: auto;
+        }
+        /* The privacy veil also covers the sidebar, including account identity and menu content. */
+        section[data-testid="stSidebar"] {
+            position: relative !important;
+        }
+        section[data-testid="stSidebar"]::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 999998;
+            background: rgba(5, 16, 31, .58);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            pointer-events: auto;
         }
         section[data-testid="stMain"] .st-key-sowia_privacy_unlock_main {
             position: fixed !important;
@@ -2373,32 +2387,9 @@ elif page == "Assistant IA":
         with st.chat_message(role):
             st.markdown(message)
             if role == "assistant" and voice_readout:
-                safe_message = html.escape(str(message), quote=True)
+                from accessibility import speech_readout_component
                 st.components.v1.html(
-                    """<div style="font-family:Arial,sans-serif;padding:4px 0">
-                    <button id="sowiaSpeak" style="padding:10px 16px;border:2px solid #174b67;border-radius:10px;background:#102943;color:#eff9ff;font-weight:700;min-height:44px">🔊 Écouter cette réponse</button>
-                    <button id="sowiaStop" style="padding:10px 16px;border:2px solid #555;border-radius:10px;background:#102943;color:#eff9ff;font-weight:700;min-height:44px">■ Arrêter</button>
-                    <span id="sowiaVoiceStatus" role="status" aria-live="polite"></span>
-                    <div id="sowiaVoiceText" style="display:none">""" + safe_message + """</div>
-                    <script>
-                    const text = document.getElementById('sowiaVoiceText').textContent;
-                    const status = document.getElementById('sowiaVoiceStatus');
-                    document.getElementById('sowiaSpeak').onclick = () => {
-                      if (!('speechSynthesis' in window)) { status.textContent = 'Lecture vocale non prise en charge par ce navigateur.'; return; }
-                      window.speechSynthesis.cancel();
-                      const utterance = new SpeechSynthesisUtterance(text);
-                      utterance.lang = '""" + speech_language + """';
-                      const availableVoices = window.speechSynthesis.getVoices();
-                      const matchingVoice = availableVoices.find(voice => voice.lang.toLowerCase() === utterance.lang.toLowerCase())
-                        || availableVoices.find(voice => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase()));
-                      if (matchingVoice) utterance.voice = matchingVoice;
-                      utterance.onstart = () => status.textContent = 'Lecture en cours';
-                      utterance.onend = () => status.textContent = 'Lecture terminée';
-                      utterance.onerror = () => status.textContent = 'Lecture indisponible';
-                      window.speechSynthesis.speak(utterance);
-                    };
-                    document.getElementById('sowiaStop').onclick = () => { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); status.textContent = 'Lecture arrêtée'; };
-                    </script></div>""",
+                    speech_readout_component(message, language),
                     height=75,
                 )
     if not API_KEY:
