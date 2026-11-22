@@ -104,6 +104,25 @@ def test_markdown_headings_and_html_are_localized_safely():
     assert calls[-1] == html
 
 
+
+def test_markdown_uses_catalogue_only_without_external_fallback():
+    calls = []
+
+    def translate(value, language, *, allow_fallback=True):
+        calls.append((value, language, allow_fallback))
+        return "Texte traduit" if value == "Titre connu" else value
+
+    fake_st = SimpleNamespace(markdown=lambda body, **kwargs: calls.append(("rendered", body)))
+    install_streamlit_localization(fake_st, translate, lambda: "English")
+
+    fake_st.markdown("### Titre connu")
+    fake_st.markdown("Contenu privé dynamique")
+
+    assert ("Titre connu", "English", False) in calls
+    assert ("Contenu privé dynamique", "English", False) in calls
+    assert ("rendered", "### Texte traduit") in calls
+    assert ("rendered", "Contenu privé dynamique") in calls
+
 def test_write_preserves_dynamic_and_user_supplied_content_verbatim():
     calls = []
     fake_st = SimpleNamespace(write=lambda body, **kwargs: calls.append(body))
