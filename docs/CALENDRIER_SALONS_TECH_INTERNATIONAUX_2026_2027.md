@@ -63,3 +63,24 @@ Présenter la plateforme et sa vision internationale, avec une démonstration r�
 - Prioriser d'abord les candidatures gratuites ou subventionnées et les rencontres en ligne.
 - Mettre à jour les dates limites et les liens officiels avant chaque campagne.
 - Après chaque salon : enregistrer les contacts consentis, les suites à donner et les résultats mesurables.
+
+
+## Vérifications officielles complémentaires — 22 novembre 2026
+
+- **GITEX GLOBAL 2026** : l'organisateur confirme le sommet le 7 décembre au Dubai World Trade Centre, puis l'exposition du 8 au 11 décembre au Dubai Exhibition Centre, Expo City Dubai. Le calendrier doit distinguer ces deux lieux et formats. Source : https://www.gitex.com/plan-your-visit-2026
+- **CES 2027 / Eureka Park** : l'appel à candidatures startup est ouvert. Les critères publiés exigent notamment une entreprise startup répondant aux conditions d'âge et de stade de financement, ainsi qu'une technologie prête à être démontrée (prototype, bêta ou produit final). Un concept non démontrable ou un composant isolé ne suffit pas. Il faut donc vérifier l'éligibilité réelle de SOW IA avant toute candidature payante. Source : https://www.ces.tech/explore-ces/eureka-park
+- **Asia Tech x Singapore 2027** : l'organisateur confirme ATxEnterprise du 26 au 28 mai à Singapore EXPO ; le pass visiteur gratuit donne accès à la majorité des expositions et conférences. ATxSummit (26–27 mai) est sur invitation. Source : https://asiatechxsg.com/faqs/
+- **GITEX AI ASIA 2027** : le site officiel affiche les 29–30 avril 2027 à Marina Bay Sands, Singapour, avec options visiteur et réservation d'espace. Source : https://gitexasia.com/agenda/
+- **GITEX AFRICA 2027** : l'écosystème officiel GITEX annonce les 26–28 avril 2027 à Marrakech. Confirmer les modalités d'inscription sur le site propre à l'événement avant toute action. Source : https://www.gitex.com/
+
+### Décision de prospection recommandée
+1. **GITEX GLOBAL 2026** : délai très court ; privilégier une participation visiteur ou des rencontres accessibles à distance, uniquement après vérification des tarifs et disponibilités.
+2. **CES 2027** : étudier d'abord l'éligibilité Eureka Park. Ne pas déposer de dossier tant que le statut startup et le caractère démontrable du produit ne sont pas établis.
+3. **GITEX AI ASIA et GITEX AFRICA 2027** : priorités de prospection startup et partenaires.
+4. **Asia Tech x Singapore 2027** : piste intéressante à faible coût grâce au pass visiteur gratuit publié par l'organisateur.
+5. **FINAL TECH** : rechercher des événements spécialisés semi-conducteurs et des rencontres de recherche/industrie ; le positionner comme projet de R&D, sans le présenter comme une puce déjà conçue ou testée.
+
+## Journal d'exécution
+- 22 nov. 2026 : vérification de pages officielles GITEX GLOBAL, CES Eureka Park, ATxSG et GITEX AI ASIA.
+- 22 nov. 2026 : kit de candidature et pitch bilingue ajoutés dans le dépôt GitHub.
+- Non effectué : inscription, candidature, achat de billet, réservation, envoi de message, déplacement ou dépense.
