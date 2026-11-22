@@ -56,8 +56,8 @@ def test_memory_rejects_empty_and_oversized_notes(tmp_path, monkeypatch):
     monkeypatch.setattr(storage, "DB_PATH", tmp_path / "sowia-test.db")
     with pytest.raises(ValueError, match="vide"):
         storage.add_memory("   ")
-    with pytest.raises(ValueError, match="1 000"):
-        storage.add_memory("x" * 1001)
+    with pytest.raises(ValueError, match="20 000"):
+        storage.add_memory("x" * 20001)
 
 
 def test_history_and_memory_are_isolated_by_workspace(tmp_path, monkeypatch):
