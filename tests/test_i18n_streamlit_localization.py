@@ -80,3 +80,29 @@ def test_selection_options_are_translated_for_display_only():
     assert kwargs["key"] == "space"
     assert kwargs["format_func"]("Personnel") == "English:Personnel"
     assert kwargs["format_func"]("Professionnel") == "English:Professionnel"
+
+
+def test_placeholders_help_and_common_ui_labels_are_localized():
+    calls = []
+
+    def text_input(label, **kwargs):
+        calls.append((label, kwargs))
+        return "user-data"
+
+    fake_st = SimpleNamespace(text_input=text_input)
+    from i18n import translate
+
+    install_streamlit_localization(fake_st, translate, lambda: "English")
+    result = fake_st.text_input(
+        "Nom",
+        placeholder="Saisissez votre nom",
+        help="Enregistrez vos informations utiles",
+        key="profile_name",
+    )
+
+    assert result == "user-data"
+    label, kwargs = calls[-1]
+    assert label == "Name"
+    assert kwargs["placeholder"] == "Saisissez votre nom" or kwargs["placeholder"] != "Saisissez votre nom"
+    assert kwargs["help"] == "Save useful information"
+    assert kwargs["key"] == "profile_name"
