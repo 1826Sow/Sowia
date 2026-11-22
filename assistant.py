@@ -70,11 +70,11 @@ def build_system_prompt(memories=None, document_context=None, language="Françai
     selected_language = language if language in language_instructions else "Français"
     system_prompt = (
         SYSTEM_PROMPT
-        + "\\n\\nLANGUE DE RÉPONSE OBLIGATOIRE : "
+        + "\n\nRESPONSE LANGUAGE — MANDATORY: "
         + language_instructions[selected_language]
-        + " Tous les textes explicatifs, titres, listes et messages doivent respecter cette langue. "
-        + "Conserve les noms propres, le code, les identifiants et les citations dans leur forme d'origine. "
-        + "Si l'utilisateur demande explicitement une traduction vers une autre langue, respecte cette demande pour le contenu demandé."
+        + " All explanatory text, headings, lists, and messages must use the selected language. "
+        + "Keep proper names, code, identifiers, and quotations in their original form. "
+        + "If the user explicitly requests a translation into another language, follow that request for the requested content."
     )
     saved_memories = [item.strip() for item in (memories or []) if item and item.strip()]
     if saved_memories:
