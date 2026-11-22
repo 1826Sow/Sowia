@@ -57,7 +57,7 @@ def _translate_markdown_text(value, language, translate):
                     translated_line = prefix + _translate_markdown_phrase(phrase, language, translate)
                 else:
                     prefix, phrase, suffix = match.groups()
-                    translated_line = prefix + translate(phrase, language) + suffix
+                    translated_line = prefix + _translate_markdown_phrase(phrase, language, translate) + suffix
                 break
         else:
             if not any(token in body for token in ("**", chr(96), "{", "}")):
