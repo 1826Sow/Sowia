@@ -74,3 +74,40 @@ def test_signup_validation_feedback_is_localized(language, expected):
 ])
 def test_email_signin_action_is_localized(language, expected):
     assert translate("Valider", language) == expected
+
+
+def test_missing_short_interface_copy_uses_remote_fallback_and_caches(monkeypatch):
+    import requests
+    from i18n import _translate_missing_interface_copy
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return [[["Create your workspace", "Créez votre espace", None, None]], None, "fr"]
+
+    calls = []
+
+    def fake_get(url, params, timeout):
+        calls.append((url, params, timeout))
+        return Response()
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    _translate_missing_interface_copy.cache_clear()
+    source = "Créez votre espace"
+    assert _translate_missing_interface_copy(source, "English") == "Create your workspace"
+    assert _translate_missing_interface_copy(source, "English") == "Create your workspace"
+    assert len(calls) == 1
+
+
+def test_missing_interface_translation_fails_open_without_network_for_multiline(monkeypatch):
+    import requests
+    from i18n import _translate_missing_interface_copy
+
+    def unexpected_get(*args, **kwargs):
+        raise AssertionError("Multiline content must not be sent for translation")
+
+    monkeypatch.setattr(requests, "get", unexpected_get)
+    source = "Texte de présentation\\nDeuxième ligne"
+    assert _translate_missing_interface_copy(source, "English") == source
