@@ -8,7 +8,7 @@ def test_auth_fallback_errors_do_not_render_raw_exception_details():
     assert "st.caption(str(exc))" not in source
     assert "Les détails sensibles sont masqués." in source
     assert "La connexion sécurisée Supabase n'a pas abouti." in source
-    assert 'translate_ui('Code technique :', language)' in source
+    assert "translate_ui('Code technique :', language)" in source
     assert "{type(exc).__name__}" in source
 
 
