@@ -102,6 +102,7 @@ def test_verified_sowia_publishable_key_is_used_when_deployment_key_is_invalid(m
         "SOWIA_SUPABASE_ANON_KEY",
     ):
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("SUPABASE_URL", "https://sowia-test.supabase.co")
     monkeypatch.setenv("SUPABASE_ANON_KEY", "sb_secret_stale-server-value")
 
     assert settings.get_setting("SUPABASE_ANON_KEY").startswith("sb_publishable_")
