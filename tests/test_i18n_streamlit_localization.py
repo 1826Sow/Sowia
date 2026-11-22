@@ -103,6 +103,6 @@ def test_placeholders_help_and_common_ui_labels_are_localized():
     assert result == "user-data"
     label, kwargs = calls[-1]
     assert label == "Name"
-    assert kwargs["placeholder"] == "Saisissez votre nom" or kwargs["placeholder"] != "Saisissez votre nom"
+    assert kwargs["placeholder"] == "Enter your name"
     assert kwargs["help"] == "Save useful information"
     assert kwargs["key"] == "profile_name"
