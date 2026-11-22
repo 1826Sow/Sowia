@@ -9,11 +9,13 @@ from functools import wraps
 _LOCALIZABLE_STREAMLIT_CALLS = (
     "title", "header", "subheader", "caption",
     "info", "success", "warning", "error", "exception",
-    "button", "form_submit_button", "download_button",
+    "button", "form_submit_button", "download_button", "link_button",
     "text_input", "text_area", "selectbox", "radio", "checkbox",
     "toggle", "file_uploader", "date_input", "time_input",
-    "number_input", "slider", "multiselect", "expander",
+    "number_input", "slider", "select_slider", "multiselect",
+    "expander", "metric",
 )
+
 
 def install_streamlit_localization(st_module, translate, get_language):
     """Translate visible labels at render time without changing app data."""
@@ -23,25 +25,30 @@ def install_streamlit_localization(st_module, translate, get_language):
             continue
 
         @wraps(original)
-        def localized(*args, __original=original, **kwargs):
+        def localized(*args, __original=original, __method=method_name, **kwargs):
             language = get_language() or "Français"
             if args and isinstance(args[0], str):
                 args = (translate(args[0], language),) + args[1:]
             elif isinstance(kwargs.get("label"), str):
                 kwargs["label"] = translate(kwargs["label"], language)
-            # Translate option captions at display time while preserving the
-            # original option objects used by session state and business logic.
+
+            # Help and placeholder are presentation copy, not stored values.
             for display_kwarg in ("placeholder", "help"):
                 display_value = kwargs.get(display_kwarg)
                 if isinstance(display_value, str):
                     kwargs[display_kwarg] = translate(display_value, language)
-            if method_name in ("selectbox", "radio", "multiselect"):
-                kwargs.setdefault(
-                    "format_func",
-                    lambda option, _language=language: (
-                        translate(option, _language) if isinstance(option, str) else option
-                    ),
-                )
+
+            if __method in ("selectbox", "radio", "multiselect", "select_slider"):
+                # Preserve a caller-provided formatter, then translate only its
+                # string output. Option objects and selected values stay intact.
+                caller_format = kwargs.get("format_func")
+
+                def localized_format(option, _formatter=caller_format, _language=language):
+                    display = _formatter(option) if _formatter else option
+                    return translate(display, _language) if isinstance(display, str) else display
+
+                kwargs["format_func"] = localized_format
+
             return __original(*args, **kwargs)
 
         localized._sowia_localized = True
