@@ -1049,7 +1049,10 @@ with st.sidebar:
         saved_language = st.session_state.get("sowia_pre_auth_language", "Français")
         if cloud_mode and current_user is not None:
             try:
-                saved_language = cloud_storage.get_language_preference(supabase_client, current_user)
+                saved_language = cloud_storage.get_language_preference(
+                    supabase_client, current_user,
+                    default=st.session_state.get("sowia_pre_auth_language", "Français"),
+                )
             except Exception:
                 # A missing migration must not block access to the rest of SOW IA.
                 st.session_state["sowia_language_save_available"] = False
