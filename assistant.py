@@ -13,44 +13,48 @@ from config import (
 )
 
 
-def _offline_reply(messages):
-    """Return honest, limited help when the paid API is unavailable."""
-    prompt = ""
-    for item in reversed(messages or []):
-        if item.get("role") == "user":
-            prompt = str(item.get("content", "")).strip()
-            break
-
-    lowered = prompt.lower()
-    if any(word in lowered for word in ("429", "crédit", "credits", "quota", "facturation")):
-        return (
-            "SOW IA fonctionne en mode de secours : le quota du fournisseur IA est épuisé "
-            "(erreur 429). Aucune réponse générative ne peut être produite "
-            "tant que le quota n'est pas rétabli. Vous pouvez continuer à utiliser "
-            "les fonctions locales de l'application, notamment l'historique, la "
-            "mémoire et l'importation de PDF. Je peux aussi vous guider dans les "
-            "réglages, étape par étape, sans vous demander de communiquer votre clé API."
-        )
-    if any(word in lowered for word in ("pdf", "document", "fichier")):
-        return (
-            "Le service IA est temporairement indisponible faute de quota. "
-            "Vous pouvez néanmoins ouvrir « Analyse PDF » pour importer un PDF "
-            "et extraire son texte. Vous pouvez aussi créer et télécharger un PDF "
-            "depuis la rubrique « Créer un PDF », sans consommer de crédit IA."
-        )
-    if any(word in lowered for word in ("mémoire", "memoire", "historique", "sauvegarder")):
-        return (
-            "Même sans crédits IA, les fonctions locales de mémoire et "
-            "d'historique de SOW IA restent accessibles dans leurs rubriques, "
-            "sous réserve que le stockage de l'application soit disponible."
-        )
-    return (
-        "Le mode de secours de SOW IA est actif. Le quota du fournisseur IA est "
-        "épuisé : je ne peux donc pas générer une véritable réponse IA pour le moment. "
-        "Les rubriques locales de l'application restent utilisables. Vous pouvez "
-        "me demander de l'aide sur les réglages, la mémoire, l'historique ou les "
-        "documents ; je vous indiquerai ce qui fonctionne sans crédits."
-    )
+def _offline_reply(messages, language="Français"):
+    """Return an honest fallback in the language selected in the interface."""
+    replies = {
+        "Français": (
+            "Le mode de secours de SOW IA est actif : le quota du fournisseur IA est épuisé. "
+            "Je ne peux pas générer de réponse IA tant que ce quota n'est pas rétabli. "
+            "Les fonctions locales, notamment l'historique, la mémoire et l'importation de PDF, "
+            "restent accessibles. Je peux vous guider dans les réglages sans vous demander "
+            "de communiquer votre clé API."
+        ),
+        "English": (
+            "SOW IA is in fallback mode because the AI provider's quota is exhausted. "
+            "I cannot generate an AI response until the quota is restored. Local features, "
+            "including history, memory and PDF import, remain available. I can guide you "
+            "through the settings without asking you to share your API key."
+        ),
+        "Español": (
+            "SOW IA está en modo de respaldo porque se ha agotado la cuota del proveedor de IA. "
+            "No puedo generar una respuesta de IA hasta que se restablezca la cuota. "
+            "Las funciones locales, como el historial, la memoria y la importación de PDF, "
+            "siguen disponibles. Puedo guiarte por la configuración sin pedirte tu clave API."
+        ),
+        "中文": (
+            "SOW IA 当前处于备用模式，因为 AI 服务提供商的额度已用尽。额度恢复前，"
+            "我暂时无法生成 AI 回复。历史记录、记忆和 PDF 导入等本地功能仍可使用。"
+            "我可以指导您检查设置，不会要求您提供 API 密钥。"
+        ),
+        "Deutsch": (
+            "SOW IA befindet sich im Ersatzmodus, weil das Kontingent des KI-Anbieters "
+            "aufgebraucht ist. Bis das Kontingent wieder verfügbar ist, kann ich keine "
+            "KI-Antwort erzeugen. Lokale Funktionen wie Verlauf, Speicher und PDF-Import "
+            "bleiben verfügbar. Ich kann Sie durch die Einstellungen führen, ohne nach "
+            "Ihrem API-Schlüssel zu fragen."
+        ),
+        "العربية": (
+            "يعمل SOW IA حاليًا في الوضع الاحتياطي لأن حصة مزوّد الذكاء الاصطناعي قد نفدت. "
+            "لا يمكنني إنشاء إجابة بالذكاء الاصطناعي حتى تتجدد الحصة. تظل الميزات المحلية، "
+            "مثل السجل والذاكرة واستيراد ملفات PDF، متاحة. يمكنني إرشادك إلى الإعدادات "
+            "من دون طلب مفتاح API الخاص بك."
+        ),
+    }
+    return replies.get(language, replies["Français"])
 
 
 MAX_DOCUMENT_CONTEXT_CHARS = 24000
@@ -148,7 +152,7 @@ def answer(messages, memories=None, document_context=None, language="Français")
             if retryable and index + 1 < len(providers):
                 continue
             if isinstance(exc, RateLimitError):
-                return _offline_reply(messages)
+                return _offline_reply(messages, language)
             if isinstance(exc, AuthenticationError):
                 raise RuntimeError(
                     "Le fournisseur IA refuse la clé API (erreur 401). Vérifiez la clé, l'adresse API et le nom du modèle dans les secrets Streamlit. Ne communiquez jamais votre clé."
