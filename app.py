@@ -54,6 +54,7 @@ import sowia_global_messenger
 import sowia_global_alerts
 import sowia_business_card
 import project_registry_ui
+import project_registry
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -828,14 +829,45 @@ def get_app_memories(offset=0, limit=1000):
         )
     return local_get_memories(workspace_id=workspace)[offset:offset + limit]
 
+def get_all_app_memories():
+    workspace = st.session_state.get("workspace_id", "personal")
+    if not cloud_mode:
+        return local_get_memories(workspace_id=workspace)
+    all_items = []
+    offset = 0
+    while True:
+        batch = cloud_storage.list_memories(
+            supabase_client, current_user, workspace,
+            limit=1000, offset=offset,
+        )
+        all_items.extend(batch)
+        if len(batch) < 1000:
+            break
+        offset += len(batch)
+    return all_items
+
 def get_app_memory_context(query):
     """Retrieve relevant notes and older exchanges without loading the whole archive."""
     workspace = st.session_state.get("workspace_id", "personal")
     if cloud_mode:
         try:
+            active_project_id = None
+            try:
+                active_session_id = str(st.session_state.get("session_id") or "")
+                projects = project_registry.list_projects(
+                    supabase_client, current_user, workspace, limit=500
+                )
+                active_project_id = next(
+                    (item.get("id") for item in projects
+                     if str(item.get("conversation_session_id") or "") == active_session_id),
+                    None,
+                )
+            except Exception:
+                pass
             found = cloud_storage.search_memory_context(
                 supabase_client, current_user, query, workspace,
                 exclude_session_id=st.session_state.get("session_id"),
+                project_id=active_project_id,
                 limit=80,
             )
             if found:
@@ -2617,12 +2649,32 @@ elif page == "Ma mémoire":
         "La mémoire n'a plus de plafond fixe de notes. Les informations sont classées "
         "et les éléments utiles sont retrouvés automatiquement selon la question."
     )
+    memory_project_options = [None]
+    memory_project_labels = {None: "Mémoire générale"}
+    if cloud_mode and current_user is not None:
+        try:
+            for project in project_registry.list_projects(
+                supabase_client, current_user,
+                st.session_state.get("workspace_id", "personal"),
+                limit=500,
+            ):
+                project_id = project.get("id")
+                if project_id is not None:
+                    memory_project_options.append(project_id)
+                    memory_project_labels[project_id] = str(project.get("title") or f"Projet {project_id}")
+        except Exception:
+            pass
     with st.form("add_memory_form", clear_on_submit=True):
         note = st.text_area(
             "Information à mémoriser",
             placeholder="Ajoutez une préférence, une décision, un projet, une règle technique ou un savoir utile aux futurs agents.",
             max_chars=20000,
             height=180,
+        )
+        memory_project_id = st.selectbox(
+            "Associer à un projet (facultatif)",
+            memory_project_options,
+            format_func=lambda value: memory_project_labels.get(value, "Mémoire générale"),
         )
         memory_cols = st.columns(2)
         with memory_cols[0]:
@@ -2642,7 +2694,7 @@ elif page == "Ma mémoire":
             try:
                 if not note.strip():
                     raise ValueError("Ajoutez une information avant l'enregistrement.")
-                inserted = add_app_memory(note, category=memory_category, importance=memory_importance)
+                inserted = add_app_memory(note, category=memory_category, importance=memory_importance, project_id=memory_project_id)
                 if cloud_mode and not inserted:
                     raise RuntimeError("La base n'a pas confirmé l'enregistrement.")
                 st.success("Information enregistrée dans la mémoire durable.")
@@ -2662,7 +2714,7 @@ elif page == "Ma mémoire":
     else:
         st.download_button(
             "Télécharger ma mémoire (.txt)",
-            data=format_memory_export(memories, workspace_label),
+            data=format_memory_export(get_all_app_memories(), workspace_label),
             file_name=f"sowia_memoire_{workspace_label}.txt",
             mime="text/plain; charset=utf-8",
             use_container_width=True,
