@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - android/fix-login-pdf-navigation-20261121
+      - fix/post-login-language-main-20261122
     paths:
       - '.github/workflows/android-maintenance-debug.yml'
       - 'android/**'
@@ -22,6 +23,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Run post-login language regression tests
+        run: |
+          python3 -m pip install --disable-pip-version-check pytest
+          python3 -m pytest tests/test_post_login_language_on_main.py -q
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
