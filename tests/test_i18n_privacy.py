@@ -54,3 +54,28 @@ def test_static_section_headings_use_the_active_language():
     source = Path("app.py").read_text(encoding="utf-8")
     assert 'st.subheader(translate_ui("Bienvenue dans SOW IA", language))' in source
     assert 'st.subheader(translate_ui("🌙 SOW IA NIGHT EXCHANGE", language))' in source
+
+
+
+def test_primary_navigation_controls_are_translated_in_all_supported_languages():
+    expected = {
+        "English": ("📁 Navigation section", "🧭 Tool to open", "←  BACK TO PREVIOUS PAGE"),
+        "Español": ("📁 Sección de navegación", "🧭 Herramienta que abrir", "←  VOLVER A LA PÁGINA ANTERIOR"),
+        "中文": ("📁 导航分类", "🧭 要打开的工具", "←  返回上一页"),
+        "Deutsch": ("📁 Navigationsbereich", "🧭 Werkzeug öffnen", "←  ZURÜCK ZUR VORHERIGEN SEITE"),
+        "العربية": ("📁 قسم التنقل", "🧭 الأداة المراد فتحها", "←  العودة إلى الصفحة السابقة"),
+    }
+    keys = (
+        "📁 Dossier de navigation",
+        "🧭 Outil à ouvrir",
+        "←  RETOUR À LA PAGE PRÉCÉDENTE",
+    )
+    for language, translated in expected.items():
+        assert tuple(translate(key, language) for key in keys) == translated
+
+
+def test_primary_navigation_controls_use_the_active_language():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert 'translate_ui("📁 Dossier de navigation", language)' in source
+    assert 'translate_ui("🧭 Outil à ouvrir", language)' in source
+    assert 'translate_ui("←  RETOUR À LA PAGE PRÉCÉDENTE", language)' in source
