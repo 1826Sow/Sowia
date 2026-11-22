@@ -661,7 +661,7 @@ if cloud_mode:
 
         if email_login_only:
             st.markdown("#### " + translate_ui("Connexion à mon compte SOW IA", language))
-            with st.expander(translate_ui("Créer un compte SOW IA — nouveau compte uniquement", language), expanded=False):
+            with st.expander(translate_ui("Créer un compte SOW IA — nouveau compte uniquement", language), expanded=True):
                 st.markdown("#### " + translate_ui("Créer un compte SOW IA", language))
                 st.caption(translate_ui("Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.", language))
                 with st.form("sowia_email_signup_form", clear_on_submit=False):
@@ -678,26 +678,26 @@ if cloud_mode:
                         or candidate_signup_email.endswith("@")
                         or "." not in candidate_signup_email.rsplit("@", 1)[-1]
                     ):
-                        st.error("Saisissez une adresse e-mail valide.")
+                        st.error(translate_ui("Saisissez une adresse e-mail valide.", language))
                     elif len(signup_password or "") < 8:
-                        st.error("Le mot de passe doit contenir au moins 8 caractères.")
+                        st.error(translate_ui("Le mot de passe doit contenir au moins 8 caractères.", language))
                     elif signup_password != signup_password_confirm:
-                        st.error("Les deux mots de passe ne correspondent pas.")
+                        st.error(translate_ui("Les deux mots de passe ne correspondent pas.", language))
                     elif not redirect_to:
-                        st.error("L'adresse de retour sécurisée de SOW IA n'est pas valide.")
+                        st.error(translate_ui("L'adresse de retour sécurisée de SOW IA n'est pas valide.", language))
                     else:
                         try:
                             signup_client = create_email_user_client()
                             signup_email_user(signup_client, candidate_signup_email, signup_password, redirect_to)
                             st.session_state["sowia_signup_pending"] = candidate_signup_email
-                            st.success("Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.")
+                            st.success(translate_ui("Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.", language))
                         except Exception as signup_exc:
                             signup_message = str(getattr(signup_exc, "message", "") or "").strip()
                             signup_code = str(getattr(signup_exc, "code", "") or "").strip()
                             if "already registered" in signup_message.lower() or "already been registered" in signup_message.lower():
-                                st.error("Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.")
+                                st.error(translate_ui("Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.", language))
                             else:
-                                st.error("La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.")
+                                st.error(translate_ui("La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.", language))
                                 st.caption("Diagnostic : " + type(signup_exc).__name__ + ((" · " + signup_code[:80]) if signup_code else ""))
 
 
@@ -738,7 +738,7 @@ if cloud_mode:
                     ):
                         st.error("Saisissez une adresse e-mail valide.")
                     elif not password_login_secret:
-                        st.error("Saisissez votre mot de passe.")
+                        st.error(translate_ui("Saisissez votre mot de passe.", language))
                     else:
                         password_client = create_email_user_client()
                         sign_in_email_password(
@@ -762,26 +762,26 @@ if cloud_mode:
                         )
                     else:
                         st.error(
-                            "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe."
+                            translate_ui("Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.", language)
                         )
                         if safe_code:
                             st.caption("Diagnostic : " + type(password_exc).__name__ + " · " + safe_code)
 
             st.divider()
-            st.markdown("#### Connexion par e-mail")
+            st.markdown("#### " + translate_ui("Connexion par e-mail", language))
             st.caption(
                 "Saisissez l'adresse e-mail déjà associée à votre compte SOW IA, "
                 "puis validez. Un lien sécurisé à usage unique sera envoyé ; "
                 "aucun nouveau compte ne sera créé."
             )
             email_address = st.text_input(
-                "Adresse e-mail du compte SOW IA",
+                translate_ui("Adresse e-mail du compte SOW IA", language),
                 value=str(st.session_state.get("sowia_email_login_pending", "") or ""),
                 max_chars=254,
                 key="sowia_email_login_address",
             )
             if st.button(
-                "Valider",
+                translate_ui("Valider", language),
                 key="sowia_send_email_link",
                 type="primary",
                 use_container_width=True,
@@ -809,7 +809,7 @@ if cloud_mode:
                                 "les courriers indésirables."
                             )
                 except Exception as email_exc:
-                    st.error("Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
+                    st.error(translate_ui("Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.", language))
                     safe_message = str(getattr(email_exc, "message", "") or str(email_exc)).strip()
                     safe_message = " ".join(safe_message.split())[:240]
                     safe_code = str(getattr(email_exc, "code", "") or "").strip()[:80]
