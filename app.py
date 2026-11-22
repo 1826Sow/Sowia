@@ -821,13 +821,48 @@ def clear_app_history():
 
 def get_app_memories():
     if cloud_mode:
-        return cloud_storage.list_memories(supabase_client, current_user, st.session_state.get("workspace_id", "personal"))
+        return cloud_storage.list_memories(
+            supabase_client, current_user,
+            st.session_state.get("workspace_id", "personal"),
+            limit=1000,
+        )
     return local_get_memories(workspace_id=st.session_state.get("workspace_id", "personal"))
 
-def add_app_memory(content):
+def get_app_memory_context(query):
+    """Retrieve relevant notes and older exchanges without loading the whole archive."""
+    workspace = st.session_state.get("workspace_id", "personal")
     if cloud_mode:
-        return cloud_storage.add_memory(supabase_client, current_user, content, st.session_state.get("workspace_id", "personal"))
-    return local_add_memory(content, st.session_state.get("workspace_id", "personal"))
+        try:
+            found = cloud_storage.search_memory_context(
+                supabase_client, current_user, query, workspace,
+                exclude_session_id=st.session_state.get("session_id"),
+                limit=80,
+            )
+            if found:
+                return found
+        except Exception:
+            # Keep assistant availability if the optional retrieval RPC is not yet deployed.
+            pass
+        return cloud_storage.list_memories(
+            supabase_client, current_user, workspace, limit=1000
+        )
+    return local_get_memories(workspace_id=workspace)
+
+def add_app_memory(content, category=None, importance=3, tags=None, project_id=None):
+    from memory_engine import infer_memory_category
+    selected_category = category or infer_memory_category(content)
+    if cloud_mode:
+        return cloud_storage.add_memory(
+            supabase_client, current_user, content,
+            st.session_state.get("workspace_id", "personal"),
+            category=selected_category, importance=importance,
+            tags=tags, project_id=project_id,
+        )
+    return local_add_memory(
+        content, st.session_state.get("workspace_id", "personal"),
+        category=selected_category, importance=importance,
+        tags=tags, project_id=project_id,
+    )
 
 def delete_app_memory(memory_id):
     if cloud_mode:
@@ -2514,7 +2549,7 @@ elif page == "Assistant IA":
                     try:
                         reply = answer(
                             request_history,
-                            memories=[item["content"] for item in memories],
+                            memories=get_app_memory_context(prompt),
                         )
                         st.markdown(reply)
                         try:
@@ -2578,19 +2613,41 @@ elif page == "Ma mémoire":
             "Elle convient au développement local, pas à une utilisation publique multi-utilisateur. "
             "N'y enregistrez pas de données sensibles."
         )
+    st.caption(
+        "La mémoire n'a plus de plafond fixe de notes. Les informations sont classées "
+        "et les éléments utiles sont retrouvés automatiquement selon la question."
+    )
     with st.form("add_memory_form", clear_on_submit=True):
         note = st.text_area(
             "Information à mémoriser",
-            placeholder="Ex. : Je préfère recevoir les explications en français et étape par étape.",
-            max_chars=1000,
+            placeholder="Ajoutez une préférence, une décision, un projet, une règle technique ou un savoir utile aux futurs agents.",
+            max_chars=20000,
+            height=180,
         )
-        submitted = st.form_submit_button("Enregistrer dans ma mémoire")
+        memory_cols = st.columns(2)
+        with memory_cols[0]:
+            memory_category = st.selectbox(
+                "Catégorie",
+                ["general", "profile", "preference", "project", "decision", "technical", "workflow", "reference", "agent"],
+                format_func=lambda value: {
+                    "general": "Général", "profile": "Profil", "preference": "Préférences",
+                    "project": "Projet", "decision": "Décisions", "technical": "Technique",
+                    "workflow": "Méthodes de travail", "reference": "Références", "agent": "Agents IA",
+                }[value],
+            )
+        with memory_cols[1]:
+            memory_importance = st.slider("Priorité de conservation", 1, 5, 3)
+        submitted = st.form_submit_button("Enregistrer dans ma mémoire", type="primary")
         if submitted:
             try:
-                add_app_memory(note)
-                st.success("Note ajoutée à la mémoire.")
+                if not note.strip():
+                    raise ValueError("Ajoutez une information avant l'enregistrement.")
+                inserted = add_app_memory(note, category=memory_category, importance=memory_importance)
+                if cloud_mode and not inserted:
+                    raise RuntimeError("La base n'a pas confirmé l'enregistrement.")
+                st.success("Information enregistrée dans la mémoire durable.")
                 st.rerun()
-            except (ValueError, PermissionError) as exc:
+            except (ValueError, PermissionError, RuntimeError) as exc:
                 st.error(str(exc))
     st.markdown("#### Informations mémorisées")
     memories = get_app_memories()
@@ -2605,8 +2662,15 @@ elif page == "Ma mémoire":
             use_container_width=True,
             help="Télécharge une copie des notes de cet espace uniquement.",
         )
+    st.caption(f"{len(memories)} information(s) affichée(s) dans cette page. Les archives sont conservées indépendamment du budget de contexte de l'assistant.")
     for item in memories:
         with st.container(border=True):
+            category_label = {
+                "general": "Général", "profile": "Profil", "preference": "Préférences",
+                "project": "Projet", "decision": "Décisions", "technical": "Technique",
+                "workflow": "Méthodes de travail", "reference": "Références", "agent": "Agents IA",
+            }.get(item.get("category") or "general", "Général")
+            st.caption(f"{category_label} · priorité {item.get('importance', 3)}/5")
             st.write(item["content"])
             if st.button("Supprimer cette note", key=f"delete_memory_{item['id']}"):
                 delete_app_memory(item["id"])
