@@ -1050,3 +1050,33 @@ _AUTH_EARLY_FAILURE_COMPLETION = {
 }
 for _language, _catalogue in _AUTH_EARLY_FAILURE_COMPLETION.items():
     _EXTRA_TRANSLATIONS[_language].update(_catalogue)
+
+
+_PROJECT_REGISTER_FINAL_STRINGS = {
+    "Español": {
+        "**Espace actif : {workspace_label}**": "**Espacio activo: {workspace_label}**",
+        "Le registre n'est pas encore accessible. La migration Supabase dédiée doit être appliquée après validation.": "El registro todavía no está disponible. La migración específica de Supabase debe aplicarse después de su validación.",
+        "La liste des conversations n'est pas disponible pour le moment. Les projets restent accessibles.": "La lista de conversaciones no está disponible por ahora. Los proyectos siguen estando accesibles.",
+        "Les conversations disponibles dans cet espace peuvent être associées aux projets. Les anciens messages restent inchangés ; les conversations historiques sont enregistrées progressivement lorsqu’elles sont ouvertes.": "Las conversaciones disponibles en este espacio pueden vincularse a los proyectos. Los mensajes anteriores no cambian; las conversaciones históricas se guardan progresivamente cuando se abren.",
+    },
+    "Deutsch": {
+        "**Espace actif : {workspace_label}**": "**Aktiver Arbeitsbereich: {workspace_label}**",
+        "Le registre n'est pas encore accessible. La migration Supabase dédiée doit être appliquée après validation.": "Das Register ist noch nicht verfügbar. Die zugehörige Supabase-Migration muss nach der Freigabe angewendet werden.",
+        "La liste des conversations n'est pas disponible pour le moment. Les projets restent accessibles.": "Die Unterhaltungsliste ist derzeit nicht verfügbar. Die Projekte bleiben zugänglich.",
+        "Les conversations disponibles dans cet espace peuvent être associées aux projets. Les anciens messages restent inchangés ; les conversations historiques sont enregistrées progressivement lorsqu’elles sont ouvertes.": "In diesem Bereich verfügbare Unterhaltungen können mit Projekten verknüpft werden. Frühere Nachrichten bleiben unverändert; historische Unterhaltungen werden nach und nach gespeichert, wenn sie geöffnet werden.",
+    },
+    "中文": {
+        "**Espace actif : {workspace_label}**": "**当前工作区：{workspace_label}**",
+        "Le registre n'est pas encore accessible. La migration Supabase dédiée doit être appliquée après validation.": "项目登记簿暂不可用。专用 Supabase 迁移需在审核通过后应用。",
+        "La liste des conversations n'est pas disponible pour le moment. Les projets restent accessibles.": "对话列表暂时不可用。项目仍可访问。",
+        "Les conversations disponibles dans cet espace peuvent être associées aux projets. Les anciens messages restent inchangés ; les conversations historiques sont enregistrées progressivement lorsqu’elles sont ouvertes.": "此工作区中的对话可以关联到项目。现有消息保持不变；历史对话会在打开时逐步保存。",
+    },
+    "العربية": {
+        "**Espace actif : {workspace_label}**": "**مساحة العمل النشطة: {workspace_label}**",
+        "Le registre n'est pas encore accessible. La migration Supabase dédiée doit être appliquée après validation.": "السجل غير متاح بعد. يجب تطبيق ترحيل Supabase المخصص بعد اعتماده.",
+        "La liste des conversations n'est pas disponible pour le moment. Les projets restent accessibles.": "قائمة المحادثات غير متاحة حاليًا. تظل المشاريع متاحة.",
+        "Les conversations disponibles dans cet espace peuvent être associées aux projets. Les anciens messages restent inchangés ; les conversations historiques sont enregistrées progressivement lorsqu’elles sont ouvertes.": "يمكن ربط المحادثات المتاحة في هذه المساحة بالمشاريع. تظل الرسائل السابقة دون تغيير؛ ويتم حفظ المحادثات التاريخية تدريجيًا عند فتحها.",
+    },
+}
+for _language, _catalogue in _PROJECT_REGISTER_FINAL_STRINGS.items():
+    _EXTRA_TRANSLATIONS[_language].update(_catalogue)
