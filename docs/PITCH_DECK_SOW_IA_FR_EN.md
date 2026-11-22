@@ -197,31 +197,41 @@ Project components include:
 Never present an unverified source as confirmed fact. No message is sent and no offer is accepted automatically.
 
 
-### Slide 5A — NIGHT ÉCHANGE: keeping the human relationship at the center
-**Move from discovering a contact to a structured professional conversation.**
+### Slide 5A — NIGHT ÉCHANGE: the international application exchange
+**A marketplace and meeting place dedicated to applications.**
 
-NIGHT ÉCHANGE is presented as SOW IA's relationship layer: prepare an approach, start a professional dialogue, preserve the context of interactions, understand replies and objections, and organize the next steps.
+NIGHT ÉCHANGE aims to become an international application exchange: a place where developers, studios, startups, companies and users can showcase, discover and promote applications, find solutions, identify partners and create collaboration opportunities.
 
-The ambition is to make each exchange a traceable step in a business-development journey rather than an isolated conversation.
+The concept is designed to bring application supply and demand together across borders and beyond established networks. Its detailed mechanisms — listings, discovery, matching, conversations, ratings, commercial terms and any transactions — must be defined and secured in the product.
 
-**What to demonstrate:** the outreach journey, message preparation, reply and follow-up tracking, and continuity of the case. Show only capabilities actually available in the demo build.
+**Promise:** make applications easier to discover and their creators easier to reach within an international ecosystem.
 
-### Slide 5B — FINAL TECH: move toward completion
-**Turn an advanced discussion into a clear, controlled completion file.**
+**Important distinction:** the application exchange is the target concept. Only features that have actually been built, tested and made available should be described as live.
 
-FINAL TECH is presented as the completion layer: bring together the elements of a project or opportunity, clarify needs and open points, prepare decision materials, and organize the steps required to reach completion.
+### Slide 5B — FINAL TECH: the ambition to develop a next-generation chip
+**Build a semiconductor project that could, over time, compete with major accelerated-computing players, including NVIDIA.**
 
-The goal is not to stop at conversation: it is to move the case toward a structured outcome, with human oversight at every consequential decision.
+FINAL TECH is a long-term technology and industrial ambition: explore the design of a next-generation chip for high-performance computing and artificial-intelligence workloads. The strategic objective is to develop, over time, a competitive technology relative to NVIDIA and other major players.
 
-**Essential safeguard:** SOW IA may prepare and organize completion materials; it does not sign, accept an offer, or make financial or contractual commitments on behalf of an authorized person.
+It must not be presented as an existing chip or a product ready for market. This is a program to be built in stages:
+1. define priority workloads and target performance;
+2. study the architecture (CPU/GPU/specialized accelerator, memory, interconnect and energy efficiency);
+3. conduct feasibility, intellectual-property, cost and market assessments;
+4. build a specialist research team and identify research labs, EDA, foundry and packaging partners;
+5. progressively validate the architecture through simulation, FPGA prototypes or emulation, followed by a possible tape-out and silicon;
+6. develop the software ecosystem, developer tools and customer pilots.
 
-**What to demonstrate:** continuity from conversation to a summary of agreed points, remaining items to validate, and a completion checklist. Present as operational only what has been tested.
+**Promise:** pursue technological sovereignty, innovation and competitiveness in computing technologies.
 
-### Slide 5C — Two complementary concepts
-- **NIGHT ÉCHANGE**: create and sustain the professional relationship.
-- **FINAL TECH**: structure the transition from relationship to completion.
+**Industrial reality:** advanced chip design requires specialist talent, tool licenses, industrial partners, substantial capital and multiple validation cycles. No performance, launch date or proven ability to compete is claimed at this stage.
 
-Together, they express a strong SOW IA ambition: support the end-to-end journey, from the first interaction to the preparation of a controlled completion. Their novelty and any “world first” claim must be established through independent comparative research before being stated as fact.
+### Slide 5C — Two complementary visions, two different horizons
+- **NIGHT ÉCHANGE**: build an international market where applications and their creators can meet.
+- **FINAL TECH**: prepare a next-generation semiconductor project with the long-term goal of global competitiveness.
+
+NIGHT ÉCHANGE is a platform and digital-ecosystem ambition. FINAL TECH is a research, engineering and semiconductor-industry ambition. They are distinct projects that can contribute to SOW IA's broader global technology vision.
+
+Any “world first” or technological-superiority claim must be supported by independent prior-art research, competitive analysis and technical evidence before public use.
 
 ### Slide 6 — Who it serves
 - startups and founders exploring new markets;
