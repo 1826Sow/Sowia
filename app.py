@@ -51,6 +51,7 @@ import sowia_global_directory
 import sowia_global_connect
 import sowia_global_messenger
 import sowia_global_alerts
+import sowia_global_negotiation
 import sowia_business_card
 import project_registry_ui
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
@@ -2757,7 +2758,7 @@ elif page == "Ma mémoire":
 elif page == "Développement mondial":
     st.subheader(translate_ui("🌍 Développement mondial de SOW IA", language))
     st.caption("Repérez des partenaires, préparez vos prises de contact et construisez votre promotion internationale. Rien n'est envoyé ou publié automatiquement.")
-    partner_tab, greeting_tab, agenda_tab, promo_tab, market_tab, radar_tab = st.tabs(["🤝 Partenaires", "🎉 Vœux internationaux", "🗓️ Agenda relationnel", "📣 Promotion multilingue", "🌐 Stratégie pays", "📡 Radar opportunités"])
+    partner_tab, greeting_tab, agenda_tab, promo_tab, market_tab, radar_tab, negotiation_tab = st.tabs(["🤝 Partenaires", "🎉 Vœux internationaux", "🗓️ Agenda relationnel", "📣 Promotion multilingue", "🌐 Stratégie pays", "📡 Radar opportunités", "🤝 Négociation & accords"])
 
     with partner_tab:
         st.markdown("#### Prospection internationale")
@@ -3548,6 +3549,106 @@ elif page == "Développement mondial":
         else:
             st.info("Le registre est vide. Enregistrez une piste pour commencer votre suivi.")
 
+
+
+    with negotiation_tab:
+        st.markdown("#### 🤝 Centre de négociation commerciale")
+        st.caption(
+            "Centralisez les échanges, préparez des réponses adaptées et suivez chaque étape "
+            "jusqu'à la revue finale. Cette première version prépare les messages : elle ne les envoie pas."
+        )
+        with st.form("sowia_global_negotiation_case_form"):
+            neg_cols = st.columns(2)
+            with neg_cols[0]:
+                neg_partner = st.text_input("Entreprise / interlocuteur", max_chars=160)
+                neg_country = st.text_input("Pays", max_chars=100)
+                neg_language = st.selectbox("Langue de réponse", ["Français", "English"])
+            with neg_cols[1]:
+                neg_objective = st.text_input(
+                    "Objectif de la négociation", max_chars=500,
+                    placeholder="Ex. obtenir un accord de distribution pour SOW IA",
+                )
+                neg_stage = st.selectbox(
+                    "Étape actuelle", sowia_global_negotiation.STAGES
+                )
+            neg_incoming = st.text_area(
+                "Dernier message reçu / résumé fidèle de l'échange",
+                max_chars=4000, height=160,
+            )
+            neg_boundaries = st.text_area(
+                "Vos limites et conditions non négociables",
+                max_chars=1200, height=90,
+                placeholder="Ex. prix minimum, zone, délais, aucun engagement sans contrat signé…",
+            )
+            neg_generate = st.form_submit_button(
+                "Analyser et préparer une réponse", type="primary"
+            )
+        if neg_generate:
+            try:
+                neg_case = sowia_global_negotiation.validate_case(
+                    neg_partner, neg_country, neg_objective, neg_incoming, neg_boundaries
+                )
+                neg_draft = sowia_global_negotiation.build_reply_draft(
+                    neg_case, language=neg_language
+                )
+                st.session_state["sowia_negotiation_case"] = {
+                    **neg_case, "language": neg_language, "stage": neg_stage,
+                    "draft": neg_draft,
+                    "signals": sowia_global_negotiation.detect_negotiation_signals(neg_incoming),
+                }
+                st.success("Analyse terminée. Le brouillon est prêt pour relecture.")
+            except ValueError as neg_error:
+                st.error(str(neg_error))
+        active_negotiation = st.session_state.get("sowia_negotiation_case")
+        if active_negotiation:
+            st.divider()
+            st.markdown("##### Analyse de l'échange")
+            st.write("Points détectés : " + " · ".join(active_negotiation["signals"]))
+            st.caption("Partenaire : " + active_negotiation["partner"] + " · " + active_negotiation["country"])
+            st.text_area(
+                "Réponse proposée — à relire et approuver avant tout envoi",
+                value=active_negotiation["draft"], height=260,
+                key="sowia_negotiation_draft_preview",
+            )
+            st.warning(
+                "Aucun message n'est envoyé depuis cette rubrique. Les prix, délais, exclusivités "
+                "et clauses doivent être confirmés par une personne habilitée."
+            )
+            updated_stage = st.selectbox(
+                "Suivi de la négociation", sowia_global_negotiation.STAGES,
+                index=sowia_global_negotiation.STAGES.index(active_negotiation["stage"]),
+                key="sowia_negotiation_stage_update",
+            )
+            if st.button("Mettre à jour l'étape dans cette session"):
+                active_negotiation["stage"] = sowia_global_negotiation.validate_stage(updated_stage)
+                st.success("Étape mise à jour dans la session en cours.")
+            st.markdown("##### Contrôle avant finalisation")
+            st.caption("Cochez uniquement après vérification réelle des éléments.")
+            check_cols = st.columns(2)
+            with check_cols[0]:
+                check_identity = st.checkbox("Identité et pouvoir du partenaire vérifiés")
+                check_scope = st.checkbox("Périmètre et livrables confirmés")
+                check_price = st.checkbox("Prix et conditions approuvés")
+            with check_cols[1]:
+                check_legal = st.checkbox("Revue juridique effectuée si nécessaire")
+                check_signatory = st.checkbox("Signataire habilité identifié")
+            final_gate = sowia_global_negotiation.validate_finalization({
+                "identity_verified": check_identity,
+                "scope_confirmed": check_scope,
+                "price_approved": check_price,
+                "legal_review": check_legal,
+                "authorized_signatory": check_signatory,
+            })
+            if final_gate["ready_for_human_review"]:
+                st.success("Dossier prêt pour la revue et la décision finale d'une personne habilitée.")
+            else:
+                st.info("Éléments restant à vérifier : " + ", ".join(final_gate["missing"]))
+            st.caption(
+                "SOW IA ne signe pas, n'accepte pas automatiquement une offre et ne déclenche "
+                "aucun paiement. La conclusion contractuelle reste sous contrôle humain."
+            )
+        else:
+            st.info("Créez un dossier à partir d'un échange reçu pour commencer le suivi.")
 
 elif page == "Recherche Web":
     st.subheader(translate_ui("🌐 Recherche Web", language))
