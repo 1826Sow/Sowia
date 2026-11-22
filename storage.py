@@ -56,6 +56,9 @@ def _connect():
                 )
                 _ensure_workspace_column(conn, "messages")
                 _ensure_workspace_column(conn, "memory_items")
+                memory_columns = {row[1] for row in conn.execute("PRAGMA table_info(memory_items)")}
+                if "project_id" not in memory_columns:
+                    conn.execute("ALTER TABLE memory_items ADD COLUMN project_id INTEGER")
                 conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_messages_session_workspace_id "
                     "ON messages(session_id, workspace_id, id)"
@@ -100,7 +103,7 @@ def clear_history(session_id, workspace_id="personal"):
         )
 
 
-def add_memory(content, workspace_id="personal"):
+def add_memory(content, workspace_id="personal", project_id=None):
     """Save a short memory note after validating its size."""
     workspace = _workspace_id(workspace_id)
     cleaned = (content or "").strip()
@@ -115,8 +118,8 @@ def add_memory(content, workspace_id="personal"):
         if count >= 100:
             raise ValueError("La mémoire contient déjà 100 notes. Supprimez-en une avant d'en ajouter.")
         cursor = conn.execute(
-            "INSERT INTO memory_items(content, created_at, workspace_id) VALUES(?, ?, ?)",
-            (cleaned, datetime.now(timezone.utc).isoformat(), workspace),
+            "INSERT INTO memory_items(content, created_at, workspace_id, project_id) VALUES(?, ?, ?, ?)",
+            (cleaned, datetime.now(timezone.utc).isoformat(), workspace, project_id),
         )
         return cursor.lastrowid
 
@@ -126,10 +129,10 @@ def get_memories(limit=100, workspace_id="personal"):
     safe_limit = min(max(int(limit), 1), 100)
     with _connect() as conn:
         rows = conn.execute(
-            "SELECT id, content, created_at FROM memory_items WHERE workspace_id=? ORDER BY id DESC LIMIT ?",
+            "SELECT id, content, created_at, project_id FROM memory_items WHERE workspace_id=? ORDER BY id DESC LIMIT ?",
             (workspace, safe_limit),
         ).fetchall()
-    return [{"id": row[0], "content": row[1], "created_at": row[2]} for row in rows]
+    return [{"id": row[0], "content": row[1], "created_at": row[2], "project_id": row[3]} for row in rows]
 
 
 def delete_memory(memory_id, workspace_id="personal"):

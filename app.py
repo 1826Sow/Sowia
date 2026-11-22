@@ -831,10 +831,17 @@ def get_app_memories():
         return cloud_storage.list_memories(supabase_client, current_user, st.session_state.get("workspace_id", "personal"))
     return local_get_memories(workspace_id=st.session_state.get("workspace_id", "personal"))
 
-def add_app_memory(content):
+def add_app_memory(content, project_id=None):
     if cloud_mode:
-        return cloud_storage.add_memory(supabase_client, current_user, content, st.session_state.get("workspace_id", "personal"))
-    return local_add_memory(content, st.session_state.get("workspace_id", "personal"))
+        return cloud_storage.add_memory(
+            supabase_client, current_user, content,
+            st.session_state.get("workspace_id", "personal"),
+            project_id=project_id,
+        )
+    return local_add_memory(
+        content, st.session_state.get("workspace_id", "personal"),
+        project_id=project_id,
+    )
 
 def delete_app_memory(memory_id):
     if cloud_mode:
@@ -2411,9 +2418,51 @@ elif page == "Assistant IA":
                 )
     if not API_KEY:
         st.warning("Pour activer les réponses IA, ajoutez votre clé API dans les secrets de l'hébergement. Ne la partagez jamais sur GitHub.")
+    active_memory_project_id = None
+    active_memory_project = None
+    if cloud_mode and current_user is not None:
+        try:
+            import project_registry
+            available_memory_projects = project_registry.list_projects(
+                supabase_client, current_user, active_workspace_id, limit=200
+            )
+            memory_project_options = [None] + [item["id"] for item in available_memory_projects]
+            memory_project_by_id = {item["id"]: item for item in available_memory_projects}
+            active_memory_project_id = st.selectbox(
+                "🗂️ Contexte de projet pour cette conversation",
+                options=memory_project_options,
+                format_func=lambda value: (
+                    "Aucun projet précis" if value is None
+                    else str(memory_project_by_id.get(value, {}).get("title", "Projet"))
+                ),
+                key=f"sowia_active_memory_project_{active_workspace_id}",
+                help="Les notes générales et celles du projet choisi seront utilisées. Les notes des autres projets resteront isolées.",
+            )
+            active_memory_project = memory_project_by_id.get(active_memory_project_id)
+            st.session_state["sowia_active_memory_project_id"] = active_memory_project_id
+        except Exception as project_context_error:
+            st.caption("Le contexte projet n'est pas disponible pour le moment. La mémoire générale reste active.")
     memories = get_app_memories()
+    memories = [
+        item for item in memories
+        if item.get("project_id") is None
+        or (
+            active_memory_project_id is not None
+            and str(item.get("project_id")) == str(active_memory_project_id)
+        )
+    ]
+    if active_memory_project:
+        project_context = (
+            "Projet actif : " + str(active_memory_project.get("title", ""))
+            + ". Statut : " + str(active_memory_project.get("status", "En cours"))
+            + ". Description et point de reprise : "
+            + str(active_memory_project.get("description", ""))
+        ).strip()
+        memories = [project_context] + [item["content"] for item in memories]
+    else:
+        memories = [item["content"] for item in memories]
     if memories:
-        st.caption(f"{len(memories)} note(s) mémoire seront disponibles à l'assistant.")
+        st.caption(f"{len(memories)} élément(s) de contexte mémoire seront disponibles à l'assistant.")
     conversation_history = get_app_history()
     for item in conversation_history:
         render_accessible_message(item["role"], item["content"])
@@ -2472,11 +2521,18 @@ elif page == "Assistant IA":
             try:
                 if not cloud_mode or current_user is None:
                     raise RuntimeError("Connexion Supabase requise pour une mémoire persistante.")
-                inserted_memory = add_app_memory(explicit_memory)
+                inserted_memory = add_app_memory(
+                    explicit_memory,
+                    project_id=st.session_state.get("sowia_active_memory_project_id"),
+                )
                 if not inserted_memory:
                     raise RuntimeError("Supabase n'a retourné aucune ligne enregistrée.")
                 saved_memories = get_app_memories()
-                if not any(item.get("content") == explicit_memory for item in saved_memories):
+                if not any(
+                    item.get("content") == explicit_memory
+                    and str(item.get("project_id") or "") == str(st.session_state.get("sowia_active_memory_project_id") or "")
+                    for item in saved_memories
+                ):
                     raise RuntimeError("La note a été écrite mais sa relecture de vérification a échoué.")
                 memory_reply = "C'est enregistré dans votre mémoire SOW IA sur votre compte Supabase. J'ai vérifié que la note peut être relue. Vous pourrez la retrouver dans « Ma mémoire » et la réutiliser dans une nouvelle conversation."
                 render_accessible_message("assistant", memory_reply)
@@ -2528,7 +2584,7 @@ elif page == "Assistant IA":
                     try:
                         reply = answer(
                             request_history,
-                            memories=[item["content"] for item in memories],
+                            memories=memories,
                         )
                         st.markdown(reply)
                         try:
@@ -2592,16 +2648,38 @@ elif page == "Ma mémoire":
             "Elle convient au développement local, pas à une utilisation publique multi-utilisateur. "
             "N'y enregistrez pas de données sensibles."
         )
+    memory_projects = []
+    memory_project_by_id = {}
+    if cloud_mode and current_user is not None:
+        try:
+            import project_registry
+            memory_projects = project_registry.list_projects(
+                supabase_client, current_user,
+                st.session_state.get("workspace_id", "personal"), limit=200
+            )
+            memory_project_by_id = {item["id"]: item for item in memory_projects}
+        except Exception:
+            st.caption("Le registre des projets est momentanément indisponible ; vous pouvez toujours enregistrer une note générale.")
     with st.form("add_memory_form", clear_on_submit=True):
         note = st.text_area(
             "Information à mémoriser",
             placeholder="Ex. : Je préfère recevoir les explications en français et étape par étape.",
             max_chars=1000,
         )
+        memory_project_options = [None] + [item["id"] for item in memory_projects]
+        selected_memory_project_id = st.selectbox(
+            "Associer cette note à un projet",
+            options=memory_project_options,
+            format_func=lambda value: (
+                "Mémoire générale" if value is None
+                else str(memory_project_by_id.get(value, {}).get("title", "Projet"))
+            ),
+            help="Une note liée à un projet ne sera proposée à l'assistant que lorsque ce projet est sélectionné.",
+        )
         submitted = st.form_submit_button("Enregistrer dans ma mémoire")
         if submitted:
             try:
-                add_app_memory(note)
+                add_app_memory(note, project_id=selected_memory_project_id)
                 st.success("Note ajoutée à la mémoire.")
                 st.rerun()
             except (ValueError, PermissionError) as exc:
@@ -2611,9 +2689,19 @@ elif page == "Ma mémoire":
     if not memories:
         st.caption("Aucune note enregistrée pour le moment.")
     else:
+        export_memories = [
+            {
+                **item,
+                "project_title": (
+                    memory_project_by_id.get(item.get("project_id"), {}).get("title")
+                    if item.get("project_id") is not None else None
+                ),
+            }
+            for item in memories
+        ]
         st.download_button(
             "Télécharger ma mémoire (.txt)",
-            data=format_memory_export(memories, workspace_label),
+            data=format_memory_export(export_memories, workspace_label),
             file_name=f"sowia_memoire_{workspace_label}.txt",
             mime="text/plain; charset=utf-8",
             use_container_width=True,
@@ -2621,6 +2709,14 @@ elif page == "Ma mémoire":
         )
     for item in memories:
         with st.container(border=True):
+            if item.get("project_id") is not None:
+                linked_project = memory_project_by_id.get(item.get("project_id"))
+                st.caption(
+                    "📁 Projet : " + str(linked_project.get("title", "Projet associé"))
+                    if linked_project else "📁 Note liée à un projet de cet espace"
+                )
+            else:
+                st.caption("🧠 Mémoire générale")
             st.write(item["content"])
             if st.button("Supprimer cette note", key=f"delete_memory_{item['id']}"):
                 delete_app_memory(item["id"])

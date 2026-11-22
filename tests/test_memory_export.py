@@ -33,3 +33,12 @@ def test_memory_export_skips_blank_note_content():
 
     assert "Note utile" in result
     assert "\nNote 2\n" not in result
+
+
+def test_memory_export_keeps_project_association():
+    result = format_memory_export(
+        [{"content": "Décision du projet", "project_id": 12, "project_title": "SOW IA"}],
+        "personnel",
+    )
+    assert "Projet : SOW IA" in result
+    assert "Décision du projet" in result

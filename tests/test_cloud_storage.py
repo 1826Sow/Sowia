@@ -121,6 +121,7 @@ def test_add_memory_writes_user_and_workspace(workspace):
         "user_id": "user-123",
         "workspace_id": workspace,
         "content": "Ma note",
+        "project_id": None,
     }
 
 
@@ -542,3 +543,32 @@ def test_list_conversations_supports_incremental_history_windows_safely():
     assert ("range", 0, 999) in query.operations
     assert ("user_id", "user-123") in query.filters
     assert ("workspace_id", "personal") in query.filters
+
+
+def test_add_memory_validates_and_scopes_project_association():
+    client = FakeClient()
+    project_query = client.table("sowia_projects")
+    project_query.execute = lambda: SimpleNamespace(data=[{"id": 77}])
+    cloud_storage.add_memory(client, User(), "Note liée", "professional", project_id=77)
+    payload = client.tables["sowia_memory_items"].inserted
+    assert payload["project_id"] == 77
+    assert payload["workspace_id"] == "professional"
+    assert ("user_id", "user-123") in project_query.filters
+    assert ("workspace_id", "professional") in project_query.filters
+
+
+def test_add_memory_rejects_project_not_owned_in_workspace():
+    client = FakeClient()
+    project_query = client.table("sowia_projects")
+    project_query.execute = lambda: SimpleNamespace(data=[])
+    with pytest.raises(ValueError, match="n'appartient pas"):
+        cloud_storage.add_memory(client, User(), "Note liée", "personal", project_id=77)
+    assert "sowia_memory_items" not in client.tables
+
+
+def test_add_memory_rejects_invalid_project_id_before_database_write():
+    class Client:
+        def table(self, _name):
+            raise AssertionError("Invalid project IDs must be rejected before database access")
+    with pytest.raises(ValueError, match="Projet mémoire invalide"):
+        cloud_storage.add_memory(Client(), User(), "Note liée", project_id="abc")

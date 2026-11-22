@@ -23,6 +23,12 @@ def format_memory_export(memories: Iterable[Mapping], workspace_label: str) -> s
         lines.append(f"Note {index}")
         if created_at:
             lines.append(f"Date : {created_at}")
+        project_title = str(item.get("project_title") or "").strip()
+        project_id = item.get("project_id")
+        if project_title:
+            lines.append(f"Projet : {project_title}")
+        elif project_id is not None:
+            lines.append(f"Projet ID : {project_id}")
         lines.append(content)
         lines.append("")
 
