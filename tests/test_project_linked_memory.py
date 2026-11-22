@@ -31,3 +31,9 @@ def test_memory_page_can_associate_notes_with_registered_projects():
     assert "Associer cette note à un projet" in source
     assert "add_app_memory(note, project_id=selected_memory_project_id)" in source
     assert "Note liée à un projet de cet espace" in source
+
+
+def test_project_memory_foreign_key_has_a_dedicated_covering_index():
+    migration = (ROOT / "supabase/migrations/20261122113531_sowia_memory_project_fk_index.sql").read_text(encoding="utf-8")
+    assert "on public.sowia_memory_items (project_id)" in migration
+    assert "where project_id is not null" in migration
