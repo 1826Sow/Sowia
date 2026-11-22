@@ -84,7 +84,7 @@ def select_relevant_memories(query, memories, limit=10):
 
     query_tokens = _tokens(query)
     if not query_tokens:
-        return [item for item, _ in items[:limit]]
+        return [str(item.get("content", "")).strip() if isinstance(item, dict) else str(item or "").strip() for item, _ in items[:limit]]
     query_text = " ".join(query_tokens)
 
     ranked = []
@@ -96,4 +96,4 @@ def select_relevant_memories(query, memories, limit=10):
     if not ranked:
         return [item for item, _ in items[:limit]]
     ranked.sort(key=lambda row: (-row[0], row[1]))
-    return [item for _, _, item in ranked[:limit]]
+    return [str(item.get("content", "")).strip() if isinstance(item, dict) else str(item or "").strip() for _, _, item in ranked[:limit]]
