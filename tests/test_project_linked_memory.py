@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_project_linked_memory_migration_is_additive_and_workspace_scoped():
-    migration = (ROOT / "supabase/migrations/20261122140000_sowia_project_linked_memory.sql").read_text(encoding="utf-8")
+    migration = (ROOT / "supabase/migrations/20261122113253_sowia_project_linked_memory.sql").read_text(encoding="utf-8")
     assert "add column if not exists project_id bigint" in migration
     assert "on delete set null" in migration
     assert "p.user_id = sowia_memory_items.user_id" in migration
