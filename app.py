@@ -1555,24 +1555,23 @@ st.components.v1.html(
 nav_home_col, nav_label_col = st.columns([1, 2])
 with nav_home_col:
     st.button(
-        "⌂ Accueil",
+        translate_ui("⌂ Accueil", language),
         key="sowia_navigation_home",
         on_click=go_to_page,
         args=("Accueil",),
         use_container_width=True,
     )
 with nav_label_col:
-    st.caption("Rubrique actuelle")
+    st.caption(translate_ui("Rubrique actuelle", language))
     st.markdown("**" + html.escape(translate_ui(page, language)) + "**")
 
 st.markdown(
-    '<div class="hero"><div class="hero-kicker">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>'
+    '<div class="hero"><div class="hero-kicker">' + html.escape(translate_ui("PLATEFORME INTELLIGENTE · VISION INTERNATIONALE", language)) + '</div>'
     '<h1>🧠 SOW IA</h1>'
-    '<p>La technologie au service des décisions, de la productivité et des opportunités. '
-    'Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.</p>'
-    '<div class="hero-meta"><span class="hero-chip">🔐 Espaces de travail sécurisés</span>'
-    '<span class="hero-chip">🌍 Ambition internationale</span>'
-    '<span class="hero-chip">🤝 Collaboration professionnelle</span></div></div>',
+    '<p>' + html.escape(translate_ui("La technologie au service des décisions, de la productivité et des opportunités. Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.", language)) + '</p>'
+    '<div class="hero-meta"><span class="hero-chip">' + html.escape(translate_ui("🔐 Espaces de travail sécurisés", language)) + '</span>'
+    '<span class="hero-chip">' + html.escape(translate_ui("🌍 Ambition internationale", language)) + '</span>'
+    '<span class="hero-chip">' + html.escape(translate_ui("🤝 Collaboration professionnelle", language)) + '</span></div></div>',
     unsafe_allow_html=True,
 )
 st.write("")
@@ -1581,14 +1580,14 @@ if page == "Accueil":
     sowia_home_brand_cols = st.columns([1, 2, 1])
     with sowia_home_brand_cols[1]:
         st.image("assets/sowia-brain-brand.svg", width=320)
-    st.subheader("Bienvenue dans SOW IA")
-    st.caption("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.")
+    st.subheader(translate_ui("Bienvenue dans SOW IA", language))
+    st.caption(translate_ui("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.", language))
     st.image("assets/sections/home-executive.svg", use_container_width=True)
     st.markdown(
         '<section class="sowia-command-center">'
-        '<div class="sowia-command-kicker">COMMENCEZ VOTRE EXPLORATION</div>'
-        '<h2>✨ Découvrez ce que SOW IA peut faire avec vous</h2>'
-        '<p>Choisissez un premier parcours et explorez les outils adaptés à vos besoins.</p>'
+        '<div class="sowia-command-kicker">' + html.escape(translate_ui("COMMENCEZ VOTRE EXPLORATION", language)) + '</div>'
+        '<h2>' + html.escape(translate_ui("✨ Découvrez ce que SOW IA peut faire avec vous", language)) + '</h2>'
+        '<p>' + html.escape(translate_ui("Choisissez un premier parcours et explorez les outils adaptés à vos besoins.", language)) + '</p>'
         '</section>',
         unsafe_allow_html=True,
     )
