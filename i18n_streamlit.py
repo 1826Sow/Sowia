@@ -17,6 +17,15 @@ _LOCALIZABLE_STREAMLIT_CALLS = (
 )
 
 
+def _translate_markdown_phrase(value, language, translate):
+    """Translate only curated Markdown UI phrases; never send dynamic text externally."""
+    try:
+        return translate(value, language, allow_fallback=False)
+    except TypeError:
+        # Keep compatibility with simple injected translators used by tests.
+        return translate(value, language)
+
+
 def _translate_markdown_text(value, language, translate):
     """Translate exact UI phrases line by line while preserving Markdown."""
     output = []
@@ -45,14 +54,14 @@ def _translate_markdown_text(value, language, translate):
             if match:
                 if len(match.groups()) == 2:
                     prefix, phrase = match.groups()
-                    translated_line = prefix + translate(phrase, language)
+                    translated_line = prefix + _translate_markdown_phrase(phrase, language, translate)
                 else:
                     prefix, phrase, suffix = match.groups()
                     translated_line = prefix + translate(phrase, language) + suffix
                 break
         else:
             if not any(token in body for token in ("**", chr(96), "{", "}")):
-                translated_line = translate(body, language)
+                translated_line = _translate_markdown_phrase(body, language, translate)
         output.append(translated_line + ending)
     return "".join(output)
 
