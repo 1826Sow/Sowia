@@ -186,6 +186,116 @@ _CORE_TRANSLATIONS = {
 }
 
 
+
+_NAV_TRANSLATIONS = {
+    "English": {
+        "👤 Personnel & documents": "👤 Personal & documents",
+        "🌙 Bourse aux applications": "🌙 App marketplace",
+        "📚 Échanges & projets": "📚 Exchanges & projects",
+        "🌐 Écosystème mondial": "🌐 Global ecosystem",
+        "🤝 Entreprises & opportunités": "🤝 Business & opportunities",
+        "🧠 Intelligence & décisions": "🧠 Intelligence & decisions",
+        "🏛️ Gouvernance & performance": "🏛️ Governance & performance",
+        "💶 SOW IA FINANCIAL HUB": "💶 SOW IA FINANCIAL HUB",
+        "💳 Abonnements & compte": "💳 Subscriptions & account",
+        "🛡️ Administration & assistance": "🛡️ Administration & support",
+        "Hub SOW IA": "SOW IA Hub", "Bourse aux applications": "App marketplace",
+        "Mes échanges & projets": "My exchanges & projects",
+        "Opportunités et revenus": "Opportunities & revenue",
+        "Technologies & fournisseurs": "Technology & providers",
+        "Stratégie & scénarios": "Strategy & scenarios",
+        "Finance & investissements": "Finance & investments",
+        "Revenus & paiements": "Revenue & payments",
+        "Centre de notifications": "Notification center",
+        "Décisions humaines vs SOW IA": "Human decisions vs SOW IA",
+    },
+    "Español": {
+        "👤 Personnel & documents": "👤 Personal y documentos",
+        "🌙 Bourse aux applications": "🌙 Mercado de aplicaciones",
+        "📚 Échanges & projets": "📚 Intercambios y proyectos",
+        "🌐 Écosystème mondial": "🌐 Ecosistema mundial",
+        "🤝 Entreprises & opportunités": "🤝 Empresas y oportunidades",
+        "🧠 Intelligence & décisions": "🧠 Inteligencia y decisiones",
+        "🏛️ Gouvernance & performance": "🏛️ Gobernanza y rendimiento",
+        "💶 SOW IA FINANCIAL HUB": "💶 CENTRO FINANCIERO SOW IA",
+        "💳 Abonnements & compte": "💳 Suscripciones y cuenta",
+        "🛡️ Administration & assistance": "🛡️ Administración y ayuda",
+        "Hub SOW IA": "Centro SOW IA", "Bourse aux applications": "Mercado de aplicaciones",
+        "Mes échanges & projets": "Mis intercambios y proyectos",
+        "Opportunités et revenus": "Oportunidades e ingresos",
+        "Technologies & fournisseurs": "Tecnologías y proveedores",
+        "Stratégie & scénarios": "Estrategia y escenarios",
+        "Finance & investissements": "Finanzas e inversiones",
+        "Revenus & paiements": "Ingresos y pagos",
+        "Centre de notifications": "Centro de notificaciones",
+        "Décisions humaines vs SOW IA": "Decisiones humanas vs SOW IA",
+    },
+    "中文": {
+        "👤 Personnel & documents": "👤 个人与文档",
+        "🌙 Bourse aux applications": "🌙 应用市场",
+        "📚 Échanges & projets": "📚 交流与项目",
+        "🌐 Écosystème mondial": "🌐 全球生态系统",
+        "🤝 Entreprises & opportunités": "🤝 企业与机会",
+        "🧠 Intelligence & décisions": "🧠 智能与决策",
+        "🏛️ Gouvernance & performance": "🏛️ 治理与绩效",
+        "💶 SOW IA FINANCIAL HUB": "💶 SOW IA 金融中心",
+        "💳 Abonnements & compte": "💳 订阅与账户",
+        "🛡️ Administration & assistance": "🛡️ 管理与支持",
+        "Hub SOW IA": "SOW IA 工作中心", "Bourse aux applications": "应用市场",
+        "Mes échanges & projets": "我的交流与项目",
+        "Opportunités et revenus": "机会与收入",
+        "Technologies & fournisseurs": "技术与供应商",
+        "Stratégie & scénarios": "战略与方案",
+        "Finance & investissements": "金融与投资",
+        "Revenus & paiements": "收入与支付",
+        "Centre de notifications": "通知中心",
+        "Décisions humaines vs SOW IA": "人工决策与 SOW IA 对比",
+    },
+    "Deutsch": {
+        "👤 Personnel & documents": "👤 Persönliches & Dokumente",
+        "🌙 Bourse aux applications": "🌙 App-Marktplatz",
+        "📚 Échanges & projets": "📚 Austausch & Projekte",
+        "🌐 Écosystème mondial": "🌐 Globales Ökosystem",
+        "🤝 Entreprises & opportunités": "🤝 Unternehmen & Chancen",
+        "🧠 Intelligence & décisions": "🧠 Intelligenz & Entscheidungen",
+        "🏛️ Gouvernance & performance": "🏛️ Governance & Leistung",
+        "💶 SOW IA FINANCIAL HUB": "💶 SOW IA FINANZ-HUB",
+        "💳 Abonnements & compte": "💳 Abonnements & Konto",
+        "🛡️ Administration & assistance": "🛡️ Verwaltung & Hilfe",
+        "Hub SOW IA": "SOW IA-Zentrale", "Bourse aux applications": "App-Marktplatz",
+        "Mes échanges & projets": "Meine Austausche & Projekte",
+        "Opportunités et revenus": "Chancen & Einnahmen",
+        "Technologies & fournisseurs": "Technologien & Anbieter",
+        "Stratégie & scénarios": "Strategie & Szenarien",
+        "Finance & investissements": "Finanzen & Investitionen",
+        "Revenus & paiements": "Einnahmen & Zahlungen",
+        "Centre de notifications": "Benachrichtigungszentrale",
+        "Décisions humaines vs SOW IA": "Menschliche Entscheidungen vs. SOW IA",
+    },
+    "العربية": {
+        "👤 Personnel & documents": "👤 الشخصي والمستندات",
+        "🌙 Bourse aux applications": "🌙 سوق التطبيقات",
+        "📚 Échanges & projets": "📚 التبادلات والمشاريع",
+        "🌐 Écosystème mondial": "🌐 النظام العالمي",
+        "🤝 Entreprises & opportunités": "🤝 الشركات والفرص",
+        "🧠 Intelligence & décisions": "🧠 الذكاء والقرارات",
+        "🏛️ Gouvernance & performance": "🏛️ الحوكمة والأداء",
+        "💶 SOW IA FINANCIAL HUB": "💶 المركز المالي SOW IA",
+        "💳 Abonnements & compte": "💳 الاشتراكات والحساب",
+        "🛡️ Administration & assistance": "🛡️ الإدارة والدعم",
+        "Hub SOW IA": "مركز SOW IA", "Bourse aux applications": "سوق التطبيقات",
+        "Mes échanges & projets": "تبادلاتي ومشاريعي",
+        "Opportunités et revenus": "الفرص والإيرادات",
+        "Technologies & fournisseurs": "التقنيات والموردون",
+        "Stratégie & scénarios": "الاستراتيجية والسيناريوهات",
+        "Finance & investissements": "التمويل والاستثمارات",
+        "Revenus & paiements": "الإيرادات والمدفوعات",
+        "Centre de notifications": "مركز الإشعارات",
+        "Décisions humaines vs SOW IA": "القرارات البشرية مقابل SOW IA",
+    },
+}
+
+
 def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     # Keep the product name visually consistent in every translated UI label.
@@ -201,6 +311,9 @@ def translate(text: str, language: str = "Français") -> str:
     if translated is not None:
         return translated
     translated = _EXTRA_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _NAV_TRANSLATIONS.get(language, {}).get(text)
     if translated is not None:
         return translated
     return _CORE_TRANSLATIONS.get(language, {}).get(text, text)
