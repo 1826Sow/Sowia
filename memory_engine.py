@@ -86,14 +86,15 @@ def select_relevant_memories(
 
     selected = []
     used_chars = 0
-    for _, score, _, content in candidates:
+    has_relevant_match = any(
+        candidate_score < 0 for _, candidate_score, _, _ in candidates
+    )
+    for priority, score, _, content in candidates:
         if len(selected) >= safe_items or used_chars >= safe_chars:
             break
-        # On a specific query, skip unrelated notes if at least one relevant
-        # note exists; if none match, fall back to recent notes for continuity.
-        if query_tokens and score == 0 and any(
-            candidate_score < 0 for _, candidate_score, _, _ in candidates
-        ):
+        # Keep the active project's scoped summary even when the user's wording
+        # does not overlap; filter unrelated ordinary notes when a match exists.
+        if query_tokens and priority != 0 and score == 0 and has_relevant_match:
             continue
         remaining = safe_chars - used_chars
         if remaining <= 0:
