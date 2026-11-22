@@ -112,11 +112,13 @@ def select_relevant_memories(memories, query="", max_chars=MAX_MEMORY_CONTEXT_CH
             + (2.0 if exact_phrase else 0)
             + (0.25 if source == "conversation_user" else 0)
         )
-        candidates.append((score, index, item, content, category, importance, source))
+        candidates.append((score, index, item, content, category, importance, source, overlap))
     candidates.sort(key=lambda row: (-row[0], row[1]))
+    if query_tokens and any(row[7] > 0 for row in candidates):
+        candidates = [row for row in candidates if row[7] > 0]
     lines = []
     used = 0
-    for _score, _index, item, content, category, importance, source in candidates[:max_items]:
+    for _score, _index, item, content, category, importance, source, _overlap in candidates[:max_items]:
         category_label = MEMORY_CATEGORIES.get(category, category.replace("_", " ").title())
         session_id = str(item.get("session_id") or "").strip()
         origin = f" · conversation {session_id[:24]}" if session_id else ""
