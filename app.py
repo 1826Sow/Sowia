@@ -1144,13 +1144,13 @@ with st.sidebar:
         else:
             st.caption(f"Connecté : {getattr(current_user, 'email', None) or 'compte GitHub'}")
         st.button(
-            "Se connecter avec une autre adresse e-mail",
+            translate_ui("Se connecter avec une autre adresse e-mail", language),
             use_container_width=True,
             on_click=handle_logout,
             args=("change_account",),
         )
         st.button(
-            "Se déconnecter",
+            translate_ui("Se déconnecter", language),
             use_container_width=True,
             on_click=handle_logout,
             args=("logout",),
@@ -1212,7 +1212,7 @@ with st.sidebar:
     else:
         st.session_state.nav_category = category_for_page(active_page)
     st.selectbox(
-        "📁 Dossier de navigation",
+        translate_ui("📁 Dossier de navigation", language),
         list(NAV_GROUPS.keys()),
         key="nav_category",
         format_func=lambda value: translate_ui(value.replace("SOWIA", "SOW IA"), language),
@@ -1220,7 +1220,7 @@ with st.sidebar:
     )
     selected_pages = NAV_GROUPS[st.session_state.nav_category]
     page = st.selectbox(
-        "🧭 Outil à ouvrir",
+        translate_ui("🧭 Outil à ouvrir", language),
         selected_pages,
         key="page_nav",
         format_func=lambda value: translate_ui(value.replace("SOWIA", "SOW IA"), language),
@@ -1255,7 +1255,7 @@ st.markdown(
 )
 with st.container():
     st.button(
-        "←  RETOUR À LA PAGE PRÉCÉDENTE",
+        translate_ui("←  RETOUR À LA PAGE PRÉCÉDENTE", language),
         key="sowia_navigation_back",
         on_click=go_back_navigation,
         disabled=not bool(st.session_state.get("sowia_navigation_history")),
