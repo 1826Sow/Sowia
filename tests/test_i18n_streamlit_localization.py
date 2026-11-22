@@ -245,3 +245,25 @@ def test_dashboard_status_copy_is_translated_across_locales():
     for language, translated in expected.items():
         assert translate("Espace actif", language) == translated
         assert translate("Décisions évaluées", language) != "Décisions évaluées"
+
+
+def test_sidebar_and_nested_delta_generators_are_localized():
+    class FakeDeltaGenerator:
+        def button(self, label, **kwargs):
+            return label
+
+        def markdown(self, body, **kwargs):
+            return body
+
+    sidebar = FakeDeltaGenerator()
+    nested_column = FakeDeltaGenerator()
+    fake_st = SimpleNamespace(sidebar=sidebar)
+    install_streamlit_localization(
+        fake_st,
+        lambda value, language: f"{language}:{value}",
+        lambda: "English",
+    )
+
+    assert sidebar.button("Ouvrir") == "English:Ouvrir"
+    assert nested_column.button("Enregistrer") == "English:Enregistrer"
+    assert sidebar.markdown("Titre") == "English:Titre"
