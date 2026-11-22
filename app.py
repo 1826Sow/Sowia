@@ -854,14 +854,19 @@ def get_app_memory_context(query):
             active_project_id = None
             try:
                 active_session_id = str(st.session_state.get("session_id") or "")
-                projects = project_registry.list_projects(
-                    supabase_client, current_user, workspace, limit=500
-                )
-                active_project_id = next(
-                    (item.get("id") for item in projects
-                     if str(item.get("conversation_session_id") or "") == active_session_id),
-                    None,
-                )
+                if active_session_id:
+                    active_projects = (
+                        supabase_client.table("sowia_projects")
+                        .select("id")
+                        .eq("user_id", str(current_user.id))
+                        .eq("workspace_id", workspace)
+                        .eq("conversation_session_id", active_session_id)
+                        .is_("archived_at", "null")
+                        .limit(1)
+                        .execute().data or []
+                    )
+                    if active_projects:
+                        active_project_id = active_projects[0].get("id")
             except Exception:
                 pass
             found = cloud_storage.search_memory_context(
