@@ -18,10 +18,9 @@ def test_saved_memories_are_explicitly_marked_as_untrusted_data():
 def test_saved_memory_context_is_bounded():
     prompt = build_system_prompt(memories=["x" * (MAX_MEMORY_CONTEXT_CHARS + 500)])
 
-    # The context includes the "- " list prefix, so content characters are
-    # expected to be slightly below the overall 12,000-character budget.
+    # Metadata labels consume part of the expanded context budget.
     assert prompt.count("x") <= MAX_MEMORY_CONTEXT_CHARS
-    assert prompt.count("x") >= MAX_MEMORY_CONTEXT_CHARS - 2
+    assert prompt.count("x") >= MAX_MEMORY_CONTEXT_CHARS - 100
 
 
 def test_relevant_saved_memory_is_ranked_for_latest_user_request():
