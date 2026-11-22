@@ -136,3 +136,18 @@ Les réseaux TikTok, Instagram, Pinterest et YouTube exigent un fichier image ou
 - Fichier vidéo final : non produit.
 - Publications Metricool : non programmées.
 - Dépenses publicitaires : aucune.
+
+
+## Vérification de la file Metricool — 22 novembre 2026
+
+- Marque Metricool : ID 7751988 ; fuseau Europe/Paris.
+- Réseaux connectés retournés : Instagram, Pinterest, TikTok et YouTube.
+- Des publications SOWKEYS sont déjà programmées les 24 et 26 novembre ainsi que le 1er décembre 2026 sur Instagram, Pinterest et TikTok.
+- Ces publications concernent SOWKEYS et ne doivent pas être modifiées dans le cadre de la campagne SOW IA.
+- Aucune publication SOW IA n'a été ajoutée à la file.
+- Motif : les formats envisagés sur TikTok, Instagram et YouTube exigent un média image/vidéo ; le fichier vidéo MP4 SOW IA n'est pas encore produit. Pinterest exige également un média et un tableau.
+- LinkedIn n'apparaît pas dans les connexions de cette marque Metricool.
+
+## Correction de vigilance — échéance GITEX AI ASIA
+La page officielle Supernova affiche « 1st March » dans la timeline, mais sa FAQ indique aussi le 10 mars à 23:59 heure de Singapour pour le dépôt dans le portail exposant. Pour éviter tout risque, traiter le **1er mars 2027 comme échéance interne maximale** et demander confirmation écrite à l'organisateur avant d'engager une candidature ou un frais.
+Source officielle : https://gitexasia.com/gitex-asia-supernova-challenge
