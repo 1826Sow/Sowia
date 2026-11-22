@@ -58,6 +58,33 @@ Les briques déjà présentes dans le projet comprennent notamment :
 
 Ne pas présenter une source non vérifiée comme un fait confirmé. Ne pas envoyer de message ni accepter une offre automatiquement.
 
+
+### Diapositive 5A — NIGHT ÉCHANGE : le lien humain au cœur du développement
+**Passer de la découverte d'un interlocuteur à un échange professionnel structuré.**
+
+NIGHT ÉCHANGE est présenté comme le volet relationnel de SOW IA : préparer une approche, engager un dialogue professionnel, conserver le contexte des échanges, comprendre les réponses et objections, puis organiser les suites à donner.
+
+L'ambition est de faire d'un échange une étape suivie d'un parcours de développement, plutôt qu'une conversation isolée.
+
+**À montrer dans la présentation :** le parcours de prise de contact, la préparation d'un message, le suivi des réponses et des relances, ainsi que la continuité du dossier. Ne montrer que les fonctions réellement disponibles dans la version de démonstration.
+
+### Diapositive 5B — FINAL TECH : aller jusqu'à la concrétisation
+**Transformer une discussion avancée en dossier de finalisation clair et contrôlé.**
+
+FINAL TECH est présenté comme le volet de concrétisation : rassembler les éléments d'un projet ou d'une opportunité, clarifier les besoins et les points restant à régler, préparer les éléments de décision et organiser les étapes de finalisation.
+
+La logique est de ne pas s'arrêter à la conversation : faire progresser le dossier vers une conclusion structurée, avec contrôle humain à chaque décision engageante.
+
+**Garde-fou essentiel :** SOW IA peut préparer et organiser les éléments de finalisation ; il ne signe pas, n'accepte pas une offre et ne prend aucun engagement financier ou contractuel à la place de la personne autorisée.
+
+**À montrer dans la présentation :** la continuité entre échange, synthèse des points convenus, éléments restant à valider et liste de contrôle de finalisation. Ne présenter comme opérationnel que ce qui a été testé.
+
+### Diapositive 5C — Deux concepts complémentaires
+- **NIGHT ÉCHANGE** : créer et faire vivre la relation professionnelle.
+- **FINAL TECH** : structurer le passage de la relation à la concrétisation.
+
+Ensemble, ils expriment une ambition forte de SOW IA : accompagner le parcours de bout en bout, de la première interaction jusqu'à la préparation d'une finalisation maîtrisée. Leur caractère inédit et toute revendication de « première mondiale » devront être établis par une analyse comparative indépendante avant d'être annoncés comme un fait.
+
 ### Diapositive 6 — Pour qui ?
 - startups et fondateurs qui explorent de nouveaux marchés ;
 - PME et entreprises en croissance ;
@@ -168,6 +195,33 @@ Project components include:
 6. Prepare a reply draft or an indicative, non-binding proposal.
 
 Never present an unverified source as confirmed fact. No message is sent and no offer is accepted automatically.
+
+
+### Slide 5A — NIGHT ÉCHANGE: keeping the human relationship at the center
+**Move from discovering a contact to a structured professional conversation.**
+
+NIGHT ÉCHANGE is presented as SOW IA's relationship layer: prepare an approach, start a professional dialogue, preserve the context of interactions, understand replies and objections, and organize the next steps.
+
+The ambition is to make each exchange a traceable step in a business-development journey rather than an isolated conversation.
+
+**What to demonstrate:** the outreach journey, message preparation, reply and follow-up tracking, and continuity of the case. Show only capabilities actually available in the demo build.
+
+### Slide 5B — FINAL TECH: move toward completion
+**Turn an advanced discussion into a clear, controlled completion file.**
+
+FINAL TECH is presented as the completion layer: bring together the elements of a project or opportunity, clarify needs and open points, prepare decision materials, and organize the steps required to reach completion.
+
+The goal is not to stop at conversation: it is to move the case toward a structured outcome, with human oversight at every consequential decision.
+
+**Essential safeguard:** SOW IA may prepare and organize completion materials; it does not sign, accept an offer, or make financial or contractual commitments on behalf of an authorized person.
+
+**What to demonstrate:** continuity from conversation to a summary of agreed points, remaining items to validate, and a completion checklist. Present as operational only what has been tested.
+
+### Slide 5C — Two complementary concepts
+- **NIGHT ÉCHANGE**: create and sustain the professional relationship.
+- **FINAL TECH**: structure the transition from relationship to completion.
+
+Together, they express a strong SOW IA ambition: support the end-to-end journey, from the first interaction to the preparation of a controlled completion. Their novelty and any “world first” claim must be established through independent comparative research before being stated as fact.
 
 ### Slide 6 — Who it serves
 - startups and founders exploring new markets;
