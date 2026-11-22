@@ -122,8 +122,8 @@ def test_multiline_markdown_translates_exact_phrases_and_preserves_code_html_and
     install_streamlit_localization(fake_st, translate, lambda: "English")
 
     fence = chr(96) * 3
-    source = "### Titre\\n- Pays\\n\\n" + fence + "python\\nPays\\n" + fence + "\\n<div>Pays</div>\\n[site](https://example.test)"
-    expected = "### Title\\n- Country\\n\\n" + fence + "python\\nPays\\n" + fence + "\\n<div>Pays</div>\\n[site](https://example.test)"
+    source = "### Titre\n- Pays\n\n" + fence + "python\nPays\n" + fence + "\n<div>Pays</div>\n[site](https://example.test)"
+    expected = "### Title\n- Country\n\n" + fence + "python\nPays\n" + fence + "\n<div>Pays</div>\n[site](https://example.test)"
     fake_st.markdown(source)
     assert calls[-1] == expected
 
