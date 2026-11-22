@@ -230,3 +230,18 @@ def test_tabs_translate_only_visible_labels():
     result = fake_st.tabs(labels)
     assert result == ["English:Personnel", "English:Professionnel"]
     assert labels == ["Personnel", "Professionnel"]
+
+
+def test_dashboard_status_copy_is_translated_across_locales():
+    from i18n import translate
+
+    expected = {
+        "English": "Active workspace",
+        "Español": "Espacio activo",
+        "中文": "当前工作区",
+        "Deutsch": "Aktiver Arbeitsbereich",
+        "العربية": "مساحة العمل النشطة",
+    }
+    for language, translated in expected.items():
+        assert translate("Espace actif", language) == translated
+        assert translate("Décisions évaluées", language) != "Décisions évaluées"
