@@ -29,3 +29,20 @@ def test_english_home_and_common_controls_are_translated():
 def test_english_home_hero_is_translated():
     source = "La technologie au service des décisions, de la productivité et des opportunités. Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement."
     assert translate(source, "English").startswith("Technology for better decisions")
+
+
+@pytest.mark.parametrize("source,expected", [
+    ("👤 Personnel & documents", "👤 Personal & documents"),
+    ("🌐 Écosystème mondial", "🌐 Global ecosystem"),
+    ("Hub SOWIA", "SOW IA Hub"),
+    ("SOWIA GLOBAL DIRECTORY", "SOW IA GLOBAL DIRECTORY"),
+    ("Navigation SOW IA", "SOW IA navigation"),
+    ("Toutes les catégories et leurs rubriques sont accessibles ici.", "All categories and their sections are available here."),
+])
+def test_english_navigation_and_dashboard_are_translated(source, expected):
+    assert translate(source, "English") == expected
+
+
+def test_english_language_selection_does_not_change_internal_french_keys():
+    assert translate("Accueil", "English") == "Home"
+    assert translate("Accueil", "Français") == "Accueil"
