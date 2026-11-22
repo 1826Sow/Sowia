@@ -106,3 +106,57 @@ SOW IA Team
 - Pitchs FR/EN de prise de contact : rédigés, non envoyés.
 - Critères officiels CES, GITEX AI ASIA, GITEX AFRICA et ATxSG : consultés.
 - Inscriptions, candidatures, billets, stands, rendez-vous et messages externes : non effectués.
+
+
+## Mise à jour après vérification des appels à candidatures — 22 novembre 2026
+
+### GITEX AI ASIA — Supernova 2027
+La page officielle indique que les candidatures 2027 sont ouvertes et affiche le 1er mars comme échéance de candidature. Le dossier comprend le profil de l'entreprise, un pitch deck en anglais et une vidéo de pitch de 60 secondes en anglais. Les critères publiés incluent innovation, marché, modèle économique, traction et équipe. Le règlement précise également que la participation au concours est liée à l'exposition / au portail exposant ; vérifier le coût du pod et les modalités précises avant toute décision.
+Source officielle : https://gitexasia.com/gitex-asia-supernova-challenge
+
+### GITEX AFRICA — Supernova 2027
+La page officielle indique une échéance au 1er mars 2027. La FAQ précise qu'il faut être une startup exposante, puis déposer le pitch deck, la vidéo de 60 secondes et le formulaire via le portail exposant. Les frais d'exposition doivent être vérifiés avant de considérer cette candidature.
+Sources officielles :
+- https://gitexafrica.com/africa-supernova-challenge
+- https://gitexafrica.com/
+
+### CES 2027 — Eureka Park
+La CTA indique que les candidatures sont ouvertes. Les critères exigent une startup généralement âgée de cinq ans au plus, au plus Series B, et une technologie prête à être démontrée sous forme de prototype, bêta ou produit final. Un concept seul ou un composant destiné à un autre produit ne répond pas aux critères publiés.
+Source officielle : https://www.ces.tech/explore-ces/eureka-park/
+
+## Script de pitch vidéo anglais — brouillon de travail (60 secondes maximum)
+
+“SOW IA is building an international technology vision at the intersection of artificial intelligence, digital applications and advanced computing.
+
+NIGHT ÉCHANGE is our vision for an international application exchange marketplace, designed to help creators, businesses and users discover applications and new digital opportunities.
+
+FINAL TECH is a long-term research ambition exploring the potential of a next-generation chip for artificial intelligence and advanced computing.
+
+We are looking to connect with technology partners, developers, research teams and investors who can help assess, develop and validate these ambitions.
+
+Our goal is clear: tomorrow's applications, tomorrow's technologies.
+
+SOW IA. Think Beyond Today.”
+
+**Production note:** This is a script only, not a recorded video. It must be adapted to the actual speaker, speaking pace and verified product status before submission. Do not upload or submit without confirming who will appear in the video and validating every factual statement.
+
+## Pitch deck — required content checklist
+- Company and legal entity identity, country and incorporation date (if applicable).
+- One-sentence description of the product currently available.
+- Problem, target users, use cases and market.
+- NIGHT ÉCHANGE: exact product maturity (concept / mock-up / prototype / live product), current demonstrated functions and next milestones.
+- FINAL TECH: research hypothesis, technical scope still to be validated, expertise and partners sought; no unsupported chip specifications.
+- Business model assumptions clearly labelled as hypotheses if not validated.
+- Traction: only documented users, customers, revenue, pilots or partnerships; otherwise state “not yet measured / not yet launched”.
+- Team: actual people and roles only.
+- Roadmap, risks, funding/partnership needs and contact details.
+- English version reviewed for consistency with the French source.
+
+## Readiness gate — before any submission
+A submission is **not ready** until the legal entity, authorized representative, company age/funding stage, product maturity, actual team, contact details and any required payment have been confirmed. These details cannot be inferred or invented. If SOW IA does not meet the published startup/exhibitor criteria, prioritize visitor networking and non-competitive partner meetings instead.
+
+## Updated status
+- Official application criteria checked for GITEX AI ASIA Supernova, GITEX AFRICA Supernova and CES Eureka Park.
+- English 60-second pitch script drafted; not recorded.
+- Pitch deck checklist prepared.
+- No application submitted, no exhibitor pod booked, no video uploaded, no message sent, and no payment made.
