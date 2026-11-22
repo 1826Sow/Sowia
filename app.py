@@ -435,7 +435,7 @@ if not getattr(st, "_sowia_i18n_display_patch", False):
                     return _original(_self, *_args, **kwargs)
                 return _localized_container_method
             try:
-                setattr(_SOWIA_DELTA_CLASS, _method_name, _make_localized_container_method(_container_original))
+                setattr(_SOWIA_DELTA_CLASS, _method_name, _make_localized_container_method(_container_original, _method_name))
             except (TypeError, AttributeError):
                 # Some Streamlit versions expose an immutable DeltaGenerator class.
                 # Keep the main st.* localization patch and continue without
