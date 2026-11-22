@@ -196,3 +196,37 @@ def test_specialist_workspace_vocabulary_is_translated_in_every_supported_langua
         assert translate("Pays", language) == country
         assert translate("Ouvrir la source", language) == source
         assert translate("Confirmer la suppression", language) != "Confirmer la suppression"
+
+
+def test_markdown_headings_and_plain_text_use_catalogue_without_rewriting_html():
+    calls = []
+    fake_st = SimpleNamespace(
+        markdown=lambda body, **kwargs: calls.append(("markdown", body, kwargs)),
+        write=lambda body, **kwargs: calls.append(("write", body, kwargs)),
+    )
+    from i18n import translate
+
+    install_streamlit_localization(fake_st, translate, lambda: "English")
+    fake_st.markdown("### Classement proposé")
+    assert calls[-1][1] == "### Proposed ranking"
+
+    html = '<div class="partner-intro"><strong>Partnerships</strong></div>'
+    fake_st.markdown(html, unsafe_allow_html=True)
+    assert calls[-1][1] == html
+
+    fake_st.write("Pays")
+    assert calls[-1][1] == "Country"
+
+
+def test_tabs_translate_only_visible_labels():
+    calls = []
+    fake_st = SimpleNamespace(tabs=lambda labels: calls.append(labels) or labels)
+    install_streamlit_localization(
+        fake_st,
+        lambda value, language: f"{language}:{value}",
+        lambda: "English",
+    )
+    labels = ["Personnel", "Professionnel"]
+    result = fake_st.tabs(labels)
+    assert result == ["English:Personnel", "English:Professionnel"]
+    assert labels == ["Personnel", "Professionnel"]
