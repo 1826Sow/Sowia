@@ -25,7 +25,7 @@ def _translate_markdown_text(value, language, translate):
     in_code_fence = False
     for line in value.splitlines(keepends=True):
         stripped = line.strip()
-        if stripped.startswith("```") or stripped.startswith("~~~"):
+        if stripped.startswith(chr(96) * 3) or stripped.startswith("~~~"):
             in_code_fence = not in_code_fence
             output.append(line)
             continue
@@ -33,13 +33,13 @@ def _translate_markdown_text(value, language, translate):
             output.append(line)
             continue
 
-        ending = "\\n" if line.endswith("\\n") else ""
+        ending = "\n" if line.endswith("\n") else ""
         body = line[:-1] if ending else line
         patterns = (
-            r"^(\\s*#{1,6}\\s+)(.+)$",
-            r"^(\\s*\\*\\*)(.+?)(\\*\\*\\s*)$",
-            r"^(\\s*(?:[-*+]\\s+|\\d+\\.\\s+))(.+)$",
-            r"^(\\s*>\\s*)(.+)$",
+            r"^(\s*#{1,6}\s+)(.+)$",
+            r"^(\s*\*\*)(.+?)(\*\*\s*)$",
+            r"^(\s*(?:[-*+]\s+|\d+\.\s+))(.+)$",
+            r"^(\s*>\s*)(.+)$",
         )
         translated_line = body
         for pattern in patterns:
@@ -53,10 +53,11 @@ def _translate_markdown_text(value, language, translate):
                     translated_line = prefix + translate(phrase, language) + suffix
                 break
         else:
-            if not any(token in body for token in ("**", "`", "{", "}")):
+            if not any(token in body for token in ("**", chr(96), "{", "}")):
                 translated_line = translate(body, language)
         output.append(translated_line + ending)
     return "".join(output)
+
 
 def install_streamlit_localization(st_module, translate, get_language):
     """Localize both st.* and DeltaGenerator UI methods (sidebar/columns/tabs)."""
