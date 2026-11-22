@@ -512,14 +512,14 @@ if cloud_mode:
                 "générer une nouvelle tentative GitHub.\n\n"
                 f"Étape : {auth_stage}.\nCode technique : {type(exc).__name__}"
             )
-            with st.expander("Détails techniques pour le diagnostic"):
+            with st.expander(translate_ui("Détails techniques pour le diagnostic", language)):
                 st.caption(
                     "Les détails sensibles sont masqués. Communiquez le code "
                     "technique et l'étape indiquée au support."
                 )
             st.stop()
         st.warning("Supabase ne répond pas correctement : SOW IA continue en mode local temporaire. Les fonctions locales, dont la création de PDF, restent accessibles. Les données locales ne sont pas destinées à un usage partagé.")
-        st.caption("Les détails techniques sont masqués pour protéger les informations de connexion.")
+        st.caption(translate_ui("Les détails techniques sont masqués pour protéger les informations de connexion.", language))
         cloud_mode = False
         current_user = None
         supabase_client = None
@@ -615,7 +615,7 @@ if cloud_mode:
                                 st.error(translate_ui("Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.", language))
                             else:
                                 st.error(translate_ui("La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.", language))
-                                st.caption("Diagnostic : " + type(signup_exc).__name__ + ((" · " + signup_code[:80]) if signup_code else ""))
+                                st.caption(translate_ui("Diagnostic :", language) + " " + type(signup_exc).__name__ + ((" · " + signup_code[:80]) if signup_code else ""))
 
 
             st.markdown("#### " + translate_ui("Connexion avec mot de passe", language))
@@ -637,7 +637,7 @@ if cloud_mode:
                 key="sowia_password_login_secret",
             )
             password_login_submitted = st.button(
-                "VALIDER",
+                translate_ui("VALIDER", language),
                 key="sowia_password_login_submit",
                 type="primary",
                 use_container_width=True,
@@ -680,7 +680,7 @@ if cloud_mode:
                             translate_ui("Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.", language)
                         )
                         if safe_code:
-                            st.caption("Diagnostic : " + type(password_exc).__name__ + " · " + safe_code)
+                            st.caption(translate_ui("Diagnostic :", language) + " " + type(password_exc).__name__ + " · " + safe_code)
 
             st.divider()
             st.markdown("#### " + translate_ui("Connexion par e-mail", language))
@@ -708,7 +708,7 @@ if cloud_mode:
                         or candidate_login_email.endswith("@")
                         or "." not in candidate_login_email.rsplit("@", 1)[-1]
                     ):
-                        st.error("Saisissez une adresse e-mail valide.")
+                        st.error(translate_ui("Saisissez une adresse e-mail valide.", language))
                     else:
                         if not redirect_to:
                             raise ValueError("URL HTTPS de retour invalide")
@@ -730,7 +730,7 @@ if cloud_mode:
                         diagnostic_parts.append("status=" + str(safe_status)[:12])
                     if safe_message:
                         diagnostic_parts.append("message=" + safe_message)
-                    st.caption("Diagnostic e-mail : " + " · ".join(diagnostic_parts))
+                    st.caption(translate_ui("Diagnostic e-mail :", language) + " " + " · ".join(diagnostic_parts))
 
         else:
             # Preserve the established production sign-in method by default.
