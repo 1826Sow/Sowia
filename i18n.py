@@ -260,19 +260,20 @@ def translate(text: str, language: str = "Français") -> str:
     # Keep the product name visually consistent in every translated UI label.
     # This changes display text only; internal route keys and Python identifiers
     # remain untouched.
-    text = str(text).replace("SOWIA", "SOW IA").replace("Sowia", "SOW IA")
+    original_text = str(text)
+    normalized_text = original_text.replace("SOWIA", "SOW IA").replace("Sowia", "SOW IA")
     if language not in LANGUAGES:
         language = "Français"
-    # Merge the original catalogue with the additional navigation labels.
-    # Separate dictionaries prevent duplicate language keys from overwriting
-    # the broader translation catalogue during module loading.
-    translated = _BASE_TRANSLATIONS.get(language, {}).get(text)
-    if translated is not None:
-        return translated
-    translated = _EXTRA_TRANSLATIONS.get(language, {}).get(text)
-    if translated is not None:
-        return translated
-    return _CORE_TRANSLATIONS.get(language, {}).get(text, text)
+    # Look up both the source label and its display-normalized brand spelling.
+    # Some navigation labels are normalized before reaching this function.
+    for catalogue in (_BASE_TRANSLATIONS, _EXTRA_TRANSLATIONS, _CORE_TRANSLATIONS):
+        language_catalogue = catalogue.get(language, {})
+        translated = language_catalogue.get(normalized_text)
+        if translated is None:
+            translated = language_catalogue.get(original_text)
+        if translated is not None:
+            return translated
+    return normalized_text
 
 
 # Navigation and landing-page labels used by the live Streamlit dashboard.
