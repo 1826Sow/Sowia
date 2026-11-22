@@ -57,9 +57,25 @@ MAX_DOCUMENT_CONTEXT_CHARS = 24000
 MAX_MEMORY_CONTEXT_CHARS = 12000
 
 
-def build_system_prompt(memories=None, document_context=None):
+def build_system_prompt(memories=None, document_context=None, language="Français"):
     """Build a bounded prompt; user memories and uploaded documents are untrusted data."""
-    system_prompt = SYSTEM_PROMPT
+    language_instructions = {
+        "Français": "Réponds toujours en français.",
+        "English": "Always respond in English.",
+        "Español": "Responde siempre en español.",
+        "中文": "始终使用简体中文回答。",
+        "Deutsch": "Antworte immer auf Deutsch.",
+        "العربية": "أجب دائمًا باللغة العربية الفصحى.",
+    }
+    selected_language = language if language in language_instructions else "Français"
+    system_prompt = (
+        SYSTEM_PROMPT
+        + "\\n\\nLANGUE DE RÉPONSE OBLIGATOIRE : "
+        + language_instructions[selected_language]
+        + " Tous les textes explicatifs, titres, listes et messages doivent respecter cette langue. "
+        + "Conserve les noms propres, le code, les identifiants et les citations dans leur forme d'origine. "
+        + "Si l'utilisateur demande explicitement une traduction vers une autre langue, respecte cette demande pour le contenu demandé."
+    )
     saved_memories = [item.strip() for item in (memories or []) if item and item.strip()]
     if saved_memories:
         memory_lines = []
@@ -95,14 +111,14 @@ def build_system_prompt(memories=None, document_context=None):
     return system_prompt
 
 
-def answer(messages, memories=None, document_context=None):
+def answer(messages, memories=None, document_context=None, language="Français"):
     if not API_KEY:
         raise RuntimeError(
             "Aucune clé API IA n'est configurée. Ajoutez GROQ_API_KEY ou OPENAI_API_KEY dans Streamlit > Secrets. Ne partagez jamais cette clé. "
             ""
         )
 
-    system_prompt = build_system_prompt(memories=memories, document_context=document_context)
+    system_prompt = build_system_prompt(memories=memories, document_context=document_context, language=language)
 
     # Use the configured primary provider first. If both supported keys exist,
     # keep OpenAI available as a secondary route when Groq is throttled or down.
