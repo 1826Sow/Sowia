@@ -819,7 +819,7 @@ def _translate_missing_interface_copy(text: str, language: str) -> str:
     # paragraphs to a translation service.
     if (
         "\n" in text
-        or re.search(r"</?[A-Za-z][^>]*>|https?://|www\\.", text)
+        or re.search(r"</?[A-Za-z][^>]*>|https?://|www\.", text)
         or text.lstrip().startswith(("```", "{", "["))
     ):
         return text
