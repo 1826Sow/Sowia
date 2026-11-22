@@ -29,6 +29,15 @@ def install_streamlit_localization(st_module, translate, get_language):
                 args = (translate(args[0], language),) + args[1:]
             elif isinstance(kwargs.get("label"), str):
                 kwargs["label"] = translate(kwargs["label"], language)
+            # Translate option captions at display time while preserving the
+            # original option objects used by session state and business logic.
+            if method_name in ("selectbox", "radio", "multiselect"):
+                kwargs.setdefault(
+                    "format_func",
+                    lambda option, _language=language: (
+                        translate(option, _language) if isinstance(option, str) else option
+                    ),
+                )
             return __original(*args, **kwargs)
 
         localized._sowia_localized = True
