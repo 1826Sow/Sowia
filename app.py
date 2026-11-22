@@ -2617,9 +2617,9 @@ elif page == "Assistant IA":
             + ". Description et point de reprise : "
             + str(active_memory_project.get("description", ""))
         ).strip()
-        memories = [project_context] + [item["content"] for item in memories]
-    else:
-        memories = [item["content"] for item in memories]
+        memories = [project_context] + memories
+    # Keep authorized memory records intact until retrieval so titles, tags and
+    # document metadata can improve ranking; the retrieval layer returns content only.
     if memories:
         st.caption(f"{len(memories)} élément(s) de contexte mémoire seront disponibles à l'assistant.")
     conversation_history = get_app_history()
