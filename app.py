@@ -533,7 +533,7 @@ if cloud_mode:
             key="sowia_language",
         )
         st.markdown(
-            '<div class="hero"><h1>SOW IA</h1><p>Votre espace personnel sécurisé.</p></div>',
+            f'<div class="hero"><h1>SOW IA</h1><p>{translate_ui("Votre espace personnel sécurisé.", language)}</p></div>',
             unsafe_allow_html=True,
         )
         st.subheader(translate_ui("Connexion à SOW IA", language))
@@ -542,12 +542,12 @@ if cloud_mode:
         callback_error = str(st.query_params.get("error", "")).strip()
         callback_error_description = str(st.query_params.get("error_description", "")).strip()
         st.caption(
-            "Diagnostic de retour : "
-            + ("retour de connexion reçu" if callback_code_present else "aucun retour de connexion reçu")
+            translate_ui("Diagnostic de retour :", language) + " "
+            + translate_ui("retour de connexion reçu" if callback_code_present else "aucun retour de connexion reçu", language)
             + (f" · erreur de connexion : {callback_error}" if callback_error else "")
         )
         if callback_error_description:
-            st.warning("Motif communiqué par le fournisseur : " + callback_error_description[:300])
+            st.warning(translate_ui("Motif communiqué par le fournisseur :", language) + " " + callback_error_description[:300])
         # Resolve the exact HTTPS callback independently of either login provider.
         from urllib.parse import urlsplit, urlunsplit
         current_app_url = str(getattr(st.context, "url", "") or "").strip()
@@ -566,9 +566,9 @@ if cloud_mode:
             redirect_to = urlunsplit(
                 (parts.scheme, parts.netloc, parts.path.rstrip("/"), "", "")
             )
-            st.caption("Adresse de retour sécurisée : " + redirect_to)
+            st.caption(translate_ui("Adresse de retour sécurisée :", language) + " " + redirect_to)
         else:
-            st.error("Adresse publique HTTPS invalide. Ouvrez SOW IA depuis son adresse Streamlit officielle.")
+            st.error(translate_ui("Adresse publique HTTPS invalide. Ouvrez SOW IA depuis son adresse Streamlit officielle.", language))
 
         # Email login is the standard production path. Set SOWIA_EMAIL_LOGIN_ONLY=false
         # only when an operator intentionally wants to restore GitHub OAuth instead.
@@ -601,27 +601,26 @@ if cloud_mode:
                     elif signup_password != signup_password_confirm:
                         st.error(translate_ui("Les deux mots de passe ne correspondent pas.", language))
                     elif not redirect_to:
-                        st.error("L'adresse de retour sécurisée de SOW IA n'est pas valide.")
+                        st.error(translate_ui("L'adresse de retour sécurisée de SOW IA n'est pas valide.", language))
                     else:
                         try:
                             signup_client = create_email_user_client()
                             signup_email_user(signup_client, candidate_signup_email, signup_password, redirect_to)
                             st.session_state["sowia_signup_pending"] = candidate_signup_email
-                            st.success("Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.")
+                            st.success(translate_ui("Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.", language))
                         except Exception as signup_exc:
                             signup_message = str(getattr(signup_exc, "message", "") or "").strip()
                             signup_code = str(getattr(signup_exc, "code", "") or "").strip()
                             if "already registered" in signup_message.lower() or "already been registered" in signup_message.lower():
-                                st.error("Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.")
+                                st.error(translate_ui("Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.", language))
                             else:
-                                st.error("La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.")
+                                st.error(translate_ui("La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.", language))
                                 st.caption("Diagnostic : " + type(signup_exc).__name__ + ((" · " + signup_code[:80]) if signup_code else ""))
 
 
             st.markdown("#### " + translate_ui("Connexion avec mot de passe", language))
             st.caption(
-                "Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter "
-                "directement avec votre mot de passe, sans attendre un nouveau lien e-mail."
+                translate_ui("Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter directement avec votre mot de passe, sans attendre un nouveau lien e-mail.", language)
             )
             # Keep the two fields and the submit action outside st.form.
             # This is more reliable in Android WebView, where embedded form
@@ -653,9 +652,9 @@ if cloud_mode:
                         or candidate_password_email.endswith("@")
                         or "." not in candidate_password_email.rsplit("@", 1)[-1]
                     ):
-                        st.error("Saisissez une adresse e-mail valide.")
+                        st.error(translate_ui("Saisissez une adresse e-mail valide.", language))
                     elif not password_login_secret:
-                        st.error("Saisissez votre mot de passe.")
+                        st.error(translate_ui("Saisissez votre mot de passe.", language))
                     else:
                         password_client = create_email_user_client()
                         sign_in_email_password(
@@ -674,12 +673,11 @@ if cloud_mode:
                     safe_message = " ".join(safe_message.split())[:180].lower()
                     if "email not confirmed" in safe_message or "email_not_confirmed" in safe_code.lower():
                         st.error(
-                            "Votre adresse e-mail n'est pas encore confirmée. "
-                            "Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez."
+                            translate_ui("Votre adresse e-mail n'est pas encore confirmée. Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez.", language)
                         )
                     else:
                         st.error(
-                            "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe."
+                            translate_ui("Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.", language)
                         )
                         if safe_code:
                             st.caption("Diagnostic : " + type(password_exc).__name__ + " · " + safe_code)
@@ -687,9 +685,7 @@ if cloud_mode:
             st.divider()
             st.markdown("#### " + translate_ui("Connexion par e-mail", language))
             st.caption(
-                "Saisissez l'adresse e-mail déjà associée à votre compte SOW IA, "
-                "puis validez. Un lien sécurisé à usage unique sera envoyé ; "
-                "aucun nouveau compte ne sera créé."
+                translate_ui("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA, puis validez. Un lien sécurisé à usage unique sera envoyé ; aucun nouveau compte ne sera créé.", language)
             )
             email_address = st.text_input(
                 translate_ui("Adresse e-mail du compte SOW IA", language),
@@ -720,13 +716,9 @@ if cloud_mode:
                             email_client = create_email_user_client()
                             email_magic_link(email_client, candidate_login_email, redirect_to)
                             st.session_state["sowia_email_login_pending"] = candidate_login_email
-                            st.success(
-                                "Si cette adresse correspond à un compte SOW IA, "
-                                "un lien sécurisé vient d'être envoyé. Consultez aussi "
-                                "les courriers indésirables."
-                            )
+                            st.success(translate_ui("Si cette adresse correspond à un compte SOW IA, un lien sécurisé vient d'être envoyé. Consultez aussi les courriers indésirables.", language))
                 except Exception as email_exc:
-                    st.error("Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
+                    st.error(translate_ui("Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.", language))
                     safe_message = str(getattr(email_exc, "message", "") or str(email_exc)).strip()
                     safe_message = " ".join(safe_message.split())[:240]
                     safe_code = str(getattr(email_exc, "code", "") or "").strip()[:80]
