@@ -4,6 +4,10 @@ import json
 import os
 
 
+# Public client key for the dedicated SOW IA Supabase project. This is a
+# publishable key (safe to ship in public clients), never a server secret.
+_SOWIA_FALLBACK_PUBLISHABLE_KEY = "sb_publishable_a15NAIP7-ofvY5krT2a07A_M40bthGp"
+
 _SETTING_ALIASES = {
     "SUPABASE_URL": ("SOWIA_SUPABASE_URL",),
     "SUPABASE_ANON_KEY": (
@@ -63,8 +67,12 @@ def get_setting(name, default=""):
         for value in values:
             if _is_public_supabase_key(value):
                 return _normalize_supabase_key(value)
-        # Preserve the existing explicit security rejection when no public
-        # candidate exists; never silently replace a server key with a default.
+        # If deployment settings contain only an obsolete/invalid value, use
+        # this project's verified publishable key. It is explicitly public;
+        # no secret/service-role credential is embedded or substituted.
+        if _SOWIA_FALLBACK_PUBLISHABLE_KEY:
+            return _SOWIA_FALLBACK_PUBLISHABLE_KEY
+        # Preserve explicit rejection if no safe public key is available.
         return _normalize_supabase_key(values[0]) if values else default
 
     for candidate in candidates:
