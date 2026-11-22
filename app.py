@@ -2229,6 +2229,7 @@ elif page == "Mes échanges & projets":
         st.session_state.get("workspace_id", "personal"),
         cloud_mode,
         premium_active,
+        language,
     )
 
 elif page == "Assistant IA":
