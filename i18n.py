@@ -440,6 +440,70 @@ _AUTH_TRANSLATIONS = {
     "العربية": {"Connexion à mon compte SOW IA":"تسجيل الدخول إلى حساب SOW IA","Créer un compte SOW IA — nouveau compte uniquement":"إنشاء حساب SOW IA — للحسابات الجديدة فقط","Créer un compte SOW IA":"إنشاء حساب SOW IA","Votre adresse e-mail":"عنوان بريدك الإلكتروني","Mot de passe (8 caractères minimum)":"كلمة المرور (8 أحرف على الأقل)","Confirmer le mot de passe":"تأكيد كلمة المرور","Créer mon compte":"إنشاء حسابي","Connexion avec mot de passe":"تسجيل الدخول بكلمة المرور","Connexion par e-mail":"تسجيل الدخول عبر البريد الإلكتروني","Adresse e-mail":"عنوان البريد الإلكتروني","Mot de passe":"كلمة المرور","Adresse e-mail du compte SOW IA":"البريد الإلكتروني لحساب SOW IA","Valider":"إرسال","Continuer avec GitHub":"المتابعة باستخدام GitHub","Recommencer la connexion":"إعادة بدء تسجيل الدخول"}
 };
 
+
+_AUTH_MESSAGE_TRANSLATIONS = {
+    "English": {
+        "Saisissez une adresse e-mail valide.": "Enter a valid email address.",
+        "Le mot de passe doit contenir au moins 8 caractères.": "The password must contain at least 8 characters.",
+        "Les deux mots de passe ne correspondent pas.": "The passwords do not match.",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "This address already has an account. Use the email sign-in section.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "Account creation failed. Check the email address and try again.",
+        "Saisissez votre mot de passe.": "Enter your password.",
+        "Votre adresse e-mail n'est pas encore confirmée. Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez.": "Your email address is not confirmed yet. Open the confirmation message from SOW IA, then try again.",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "Unable to sign in. Check your email address and password.",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "Unable to validate this address or send the sign-in link. Check the address and Supabase email configuration.",
+        "Recommencer la connexion": "Restart sign-in",
+    },
+    "Español": {
+        "Saisissez une adresse e-mail valide.": "Introduce una dirección de correo electrónico válida.",
+        "Le mot de passe doit contenir au moins 8 caractères.": "La contraseña debe tener al menos 8 caracteres.",
+        "Les deux mots de passe ne correspondent pas.": "Las contraseñas no coinciden.",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "Esta dirección ya tiene una cuenta. Usa la sección de inicio de sesión por correo electrónico.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "No se pudo crear la cuenta. Comprueba el correo electrónico e inténtalo de nuevo.",
+        "Saisissez votre mot de passe.": "Introduce tu contraseña.",
+        "Votre adresse e-mail n'est pas encore confirmée. Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez.": "Tu dirección de correo aún no está confirmada. Abre el mensaje de confirmación de SOW IA y vuelve a intentarlo.",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "No se pudo iniciar sesión. Comprueba tu correo electrónico y contraseña.",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "No se pudo validar esta dirección ni enviar el enlace de acceso. Comprueba la dirección y la configuración de correo de Supabase.",
+        "Recommencer la connexion": "Reiniciar el inicio de sesión",
+    },
+    "中文": {
+        "Saisissez une adresse e-mail valide.": "请输入有效的电子邮箱地址。",
+        "Le mot de passe doit contenir au moins 8 caractères.": "密码至少需要 8 个字符。",
+        "Les deux mots de passe ne correspondent pas.": "两次输入的密码不一致。",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "此邮箱已注册账户。请使用电子邮件登录。",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "账户创建失败。请检查电子邮箱地址后重试。",
+        "Saisissez votre mot de passe.": "请输入密码。",
+        "Votre adresse e-mail n'est pas encore confirmée. Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez.": "您的电子邮箱尚未确认。请打开 SOW IA 发送的确认邮件，然后重试。",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "无法登录。请检查电子邮箱地址和密码。",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "无法验证此邮箱或发送登录链接。请检查邮箱地址和 Supabase 邮件配置。",
+        "Recommencer la connexion": "重新开始登录",
+    },
+    "Deutsch": {
+        "Saisissez une adresse e-mail valide.": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+        "Le mot de passe doit contenir au moins 8 caractères.": "Das Passwort muss mindestens 8 Zeichen enthalten.",
+        "Les deux mots de passe ne correspondent pas.": "Die Passwörter stimmen nicht überein.",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "Für diese Adresse besteht bereits ein Konto. Verwenden Sie die E-Mail-Anmeldung.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "Das Konto konnte nicht erstellt werden. Prüfen Sie die E-Mail-Adresse und versuchen Sie es erneut.",
+        "Saisissez votre mot de passe.": "Geben Sie Ihr Passwort ein.",
+        "Votre adresse e-mail n'est pas encore confirmée. Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez.": "Ihre E-Mail-Adresse wurde noch nicht bestätigt. Öffnen Sie die Bestätigungsnachricht von SOW IA und versuchen Sie es erneut.",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "Anmeldung nicht möglich. Prüfen Sie Ihre E-Mail-Adresse und Ihr Passwort.",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "Die Adresse konnte nicht bestätigt oder der Anmeldelink nicht gesendet werden. Prüfen Sie die Adresse und die E-Mail-Konfiguration von Supabase.",
+        "Recommencer la connexion": "Anmeldung neu starten",
+    },
+    "العربية": {
+        "Saisissez une adresse e-mail valide.": "أدخل عنوان بريد إلكتروني صالحًا.",
+        "Le mot de passe doit contenir au moins 8 caractères.": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
+        "Les deux mots de passe ne correspondent pas.": "كلمتا المرور غير متطابقتين.",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "هذا العنوان مرتبط بحساب بالفعل. استخدم قسم تسجيل الدخول عبر البريد الإلكتروني.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "تعذر إنشاء الحساب. تحقق من عنوان البريد الإلكتروني وحاول مرة أخرى.",
+        "Saisissez votre mot de passe.": "أدخل كلمة المرور.",
+        "Votre adresse e-mail n'est pas encore confirmée. Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez.": "لم يتم تأكيد بريدك الإلكتروني بعد. افتح رسالة التأكيد من SOW IA ثم حاول مرة أخرى.",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور.",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "تعذر التحقق من العنوان أو إرسال رابط تسجيل الدخول. تحقق من العنوان وإعدادات البريد الإلكتروني في Supabase.",
+        "Recommencer la connexion": "إعادة بدء تسجيل الدخول",
+    },
+}
+
 def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     # Keep the product name visually consistent in every translated UI label.
@@ -467,6 +531,9 @@ def translate(text: str, language: str = "Français") -> str:
     if translated is not None:
         return translated
     translated = _AUTH_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _AUTH_MESSAGE_TRANSLATIONS.get(language, {}).get(text)
     if translated is not None:
         return translated
     return _CORE_TRANSLATIONS.get(language, {}).get(text, text)
