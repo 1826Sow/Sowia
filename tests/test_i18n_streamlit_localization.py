@@ -55,3 +55,28 @@ def test_localization_does_not_touch_user_content_or_internal_values():
         options,
         {"key": "workspace"},
     )
+
+
+def test_selection_options_are_translated_for_display_only():
+    calls = []
+
+    def radio(label, options, **kwargs):
+        calls.append((label, options, kwargs))
+        return options[0]
+
+    fake_st = SimpleNamespace(radio=radio)
+    options = ["Personnel", "Professionnel"]
+
+    install_streamlit_localization(
+        fake_st,
+        lambda value, language: f"{language}:{value}",
+        lambda: "English",
+    )
+
+    assert fake_st.radio("Choisissez un espace", options, key="space") == "Personnel"
+    label, original_options, kwargs = calls[-1]
+    assert label == "English:Choisissez un espace"
+    assert original_options is options
+    assert kwargs["key"] == "space"
+    assert kwargs["format_func"]("Personnel") == "English:Personnel"
+    assert kwargs["format_func"]("Professionnel") == "English:Professionnel"
