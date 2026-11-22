@@ -50,11 +50,10 @@ def test_localization_does_not_touch_user_content_or_internal_values():
     )
 
     assert fake_st.selectbox("Espace de travail", options, key="workspace") == options[0]
-    assert calls[-1] == (
-        "Deutsch:Espace de travail",
-        options,
-        {"key": "workspace"},
-    )
+    assert calls[-1][0] == "Deutsch:Espace de travail"
+    assert calls[-1][1] is options
+    assert calls[-1][2]["key"] == "workspace"
+    assert calls[-1][2]["format_func"]("personal_workspace") == "Deutsch:personal_workspace"
 
 
 def test_selection_options_are_translated_for_display_only():
@@ -277,9 +276,9 @@ def test_multiline_markdown_translates_catalogue_lines_and_preserves_code_and_ht
         lambda value, language: {"Titre": "Title", "Pays": "Country"}.get(value, value),
         lambda: "English",
     )
-    source = "### Titre\\n- Pays\\n\\n```python\\nPays\\n```\\n<div>Pays</div>"
+    source = "### Titre\n- Pays\n\n```python\nPays\n```\n<div>Pays</div>"
     fake_st.markdown(source)
-    assert calls[-1] == "### Title\\n- Country\\n\\n```python\\nPays\\n```\\n<div>Pays</div>"
+    assert calls[-1] == "### Title\n- Country\n\n```python\nPays\n```\n<div>Pays</div>"
 
 
 def test_french_remains_the_canonical_display_language():
