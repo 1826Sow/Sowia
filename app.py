@@ -573,11 +573,11 @@ if cloud_mode:
                         or candidate_signup_email.endswith("@")
                         or "." not in candidate_signup_email.rsplit("@", 1)[-1]
                     ):
-                        st.error("Saisissez une adresse e-mail valide.")
+                        st.error(translate_ui("Saisissez une adresse e-mail valide.", language))
                     elif len(signup_password or "") < 8:
-                        st.error("Le mot de passe doit contenir au moins 8 caractères.")
+                        st.error(translate_ui("Le mot de passe doit contenir au moins 8 caractères.", language))
                     elif signup_password != signup_password_confirm:
-                        st.error("Les deux mots de passe ne correspondent pas.")
+                        st.error(translate_ui("Les deux mots de passe ne correspondent pas.", language))
                     elif not redirect_to:
                         st.error("L'adresse de retour sécurisée de SOW IA n'est pas valide.")
                     else:
@@ -590,9 +590,9 @@ if cloud_mode:
                             signup_message = str(getattr(signup_exc, "message", "") or "").strip()
                             signup_code = str(getattr(signup_exc, "code", "") or "").strip()
                             if "already registered" in signup_message.lower() or "already been registered" in signup_message.lower():
-                                st.error("Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.")
+                                st.error(translate_ui("Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.", language))
                             else:
-                                st.error("La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.")
+                                st.error(translate_ui("La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.", language))
                                 st.caption("Diagnostic : " + type(signup_exc).__name__ + ((" · " + signup_code[:80]) if signup_code else ""))
 
 
@@ -631,9 +631,9 @@ if cloud_mode:
                         or candidate_password_email.endswith("@")
                         or "." not in candidate_password_email.rsplit("@", 1)[-1]
                     ):
-                        st.error("Saisissez une adresse e-mail valide.")
+                        st.error(translate_ui("Saisissez une adresse e-mail valide.", language))
                     elif not password_login_secret:
-                        st.error("Saisissez votre mot de passe.")
+                        st.error(translate_ui("Saisissez votre mot de passe.", language))
                     else:
                         password_client = create_email_user_client()
                         sign_in_email_password(
@@ -690,7 +690,7 @@ if cloud_mode:
                         or candidate_login_email.endswith("@")
                         or "." not in candidate_login_email.rsplit("@", 1)[-1]
                     ):
-                        st.error("Saisissez une adresse e-mail valide.")
+                        st.error(translate_ui("Saisissez une adresse e-mail valide.", language))
                     else:
                         if not redirect_to:
                             raise ValueError("URL HTTPS de retour invalide")
@@ -704,7 +704,7 @@ if cloud_mode:
                                 "les courriers indésirables."
                             )
                 except Exception as email_exc:
-                    st.error("Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
+                    st.error(translate_ui("Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.", language))
                     safe_message = str(getattr(email_exc, "message", "") or str(email_exc)).strip()
                     safe_message = " ".join(safe_message.split())[:240]
                     safe_code = str(getattr(email_exc, "code", "") or "").strip()[:80]
