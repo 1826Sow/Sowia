@@ -80,3 +80,16 @@ def test_legacy_anon_key_is_preferred_over_stale_service_role_environment(monkey
     monkeypatch.setenv("SOWIA_SUPABASE_ANON_KEY", anon_jwt)
 
     assert settings.get_setting("SUPABASE_ANON_KEY") == anon_jwt
+
+
+def test_supabase_public_key_normalizes_accidental_wrapping_quotes(monkeypatch):
+    for name in (
+        "SUPABASE_ANON_KEY",
+        "SOWIA_SUPABASE_PUBLISHABLE_KEY",
+        "SOWIA_SUPABASE_ANON_KEY",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("SOWIA_SUPABASE_PUBLISHABLE_KEY", '  "sb_publishable_public-value"  ')
+
+    assert settings.get_setting("SUPABASE_ANON_KEY") == "sb_publishable_public-value"
+    assert sowia_supabase_auth._supabase_public_key() == "sb_publishable_public-value"
