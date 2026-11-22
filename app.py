@@ -1418,13 +1418,12 @@ with nav_label_col:
     st.markdown("**" + html.escape(translate_ui(page, language)) + "**")
 
 st.markdown(
-    '<div class="hero"><div class="hero-kicker">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>'
+    '<div class="hero"><div class="hero-kicker">' + html.escape(translate_ui("PLATEFORME INTELLIGENTE · VISION INTERNATIONALE", language)) + '</div>'
     '<h1>🌐 SOW IA</h1>'
-    '<p>La technologie au service des décisions, de la productivité et des opportunités. '
-    'Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.</p>'
-    '<div class="hero-meta"><span class="hero-chip">🔐 Espaces de travail sécurisés</span>'
-    '<span class="hero-chip">🌍 Ambition internationale</span>'
-    '<span class="hero-chip">🤝 Collaboration professionnelle</span></div></div>',
+    '<p>' + html.escape(translate_ui("La technologie au service des décisions, de la productivité et des opportunités. Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.", language)) + '</p>'
+    '<div class="hero-meta"><span class="hero-chip">' + html.escape(translate_ui("🔐 Espaces de travail sécurisés", language)) + '</span>'
+    '<span class="hero-chip">' + html.escape(translate_ui("🌍 Ambition internationale", language)) + '</span>'
+    '<span class="hero-chip">' + html.escape(translate_ui("🤝 Collaboration professionnelle", language)) + '</span></div></div>',
     unsafe_allow_html=True,
 )
 st.write("")
