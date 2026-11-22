@@ -13,9 +13,17 @@ _SETTING_ALIASES = {
 }
 
 
+def _normalize_supabase_key(value):
+    """Normalize whitespace and one pair of accidental wrapping quotes."""
+    key = str(value or "").strip()
+    if len(key) >= 2 and key[0] == key[-1] and key[0] in {"'", '"'}:
+        key = key[1:-1].strip()
+    return key
+
+
 def _is_public_supabase_key(value):
     """Recognize only Supabase publishable keys and legacy anon JWTs."""
-    key = str(value or "").strip()
+    key = _normalize_supabase_key(value)
     if key.startswith("sb_publishable_"):
         return True
     if key.startswith("sb_secret_"):
@@ -54,10 +62,10 @@ def get_setting(name, default=""):
                 values.append(value)
         for value in values:
             if _is_public_supabase_key(value):
-                return str(value).strip()
+                return _normalize_supabase_key(value)
         # Preserve the existing explicit security rejection when no public
         # candidate exists; never silently replace a server key with a default.
-        return str(values[0]).strip() if values else default
+        return _normalize_supabase_key(values[0]) if values else default
 
     for candidate in candidates:
         value = os.getenv(candidate)
