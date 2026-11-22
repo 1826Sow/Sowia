@@ -151,3 +151,17 @@ Les réseaux TikTok, Instagram, Pinterest et YouTube exigent un fichier image ou
 ## Correction de vigilance — échéance GITEX AI ASIA
 La page officielle Supernova affiche « 1st March » dans la timeline, mais sa FAQ indique aussi le 10 mars à 23:59 heure de Singapour pour le dépôt dans le portail exposant. Pour éviter tout risque, traiter le **1er mars 2027 comme échéance interne maximale** et demander confirmation écrite à l'organisateur avant d'engager une candidature ou un frais.
 Source officielle : https://gitexasia.com/gitex-asia-supernova-challenge
+
+
+## Production vidéo — 22 novembre 2026
+
+Deux premières vidéos verticales ont été produites et contrôlées :
+- Version anglaise : 1080 × 1920, 30 secondes, MP4 H.264.
+- Version française : 1080 × 1920, 30 secondes, MP4 H.264.
+- Sous-titres séparés SRT en français et en anglais.
+- Animation typographique sans voix ni musique ; conçue pour lecture mobile verticale.
+- Vérification technique effectuée : durée 30 secondes, export MP4 lisible et contrôle visuel d'images représentatives.
+
+Le pack ZIP est livré dans la conversation sous le nom `SOW_IA_Campagne_Internationale_FR_EN.zip`.
+
+**Avant diffusion :** ajouter si souhaité une voix-off et une musique libre de droits, puis revoir le rendu final sur téléphone. Aucune vidéo n'a encore été téléversée ni programmée dans Metricool ; les réseaux connectés exigent un fichier média accessible à leur outil de publication. Les publications SOWKEYS existantes restent intactes.
