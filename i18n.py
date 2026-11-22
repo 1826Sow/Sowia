@@ -788,4 +788,64 @@ def translate(text: str, language: str = "Français") -> str:
     translated = _CORE_TRANSLATIONS.get(language, {}).get(text)
     if translated is not None:
         return translated
-    return _COMMON_UI_TRANSLATIONS.get(language, {}).get(text, text)
+    translated = _COMMON_UI_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+
+    # Last-resort translation for interface copy missing from the curated
+    # catalogue. The result is cached so the external service is not called
+    # again for the same label during normal reruns.
+    return _translate_missing_interface_copy(text, language)
+
+
+_LANGUAGE_CODES = {
+    "English": "en",
+    "Español": "es",
+    "中文": "zh-CN",
+    "Deutsch": "de",
+    "العربية": "ar",
+}
+
+
+@__import__("functools").lru_cache(maxsize=4096)
+def _translate_missing_interface_copy(text: str, language: str) -> str:
+    """Translate uncatalogued short UI copy; preserve content on any failure."""
+    import re
+    import requests
+
+    if language not in _LANGUAGE_CODES or not text or len(text) > 240:
+        return text
+    # Do not send code, HTML, URLs, multiline documents or user-authored
+    # paragraphs to a translation service.
+    if (
+        "\\n" in text
+        or re.search(r"<\\/?[A-Za-z][^>]*>|https?://|www\\.", text)
+        or text.lstrip().startswith(("\\x60\\x60\\x60", "{", "["))
+    ):
+        return text
+    # Avoid translating strings that are already in the target language.
+    if language == "English" and not re.search(r"[àâçéèêëîïôùûüÿœæ]", text, re.I):
+        return text
+    try:
+        response = requests.get(
+            "https://translate.googleapis.com/translate_a/single",
+            params={
+                "client": "gtx",
+                "sl": "fr",
+                "tl": _LANGUAGE_CODES[language],
+                "dt": "t",
+                "q": text,
+            },
+            timeout=(2, 4),
+        )
+        response.raise_for_status()
+        payload = response.json()
+        result = "".join(
+            segment[0]
+            for segment in (payload[0] or [])
+            if isinstance(segment, list) and segment and isinstance(segment[0], str)
+        )
+        return result.strip() if result.strip() else text
+    except Exception:
+        # Translation outages must never prevent the user from using SOW IA.
+        return text
