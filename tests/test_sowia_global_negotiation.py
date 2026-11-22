@@ -1,7 +1,7 @@
 import pytest
 from sowia_global_negotiation import (
-    build_reply_draft, detect_negotiation_signals, validate_case,
-    validate_finalization, validate_stage, STAGES,
+    build_nonbinding_offer, build_reply_draft, detect_negotiation_signals,
+    validate_case, validate_finalization, validate_stage, STAGES,
 )
 
 
@@ -31,6 +31,37 @@ def test_validation_requires_context_and_bounds_text():
     invalid["incoming_message"] = "x" * 4001
     with pytest.raises(ValueError):
         validate_case(**invalid)
+
+
+def offer_args():
+    return dict(
+        partner="Acme", country="France", objective="Distribution",
+        scope="Pilote sur un territoire défini", deliverables="Démonstration et accompagnement",
+        currency="EUR", price="2500", timeline="4 semaines",
+        payment_terms="À définir après validation", validity_days=30,
+    )
+
+
+def test_offer_uses_only_entered_terms_and_is_nonbinding():
+    draft = build_nonbinding_offer(**offer_args())
+    assert "2,500.00 EUR" in draft or "2500.00 EUR" in draft
+    assert "non contractuelle" in draft.lower()
+    assert "Pilote sur un territoire défini" in draft
+
+
+def test_offer_rejects_missing_terms_bad_currency_and_negative_price():
+    args = offer_args()
+    args["scope"] = ""
+    with pytest.raises(ValueError):
+        build_nonbinding_offer(**args)
+    args = offer_args()
+    args["currency"] = "EURO"
+    with pytest.raises(ValueError):
+        build_nonbinding_offer(**args)
+    args = offer_args()
+    args["price"] = "-1"
+    with pytest.raises(ValueError):
+        build_nonbinding_offer(**args)
 
 
 def test_finalization_never_auto_signs_or_accepts():
