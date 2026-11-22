@@ -57,7 +57,7 @@ private fun VitrineScreen(onEnter: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Image(
-                painter = painterResource(id = R.drawable.sowia_vitrine),
+                painter = painterResource(id = R.drawable.sowia_global_vitrine),
                 contentDescription = "Vitrine officielle SOW IA — Édition Sowkeys",
                 modifier = Modifier
                     .fillMaxWidth()
