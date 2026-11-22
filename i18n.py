@@ -738,7 +738,7 @@ _POST_LOGIN_TRANSLATIONS = {
     }
 }
 
-def translate(text: str, language: str = "Français") -> str:
+def translate(text: str, language: str = "Français", *, allow_fallback: bool = True) -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     # Keep the product name visually consistent in every translated UI label.
     # This changes display text only; internal route keys and Python identifiers
@@ -755,21 +755,21 @@ def translate(text: str, language: str = "Français") -> str:
     for _heading_prefix in ("###### ", "##### ", "#### ", "### ", "## ", "# "):
         if text.startswith(_heading_prefix):
             _heading = text[len(_heading_prefix):]
-            _translated_heading = translate(_heading, language)
+            _translated_heading = translate(_heading, language, allow_fallback=allow_fallback)
             if _translated_heading != _heading:
                 return _heading_prefix + _translated_heading
             break
     for _prefix in ("- ", "• ", "1. ", "2. ", "3. "):
         if text.startswith(_prefix):
             _item = text[len(_prefix):]
-            _translated_item = translate(_item, language)
+            _translated_item = translate(_item, language, allow_fallback=allow_fallback)
             if _translated_item != _item:
                 return _prefix + _translated_item
             break
     for _marker in ("**", "__", "~~", "*", "_"):
         if text.startswith(_marker) and text.endswith(_marker) and len(text) > 2 * len(_marker):
             _inner = text[len(_marker):-len(_marker)]
-            _translated_inner = translate(_inner, language)
+            _translated_inner = translate(_inner, language, allow_fallback=allow_fallback)
             if _translated_inner != _inner:
                 return _marker + _translated_inner + _marker
             break
@@ -795,7 +795,7 @@ def translate(text: str, language: str = "Français") -> str:
     # Last-resort translation for interface copy missing from the curated
     # catalogue. The result is cached so the external service is not called
     # again for the same label during normal reruns.
-    return _translate_missing_interface_copy(text, language)
+    return _translate_missing_interface_copy(text, language) if allow_fallback else text
 
 
 _LANGUAGE_CODES = {

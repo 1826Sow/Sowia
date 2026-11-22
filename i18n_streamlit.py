@@ -13,8 +13,17 @@ _LOCALIZABLE_STREAMLIT_CALLS = (
     "text_input", "text_area", "selectbox", "radio", "checkbox",
     "toggle", "file_uploader", "date_input", "time_input",
     "number_input", "slider", "select_slider", "multiselect",
-    "expander", "metric", "markdown", "write", "text", "tabs", "status",
+    "expander", "metric", "markdown", "text", "tabs", "status",
 )
+
+
+def _translate_markdown_phrase(value, language, translate):
+    """Translate only curated Markdown UI phrases; never send dynamic text externally."""
+    try:
+        return translate(value, language, allow_fallback=False)
+    except TypeError:
+        # Keep compatibility with simple injected translators used by tests.
+        return translate(value, language)
 
 
 def _translate_markdown_text(value, language, translate):
@@ -45,20 +54,20 @@ def _translate_markdown_text(value, language, translate):
             if match:
                 if len(match.groups()) == 2:
                     prefix, phrase = match.groups()
-                    translated_line = prefix + translate(phrase, language)
+                    translated_line = prefix + _translate_markdown_phrase(phrase, language, translate)
                 else:
                     prefix, phrase, suffix = match.groups()
-                    translated_line = prefix + translate(phrase, language) + suffix
+                    translated_line = prefix + _translate_markdown_phrase(phrase, language, translate) + suffix
                 break
         else:
             if not any(token in body for token in ("**", chr(96), "{", "}")):
-                translated_line = translate(body, language)
+                translated_line = _translate_markdown_phrase(body, language, translate)
         output.append(translated_line + ending)
     return "".join(output)
 
 
 def install_streamlit_localization(st_module, translate, get_language):
-    """Localize st.* and DeltaGenerator methods used by sidebar/columns/tabs."""
+    """Localize UI labels while leaving arbitrary st.write content untouched."""
 
     def wrap_method(target, method_name, bound):
         original = getattr(target, method_name, None)
