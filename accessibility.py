@@ -3,6 +3,7 @@
 Audio recognition runs through the browser's Web Speech implementation.
 The transcript remains inside the component until the user copies it.
 """
+import html
 import json
 
 
@@ -126,3 +127,58 @@ def live_transcription_component(language: str) -> str:
 def supported_speech_locale(language: str) -> str:
     """Return the configured BCP-47 locale, with French as a safe fallback."""
     return LANGUAGE_LOCALES.get(language, "fr-FR")
+
+
+
+def speech_readout_component(message: str, language: str) -> str:
+    """Return a safe, browser-native text-to-speech control for one answer."""
+    locale = json.dumps(LANGUAGE_LOCALES.get(language, "fr-FR"))
+    safe_message = html.escape(str(message), quote=True)
+    return """
+<div style="font-family:Arial,sans-serif;padding:4px 0">
+  <button id="sowiaSpeak" type="button" style="padding:10px 16px;border:2px solid #174b67;border-radius:10px;background:#102943;color:#eff9ff;font-weight:700;min-height:44px">🔊 Écouter cette réponse</button>
+  <button id="sowiaStop" type="button" style="padding:10px 16px;border:2px solid #555;border-radius:10px;background:#102943;color:#eff9ff;font-weight:700;min-height:44px">■ Arrêter</button>
+  <span id="sowiaVoiceStatus" role="status" aria-live="polite"></span>
+  <div id="sowiaVoiceText" style="display:none">""" + safe_message + """</div>
+  <script>
+  (() => {
+    const text = document.getElementById('sowiaVoiceText').textContent;
+    const status = document.getElementById('sowiaVoiceStatus');
+    const speakButton = document.getElementById('sowiaSpeak');
+    const stopButton = document.getElementById('sowiaStop');
+    const locale = """ + locale + """;
+    speakButton.addEventListener('click', () => {
+      if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
+        status.textContent = 'Lecture vocale non prise en charge par ce navigateur.';
+        return;
+      }
+      const engine = window.speechSynthesis;
+      engine.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = locale;
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      const voices = engine.getVoices();
+      const wantedLanguage = locale.toLowerCase();
+      const matchingVoice = voices.find(voice => voice.lang.toLowerCase() === wantedLanguage)
+        || voices.find(voice => voice.lang.toLowerCase().startsWith(wantedLanguage.slice(0, 2)));
+      if (matchingVoice) utterance.voice = matchingVoice;
+      utterance.onstart = () => { status.textContent = 'Lecture en cours'; speakButton.disabled = true; };
+      utterance.onend = () => { status.textContent = 'Lecture terminée'; speakButton.disabled = false; };
+      utterance.onerror = (event) => {
+        status.textContent = event.error === 'canceled' ? 'Lecture arrêtée' : 'Lecture indisponible sur cet appareil.';
+        speakButton.disabled = false;
+      };
+      status.textContent = voices.length ? 'Préparation de la lecture…' : 'Utilisation de la voix par défaut…';
+      engine.speak(utterance);
+    });
+    stopButton.addEventListener('click', () => {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      status.textContent = 'Lecture arrêtée';
+      speakButton.disabled = false;
+    });
+  })();
+  </script>
+</div>
+"""
