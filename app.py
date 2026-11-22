@@ -2689,9 +2689,19 @@ elif page == "Ma mémoire":
     if not memories:
         st.caption("Aucune note enregistrée pour le moment.")
     else:
+        export_memories = [
+            {
+                **item,
+                "project_title": (
+                    memory_project_by_id.get(item.get("project_id"), {}).get("title")
+                    if item.get("project_id") is not None else None
+                ),
+            }
+            for item in memories
+        ]
         st.download_button(
             "Télécharger ma mémoire (.txt)",
-            data=format_memory_export(memories, workspace_label),
+            data=format_memory_export(export_memories, workspace_label),
             file_name=f"sowia_memoire_{workspace_label}.txt",
             mime="text/plain; charset=utf-8",
             use_container_width=True,
