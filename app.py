@@ -1432,14 +1432,14 @@ if page == "Accueil":
     sowia_home_brand_cols = st.columns([1, 2, 1])
     with sowia_home_brand_cols[1]:
         st.image("assets/sowia-global-platform.svg", width=320)
-    st.subheader("Bienvenue dans SOW IA")
-    st.caption("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.")
+    st.subheader(translate_ui("Bienvenue dans SOW IA", language))
+    st.caption(translate_ui("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.", language))
     st.image("assets/sections/home-executive.svg", use_container_width=True)
     st.markdown(
         '<section class="sowia-command-center">'
-        '<div class="sowia-command-kicker">COMMENCEZ VOTRE EXPLORATION</div>'
-        '<h2>✨ Découvrez ce que SOW IA peut faire avec vous</h2>'
-        '<p>Choisissez un premier parcours et explorez les outils adaptés à vos besoins.</p>'
+        '<div class="sowia-command-kicker">' + html.escape(translate_ui("COMMENCEZ VOTRE EXPLORATION", language)) + '</div>'
+        '<h2>' + html.escape(translate_ui("✨ Découvrez ce que SOW IA peut faire avec vous", language)) + '</h2>'
+        '<p>' + html.escape(translate_ui("Choisissez un premier parcours et explorez les outils adaptés à vos besoins.", language)) + '</p>'
         '</section>',
         unsafe_allow_html=True,
     )
