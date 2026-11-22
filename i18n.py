@@ -818,7 +818,7 @@ _SPECIALIST_UI_TRANSLATIONS = {
         "Tous les outils SOW IA": "All SOW IA tools",
         "Vos espaces SOW IA": "Your SOW IA workspaces",
         "Décisions humaines vs SOW IA": "Human decisions vs SOW IA",
-        "Développement mondial": "Global development",
+        "Développement mondial": "Global growth",
         "Finance & investissements": "Finance & investments",
         "Technologies & fournisseurs": "Technology & providers",
         "Mes échanges & projets": "My conversations & projects",
