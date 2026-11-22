@@ -156,6 +156,70 @@ _CORE_TRANSLATIONS = {
 }
 
 
+_AUTH_TRANSLATIONS = {
+    "English": {
+        "Choisissez votre langue avant de vous inscrire ou de vous connecter": "Choose your language before signing up or signing in",
+        "Votre espace personnel sécurisé.": "Your secure personal space.",
+        "Connexion à mon compte SOW IA": "Sign in to my SOW IA account",
+        "Créer un compte SOW IA — nouveau compte uniquement": "Create a SOW IA account — new accounts only",
+        "Créer un compte SOW IA": "Create a SOW IA account",
+        "Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.": "Create your account with your email address. You will receive a message to confirm it before signing in.",
+        "Votre adresse e-mail": "Your email address",
+        "Mot de passe (8 caractères minimum)": "Password (at least 8 characters)",
+        "Confirmer le mot de passe": "Confirm password",
+        "Créer mon compte": "Create my account",
+        "Connexion avec mot de passe": "Sign in with password",
+        "Adresse e-mail": "Email address", "Mot de passe": "Password", "VALIDER": "CONTINUE",
+    },
+    "Español": {
+        "Choisissez votre langue avant de vous inscrire ou de vous connecter": "Elige tu idioma antes de registrarte o iniciar sesión",
+        "Votre espace personnel sécurisé.": "Tu espacio personal seguro.",
+        "Connexion à mon compte SOW IA": "Iniciar sesión en mi cuenta SOW IA",
+        "Créer un compte SOW IA — nouveau compte uniquement": "Crear una cuenta SOW IA — solo cuentas nuevas",
+        "Créer un compte SOW IA": "Crear una cuenta SOW IA",
+        "Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.": "Crea tu cuenta con tu correo electrónico. Recibirás un mensaje para confirmar la dirección antes de iniciar sesión.",
+        "Votre adresse e-mail": "Tu correo electrónico",
+        "Mot de passe (8 caractères minimum)": "Contraseña (mínimo 8 caracteres)",
+        "Confirmer le mot de passe": "Confirmar contraseña",
+        "Créer mon compte": "Crear mi cuenta",
+        "Connexion avec mot de passe": "Iniciar sesión con contraseña",
+        "Adresse e-mail": "Correo electrónico", "Mot de passe": "Contraseña", "VALIDER": "CONTINUAR",
+    },
+    "中文": {
+        "Choisissez votre langue avant de vous inscrire ou de vous connecter": "注册或登录前请选择语言",
+        "Votre espace personnel sécurisé.": "您的安全个人空间。",
+        "Connexion à mon compte SOW IA": "登录我的 SOW IA 账户",
+        "Créer un compte SOW IA — nouveau compte uniquement": "创建 SOW IA 账户 — 仅限新用户",
+        "Créer un compte SOW IA": "创建 SOW IA 账户",
+        "Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.": "使用电子邮箱创建账户。登录前您将收到确认邮件。",
+        "Votre adresse e-mail": "电子邮箱", "Mot de passe (8 caractères minimum)": "密码（至少 8 个字符）",
+        "Confirmer le mot de passe": "确认密码", "Créer mon compte": "创建账户",
+        "Connexion avec mot de passe": "使用密码登录", "Adresse e-mail": "电子邮箱", "Mot de passe": "密码", "VALIDER": "继续",
+    },
+    "Deutsch": {
+        "Choisissez votre langue avant de vous inscrire ou de vous connecter": "Wählen Sie Ihre Sprache vor der Registrierung oder Anmeldung",
+        "Votre espace personnel sécurisé.": "Ihr sicherer persönlicher Bereich.",
+        "Connexion à mon compte SOW IA": "Bei meinem SOW IA-Konto anmelden",
+        "Créer un compte SOW IA — nouveau compte uniquement": "SOW IA-Konto erstellen — nur für neue Konten",
+        "Créer un compte SOW IA": "SOW IA-Konto erstellen",
+        "Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.": "Erstellen Sie Ihr Konto mit Ihrer E-Mail-Adresse. Sie erhalten vor der Anmeldung eine Bestätigungsnachricht.",
+        "Votre adresse e-mail": "Ihre E-Mail-Adresse", "Mot de passe (8 caractères minimum)": "Passwort (mindestens 8 Zeichen)",
+        "Confirmer le mot de passe": "Passwort bestätigen", "Créer mon compte": "Konto erstellen",
+        "Connexion avec mot de passe": "Mit Passwort anmelden", "Adresse e-mail": "E-Mail-Adresse", "Mot de passe": "Passwort", "VALIDER": "WEITER",
+    },
+    "العربية": {
+        "Choisissez votre langue avant de vous inscrire ou de vous connecter": "اختر لغتك قبل التسجيل أو تسجيل الدخول",
+        "Votre espace personnel sécurisé.": "مساحتك الشخصية الآمنة.",
+        "Connexion à mon compte SOW IA": "تسجيل الدخول إلى حساب SOW IA",
+        "Créer un compte SOW IA — nouveau compte uniquement": "إنشاء حساب SOW IA — للحسابات الجديدة فقط",
+        "Créer un compte SOW IA": "إنشاء حساب SOW IA",
+        "Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.": "أنشئ حسابك باستخدام بريدك الإلكتروني. ستتلقى رسالة لتأكيد العنوان قبل تسجيل الدخول.",
+        "Votre adresse e-mail": "عنوان البريد الإلكتروني", "Mot de passe (8 caractères minimum)": "كلمة المرور (8 أحرف على الأقل)",
+        "Confirmer le mot de passe": "تأكيد كلمة المرور", "Créer mon compte": "إنشاء حسابي",
+        "Connexion avec mot de passe": "تسجيل الدخول بكلمة المرور", "Adresse e-mail": "البريد الإلكتروني", "Mot de passe": "كلمة المرور", "VALIDER": "متابعة",
+    },
+}
+
 def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     # Keep the product name visually consistent in every translated UI label.
@@ -171,6 +235,9 @@ def translate(text: str, language: str = "Français") -> str:
     if translated is not None:
         return translated
     translated = _EXTRA_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _AUTH_TRANSLATIONS.get(language, {}).get(text)
     if translated is not None:
         return translated
     return _CORE_TRANSLATIONS.get(language, {}).get(text, text)
