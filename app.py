@@ -1178,9 +1178,9 @@ if privacy_screen:
             position: fixed;
             inset: 0;
             z-index: 999998;
-            background: rgba(5, 16, 31, .58);
-            -webkit-backdrop-filter: blur(10px);
-            backdrop-filter: blur(10px);
+            background: rgba(5, 16, 31, .78);
+            -webkit-backdrop-filter: blur(16px);
+            backdrop-filter: blur(16px);
             pointer-events: none;
         }
         section[data-testid="stMain"] .st-key-sowia_privacy_unlock_main {
