@@ -68,7 +68,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
     metric_cols = st.columns(4)
     for col, status in zip(metric_cols, project_registry.PROJECT_STATUSES):
         with col:
-            st.metric(status, status_counts[status])
+            st.metric(_t(status, language), status_counts[status])
 
     with st.expander(_t("＋ Créer un projet", language), expanded=not projects):
         active_session_id = str(st.session_state.get("session_id") or "").strip()
@@ -97,7 +97,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
                 st.success(f"Projet enregistré et confirmé (référence {created[0]['id']}).")
                 st.rerun()
             except Exception as exc:
-                st.error("Le projet n'a pas été enregistré. Vérifiez les champs et la connexion.")
+                st.error(_t("Le projet n'a pas été enregistré. Vérifiez les champs et la connexion.", language))
                 st.caption(f"Diagnostic : {type(exc).__name__} — {str(exc)[:300]}")
 
     st.divider()
@@ -110,10 +110,10 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
         with st.container(border=True):
             header_cols = st.columns([3, 1])
             with header_cols[0]:
-                st.markdown(f"**{project.get('title', 'Projet sans titre')}**")
-                st.caption(f"Mis à jour : {project.get('updated_at', 'date inconnue')}")
+                st.markdown(f"**{project.get('title', _t('Projet sans titre', language))}**")
+                st.caption(_t("Mis à jour : {updated_at}", language).format(updated_at=project.get("updated_at", _t("date inconnue", language))))
             with header_cols[1]:
-                st.caption(project.get("status", "En cours"))
+                st.caption(_t(project.get("status", "En cours"), language))
             if project.get("description"):
                 st.write(project["description"])
             if deliverables:
@@ -133,11 +133,12 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
             with st.expander(_t("Modifier le projet", language), expanded=False):
                 with st.form(f"sowia_project_edit_{project_id}"):
                     new_title = st.text_input(_t("Titre", language), value=project.get("title", ""), max_chars=project_registry.MAX_TITLE_LENGTH)
-                    new_description = st.text_area("Description / point de reprise", value=project.get("description", ""), max_chars=project_registry.MAX_DESCRIPTION_LENGTH)
+                    new_description = st.text_area(_t("Description / point de reprise", language), value=project.get("description", ""), max_chars=project_registry.MAX_DESCRIPTION_LENGTH)
                     new_status = st.selectbox(
                         _t("Statut", language),
                         sorted(project_registry.PROJECT_STATUSES),
                         index=sorted(project_registry.PROJECT_STATUSES).index(project.get("status", "En cours")),
+                        format_func=lambda value: _t(value, language),
                     )
                     # Offer saved conversations by readable title, while
                     # retaining a legacy link even if it is not in the registry yet.
@@ -178,7 +179,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
                         st.success("Projet mis à jour.")
                         st.rerun()
                     except Exception as exc:
-                        st.error("La modification n'a pas abouti.")
+                        st.error(_t("La modification n'a pas abouti.", language))
                         st.caption(f"Diagnostic : {type(exc).__name__}")
 
                 with st.form(f"sowia_project_deliverable_{project_id}"):
@@ -203,7 +204,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
                         st.success("Livrable ajouté.")
                         st.rerun()
                     except Exception as exc:
-                        st.error("Le livrable n'a pas été ajouté.")
+                        st.error(_t("Le livrable n'a pas été ajouté.", language))
                         st.caption(str(exc)[:220])
 
             action_cols = st.columns(2)
@@ -216,7 +217,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
                         st.session_state.nav_category = "👤 Personnel & documents"
                         st.rerun()
                 else:
-                    st.caption("Aucune conversation n'est encore associée.")
+                    st.caption(_t("Aucune conversation n'est encore associée.", language))
             with action_cols[1]:
                 if st.button(_t("Archiver", language), key=f"archive_project_{project_id}", use_container_width=True):
                     try:
@@ -224,7 +225,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
                         st.success("Projet archivé sans supprimer ses données.")
                         st.rerun()
                     except Exception as exc:
-                        st.error("L'archivage n'a pas abouti.")
+                        st.error(_t("L'archivage n'a pas abouti.", language))
                         st.caption(f"Diagnostic : {type(exc).__name__}")
 
     with st.expander(_t("Consulter les projets archivés", language), expanded=False):
@@ -234,11 +235,11 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
             )
             archived = [item for item in archived if item.get("archived_at")]
             if not archived:
-                st.caption("Aucun projet archivé.")
+                st.caption(_t("Aucun projet archivé.", language))
             for item in archived:
                 archived_cols = st.columns([4, 1])
                 with archived_cols[0]:
-                    st.markdown(f"**{item.get('title', 'Projet')}** · {item.get('status', '')} · archivé le {item.get('archived_at')}")
+                    st.markdown(f"**{item.get('title', _t('Projet', language))}** · {_t(item.get('status', ''), language)} · {_t('archivé le', language)} {item.get('archived_at')}")
                 with archived_cols[1]:
                     if st.button(_t("Restaurer", language), key=f"restore_project_{item['id']}", use_container_width=True):
                         try:
@@ -252,6 +253,5 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
             st.caption(f"Archives indisponibles : {type(exc).__name__}")
 
     st.caption(
-        "Les conversations disponibles dans cet espace peuvent être associées aux projets. "
-        "Les anciens messages restent inchangés ; les conversations historiques sont enregistrées progressivement lorsqu’elles sont ouvertes."
+        _t("Les conversations disponibles dans cet espace peuvent être associées aux projets. Les anciens messages restent inchangés ; les conversations historiques sont enregistrées progressivement lorsqu’elles sont ouvertes.", language)
     )
