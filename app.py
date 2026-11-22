@@ -819,14 +819,14 @@ def clear_app_history():
         return cloud_storage.clear_history(supabase_client, current_user, st.session_state.session_id, st.session_state.get("workspace_id", "personal"))
     return local_clear_history(st.session_state.session_id, st.session_state.get("workspace_id", "personal"))
 
-def get_app_memories():
+def get_app_memories(offset=0, limit=1000):
+    workspace = st.session_state.get("workspace_id", "personal")
     if cloud_mode:
         return cloud_storage.list_memories(
-            supabase_client, current_user,
-            st.session_state.get("workspace_id", "personal"),
-            limit=1000,
+            supabase_client, current_user, workspace,
+            limit=limit, offset=offset,
         )
-    return local_get_memories(workspace_id=st.session_state.get("workspace_id", "personal"))
+    return local_get_memories(workspace_id=workspace)[offset:offset + limit]
 
 def get_app_memory_context(query):
     """Retrieve relevant notes and older exchanges without loading the whole archive."""
@@ -2650,7 +2650,13 @@ elif page == "Ma mémoire":
             except (ValueError, PermissionError, RuntimeError) as exc:
                 st.error(str(exc))
     st.markdown("#### Informations mémorisées")
-    memories = get_app_memories()
+    memory_page_size = 1000
+    memory_offset = int(st.session_state.get("sowia_memory_offset", 0))
+    memories = get_app_memories(offset=memory_offset, limit=memory_page_size)
+    if memory_offset:
+        if st.button("← Revenir aux informations précédentes", key="sowia_memory_previous_page"):
+            st.session_state["sowia_memory_offset"] = max(0, memory_offset - memory_page_size)
+            st.rerun()
     if not memories:
         st.caption("Aucune note enregistrée pour le moment.")
     else:
@@ -2663,6 +2669,10 @@ elif page == "Ma mémoire":
             help="Télécharge une copie des notes de cet espace uniquement.",
         )
     st.caption(f"{len(memories)} information(s) affichée(s) dans cette page. Les archives sont conservées indépendamment du budget de contexte de l'assistant.")
+    if len(memories) == memory_page_size:
+        if st.button("Charger les 1 000 informations suivantes →", key="sowia_memory_next_page"):
+            st.session_state["sowia_memory_offset"] = memory_offset + memory_page_size
+            st.rerun()
     for item in memories:
         with st.container(border=True):
             category_label = {
