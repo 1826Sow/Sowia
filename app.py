@@ -525,8 +525,20 @@ if cloud_mode:
         supabase_client = None
 
     if current_user is None:
+        # The language picker must be available before both registration and sign-in.
+        # Keep this choice in the browser session; the account preference can take over after login.
+        pre_auth_language = st.session_state.get("sowia_pre_auth_language", "Français")
+        if pre_auth_language not in SOWIA_LANGUAGES:
+            pre_auth_language = "Français"
+        language = st.selectbox(
+            "🌐 Langue / Language",
+            SOWIA_LANGUAGES,
+            index=SOWIA_LANGUAGES.index(pre_auth_language),
+            key="sowia_pre_auth_language",
+            help=translate_ui("Choisissez votre langue avant de vous inscrire ou de vous connecter", pre_auth_language),
+        )
         st.markdown(
-            '<div class="hero"><h1>SOW IA</h1><p>Votre espace personnel sécurisé.</p></div>',
+            '<div class="hero"><h1>SOW IA</h1><p>' + html.escape(translate_ui("Votre espace personnel sécurisé.", language)) + '</p></div>',
             unsafe_allow_html=True,
         )
         st.subheader(translate_ui("Connexion à SOW IA", language))
@@ -570,15 +582,15 @@ if cloud_mode:
         ).strip().lower() in {"1", "true", "yes"}
 
         if email_login_only:
-            st.markdown("#### Connexion à mon compte SOW IA")
-            with st.expander("Créer un compte SOW IA — nouveau compte uniquement", expanded=False):
-                st.markdown("#### Créer un compte SOW IA")
-                st.caption("Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.")
+            st.markdown("#### " + translate_ui("Connexion à mon compte SOW IA", language))
+            with st.expander(translate_ui("Créer un compte SOW IA — nouveau compte uniquement", language), expanded=False):
+                st.markdown("#### " + translate_ui("Créer un compte SOW IA", language))
+                st.caption(translate_ui("Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.", language))
                 with st.form("sowia_email_signup_form", clear_on_submit=False):
-                    signup_email = st.text_input("Votre adresse e-mail", max_chars=254, key="sowia_signup_email")
-                    signup_password = st.text_input("Mot de passe (8 caractères minimum)", type="password", key="sowia_signup_password")
-                    signup_password_confirm = st.text_input("Confirmer le mot de passe", type="password", key="sowia_signup_password_confirm")
-                    signup_submitted = st.form_submit_button("Créer mon compte", type="primary", use_container_width=True)
+                    signup_email = st.text_input(translate_ui("Votre adresse e-mail", language), max_chars=254, key="sowia_signup_email")
+                    signup_password = st.text_input(translate_ui("Mot de passe (8 caractères minimum)", language), type="password", key="sowia_signup_password")
+                    signup_password_confirm = st.text_input(translate_ui("Confirmer le mot de passe", language), type="password", key="sowia_signup_password_confirm")
+                    signup_submitted = st.form_submit_button(translate_ui("Créer mon compte", language), type="primary", use_container_width=True)
                 if signup_submitted:
                     candidate_signup_email = str(signup_email or "").strip().lower()
                     if (
@@ -611,7 +623,7 @@ if cloud_mode:
                                 st.caption("Diagnostic : " + type(signup_exc).__name__ + ((" · " + signup_code[:80]) if signup_code else ""))
 
 
-            st.markdown("#### Connexion avec mot de passe")
+            st.markdown("#### " + translate_ui("Connexion avec mot de passe", language))
             st.caption(
                 "Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter "
                 "directement avec votre mot de passe, sans attendre un nouveau lien e-mail."
@@ -620,18 +632,18 @@ if cloud_mode:
             # This is more reliable in Android WebView, where embedded form
             # submission can fail to dispatch the Streamlit event after typing.
             password_login_email = st.text_input(
-                "Adresse e-mail",
+                translate_ui("Adresse e-mail", language),
                 value=str(st.session_state.get("sowia_email_login_pending", "") or ""),
                 max_chars=254,
                 key="sowia_password_login_email",
             )
             password_login_secret = st.text_input(
-                "Mot de passe",
+                translate_ui("Mot de passe", language),
                 type="password",
                 key="sowia_password_login_secret",
             )
             password_login_submitted = st.button(
-                "VALIDER",
+                translate_ui("VALIDER", language),
                 key="sowia_password_login_submit",
                 type="primary",
                 use_container_width=True,
@@ -1034,7 +1046,7 @@ with st.sidebar:
     st.image("assets/sowia-brain-brand.svg", use_container_width=True)
     preference_owner = str(getattr(current_user, "id", "")) if cloud_mode and current_user is not None else "local"
     if st.session_state.get("sowia_language_loaded_for") != preference_owner:
-        saved_language = "Français"
+        saved_language = st.session_state.get("sowia_pre_auth_language", "Français")
         if cloud_mode and current_user is not None:
             try:
                 saved_language = cloud_storage.get_language_preference(supabase_client, current_user)
@@ -1247,12 +1259,51 @@ if privacy_screen:
         unsafe_allow_html=True,
     )
 
+def navigation_icon_for(label):
+    """Return a stable visual marker for every navigation item."""
+    value = str(label).lower()
+    rules = [
+        (("assistant", "intelligence", "mémoire", "memory"), "🧠"),
+        (("pdf", "document", "fichier"), "📄"),
+        (("recherche", "web", "veille"), "🌐"),
+        (("historique", "échange", "conversation"), "💬"),
+        (("finance", "revenu", "paiement", "investissement"), "💶"),
+        (("abonnement", "premium", "compte"), "👑"),
+        (("annuaire", "directory", "mondial", "global", "international"), "🌍"),
+        (("business", "entreprise", "club", "partenaire", "collaboration"), "🤝"),
+        (("notification", "administration", "contrôle", "control", "aide", "paramètre"), "⚙️"),
+        (("opportunité", "opportunity", "projet"), "🚀"),
+        (("sécurité", "confiance", "trust", "identité"), "🛡️"),
+    ]
+    for keywords, symbol in rules:
+        if any(keyword in value for keyword in keywords):
+            return symbol
+    return "✨"
+
+
+def navigation_category_art(category):
+    """Map every navigation family to an existing category illustration."""
+    value = str(category).lower()
+    if any(word in value for word in ("personnel", "document")):
+        return "assets/categories/personnel.svg"
+    if any(word in value for word in ("intelligence", "assistant")):
+        return "assets/categories/intelligence.svg"
+    if any(word in value for word in ("global", "mondial", "international")):
+        return "assets/categories/global.svg"
+    if any(word in value for word in ("business", "entreprise", "collaboration", "partenaire")):
+        return "assets/categories/business.svg"
+    if any(word in value for word in ("finance", "paiement", "revenu", "abonnement")):
+        return "assets/categories/finance.svg"
+    return "assets/categories/admin.svg"
+
+
 with st.sidebar:
     active_page = st.session_state.get("page_nav", "Hub SOWIA")
     st.session_state.nav_category = category_for_page(active_page)
     st.markdown("### 🧭 Navigation SOW IA")
     st.caption("Toutes les catégories et leurs rubriques sont accessibles ici.")
     for category_index, (category_name, category_pages) in enumerate(NAV_GROUPS.items()):
+        st.image(navigation_category_art(category_name), width=76)
         with st.expander(
             translate_ui(category_name.replace("SOWIA", "SOW IA"), language),
             expanded=True,
@@ -1260,7 +1311,7 @@ with st.sidebar:
             for page_index, page_name in enumerate(category_pages):
                 is_current_page = page_name == active_page
                 st.button(
-                    ("● " if is_current_page else "") + translate_ui(
+                    ("● " if is_current_page else "") + navigation_icon_for(page_name) + " " + translate_ui(
                         (
                             "🌙 NIGHT EXCHANGE · Bourse aux applications"
                             if page_name == "SOWIA NIGHT EXCHANGE"
