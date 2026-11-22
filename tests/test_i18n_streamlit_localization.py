@@ -287,3 +287,18 @@ def test_french_remains_the_canonical_display_language():
 
     for label in ("Valider", "Annuler", "Pays", "Décisions évaluées"):
         assert translate(label, "Français") == label
+
+
+def test_dynamic_diagnostic_suffix_is_preserved_after_prefix_translation():
+    from i18n import translate
+
+    suffix = " ERR-2048 — fournisseur indisponible"
+    expected = {
+        "English": "Technical diagnostics:" + suffix,
+        "Español": "Diagnóstico técnico:" + suffix,
+        "中文": "技术诊断：" + suffix,
+        "Deutsch": "Technische Diagnose:" + suffix,
+        "العربية": "التشخيص التقني:" + suffix,
+    }
+    for language, result in expected.items():
+        assert translate("Diagnostic technique :" + suffix, language) == result
