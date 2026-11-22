@@ -161,3 +161,14 @@ def test_project_register_saved_projects_heading_is_translated(language, expecte
 def test_project_register_save_confirmation_is_translated(language, expected):
     template = translate("Projet enregistré et confirmé (référence {project_id}).", language)
     assert template.format(project_id=123) == expected
+
+
+@pytest.mark.parametrize("language,expected", [
+    ("English", "Project name"),
+    ("Español", "Nombre del proyecto"),
+    ("Deutsch", "Projektname"),
+    ("中文", "项目名称"),
+    ("العربية", "اسم المشروع"),
+])
+def test_project_register_form_labels_are_translated(language, expected):
+    assert translate("Nom du projet", language) == expected
