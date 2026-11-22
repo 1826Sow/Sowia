@@ -691,6 +691,87 @@ _PAGE_TRANSLATIONS = {
     },
 }
 
+
+# Shared labels used throughout specialized pages and forms. Keep these exact
+# display strings centralized so every page uses the same terminology.
+_COMMON_UI_TRANSLATIONS = {
+    "English": {
+        "Valider": "Confirm", "Annuler": "Cancel", "Enregistrer": "Save",
+        "Supprimer": "Delete", "Modifier": "Edit", "Ajouter": "Add",
+        "Rechercher": "Search", "Filtrer": "Filter", "Actualiser": "Refresh",
+        "Continuer": "Continue", "Retour": "Back", "Fermer": "Close",
+        "Ouvrir": "Open", "Télécharger": "Download", "Importer": "Upload",
+        "Exporter": "Export", "Créer": "Create", "Envoyer": "Send",
+        "Choisir": "Choose", "Aucun": "None", "Autre": "Other",
+        "Nom": "Name", "Description": "Description", "Date": "Date",
+        "Statut": "Status", "Type": "Type", "Langue": "Language",
+        "Action à évaluer": "Action to evaluate", "Pilier concerné": "Relevant pillar",
+        "État de conformité": "Compliance status", "Ajouter à la comparaison": "Add to comparison",
+        "Effacer cette comparaison": "Clear this comparison", "Découvrir Premium": "Explore Premium",
+        "Ouvrir les paramètres": "Open settings", "Ouvrir les revenus & paiements": "Open revenue & payments",
+    },
+    "Español": {
+        "Valider": "Confirmar", "Annuler": "Cancelar", "Enregistrer": "Guardar",
+        "Supprimer": "Eliminar", "Modifier": "Editar", "Ajouter": "Añadir",
+        "Rechercher": "Buscar", "Filtrer": "Filtrar", "Actualiser": "Actualizar",
+        "Continuer": "Continuar", "Retour": "Volver", "Fermer": "Cerrar",
+        "Ouvrir": "Abrir", "Télécharger": "Descargar", "Importer": "Subir",
+        "Exporter": "Exportar", "Créer": "Crear", "Envoyer": "Enviar",
+        "Choisir": "Elegir", "Aucun": "Ninguno", "Autre": "Otro",
+        "Nom": "Nombre", "Description": "Descripción", "Date": "Fecha",
+        "Statut": "Estado", "Type": "Tipo", "Langue": "Idioma",
+        "Action à évaluer": "Acción que se va a evaluar", "Pilier concerné": "Pilar correspondiente",
+        "État de conformité": "Estado de cumplimiento", "Ajouter à la comparaison": "Añadir a la comparación",
+        "Effacer cette comparaison": "Borrar esta comparación", "Découvrir Premium": "Descubrir Premium",
+        "Ouvrir les paramètres": "Abrir configuración", "Ouvrir les revenus & paiements": "Abrir ingresos y pagos",
+    },
+    "中文": {
+        "Valider": "确认", "Annuler": "取消", "Enregistrer": "保存",
+        "Supprimer": "删除", "Modifier": "编辑", "Ajouter": "添加",
+        "Rechercher": "搜索", "Filtrer": "筛选", "Actualiser": "刷新",
+        "Continuer": "继续", "Retour": "返回", "Fermer": "关闭",
+        "Ouvrir": "打开", "Télécharger": "下载", "Importer": "上传",
+        "Exporter": "导出", "Créer": "创建", "Envoyer": "发送",
+        "Choisir": "选择", "Aucun": "无", "Autre": "其他",
+        "Nom": "名称", "Description": "描述", "Date": "日期",
+        "Statut": "状态", "Type": "类型", "Langue": "语言",
+        "Action à évaluer": "待评估的操作", "Pilier concerné": "相关支柱",
+        "État de conformité": "合规状态", "Ajouter à la comparaison": "添加到比较",
+        "Effacer cette comparaison": "清除本次比较", "Découvrir Premium": "了解 Premium",
+        "Ouvrir les paramètres": "打开设置", "Ouvrir les revenus & paiements": "打开收入与付款",
+    },
+    "Deutsch": {
+        "Valider": "Bestätigen", "Annuler": "Abbrechen", "Enregistrer": "Speichern",
+        "Supprimer": "Löschen", "Modifier": "Bearbeiten", "Ajouter": "Hinzufügen",
+        "Rechercher": "Suchen", "Filtrer": "Filtern", "Actualiser": "Aktualisieren",
+        "Continuer": "Weiter", "Retour": "Zurück", "Fermer": "Schließen",
+        "Ouvrir": "Öffnen", "Télécharger": "Herunterladen", "Importer": "Hochladen",
+        "Exporter": "Exportieren", "Créer": "Erstellen", "Envoyer": "Senden",
+        "Choisir": "Auswählen", "Aucun": "Keiner", "Autre": "Andere",
+        "Nom": "Name", "Description": "Beschreibung", "Date": "Datum",
+        "Statut": "Status", "Type": "Typ", "Langue": "Sprache",
+        "Action à évaluer": "Zu bewertende Aktion", "Pilier concerné": "Betroffene Säule",
+        "État de conformité": "Compliance-Status", "Ajouter à la comparaison": "Zum Vergleich hinzufügen",
+        "Effacer cette comparaison": "Diesen Vergleich löschen", "Découvrir Premium": "Premium entdecken",
+        "Ouvrir les paramètres": "Einstellungen öffnen", "Ouvrir les revenus & paiements": "Einnahmen und Zahlungen öffnen",
+    },
+    "العربية": {
+        "Valider": "تأكيد", "Annuler": "إلغاء", "Enregistrer": "حفظ",
+        "Supprimer": "حذف", "Modifier": "تعديل", "Ajouter": "إضافة",
+        "Rechercher": "بحث", "Filtrer": "تصفية", "Actualiser": "تحديث",
+        "Continuer": "متابعة", "Retour": "رجوع", "Fermer": "إغلاق",
+        "Ouvrir": "فتح", "Télécharger": "تنزيل", "Importer": "رفع",
+        "Exporter": "تصدير", "Créer": "إنشاء", "Envoyer": "إرسال",
+        "Choisir": "اختيار", "Aucun": "لا شيء", "Autre": "آخر",
+        "Nom": "الاسم", "Description": "الوصف", "Date": "التاريخ",
+        "Statut": "الحالة", "Type": "النوع", "Langue": "اللغة",
+        "Action à évaluer": "الإجراء المراد تقييمه", "Pilier concerné": "المحور المعني",
+        "État de conformité": "حالة الامتثال", "Ajouter à la comparaison": "إضافة إلى المقارنة",
+        "Effacer cette comparaison": "مسح هذه المقارنة", "Découvrir Premium": "اكتشف Premium",
+        "Ouvrir les paramètres": "فتح الإعدادات", "Ouvrir les revenus & paiements": "فتح الإيرادات والمدفوعات",
+    },
+}
+
 def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     # Keep the product name visually consistent in every translated UI label.
@@ -702,6 +783,9 @@ def translate(text: str, language: str = "Français") -> str:
     # Merge the original catalogue with the additional navigation labels.
     # Separate dictionaries prevent duplicate language keys from overwriting
     # the broader translation catalogue during module loading.
+    translated = _COMMON_UI_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
     translated = _BASE_TRANSLATIONS.get(language, {}).get(text)
     if translated is not None:
         return translated
