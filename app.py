@@ -1,6 +1,7 @@
 """SOW IA — application web Streamlit."""
 import uuid
 import html
+import base64
 from datetime import datetime, timezone, timedelta
 import streamlit as st
 from settings import get_setting
@@ -898,6 +899,48 @@ def category_for_page(page_name):
         if page_name in pages:
             return category
     return "👤 Personnel & documents"
+
+
+def navigation_art_data(destination, index):
+    """Create a distinct, lightweight SVG illustration for each navigation tile."""
+    icon_rules = (
+        (("assistant",), "🤖"), (("mémoire",), "🧠"), (("recherche", "web"), "🔎"),
+        (("pdf", "document"), "📄"), (("historique", "échanges", "projets"), "🗂️"),
+        (("night", "bourse"), "🌙"), (("global id", "identité"), "🪪"),
+        (("directory", "annuaire"), "🌐"), (("trust", "confiance"), "🛡️"),
+        (("business", "entreprise", "partenariat"), "🤝"), (("opportunité", "revenu"), "📈"),
+        (("finance", "investissement", "paiement"), "💳"), (("decision", "décision"), "🎯"),
+        (("intelligence",), "💡"), (("pulse", "tendance"), "📡"),
+        (("forecast", "prévision", "scénario"), "🔭"), (("learning", "apprentissage"), "📚"),
+        (("strategy", "stratégie"), "♟️"), (("collaboration",), "👥"),
+        (("governance", "gouvernance", "moderation", "modération"), "⚖️"),
+        (("performance", "impact"), "🏆"), (("portfolio", "portefeuille"), "📊"),
+        (("report", "rapport"), "📑"), (("admin", "control", "centre"), "⚙️"),
+        (("technologie", "fournisseur"), "🧩"), (("abonnement",), "⭐"),
+        (("paramètre",), "🎛️"), (("aide", "notification"), "💬"),
+        (("accueil", "hub"), "🏠"),
+    )
+    folded = destination.casefold()
+    icon = next((symbol for terms, symbol in icon_rules if any(term in folded for term in terms)), "✨")
+    palette = (
+        ("#0f766e", "#38bdf8"), ("#4338ca", "#a78bfa"),
+        ("#9a3412", "#fbbf24"), ("#0369a1", "#67e8f9"),
+        ("#166534", "#86efac"), ("#9d174d", "#f9a8d4"),
+    )
+    first, second = palette[index % len(palette)]
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="132" viewBox="0 0 240 132">'
+        f'<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+        f'<stop offset="0" stop-color="{first}"/><stop offset="1" stop-color="{second}"/>'
+        '</linearGradient></defs><rect width="240" height="132" rx="22" fill="#0b1726"/>'
+        '<circle cx="191" cy="24" r="43" fill="url(#g)" opacity=".32"/>'
+        '<circle cx="26" cy="117" r="53" fill="url(#g)" opacity=".25"/>'
+        f'<path d="M18 92 Q82 {18 + (index % 5) * 7} 143 94 T226 54" fill="none" stroke="url(#g)" stroke-width="5" opacity=".8"/>'
+        f'<rect x="76" y="17" width="88" height="88" rx="25" fill="url(#g)" opacity=".95"/>'
+        f'<text x="120" y="76" text-anchor="middle" font-size="43">{icon}</text>'
+        '</svg>'
+    )
+    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
 
 
 def remember_navigation_target(target_page):
@@ -2022,69 +2065,62 @@ elif page == "Hub SOWIA":
     with partner_cols[2]:
         st.caption("Notre priorité : des partenariats vérifiables, des objectifs mesurables et une création de valeur réciproque.")
     st.markdown("### 🗂️ Vos espaces SOW IA")
-    st.caption("Les outils sont rangés par activité. Ouvrez uniquement la rubrique dont vous avez besoin ; la navigation complète reste accessible dans le menu latéral.")
-    home_sections = [
-        ("👤 Espace personnel", [
-            ("Assistant IA", "Dialoguer avec votre assistant"),
-            ("Ma mémoire", "Retrouver vos informations mémorisées"),
-            ("Recherche Web", "Rechercher des informations et des sources"),
-            ("Analyse PDF", "Analyser un document"),
-            ("Créer un PDF", "Créer un document PDF"),
-            ("Mes documents", "Gérer vos fichiers"),
-            ("Historique", "Consulter vos conversations"),
-        ]),
-        ("🌍 Écosystème & développement", [
-            ("Développement mondial", "Développer les partenariats internationaux"),
-            ("SOWIA NIGHT EXCHANGE", "Marché nocturne de l'écosystème"),
-            ("SOWIA GLOBAL ID", "Identité numérique de l'écosystème"),
-            ("SOWIA GLOBAL DIRECTORY", "Annuaire mondial"),
-            ("SOWIA GLOBAL TRUST", "Confiance et vérification"),
-            ("SOW IA Business Club", "Relations et partenariats professionnels"),
-            ("Opportunités et revenus", "Suivre les opportunités commerciales"),
-        ]),
-        ("🧠 Stratégie & intelligence", [
-            ("Décisions humaines vs SOW IA", "Comparer les décisions et leurs résultats"),
-            ("SOWIA GLOBAL INTELLIGENCE", "Outils d'intelligence globale"),
-            ("SOWIA GLOBAL PULSE", "Suivre les signaux et tendances"),
-            ("SOWIA GLOBAL STRATEGIC FORECAST", "Explorer les prévisions stratégiques"),
-            ("SOWIA GLOBAL DECISION ENGINE", "Structurer les décisions"),
-            ("SOWIA GLOBAL LEARNING ENGINE", "Capitaliser sur les apprentissages"),
-            ("SOWIA GLOBAL AUTONOMOUS STRATEGY", "Étudier les stratégies proposées"),
-            ("SOWIA GLOBAL COLLABORATION HUB", "Organiser la collaboration"),
-            ("SOWIA GLOBAL ACTION GOVERNANCE", "Encadrer les actions"),
-            ("SOWIA GLOBAL PERFORMANCE & IMPACT", "Suivre les résultats et impacts"),
-            ("SOWIA GLOBAL PORTFOLIO CONTROL", "Piloter le portefeuille de projets"),
-            ("SOWIA GLOBAL EXECUTIVE REPORTS", "Consulter les rapports de direction"),
-            ("Stratégie & scénarios", "Comparer plusieurs scénarios"),
-        ]),
-        ("💳 Finances & investissements", [
-            ("Finance & investissements", "Analyser les données financières"),
-            ("Revenus & paiements", "Consulter les paiements et rapprochements"),
-        ]),
-        ("🛡️ Administration & paramètres", [
-            ("SOWIA GLOBAL ADMIN & MODERATION", "Administration et modération"),
-            ("SOWIA CONTROL CENTER", "Centre de contrôle"),
-            ("Technologies & fournisseurs", "Comparer les solutions techniques"),
-            ("Abonnement", "Consulter les offres et l'accès Premium"),
-            ("Paramètres", "Gérer les préférences"),
-            ("Aide", "Consulter les indications d'utilisation"),
-        ]),
-    ]
-    for section_title, section_items in home_sections:
-        with st.expander(section_title, expanded=False):
-            for item_start in range(0, len(section_items), 2):
-                item_cols = st.columns(2)
-                for item_col, (destination, description) in zip(item_cols, section_items[item_start:item_start + 2]):
-                    with item_col:
-                        st.markdown(f"**{destination}**")
-                        st.caption(description)
-                        st.button(
-                            "Ouvrir",
-                            key=f"home_group_{destination}",
-                            use_container_width=True,
-                            on_click=go_to_page,
-                            args=(destination,),
-                        )
+    st.caption(translate_ui("Toutes les rubriques sont réunies ici. Chaque carte possède son illustration et ouvre directement l’outil correspondant.", language))
+    st.markdown(
+        """
+        <style>
+        .sowia-catalog-card {
+            border: 1px solid rgba(125, 190, 220, .22);
+            border-radius: 16px;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: linear-gradient(145deg, rgba(20, 42, 64, .94), rgba(9, 23, 39, .96));
+            min-height: 100%;
+        }
+        .sowia-catalog-card img {
+            width: 100%;
+            height: 104px;
+            object-fit: cover;
+            border-radius: 11px;
+            display: block;
+            margin-bottom: 9px;
+        }
+        .sowia-catalog-title {
+            font-weight: 750;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+            min-height: 2.5em;
+        }
+        @media (max-width: 640px) {
+            .sowia-catalog-card { padding: 8px; }
+            .sowia-catalog-card img { height: 82px; }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    catalog_index = 0
+    for section_title, section_pages in NAV_GROUPS.items():
+        st.markdown(f"#### {translate_ui(section_title.replace('SOWIA', 'SOW IA'), language)}")
+        for item_start in range(0, len(section_pages), 2):
+            item_cols = st.columns(2)
+            for item_col, destination in zip(item_cols, section_pages[item_start:item_start + 2]):
+                with item_col:
+                    art = navigation_art_data(destination, catalog_index)
+                    safe_title = html.escape(translate_ui(destination.replace("SOWIA", "SOW IA"), language))
+                    st.markdown(
+                        f'<div class="sowia-catalog-card"><img src="{art}" alt="{safe_title}">'
+                        f'<div class="sowia-catalog-title">{safe_title}</div></div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.button(
+                        translate_ui("Ouvrir", language),
+                        key=f"home_group_{destination}",
+                        use_container_width=True,
+                        on_click=go_to_page,
+                        args=(destination,),
+                    )
+                    catalog_index += 1
 
 elif page == "Mes échanges & projets":
     project_registry_ui.render(
