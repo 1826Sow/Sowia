@@ -982,3 +982,25 @@ _PROJECT_REGISTER_COMPLETION = {
 }
 for _language, _catalogue in _PROJECT_REGISTER_COMPLETION.items():
     _EXTRA_TRANSLATIONS[_language].update(_catalogue)
+
+
+_PROJECT_REGISTER_DIAGNOSTICS = {
+    "Español": {
+        "Projet enregistré et confirmé (référence {project_id}).": "Proyecto guardado y confirmado (referencia {project_id}).",
+        "Diagnostic :": "Diagnóstico:",
+    },
+    "Deutsch": {
+        "Projet enregistré et confirmé (référence {project_id}).": "Projekt gespeichert und bestätigt (Referenz {project_id}).",
+        "Diagnostic :": "Diagnose:",
+    },
+    "中文": {
+        "Projet enregistré et confirmé (référence {project_id}).": "项目已保存并确认（参考编号 {project_id}）。",
+        "Diagnostic :": "诊断：",
+    },
+    "العربية": {
+        "Projet enregistré et confirmé (référence {project_id}).": "تم حفظ المشروع وتأكيده (المرجع {project_id}).",
+        "Diagnostic :": "التشخيص:",
+    },
+}
+for _language, _catalogue in _PROJECT_REGISTER_DIAGNOSTICS.items():
+    _EXTRA_TRANSLATIONS[_language].update(_catalogue)
