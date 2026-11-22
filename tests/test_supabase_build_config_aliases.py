@@ -56,3 +56,27 @@ def test_supabase_public_key_rejects_service_role_jwt(monkeypatch):
     )
     with pytest.raises(RuntimeError, match="service_role"):
         sowia_supabase_auth._supabase_public_key()
+
+
+def test_public_publishable_key_wins_over_stale_server_key_environment(monkeypatch):
+    for name in (
+        "SUPABASE_ANON_KEY",
+        "SOWIA_SUPABASE_PUBLISHABLE_KEY",
+        "SOWIA_SUPABASE_ANON_KEY",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "sb_secret_old-server-value")
+    monkeypatch.setenv("SOWIA_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_current-public-value")
+
+    assert settings.get_setting("SUPABASE_ANON_KEY") == "sb_publishable_current-public-value"
+
+
+def test_legacy_anon_key_is_preferred_over_stale_service_role_environment(monkeypatch):
+    payload = base64.urlsafe_b64encode(
+        json.dumps({"role": "anon"}).encode("utf-8")
+    ).decode("ascii").rstrip("=")
+    anon_jwt = "header." + payload + ".signature"
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "sb_secret_old-server-value")
+    monkeypatch.setenv("SOWIA_SUPABASE_ANON_KEY", anon_jwt)
+
+    assert settings.get_setting("SUPABASE_ANON_KEY") == anon_jwt
