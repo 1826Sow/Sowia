@@ -55,6 +55,7 @@ import sowia_business_card
 import project_registry_ui
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
+from memory_engine import select_relevant_memories
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
 from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_authenticated_session_state, logout_authenticated_session
 
@@ -2742,7 +2743,9 @@ elif page == "Assistant IA":
                     try:
                         reply = answer(
                             request_history,
-                            memories=memories,
+                            memories=select_relevant_memories(
+                                memories, query=prompt
+                            ),
                             language=language,
                         )
                         st.markdown(reply)
