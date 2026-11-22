@@ -1754,6 +1754,18 @@ elif page == "Hub SOWIA":
         st.metric("Compte", "Connecté" if cloud_mode and current_user is not None else "Mode local")
     with top_metrics[2]:
         st.metric("Accès administration", "Autorisé" if is_sowia_admin else "Non attribué")
+
+    # Compact resume panel: reads only the signed-in user's active workspace.
+    import dashboard_overview
+    dashboard_overview.render(
+        supabase_client,
+        current_user,
+        current_workspace,
+        cloud_mode,
+        premium_active,
+        navigate=go_to_page,
+    )
+
     st.markdown(
         '<section class="sowia-command-center">'
         '<div class="sowia-command-kicker">CENTRE DE PILOTAGE PERSONNEL</div>'
