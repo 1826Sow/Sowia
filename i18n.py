@@ -391,6 +391,46 @@ _SECTION_TRANSLATIONS = {
 }
 
 
+
+_NAV_CONTROL_TRANSLATIONS = {
+    "English": {
+        "📁 Dossier de navigation": "📁 Navigation section",
+        "🧭 Outil à ouvrir": "🧭 Tool to open",
+        "←  RETOUR À LA PAGE PRÉCÉDENTE": "←  BACK TO PREVIOUS PAGE",
+        "Se connecter avec une autre adresse e-mail": "Sign in with another email address",
+        "Se déconnecter": "Sign out",
+    },
+    "Español": {
+        "📁 Dossier de navigation": "📁 Sección de navegación",
+        "🧭 Outil à ouvrir": "🧭 Herramienta que abrir",
+        "←  RETOUR À LA PAGE PRÉCÉDENTE": "←  VOLVER A LA PÁGINA ANTERIOR",
+        "Se connecter avec une autre adresse e-mail": "Iniciar sesión con otro correo electrónico",
+        "Se déconnecter": "Cerrar sesión",
+    },
+    "中文": {
+        "📁 Dossier de navigation": "📁 导航分类",
+        "🧭 Outil à ouvrir": "🧭 要打开的工具",
+        "←  RETOUR À LA PAGE PRÉCÉDENTE": "←  返回上一页",
+        "Se connecter avec une autre adresse e-mail": "使用其他电子邮件地址登录",
+        "Se déconnecter": "退出登录",
+    },
+    "Deutsch": {
+        "📁 Dossier de navigation": "📁 Navigationsbereich",
+        "🧭 Outil à ouvrir": "🧭 Werkzeug öffnen",
+        "←  RETOUR À LA PAGE PRÉCÉDENTE": "←  ZURÜCK ZUR VORHERIGEN SEITE",
+        "Se connecter avec une autre adresse e-mail": "Mit einer anderen E-Mail-Adresse anmelden",
+        "Se déconnecter": "Abmelden",
+    },
+    "العربية": {
+        "📁 Dossier de navigation": "📁 قسم التنقل",
+        "🧭 Outil à ouvrir": "🧭 الأداة المراد فتحها",
+        "←  RETOUR À LA PAGE PRÉCÉDENTE": "←  العودة إلى الصفحة السابقة",
+        "Se connecter avec une autre adresse e-mail": "تسجيل الدخول باستخدام بريد إلكتروني آخر",
+        "Se déconnecter": "تسجيل الخروج",
+    },
+}
+
+
 def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     # Keep the product name visually consistent in every translated UI label.
@@ -412,6 +452,9 @@ def translate(text: str, language: str = "Français") -> str:
     if translated is not None:
         return translated
     translated = _SECTION_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _NAV_CONTROL_TRANSLATIONS.get(language, {}).get(text)
     if translated is not None:
         return translated
     return _CORE_TRANSLATIONS.get(language, {}).get(text, text)
