@@ -674,3 +674,50 @@ _AUTH_COMPLETION = {
 }
 for _language, _catalogue in _AUTH_COMPLETION.items():
     _EXTRA_TRANSLATIONS[_language].update(_catalogue)
+
+
+# Remaining sign-up validation and confirmation messages.
+_AUTH_SIGNUP_COMPLETION = {
+    "Español": {
+        "Les deux mots de passe ne correspondent pas.": "Las contraseñas no coinciden.",
+        "L'adresse de retour sécurisée de SOW IA n'est pas valide.": "La dirección segura de retorno de SOW IA no es válida.",
+        "Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.": "Solicitud de registro enviada. Abre el correo de confirmación de Supabase para activar tu cuenta y vuelve a SOW IA para iniciar sesión.",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "Esta dirección ya tiene una cuenta. Usa la opción de inicio de sesión por correo electrónico.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "No se pudo crear la cuenta. Comprueba el correo electrónico e inténtalo de nuevo.",
+        "L'accès reste fermé par sécurité. Rechargez cette page pour ": "Por seguridad, el acceso permanece bloqueado. Recarga esta página para ",
+        "La connexion sécurisée Supabase n'a pas abouti. ": "No se pudo iniciar sesión de forma segura en Supabase. ",
+        "La connexion GitHub n'a pas pu être préparée. Vérifiez la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.": "No se pudo preparar el inicio de sesión con GitHub. Comprueba la dirección HTTPS pública y la configuración del proveedor GitHub en Supabase.",
+    },
+    "Deutsch": {
+        "Les deux mots de passe ne correspondent pas.": "Die beiden Passwörter stimmen nicht überein.",
+        "L'adresse de retour sécurisée de SOW IA n'est pas valide.": "Die sichere Rückleitungsadresse von SOW IA ist ungültig.",
+        "Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.": "Registrierungsanfrage gesendet. Öffnen Sie die Bestätigungs-E-Mail von Supabase, um Ihr Konto zu aktivieren, und kehren Sie anschließend zu SOW IA zurück.",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "Für diese Adresse besteht bereits ein Konto. Verwenden Sie die E-Mail-Anmeldung.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "Das Konto konnte nicht erstellt werden. Prüfen Sie die E-Mail-Adresse und versuchen Sie es erneut.",
+        "L'accès reste fermé par sécurité. Rechargez cette page pour ": "Der Zugriff bleibt aus Sicherheitsgründen gesperrt. Laden Sie diese Seite neu, um ",
+        "La connexion sécurisée Supabase n'a pas abouti. ": "Die sichere Supabase-Anmeldung ist fehlgeschlagen. ",
+        "La connexion GitHub n'a pas pu être préparée. Vérifiez la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.": "Die GitHub-Anmeldung konnte nicht vorbereitet werden. Prüfen Sie die öffentliche HTTPS-Adresse und die GitHub-Anbieterkonfiguration in Supabase.",
+    },
+    "中文": {
+        "Les deux mots de passe ne correspondent pas.": "两次输入的密码不一致。",
+        "L'adresse de retour sécurisée de SOW IA n'est pas valide.": "SOW IA 的安全返回地址无效。",
+        "Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.": "注册请求已发送。请打开 Supabase 确认邮件以激活账户，然后返回 SOW IA 登录。",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "此邮箱地址已有账户。请使用电子邮件登录选项。",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "账户创建失败。请检查邮箱地址后重试。",
+        "L'accès reste fermé par sécurité. Rechargez cette page pour ": "出于安全考虑，访问仍被阻止。请刷新页面以",
+        "La connexion sécurisée Supabase n'a pas abouti. ": "Supabase 安全登录失败。",
+        "La connexion GitHub n'a pas pu être préparée. Vérifiez la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.": "无法准备 GitHub 登录。请检查公开 HTTPS 地址和 Supabase 中的 GitHub 提供商配置。",
+    },
+    "العربية": {
+        "Les deux mots de passe ne correspondent pas.": "كلمتا المرور غير متطابقتين.",
+        "L'adresse de retour sécurisée de SOW IA n'est pas valide.": "عنوان العودة الآمن لـ SOW IA غير صالح.",
+        "Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.": "تم إرسال طلب التسجيل. افتح رسالة التأكيد من Supabase لتفعيل حسابك، ثم عُد إلى SOW IA لتسجيل الدخول.",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "يوجد حساب بالفعل لهذا العنوان. استخدم خيار تسجيل الدخول بالبريد الإلكتروني.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "تعذر إنشاء الحساب. تحقق من عنوان البريد الإلكتروني وحاول مرة أخرى.",
+        "L'accès reste fermé par sécurité. Rechargez cette page pour ": "يظل الوصول محظورًا لأسباب أمنية. أعد تحميل هذه الصفحة من أجل ",
+        "La connexion sécurisée Supabase n'a pas abouti. ": "فشل تسجيل الدخول الآمن إلى Supabase. ",
+        "La connexion GitHub n'a pas pu être préparée. Vérifiez la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.": "تعذر إعداد تسجيل الدخول عبر GitHub. تحقق من عنوان HTTPS العام وإعداد مزوّد GitHub في Supabase.",
+    },
+}
+for _language, _catalogue in _AUTH_SIGNUP_COMPLETION.items():
+    _EXTRA_TRANSLATIONS[_language].update(_catalogue)
