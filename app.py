@@ -2415,10 +2415,30 @@ elif page == "Assistant IA":
                       window.speechSynthesis.cancel();
                       const utterance = new SpeechSynthesisUtterance(text);
                       utterance.lang = '""" + speech_language + """';
-                      const availableVoices = window.speechSynthesis.getVoices();
-                      const matchingVoice = availableVoices.find(voice => voice.lang.toLowerCase() === utterance.lang.toLowerCase())
-                        || availableVoices.find(voice => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase()));
-                      if (matchingVoice) utterance.voice = matchingVoice;
+                      const synth = window.speechSynthesis;
+                      // Android WebView may populate its voice list asynchronously.
+                      // Retry briefly when voiceschanged fires, but never block speech
+                      // indefinitely: the platform default voice remains a valid fallback.
+                      const selectVoiceAndSpeak = (voices) => {
+                        const matchingVoice = voices.find(voice => voice.lang.toLowerCase() === utterance.lang.toLowerCase())
+                          || voices.find(voice => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase()));
+                        if (matchingVoice) utterance.voice = matchingVoice;
+                        synth.speak(utterance);
+                      };
+                      const availableVoices = synth.getVoices();
+                      if (availableVoices.length) {
+                        selectVoiceAndSpeak(availableVoices);
+                      } else {
+                        let settled = false;
+                        const finishVoiceLookup = () => {
+                          if (settled) return;
+                          settled = true;
+                          synth.removeEventListener('voiceschanged', finishVoiceLookup);
+                          selectVoiceAndSpeak(synth.getVoices());
+                        };
+                        synth.addEventListener('voiceschanged', finishVoiceLookup);
+                        window.setTimeout(finishVoiceLookup, 1200);
+                      }
                       utterance.onstart = () => status.textContent = 'Lecture en cours';
                       utterance.onend = () => status.textContent = 'Lecture terminée';
                       utterance.onerror = () => status.textContent = 'Lecture indisponible';

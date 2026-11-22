@@ -37,3 +37,19 @@ def test_navigation_back_control_is_global_before_rubrique_rendering():
     assert back_control < first_rubrique
     assert "def go_back_navigation():" in source
     assert "sowia_navigation_history" in source
+
+
+def test_android_launcher_displays_the_official_showcase_before_dashboard():
+    root = Path("android/app/src/main")
+    main_activity = (root / "java/com/sowkeys/sowia/MainActivity.kt").read_text(encoding="utf-8")
+    vitrine_activity = (root / "java/com/sowkeys/sowia/VitrineActivity.kt").read_text(encoding="utf-8")
+    manifest = (root / "AndroidManifest.xml").read_text(encoding="utf-8")
+
+    assert "Intent(this, VitrineActivity::class.java)" in main_activity
+    assert "R.drawable.sowia_vitrine" in vitrine_activity
+    assert 'Text("VALIDER"' in vitrine_activity
+    assert "Intent(this, DashboardActivity::class.java)" in vitrine_activity
+    assert 'android:name=".MainActivity"' in manifest
+    assert 'android.intent.action.MAIN' in manifest
+    assert 'android.intent.category.LAUNCHER' in manifest
+    assert (root / "res/drawable-nodpi/sowia_vitrine.webp").is_file()
