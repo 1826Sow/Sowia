@@ -614,6 +614,63 @@ _COMMON_AUTH_LANDING = {
         "Toutes les catégories et leurs rubriques sont accessibles ici.": "يمكنك الوصول هنا إلى جميع الفئات والأقسام.",
     },
 }
+
+# Authentication feedback must follow the language selected before signup.
+_AUTH_FLOW_TRANSLATIONS = {
+    "English": {
+        "Saisissez une adresse e-mail valide.": "Enter a valid email address.",
+        "L'adresse de retour sécurisée de SOW IA n'est pas valide.": "The secure SOW IA return address is invalid.",
+        "Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.": "Sign-up request sent. Open the confirmation email from Supabase to activate your account, then return to SOW IA to sign in.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "Account creation failed. Check the email address and try again.",
+        "Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter directement avec votre mot de passe, sans attendre un nouveau lien e-mail.": "After confirming your email address, you can sign in directly with your password without waiting for another email link.",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "Sign-in failed. Check your email address and password.",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "This address could not be validated or the sign-in link could not be sent. Check the address and Supabase email settings.",
+        "Valider": "Continue",
+    },
+    "Español": {
+        "Saisissez une adresse e-mail valide.": "Introduce una dirección de correo electrónico válida.",
+        "L'adresse de retour sécurisée de SOW IA n'est pas valide.": "La dirección segura de retorno de SOW IA no es válida.",
+        "Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.": "Solicitud de registro enviada. Abre el correo de confirmación de Supabase para activar tu cuenta y vuelve a SOW IA para iniciar sesión.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "No se pudo crear la cuenta. Comprueba el correo electrónico e inténtalo de nuevo.",
+        "Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter directement avec votre mot de passe, sans attendre un nouveau lien e-mail.": "Después de confirmar tu correo electrónico, podrás iniciar sesión directamente con tu contraseña.",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "No se pudo iniciar sesión. Comprueba el correo y la contraseña.",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "No se pudo validar la dirección o enviar el enlace. Comprueba el correo y la configuración de Supabase.",
+        "Valider": "Continuar",
+    },
+    "中文": {
+        "Saisissez une adresse e-mail valide.": "请输入有效的电子邮箱地址。",
+        "L'adresse de retour sécurisée de SOW IA n'est pas valide.": "SOW IA 的安全返回地址无效。",
+        "Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.": "注册申请已发送。请打开 Supabase 确认邮件以激活账户，然后返回 SOW IA 登录。",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "账户创建失败。请检查电子邮箱后重试。",
+        "Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter directement avec votre mot de passe, sans attendre un nouveau lien e-mail.": "确认电子邮箱后，您可以直接使用密码登录，无需等待新的邮件链接。",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "登录失败。请检查电子邮箱和密码。",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "无法验证此地址或发送登录链接。请检查邮箱地址和 Supabase 邮件设置。",
+        "Valider": "继续",
+    },
+    "Deutsch": {
+        "Saisissez une adresse e-mail valide.": "Geben Sie eine gültige E-Mail-Adresse ein.",
+        "L'adresse de retour sécurisée de SOW IA n'est pas valide.": "Die sichere Rücksprungadresse von SOW IA ist ungültig.",
+        "Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.": "Registrierungsanfrage gesendet. Öffnen Sie die Bestätigungs-E-Mail von Supabase, um Ihr Konto zu aktivieren, und melden Sie sich anschließend wieder bei SOW IA an.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "Das Konto konnte nicht erstellt werden. Prüfen Sie die E-Mail-Adresse und versuchen Sie es erneut.",
+        "Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter directement avec votre mot de passe, sans attendre un nouveau lien e-mail.": "Nach Bestätigung Ihrer E-Mail-Adresse können Sie sich direkt mit Ihrem Passwort anmelden.",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "Anmeldung fehlgeschlagen. Prüfen Sie Ihre E-Mail-Adresse und Ihr Passwort.",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "Die Adresse konnte nicht bestätigt oder der Anmeldelink nicht gesendet werden. Prüfen Sie die Adresse und die Supabase-E-Mail-Einstellungen.",
+        "Valider": "Weiter",
+    },
+    "العربية": {
+        "Saisissez une adresse e-mail valide.": "أدخل عنوان بريد إلكتروني صالحًا.",
+        "L'adresse de retour sécurisée de SOW IA n'est pas valide.": "عنوان العودة الآمن في SOW IA غير صالح.",
+        "Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.": "تم إرسال طلب التسجيل. افتح رسالة التأكيد من Supabase لتفعيل حسابك، ثم عُد إلى SOW IA لتسجيل الدخول.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "تعذر إنشاء الحساب. تحقق من البريد الإلكتروني وحاول مرة أخرى.",
+        "Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter directement avec votre mot de passe, sans attendre un nouveau lien e-mail.": "بعد تأكيد بريدك الإلكتروني، يمكنك تسجيل الدخول مباشرة باستخدام كلمة المرور.",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور.",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "تعذر التحقق من العنوان أو إرسال رابط الدخول. تحقق من البريد وإعدادات البريد في Supabase.",
+        "Valider": "متابعة",
+    },
+}
+for _language, _entries in _AUTH_FLOW_TRANSLATIONS.items():
+    _COMMON_UI_TRANSLATIONS.setdefault(_language, {}).update(_entries)
+
 for _language, _entries in _COMMON_AUTH_LANDING.items():
     _COMMON_UI_TRANSLATIONS.setdefault(_language, {}).update(_entries)
 
