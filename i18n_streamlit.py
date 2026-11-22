@@ -31,13 +31,13 @@ def _translate_markdown_text(value, language, translate):
             output.append(line)
             continue
 
-        ending = "\\n" if line.endswith("\\n") else ""
+        ending = "\n" if line.endswith("\n") else ""
         body = line[:-1] if ending else line
         patterns = (
-            r"^(\\s*#{1,6}\\s+)(.+)$",
-            r"^(\\s*\\*\\*)(.+?)(\\*\\*\\s*)$",
-            r"^(\\s*(?:[-*+]\\s+|\\d+\\.\\s+))(.+)$",
-            r"^(\\s*>\\s*)(.+)$",
+            r"^(\s*#{1,6}\s+)(.+)$",
+            r"^(\s*\*\*)(.+?)(\*\*\s*)$",
+            r"^(\s*(?:[-*+]\s+|\d+\.\s+))(.+)$",
+            r"^(\s*>\s*)(.+)$",
         )
         translated_line = body
         for pattern in patterns:
@@ -118,4 +118,3 @@ def install_streamlit_localization(st_module, translate, get_language):
         generator_type = type(sidebar)
         for method_name in _LOCALIZABLE_STREAMLIT_CALLS:
             wrap_method(generator_type, method_name, bound=True)
-"
