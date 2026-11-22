@@ -38,7 +38,7 @@ def test_email_signup_is_available_without_a_fixed_email_allowlist():
     source = Path("app.py").read_text(encoding="utf-8")
 
     assert 'st.form("sowia_email_signup_form"' in source
-    assert 'st.form_submit_button("Créer mon compte"' in source
+    assert 'st.form_submit_button(translate_ui("Créer mon compte", language)' in source
     assert "signup_email_user(signup_client, candidate_signup_email, signup_password, redirect_to)" in source
     assert "Every account created through Supabase email confirmation is eligible" in source
     assert "email_is_allowed(authenticated_email, allowed_emails)" not in source
