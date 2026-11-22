@@ -818,9 +818,9 @@ def _translate_missing_interface_copy(text: str, language: str) -> str:
     # Do not send code, HTML, URLs, multiline documents or user-authored
     # paragraphs to a translation service.
     if (
-        "\\n" in text
-        or re.search(r"<\\/?[A-Za-z][^>]*>|https?://|www\\.", text)
-        or text.lstrip().startswith(("\\x60\\x60\\x60", "{", "["))
+        "\n" in text
+        or re.search(r"</?[A-Za-z][^>]*>|https?://|www\\.", text)
+        or text.lstrip().startswith(("```", "{", "["))
     ):
         return text
     # Avoid translating strings that are already in the target language.
