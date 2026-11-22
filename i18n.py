@@ -682,13 +682,29 @@ def translate(text: str, language: str = "Français") -> str:
     text = str(text).replace("SOWIA", "SOW IA").replace("Sowia", "SOW IA")
     if language not in LANGUAGES:
         language = "Français"
-    # Keep Markdown heading markers while translating their visible title.
+    # Preserve common Markdown wrappers while translating their visible text.
+    # This covers headings, bold/italic labels and simple list entries without
+    # changing Markdown structure or user-authored content.
     for _heading_prefix in ("###### ", "##### ", "#### ", "### ", "## ", "# "):
         if text.startswith(_heading_prefix):
             _heading = text[len(_heading_prefix):]
             _translated_heading = translate(_heading, language)
             if _translated_heading != _heading:
                 return _heading_prefix + _translated_heading
+            break
+    for _prefix in ("- ", "• ", "1. ", "2. ", "3. "):
+        if text.startswith(_prefix):
+            _item = text[len(_prefix):]
+            _translated_item = translate(_item, language)
+            if _translated_item != _item:
+                return _prefix + _translated_item
+            break
+    for _marker in ("**", "__", "~~", "*", "_"):
+        if text.startswith(_marker) and text.endswith(_marker) and len(text) > 2 * len(_marker):
+            _inner = text[len(_marker):-len(_marker)]
+            _translated_inner = translate(_inner, language)
+            if _translated_inner != _inner:
+                return _marker + _translated_inner + _marker
             break
     # Merge the original catalogue with the additional navigation labels.
     # Separate dictionaries prevent duplicate language keys from overwriting
