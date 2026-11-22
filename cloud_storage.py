@@ -131,16 +131,32 @@ def touch_conversation(client, user, session_id, workspace_id="personal", title=
 
 
 def list_memories(client, user, workspace_id="personal"):
-    return (client.table("sowia_memory_items").select("id, content, created_at")
+    return (client.table("sowia_memory_items").select("id, content, created_at, project_id")
         .eq("user_id", _user_id(user)).eq("workspace_id", _workspace_id(workspace_id))
         .order("created_at", desc=True).limit(100).execute().data)
 
-def add_memory(client, user, content, workspace_id="personal"):
+def add_memory(client, user, content, workspace_id="personal", project_id=None):
     cleaned = (content or "").strip()
     if not cleaned or len(cleaned) > 1000:
         raise ValueError("La note doit contenir entre 1 et 1 000 caractères.")
+    owner_id = _user_id(user)
+    workspace = _workspace_id(workspace_id)
+    normalized_project_id = None
+    if project_id not in (None, ""):
+        try:
+            normalized_project_id = int(project_id)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Projet mémoire invalide.") from exc
+        if normalized_project_id <= 0:
+            raise ValueError("Projet mémoire invalide.")
+        project_rows = (client.table("sowia_projects").select("id")
+            .eq("id", normalized_project_id).eq("user_id", owner_id)
+            .eq("workspace_id", workspace).limit(1).execute().data or [])
+        if len(project_rows) != 1:
+            raise ValueError("Le projet sélectionné n'appartient pas à cet espace.")
     return (client.table("sowia_memory_items").insert({
-        "user_id": _user_id(user), "workspace_id": _workspace_id(workspace_id), "content": cleaned
+        "user_id": owner_id, "workspace_id": workspace, "content": cleaned,
+        "project_id": normalized_project_id,
     }).execute().data)
 
 def delete_memory(client, user, memory_id, workspace_id="personal"):
