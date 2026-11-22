@@ -5,17 +5,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 
 /**
- * The Streamlit dashboard is the canonical SOW IA application and owns
- * the production Supabase sign-in/session. Starting a second native
- * sign-in here created two unrelated login prompts for the same user.
- *
- * Keep the Android package as a lightweight WebView launcher so users
- * authenticate once in the full dashboard and retain its browser session.
+ * Launch the official SOW IA welcome screen first.
+ * The dashboard remains the existing Streamlit service and is opened only
+ * after the user validates the welcome screen.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        startActivity(Intent(this, DashboardActivity::class.java))
+        startActivity(Intent(this, VitrineActivity::class.java))
         finish()
     }
 }
