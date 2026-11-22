@@ -46,3 +46,22 @@ def test_english_navigation_and_dashboard_are_translated(source, expected):
 def test_english_language_selection_does_not_change_internal_french_keys():
     assert translate("Accueil", "English") == "Home"
     assert translate("Accueil", "Français") == "Accueil"
+
+
+@pytest.mark.parametrize("source,expected", [
+    ("💬 Mes échanges & projets", "💬 My conversations & projects"),
+    ("＋ Créer un projet", "＋ Create a project"),
+    ("Nom du projet", "Project name"),
+    ("Description / point de reprise", "Description / handover notes"),
+    ("Statut initial", "Initial status"),
+    ("Enregistrer le projet", "Save project"),
+    ("Vos projets enregistrés", "Your saved projects"),
+    ("Livrables associés", "Linked deliverables"),
+    ("Modifier le projet", "Edit project"),
+    ("Conversation associée", "Linked conversation"),
+    ("Consulter les projets archivés", "View archived projects"),
+    ("Restaurer", "Restore"),
+    ("Aucun projet archivé.", "No archived projects."),
+])
+def test_english_project_register_labels_are_translated(source, expected):
+    assert translate(source, "English") == expected
