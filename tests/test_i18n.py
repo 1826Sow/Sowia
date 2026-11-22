@@ -52,3 +52,25 @@ def test_pre_login_workspace_copy_is_localized(language, expected):
 ])
 def test_password_login_heading_is_localized(language, expected):
     assert translate("Connexion avec mot de passe", language) == expected
+
+
+@pytest.mark.parametrize("language,expected", [
+    ("English", "Enter a valid email address."),
+    ("Español", "Introduce una dirección de correo electrónico válida."),
+    ("中文", "请输入有效的电子邮箱地址。"),
+    ("Deutsch", "Geben Sie eine gültige E-Mail-Adresse ein."),
+    ("العربية", "أدخل عنوان بريد إلكتروني صالحًا."),
+])
+def test_signup_validation_feedback_is_localized(language, expected):
+    assert translate("Saisissez une adresse e-mail valide.", language) == expected
+
+
+@pytest.mark.parametrize("language,expected", [
+    ("English", "Continue"),
+    ("Español", "Continuar"),
+    ("中文", "继续"),
+    ("Deutsch", "Weiter"),
+    ("العربية", "متابعة"),
+])
+def test_email_signin_action_is_localized(language, expected):
+    assert translate("Valider", language) == expected
