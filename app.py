@@ -1367,8 +1367,8 @@ def navigation_category_art(category):
     if any(word in value for word in ("abonnement", "compte")):
         return "assets/categories/admin-support.svg"
     if any(word in value for word in ("administration", "assistance", "contrôle", "control", "aide")):
-        return "assets/categories/admin-support.svg"
-    return "assets/categories/admin-support.svg"
+        return "assets/categories/admin.svg"
+    return "assets/categories/admin.svg"
 
 
 with st.sidebar:
