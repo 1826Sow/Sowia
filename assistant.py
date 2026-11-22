@@ -54,7 +54,7 @@ def _offline_reply(messages):
 
 
 MAX_DOCUMENT_CONTEXT_CHARS = 24000
-MAX_MEMORY_CONTEXT_CHARS = 32000
+MAX_MEMORY_CONTEXT_CHARS = 64000
 
 
 def build_system_prompt(memories=None, document_context=None, memory_query=""):
