@@ -33,3 +33,22 @@ def test_memory_export_skips_blank_note_content():
 
     assert "Note utile" in result
     assert "\nNote 2\n" not in result
+
+
+def test_memory_export_preserves_memory_metadata():
+    result = format_memory_export(
+        [{
+            "content": "Architecture SOW IA",
+            "category": "technical",
+            "importance": 5,
+            "source": "project",
+            "tags": ["SOW IA", "Supabase"],
+            "project_id": 42,
+        }],
+        "professionnel",
+    )
+    assert "Catégorie : technical" in result
+    assert "Priorité : 5/5" in result
+    assert "Source : project" in result
+    assert "Tags : SOW IA, Supabase" in result
+    assert "Projet ID : 42" in result
