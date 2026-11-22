@@ -374,6 +374,39 @@ if logout_notice:
 # before the per-account language preference is loaded after sign-in.
 language = "Français"
 
+# Translate exact, known UI labels across the main app and imported modules.
+# This is display-only: route values, database data, user content and secrets
+# are not rewritten. Rich HTML/CSS and interpolated strings are left untouched.
+if not getattr(st, "_sowia_i18n_display_patch", False):
+    _SOWIA_DISPLAY_METHODS = (
+        "title", "header", "subheader", "caption", "write", "markdown",
+        "info", "warning", "success", "error", "button", "text_input",
+        "text_area", "selectbox", "radio", "checkbox", "form_submit_button",
+        "metric", "download_button", "file_uploader", "toggle", "chat_input",
+    )
+    for _method_name in _SOWIA_DISPLAY_METHODS:
+        _original_method = getattr(st, _method_name, None)
+        if callable(_original_method):
+            def _make_localized_method(_original, _name):
+                def _localized_method(*args, **kwargs):
+                    _active_language = globals().get("language", "Français")
+                    _args = list(args)
+                    if _args and isinstance(_args[0], str):
+                        _label = _args[0]
+                        if "<" not in _label and "{" not in _label and "}" not in _label:
+                            _args[0] = translate_ui(_label, _active_language)
+                    elif isinstance(kwargs.get("label"), str):
+                        _label = kwargs["label"]
+                        if "<" not in _label and "{" not in _label and "}" not in _label:
+                            kwargs["label"] = translate_ui(_label, _active_language)
+                    if _name in {"selectbox", "radio"} and "options" in kwargs:
+                        _fmt = kwargs.get("format_func", lambda value: value)
+                        kwargs["format_func"] = lambda value, _f=_fmt, _lang=_active_language: translate_ui(str(_f(value)), _lang)
+                    return _original(*_args, **kwargs)
+                return _localized_method
+            setattr(st, _method_name, _make_localized_method(_original_method, _method_name))
+    st._sowia_i18n_display_patch = True
+
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
 # Fail closed by default on hosted deployments; local development must opt out explicitly.
 auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "true")).strip().lower() in {"1", "true", "yes"}
