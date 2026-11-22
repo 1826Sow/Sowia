@@ -566,44 +566,6 @@ def test_memory_list_uses_pagination_without_a_100_note_cap():
     assert ("archived_at", "is.null") in query.filters
 
 
-def test_memory_insert_validates_category_importance_and_tags():
-    client = FakeClient()
-    cloud_storage.add_memory(
-        client, User(), "Technical decision", category="technical",
-        importance=5, tags=["SOW IA", "Supabase", "SOW IA"], source="project",
-        project_id=12,
-    )
-    payload = client.tables["sowia_memory_items"].inserted
-    assert payload["category"] == "technical"
-    assert payload["importance"] == 5
-    assert payload["tags"] == ["SOW IA", "Supabase"]
-    assert payload["project_id"] == 12
-
-
-def test_memory_search_uses_owner_scoped_rpc_and_excludes_current_session():
-    client = FakeClient()
-    cloud_storage.search_memory_context(
-        client, User(), "SOW IA project memory", "professional",
-        exclude_session_id="active-session", limit=60,
-    )
-    assert client.rpc_name == "sowia_search_memory_context"
-    assert client.rpc_params == {
-        "p_workspace_id": "professional",
-        "p_query": "SOW IA project memory",
-        "p_exclude_session_id": "active-session",
-        "p_project_id": None,
-        "p_match_count": 60,
-    }
-
-
-def test_memory_list_uses_pagination_without_a_100_note_cap():
-    client = FakeClient()
-    cloud_storage.list_memories(client, User(), "personal", limit=1000, offset=1000)
-    query = client.tables["sowia_memory_items"]
-    assert ("range", 1000, 1999) in query.operations
-    assert ("archived_at", "is.null") in query.filters
-
-
 def test_memory_insert_persists_category_priority_tags_and_project():
     client = FakeClient()
     cloud_storage.add_memory(
