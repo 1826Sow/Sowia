@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 import streamlit as st
 from settings import get_setting
 from i18n import LANGUAGES as SOWIA_LANGUAGES, translate as translate_ui
+from visual_identity import render_page_visual
 
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
@@ -1273,6 +1274,27 @@ if st.session_state.get("sowia_current_page") not in [item for group in NAV_GROU
     st.session_state["sowia_current_page"] = page
 elif st.session_state.get("sowia_current_page") != page:
     st.session_state["sowia_current_page"] = page
+
+# Bandeau illustré propre à chaque rubrique et sous-rubrique.
+st.markdown(
+    """
+    <style>
+    .sowia-page-visual{display:flex;align-items:center;gap:1.1rem;overflow:hidden;position:relative;min-height:142px;margin:.35rem 0 1rem;padding:.8rem 1rem;border:1px solid rgba(91,220,235,.30);border-radius:20px;background:linear-gradient(115deg,#0b1d34,#102f50 68%,#10445a);box-shadow:0 10px 28px rgba(0,0,0,.22)}
+    .sowia-visual-art{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 118px;width:118px;height:118px;overflow:hidden;border-radius:18px;background:radial-gradient(circle at 28% 22%,rgba(255,255,255,.34),transparent 24%),linear-gradient(135deg,var(--visual-start),var(--visual-end));box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}
+    .sowia-visual-symbol{position:relative;z-index:2;font-size:3.55rem;line-height:1;filter:drop-shadow(0 5px 9px rgba(0,0,0,.28))}
+    .sowia-visual-orbit{position:absolute;border:1px solid rgba(255,255,255,.25);border-radius:50%;width:92px;height:92px;transform:rotate(-28deg) scaleX(1.3)}
+    .sowia-orbit-two{width:66px;height:66px;transform:rotate(35deg) scaleX(1.4)}
+    .sowia-visual-spark{position:absolute;color:rgba(255,255,255,.85)}
+    .sowia-spark-one{top:12px;right:16px;font-size:1.1rem}.sowia-spark-two{bottom:13px;left:15px;font-size:1.35rem}
+    .sowia-visual-copy{min-width:0;position:relative;z-index:1}
+    .sowia-visual-kicker{color:#83efff;font-size:.68rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.38rem}
+    .sowia-visual-title{color:#fff;font-size:clamp(1.12rem,2.6vw,1.55rem);line-height:1.18;font-weight:800}
+    .sowia-visual-subtitle{color:#c7dced;font-size:.88rem;line-height:1.4;margin-top:.38rem}
+    @media(max-width:560px){.sowia-page-visual{min-height:112px;gap:.8rem;padding:.65rem .75rem;border-radius:16px}.sowia-visual-art{flex-basis:88px;width:88px;height:88px;border-radius:14px}.sowia-visual-symbol{font-size:2.75rem}.sowia-visual-orbit{width:70px;height:70px}.sowia-orbit-two{width:50px;height:50px}.sowia-visual-subtitle{font-size:.78rem}}
+    </style>
+    """ + render_page_visual(page, st.session_state.nav_category),
+    unsafe_allow_html=True,
+)
 
 # Navigation globale : ce bouton est rendu avant le contenu de chaque rubrique.
 # Il reste visible en haut pendant le défilement, y compris dans NIGHT EXCHANGE.
