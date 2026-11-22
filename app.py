@@ -401,7 +401,7 @@ if not getattr(st, "_sowia_i18n_display_patch", False):
                         _label = kwargs["label"]
                         if "<" not in _label and "{" not in _label and "}" not in _label:
                             kwargs["label"] = translate_ui(_label, _active_language)
-                    if _name in {"selectbox", "radio", "multiselect"} and "options" in kwargs:
+                    if _name in {"selectbox", "radio", "multiselect"} and (len(_args) > 1 or "options" in kwargs):
                         _fmt = kwargs.get("format_func", lambda value: value)
                         kwargs["format_func"] = lambda value, _f=_fmt, _lang=_active_language: translate_ui(str(_f(value)), _lang)
                     return _original(*_args, **kwargs)
@@ -428,7 +428,7 @@ if not getattr(st, "_sowia_i18n_display_patch", False):
                         _label = kwargs["label"]
                         if "<" not in _label and "{" not in _label and "}" not in _label:
                             kwargs["label"] = translate_ui(_label, _active_language)
-                    if _name in {"selectbox", "radio", "multiselect"} and "options" in kwargs:
+                    if _name in {"selectbox", "radio", "multiselect"} and (len(_args) > 1 or "options" in kwargs):
                         _fmt = kwargs.get("format_func", lambda value: value)
                         kwargs["format_func"] = lambda value, _f=_fmt, _lang=_active_language: translate_ui(str(_f(value)), _lang)
                     return _original(_self, *_args, **kwargs)
