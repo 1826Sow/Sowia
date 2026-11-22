@@ -5841,7 +5841,7 @@ elif page == "SOWIA GLOBAL INTELLIGENCE":
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre compte SOW IA pour enregistrer vos évaluations dans votre espace privé.")
     else:
-        intel_tabs = st.tabs(["📊 Vue stratégique", "＋ Évaluer un marché", "📁 Mon registre"])
+        intel_tabs = st.tabs(["📊 Vue stratégique", "＋ Évaluer un marché", "📁 Mon registre", "🔎 Recherche assistée"])
         with intel_tabs[0]:
             st.markdown("#### Six critères communs pour comparer les opportunités")
             st.write("Demande du marché · Alignement stratégique · Accessibilité · Partenaires disponibles · Préparation réglementaire · Qualité des preuves")
@@ -5946,6 +5946,86 @@ elif page == "SOWIA GLOBAL INTELLIGENCE":
                             st.rerun()
             except Exception as history_error:
                 st.error("Historique indisponible : " + type(history_error).__name__)
+
+
+        with intel_tabs[3]:
+            st.markdown("#### 🔎 Étudier un marché à partir de sources publiques")
+            st.caption(
+                "SOW IA prépare une recherche ciblée et organise les pistes documentaires. "
+                "Les résultats ne sont ni certifiés ni enregistrés automatiquement."
+            )
+            with st.form("sowia_global_market_research_form"):
+                market_country = st.text_input(
+                    "Pays ou marché ciblé", max_chars=100,
+                    placeholder="Ex. Sénégal, France, Singapour",
+                )
+                market_sector = st.text_input(
+                    "Secteur d'activité", max_chars=100,
+                    placeholder="Ex. logiciels, agriculture, tourisme",
+                )
+                market_objective = st.text_input(
+                    "Besoin ou objectif commercial", max_chars=180,
+                    placeholder="Ex. identifier la demande et les distributeurs",
+                )
+                market_search_submit = st.form_submit_button(
+                    "Rechercher des informations publiques", type="primary"
+                )
+            if market_search_submit:
+                try:
+                    from sowia_global_market_research import (
+                        build_market_research_query, normalize_market_sources,
+                        build_research_summary,
+                    )
+                    market_query = build_market_research_query(
+                        market_country, market_sector, market_objective
+                    )
+                    with st.spinner("Recherche de sources publiques…"):
+                        raw_market_sources = search_web(market_query, max_results=8)
+                    market_sources = normalize_market_sources(raw_market_sources)
+                    st.session_state["sowia_market_research_result"] = {
+                        "country": market_country.strip(),
+                        "sector": market_sector.strip(),
+                        "objective": market_objective.strip(),
+                        "sources": market_sources,
+                        "summary": build_research_summary(
+                            market_country, market_sector, market_objective,
+                            raw_market_sources,
+                        ),
+                    }
+                except (RuntimeError, ValueError) as market_error:
+                    st.error(str(market_error))
+                except Exception as market_error:
+                    st.error("La recherche de marché n'a pas abouti. Réessayez plus tard.")
+                    st.caption("Diagnostic : " + type(market_error).__name__)
+
+            market_result = st.session_state.get("sowia_market_research_result")
+            if market_result:
+                st.divider()
+                st.metric("Sources publiques à examiner", len(market_result["sources"]))
+                st.warning(
+                    "Ces résultats sont des pistes de recherche. Vérifiez chaque source, "
+                    "sa date et son autorité avant de noter ou de retenir une opportunité."
+                )
+                for source_index, source in enumerate(market_result["sources"], start=1):
+                    with st.container(border=True):
+                        st.markdown(f"**{source_index}. {source['title']}**")
+                        st.caption(f"{source['domain']} · Pertinence de recherche : "
+                                   + (f"{source['search_relevance']:.2f}" if source["search_relevance"] is not None else "non communiquée")
+                                   + " · Statut : à vérifier")
+                        if source["content"]:
+                            st.write(source["content"])
+                        st.link_button("Consulter la source", source["url"])
+                st.markdown("##### Synthèse de recherche à conserver ou à retravailler")
+                st.text_area(
+                    "Compte rendu et sources",
+                    value=market_result["summary"],
+                    height=300,
+                    key="sowia_market_research_summary_display",
+                )
+                st.caption(
+                    "Aucune entreprise n'est contactée, aucun message n'est envoyé "
+                    "et aucune donnée n'est enregistrée sans votre action."
+                )
 
 
 elif page == "SOWIA GLOBAL PULSE":
