@@ -10,14 +10,14 @@ def test_retrieval_prioritizes_notes_relevant_to_current_question():
         {"content": "SOW IA utilise NIGHT EXCHANGE pour les échanges entre applications."},
     ]
     selected = select_relevant_memories("Comment fonctionne NIGHT EXCHANGE dans SOW IA ?", memories)
-    assert selected[0] == memories[2]
-    assert memories[1] not in selected
+    assert selected[0] == memories[2]["content"]
+    assert memories[1]["content"] not in selected
 
 
 def test_retrieval_falls_back_to_recent_notes_when_no_tokens_match():
     memories = [{"content": "Note récente"}, {"content": "Note ancienne"}]
     assert select_relevant_memories("question sans rapport", memories) == [
-        memories[0], memories[1]
+        "Note récente", "Note ancienne"
     ]
 
 
@@ -27,14 +27,14 @@ def test_retrieval_accepts_plain_strings_and_limits_results():
     ]
 
 
-def test_retrieval_uses_note_title_and_tags_as_searchable_metadata():
+def test_retrieval_uses_note_title_and_tags_as_searchable_metadata_but_returns_content():
     note = {
         "content": "Procédure interne de sauvegarde.",
         "title": "Sécurité Supabase",
         "tags": ["authentification", "base de données"],
     }
     other = {"content": "Recette de cuisine"}
-    assert select_relevant_memories("authentification Supabase", [other, note])[0] == note
+    assert select_relevant_memories("authentification Supabase", [other, note])[0] == note["content"]
 
 
 def test_retrieval_handles_accented_and_unaccented_queries():
