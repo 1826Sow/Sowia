@@ -434,7 +434,13 @@ if not getattr(st, "_sowia_i18n_display_patch", False):
                         kwargs["format_func"] = lambda value, _f=_fmt, _lang=_active_language: translate_ui(str(_f(value)), _lang)
                     return _original(_self, *_args, **kwargs)
                 return _localized_container_method
-            setattr(_SOWIA_DELTA_CLASS, _method_name, _make_localized_container_method(_container_original))
+            try:
+                setattr(_SOWIA_DELTA_CLASS, _method_name, _make_localized_container_method(_container_original))
+            except (TypeError, AttributeError):
+                # Some Streamlit versions expose an immutable DeltaGenerator class.
+                # Keep the main st.* localization patch and continue without
+                # patching container methods rather than crashing app startup.
+                continue
     st._sowia_i18n_display_patch = True
 
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
