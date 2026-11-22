@@ -6,6 +6,7 @@ on:
     branches:
       - android/fix-login-pdf-navigation-20261121
       - fix/android-speech-voices-20261122
+      - integration/sowia-complete-20261122
     paths:
       - '.github/workflows/android-maintenance-debug.yml'
       - 'android/**'
