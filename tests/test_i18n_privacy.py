@@ -35,3 +35,22 @@ def test_navigation_categories_are_translated_for_supported_languages():
     }
     for language, expected in categories.items():
         assert translate("🌙 Bourse aux applications", language) == expected
+
+
+
+def test_main_section_headings_are_translated_in_all_supported_languages():
+    expected = {
+        "English": "Welcome to SOW IA",
+        "Español": "Te damos la bienvenida a SOW IA",
+        "中文": "欢迎使用 SOW IA",
+        "Deutsch": "Willkommen bei SOW IA",
+        "العربية": "مرحباً بك في SOW IA",
+    }
+    for language, translated in expected.items():
+        assert translate("Bienvenue dans SOW IA", language) == translated
+
+
+def test_static_section_headings_use_the_active_language():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert 'st.subheader(translate_ui("Bienvenue dans SOW IA", language))' in source
+    assert 'st.subheader(translate_ui("🌙 SOW IA NIGHT EXCHANGE", language))' in source
