@@ -18,6 +18,46 @@ _LOCALIZABLE_STREAMLIT_CALLS = (
 )
 
 
+
+def _translate_markdown_text(value, language, translate):
+    """Translate exact catalogue phrases line-by-line while preserving markup."""
+    output = []
+    in_code_fence = False
+    for line in value.splitlines(keepends=True):
+        stripped = line.strip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            in_code_fence = not in_code_fence
+            output.append(line)
+            continue
+        if in_code_fence or not stripped or "<" in line or "](" in line or "![" in line:
+            output.append(line)
+            continue
+
+        ending = "\\n" if line.endswith("\\n") else ""
+        body = line[:-1] if ending else line
+        patterns = (
+            r"^(\\s*#{1,6}\\s+)(.+)$",
+            r"^(\\s*\\*\\*)(.+?)(\\*\\*\\s*)$",
+            r"^(\\s*(?:[-*+]\\s+|\\d+\\.\\s+))(.+)$",
+            r"^(\\s*>\\s*)(.+)$",
+        )
+        translated_line = body
+        for pattern in patterns:
+            match = re.match(pattern, body)
+            if match:
+                if len(match.groups()) == 2:
+                    prefix, phrase = match.groups()
+                    translated_line = prefix + translate(phrase, language)
+                else:
+                    prefix, phrase, suffix = match.groups()
+                    translated_line = prefix + translate(phrase, language) + suffix
+                break
+        else:
+            if not any(token in body for token in ("**", "`", "{", "}")):
+                translated_line = translate(body, language)
+        output.append(translated_line + ending)
+    return "".join(output)
+
 def install_streamlit_localization(st_module, translate, get_language):
     """Localize both st.* and DeltaGenerator UI methods (sidebar/columns/tabs)."""
 
@@ -35,15 +75,7 @@ def install_streamlit_localization(st_module, translate, get_language):
             if len(mutable_args) > label_index and isinstance(mutable_args[label_index], str):
                 first = mutable_args[label_index]
                 if __method == "markdown":
-                    # Translate exact catalogue phrases only; preserve HTML,
-                    # CSS, links, code blocks and arbitrary rich content.
-                    if not any(token in first.lower() for token in ("<", "```", "![", "](")):
-                        match = re.match(r"^(#{1,6}\\s+|\\*\\*)(.*?)(\\*\\*)?$", first, re.S)
-                        if match:
-                            prefix, body, suffix = match.group(1), match.group(2), match.group(3) or ""
-                            first = prefix + translate(body, language) + suffix
-                        else:
-                            first = translate(first, language)
+                    first = _translate_markdown_text(first, language, translate)
                 else:
                     first = translate(first, language)
                 mutable_args[label_index] = first
