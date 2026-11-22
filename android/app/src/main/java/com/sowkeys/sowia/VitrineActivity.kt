@@ -34,7 +34,8 @@ class VitrineActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 VitrineScreen {
-                    startActivity(Intent(this, MainActivity::class.java).putExtra("open_login", true))
+                    startActivity(Intent(this, DashboardActivity::class.java))
+                    finish()
                 }
             }
         }
