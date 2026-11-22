@@ -2697,6 +2697,7 @@ elif page == "Ma mémoire":
                 inserted = add_app_memory(note, category=memory_category, importance=memory_importance, project_id=memory_project_id)
                 if cloud_mode and not inserted:
                     raise RuntimeError("La base n'a pas confirmé l'enregistrement.")
+                st.session_state["sowia_memory_offset"] = 0
                 st.success("Information enregistrée dans la mémoire durable.")
                 st.rerun()
             except (ValueError, PermissionError, RuntimeError) as exc:
