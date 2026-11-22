@@ -11,7 +11,11 @@ ALTER TABLE public.sowia_memory_items
     ADD COLUMN IF NOT EXISTS archived_at timestamptz;
 
 ALTER TABLE public.sowia_memory_items
-    DROP CONSTRAINT IF EXISTS sowia_memory_items_content_check;
+    DROP CONSTRAINT IF EXISTS sowia_memory_items_content_check,
+    DROP CONSTRAINT IF EXISTS sowia_memory_items_category_check,
+    DROP CONSTRAINT IF EXISTS sowia_memory_items_importance_check,
+    DROP CONSTRAINT IF EXISTS sowia_memory_items_source_check,
+    DROP CONSTRAINT IF EXISTS sowia_memory_items_metadata_object_check;
 
 ALTER TABLE public.sowia_memory_items
     ADD CONSTRAINT sowia_memory_items_content_check
