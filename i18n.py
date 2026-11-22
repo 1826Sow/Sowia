@@ -772,6 +772,62 @@ _COMMON_UI_TRANSLATIONS = {
     },
 }
 
+
+# Additional high-frequency labels and source/status messages used across
+# specialist workspaces. These are display-only translations.
+_SPECIALIST_UI_TRANSLATIONS = {
+    "English": {
+        "Pays": "Country", "Statut": "Status", "Décision": "Decision",
+        "Ouvrir la source": "Open source", "Consulter la source": "View source",
+        "Vérifier la source": "Verify source", "Pays ou marché": "Country or market",
+        "Site web (facultatif)": "Website (optional)", "Pays de livraison": "Delivery country",
+        "Objectif": "Goal", "Devise": "Currency", "Étape": "Step", "Compte": "Account",
+        "Confirmer la suppression": "Confirm deletion", "Réessayer l'import PDF": "Retry PDF import",
+        "Annuler la demande": "Cancel request", "Suivi mis à jour.": "Follow-up updated.",
+        "Aucune écriture en contrôle manuel ou avec un autre statut dans les lignes chargées.": "No entries requiring manual review or carrying another status were found in the loaded rows.",
+    },
+    "Español": {
+        "Pays": "País", "Statut": "Estado", "Décision": "Decisión",
+        "Ouvrir la source": "Abrir la fuente", "Consulter la source": "Consultar la fuente",
+        "Vérifier la source": "Verificar la fuente", "Pays ou marché": "País o mercado",
+        "Site web (facultatif)": "Sitio web (opcional)", "Pays de livraison": "País de entrega",
+        "Objectif": "Objetivo", "Devise": "Moneda", "Étape": "Paso", "Compte": "Cuenta",
+        "Confirmer la suppression": "Confirmar eliminación", "Réessayer l'import PDF": "Reintentar la importación del PDF",
+        "Annuler la demande": "Cancelar la solicitud", "Suivi mis à jour.": "Seguimiento actualizado.",
+        "Aucune écriture en contrôle manuel ou avec un autre statut dans les lignes chargées.": "No hay registros que requieran revisión manual o tengan otro estado entre las filas cargadas.",
+    },
+    "中文": {
+        "Pays": "国家/地区", "Statut": "状态", "Décision": "决策",
+        "Ouvrir la source": "打开来源", "Consulter la source": "查看来源",
+        "Vérifier la source": "核实来源", "Pays ou marché": "国家或市场",
+        "Site web (facultatif)": "网站（可选）", "Pays de livraison": "配送国家",
+        "Objectif": "目标", "Devise": "货币", "Étape": "步骤", "Compte": "账户",
+        "Confirmer la suppression": "确认删除", "Réessayer l'import PDF": "重试 PDF 导入",
+        "Annuler la demande": "取消请求", "Suivi mis à jour.": "跟进信息已更新。",
+        "Aucune écriture en contrôle manuel ou avec un autre statut dans les lignes chargées.": "已加载的记录中没有需要人工审核或状态异常的条目。",
+    },
+    "Deutsch": {
+        "Pays": "Land", "Statut": "Status", "Décision": "Entscheidung",
+        "Ouvrir la source": "Quelle öffnen", "Consulter la source": "Quelle ansehen",
+        "Vérifier la source": "Quelle überprüfen", "Pays ou marché": "Land oder Markt",
+        "Site web (facultatif)": "Website (optional)", "Pays de livraison": "Lieferland",
+        "Objectif": "Ziel", "Devise": "Währung", "Étape": "Schritt", "Compte": "Konto",
+        "Confirmer la suppression": "Löschen bestätigen", "Réessayer l'import PDF": "PDF-Import erneut versuchen",
+        "Annuler la demande": "Anfrage abbrechen", "Suivi mis à jour.": "Nachverfolgung aktualisiert.",
+        "Aucune écriture en contrôle manuel ou avec un autre statut dans les lignes chargées.": "In den geladenen Zeilen gibt es keine Einträge mit manueller Prüfung oder anderem Status.",
+    },
+    "العربية": {
+        "Pays": "البلد", "Statut": "الحالة", "Décision": "القرار",
+        "Ouvrir la source": "فتح المصدر", "Consulter la source": "عرض المصدر",
+        "Vérifier la source": "التحقق من المصدر", "Pays ou marché": "البلد أو السوق",
+        "Site web (facultatif)": "الموقع الإلكتروني (اختياري)", "Pays de livraison": "بلد التسليم",
+        "Objectif": "الهدف", "Devise": "العملة", "Étape": "الخطوة", "Compte": "الحساب",
+        "Confirmer la suppression": "تأكيد الحذف", "Réessayer l'import PDF": "إعادة محاولة استيراد PDF",
+        "Annuler la demande": "إلغاء الطلب", "Suivi mis à jour.": "تم تحديث المتابعة.",
+        "Aucune écriture en contrôle manuel ou avec un autre statut dans les lignes chargées.": "لا توجد سجلات تتطلب مراجعة يدوية أو تحمل حالة أخرى ضمن الصفوف المحمّلة.",
+    },
+}
+
 def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     # Keep the product name visually consistent in every translated UI label.
@@ -784,6 +840,9 @@ def translate(text: str, language: str = "Français") -> str:
     # Separate dictionaries prevent duplicate language keys from overwriting
     # the broader translation catalogue during module loading.
     translated = _COMMON_UI_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _SPECIALIST_UI_TRANSLATIONS.get(language, {}).get(text)
     if translated is not None:
         return translated
     translated = _BASE_TRANSLATIONS.get(language, {}).get(text)
