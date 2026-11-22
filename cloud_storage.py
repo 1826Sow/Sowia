@@ -292,8 +292,8 @@ def delete_growth_lead(client, user, lead_id, workspace_id="personal"):
 LANGUAGE_PREFERENCES = {"Français", "English", "Español", "中文", "Deutsch", "العربية"}
 
 
-def get_language_preference(client, user):
-    """Return the authenticated user's saved interface language."""
+def get_language_preference(client, user, default="Français"):
+    """Return the saved language, falling back to the language chosen before sign-in."""
     rows = (
         client.table("sowia_user_preferences")
         .select("language")
@@ -301,8 +301,9 @@ def get_language_preference(client, user):
         .limit(1)
         .execute().data
     )
-    language = rows[0].get("language") if rows else "Français"
-    return language if language in LANGUAGE_PREFERENCES else "Français"
+    fallback = default if default in LANGUAGE_PREFERENCES else "Français"
+    language = rows[0].get("language") if rows else fallback
+    return language if language in LANGUAGE_PREFERENCES else fallback
 
 
 def set_language_preference(client, user, language):
