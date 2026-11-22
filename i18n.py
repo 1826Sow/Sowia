@@ -1080,3 +1080,44 @@ _PROJECT_REGISTER_FINAL_STRINGS = {
 }
 for _language, _catalogue in _PROJECT_REGISTER_FINAL_STRINGS.items():
     _EXTRA_TRANSLATIONS[_language].update(_catalogue)
+
+
+_PROJECT_REGISTER_WORKSPACE_STATUS = {
+    "English": {
+        "Personnel": "Personal",
+        "Professionnel": "Professional",
+        "À tester": "To test",
+        "Validé": "Approved",
+        "Terminé": "Completed",
+    },
+    "Español": {
+        "Personnel": "Personal",
+        "Professionnel": "Profesional",
+        "À tester": "Por probar",
+        "Validé": "Validado",
+        "Terminé": "Completado",
+    },
+    "Deutsch": {
+        "Personnel": "Persönlich",
+        "Professionnel": "Professionell",
+        "À tester": "Zu testen",
+        "Validé": "Freigegeben",
+        "Terminé": "Abgeschlossen",
+    },
+    "中文": {
+        "Personnel": "个人",
+        "Professionnel": "专业",
+        "À tester": "待测试",
+        "Validé": "已批准",
+        "Terminé": "已完成",
+    },
+    "العربية": {
+        "Personnel": "شخصي",
+        "Professionnel": "مهني",
+        "À tester": "قيد الاختبار",
+        "Validé": "تمت الموافقة",
+        "Terminé": "مكتمل",
+    },
+}
+for _language, _catalogue in _PROJECT_REGISTER_WORKSPACE_STATUS.items():
+    _EXTRA_TRANSLATIONS[_language].update(_catalogue)
