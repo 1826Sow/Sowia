@@ -6,6 +6,9 @@ from datetime import datetime, timezone, timedelta
 import streamlit as st
 from settings import get_setting
 from i18n import LANGUAGES as SOWIA_LANGUAGES, translate as translate_ui
+from i18n_streamlit import install_streamlit_localization
+
+install_streamlit_localization(st, translate_ui, lambda: st.session_state.get("sowia_language", "Français"))
 
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
