@@ -1389,7 +1389,7 @@ st.markdown(
 st.write("")
 
 if page == "Accueil":
-    st.subheader("Bienvenue dans SOW IA")
+    st.subheader(translate_ui("Bienvenue dans SOW IA", language))
     st.caption("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.")
     # The project hub is deliberately the first major block on the home page.
     st.markdown(
@@ -4076,7 +4076,7 @@ elif page == "Abonnement":
 
 
 elif page == "SOWIA GLOBAL ID":
-    st.subheader("🪪 SOW IA GLOBAL ID")
+    st.subheader(translate_ui("🪪 SOW IA GLOBAL ID", language))
     st.caption("Votre identité professionnelle internationale, sous votre contrôle.")
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre compte sécurisé pour créer et conserver votre carte SOW IA.")
@@ -4234,7 +4234,7 @@ elif page == "SOWIA GLOBAL ID":
             st.caption("Diagnostic : " + type(exc).__name__)
 
 elif page == "SOWIA GLOBAL DIRECTORY":
-    st.subheader("🌐 SOW IA GLOBAL DIRECTORY")
+    st.subheader(translate_ui("🌐 SOW IA GLOBAL DIRECTORY", language))
     st.caption("Découvrez les entreprises et applications qui ont choisi de publier leur carte professionnelle SOW IA.")
     st.markdown(
         '<div class="partner-intro"><h3>Un réseau professionnel ouvert sur le monde</h3>'
@@ -4274,7 +4274,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
             st.metric("Cartes correspondant à la recherche", len(matches))
 
             st.divider()
-            st.subheader("✨ SOW IA GLOBAL PARTNER NETWORK — suggestions de partenaires")
+            st.subheader(translate_ui("✨ SOW IA GLOBAL PARTNER NETWORK — suggestions de partenaires", language))
             st.caption("Suggestions indicatives fondées sur les secteurs, spécialités, langues et pays déclarés. Elles ne constituent pas une garantie de qualité ni de réussite commerciale.")
             try:
                 import sowia_global_partner_network as partner_network
@@ -4351,7 +4351,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
             )
 
             st.divider()
-            st.subheader("🤝 GLOBAL CONNECT — demandes de mise en relation")
+            st.subheader(translate_ui("🤝 GLOBAL CONNECT — demandes de mise en relation", language))
             st.caption("Envoyez une courte présentation à un partenaire. Ses coordonnées restent privées : aucune information de contact n'est transmise sans son accord.")
             try:
                 my_global_profile = cloud_storage.get_my_global_profile(supabase_client, current_user)
@@ -4433,7 +4433,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                                     st.rerun()
 
                 st.divider()
-                st.subheader("💬 GLOBAL MESSENGER — conversations acceptées")
+                st.subheader(translate_ui("💬 GLOBAL MESSENGER — conversations acceptées", language))
                 st.caption("La messagerie est activée uniquement après acceptation d’une demande. Les échanges restent privés entre les deux participants.")
                 accepted_requests = [
                     ("Reçue", item) for item in incoming if item.get("status") == "accepted"
@@ -4488,7 +4488,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
                             st.caption("Vérifiez que la migration supabase_global_messenger.sql a été appliquée.");
 
                 st.divider()
-                st.subheader("🔔 GLOBAL NOTIFICATIONS — centre de notifications")
+                st.subheader(translate_ui("🔔 GLOBAL NOTIFICATIONS — centre de notifications", language))
                 try:
                     notification_prefs = cloud_storage.get_global_notification_preferences(
                         supabase_client, current_user
@@ -4571,7 +4571,7 @@ elif page == "SOWIA GLOBAL DIRECTORY":
 
 
 elif page == "SOWIA GLOBAL DECISION ENGINE":
-    st.subheader("⚖️ SOW IA GLOBAL DECISION ENGINE")
+    st.subheader(translate_ui("⚖️ SOW IA GLOBAL DECISION ENGINE", language))
     st.caption("Comparez plusieurs options avec une grille de critères transparente et conservez la justification de votre choix.")
     st.warning("Les notes et pondérations constituent une aide à la réflexion. Elles ne remplacent pas une expertise indépendante ni une validation humaine. Aucune décision n'est exécutée automatiquement.")
     if not cloud_mode or current_user is None:
@@ -4683,7 +4683,7 @@ elif page == "SOWIA GLOBAL DECISION ENGINE":
 
 
 elif page == "SOWIA GLOBAL COLLABORATION HUB":
-    st.subheader("🤝 SOW IA GLOBAL COLLABORATION HUB")
+    st.subheader(translate_ui("🤝 SOW IA GLOBAL COLLABORATION HUB", language))
     st.caption("Espace de projets partagés entre organisations et applications partenaires, avec invitation et consentement explicites.")
     st.warning("Les contributions financières sont des déclarations, pas des paiements vérifiés. Aucun transfert, contrat, message externe ou engagement financier n'est exécuté par ce module.")
     if not cloud_mode or current_user is None:
@@ -4842,7 +4842,7 @@ elif page == "SOWIA GLOBAL COLLABORATION HUB":
 
 
 elif page == "SOWIA GLOBAL ACTION GOVERNANCE":
-    st.subheader("🛡️ SOW IA GLOBAL ACTION GOVERNANCE")
+    st.subheader(translate_ui("🛡️ SOW IA GLOBAL ACTION GOVERNANCE", language))
     st.caption("Transformez une priorité en plan d'action encadré : responsable, budget maximal, échéance, indicateur de réussite et condition d'arrêt.")
     st.warning("Aucun paiement, achat, contrat ou contact externe n'est exécuté. L'approbation exige un second compte authentifié distinct du créateur.")
     if not cloud_mode or current_user is None:
@@ -4928,7 +4928,7 @@ elif page == "SOWIA GLOBAL ACTION GOVERNANCE":
 
 
 elif page == "SOWIA GLOBAL PERFORMANCE & IMPACT":
-    st.subheader("📈 SOW IA GLOBAL PERFORMANCE & IMPACT")
+    st.subheader(translate_ui("📈 SOW IA GLOBAL PERFORMANCE & IMPACT", language))
     st.caption("Mesurez l'avancement, les dépenses cumulées et les résultats opérationnels, sociaux et environnementaux de vos plans approuvés.")
     st.warning("Les mesures sont saisies par les utilisateurs. Les dépenses ne sont pas des écritures comptables rapprochées ; les justificatifs ne sont pas vérifiés automatiquement. Aucun score global d'impact n'est fabriqué.")
     if not cloud_mode or current_user is None:
@@ -5086,7 +5086,7 @@ elif page == "SOWIA GLOBAL PERFORMANCE & IMPACT":
 
 
 elif page == "SOWIA GLOBAL PORTFOLIO CONTROL":
-    st.subheader("🌐 SOW IA GLOBAL PORTFOLIO CONTROL")
+    st.subheader(translate_ui("🌐 SOW IA GLOBAL PORTFOLIO CONTROL", language))
     st.caption("Centre de contrôle pour comparer les projets et marchés à partir des plans, échéances, mesures, budgets et alertes disponibles.")
     st.warning("Outil d'aide à la revue uniquement : aucun budget n'est réaffecté, aucun paiement n'est déclenché et aucune décision n'est exécutée automatiquement.")
     if not cloud_mode or current_user is None:
@@ -5195,7 +5195,7 @@ elif page == "SOWIA GLOBAL PORTFOLIO CONTROL":
 
 
 if page == "SOWIA GLOBAL EXECUTIVE REPORTS":
-    st.subheader("📑 SOW IA GLOBAL EXECUTIVE REPORTS")
+    st.subheader(translate_ui("📑 SOW IA GLOBAL EXECUTIVE REPORTS", language))
     st.caption("Générez à la demande un rapport de direction réunissant vos marchés, alertes, scénarios, décisions, apprentissages et plans d'action.")
     st.warning("Le rapport reflète uniquement les données disponibles dans votre espace connecté. Il ne constitue ni un audit, ni une certification, ni une vérification indépendante. Les budgets restent séparés par devise.")
     if not cloud_mode or current_user is None:
@@ -5281,7 +5281,7 @@ if page == "SOWIA GLOBAL EXECUTIVE REPORTS":
 
 
 elif page == "SOWIA GLOBAL AUTONOMOUS STRATEGY":
-    st.subheader("🌍 SOW IA GLOBAL AUTONOMOUS STRATEGY")
+    st.subheader(translate_ui("🌍 SOW IA GLOBAL AUTONOMOUS STRATEGY", language))
     st.caption("Un tableau de priorités qui rassemble les marchés évalués, les alertes actives, les scénarios et les résultats passés.")
     st.warning("SOW IA prépare des recommandations de travail, mais n'engage aucun budget, ne contacte aucun partenaire et ne lance aucune opération. Une validation humaine est obligatoire.")
     if not cloud_mode or current_user is None:
@@ -5349,7 +5349,7 @@ elif page == "SOWIA GLOBAL AUTONOMOUS STRATEGY":
 
 
 elif page == "SOWIA GLOBAL LEARNING ENGINE":
-    st.subheader("🧠 SOW IA GLOBAL LEARNING ENGINE")
+    st.subheader(translate_ui("🧠 SOW IA GLOBAL LEARNING ENGINE", language))
     st.caption("Confrontez les recommandations enregistrées aux choix réellement effectués et aux résultats observés.")
     st.warning("Ce registre documente l'expérience : il ne prouve pas de causalité, ne connaît pas les résultats contrefactuels et ne réentraîne pas automatiquement le modèle d'IA. Les décisions d'origine restent figées.")
     if not cloud_mode or current_user is None:
@@ -5480,7 +5480,7 @@ elif page == "SOWIA GLOBAL LEARNING ENGINE":
 
 
 elif page == "SOWIA GLOBAL STRATEGIC FORECAST":
-    st.subheader("🔭 SOW IA GLOBAL STRATEGIC FORECAST")
+    st.subheader(translate_ui("🔭 SOW IA GLOBAL STRATEGIC FORECAST", language))
     st.caption("Préparez plusieurs futurs possibles à partir de vos évaluations et alertes enregistrées.")
     st.warning("Ces scénarios sont des hypothèses conditionnelles, pas des prédictions, probabilités ni conseils financiers ou juridiques. Les données d'entrée et les sources doivent être vérifiées par une personne.")
     if not cloud_mode or current_user is None:
@@ -5579,7 +5579,7 @@ elif page == "SOWIA GLOBAL STRATEGIC FORECAST":
 
 
 elif page == "SOWIA GLOBAL INTELLIGENCE":
-    st.subheader("🌐 SOW IA GLOBAL INTELLIGENCE")
+    st.subheader(translate_ui("🌐 SOW IA GLOBAL INTELLIGENCE", language))
     st.caption("Laboratoire de veille et d'aide à la décision pour comparer les marchés, structurer les opportunités et conserver les preuves.")
     st.info("Les notes et classements sont des estimations de travail saisies par l'utilisateur. Ils ne constituent pas des statistiques de marché vérifiées ni des recommandations financières ou juridiques.")
     if not cloud_mode or current_user is None:
@@ -5693,7 +5693,7 @@ elif page == "SOWIA GLOBAL INTELLIGENCE":
 
 
 elif page == "SOWIA GLOBAL PULSE":
-    st.subheader("📡 SOW IA GLOBAL PULSE")
+    st.subheader(translate_ui("📡 SOW IA GLOBAL PULSE", language))
     st.caption("Radar international de veille : lancez une recherche ciblée, conservez les sources et transmettez les signaux utiles à votre analyse stratégique.")
     st.info("La collecte est déclenchée manuellement. Cette version ne surveille pas les marchés en arrière-plan et n'envoie pas d'alertes automatiques. Les résultats web sont des pistes à vérifier, pas des faits certifiés.")
     if not cloud_mode or current_user is None:
@@ -5812,7 +5812,7 @@ elif page == "SOWIA GLOBAL PULSE":
 
 
 elif page == "SOWIA GLOBAL ADMIN & MODERATION":
-    st.subheader("🛡️ SOW IA GLOBAL ADMIN & MODERATION")
+    st.subheader(translate_ui("🛡️ SOW IA GLOBAL ADMIN & MODERATION", language))
     st.caption("Centre réservé aux administrateurs SOW IA : signalements, contrôle des profils et journal des décisions.")
     admin_metadata = getattr(current_user, "app_metadata", None) or {} if current_user is not None else {}
     is_sowia_admin = isinstance(admin_metadata, dict) and (
@@ -5931,7 +5931,7 @@ elif page == "SOWIA GLOBAL ADMIN & MODERATION":
 
 
 elif page == "SOWIA GLOBAL TRUST":
-    st.subheader("🛡️ SOW IA GLOBAL TRUST")
+    st.subheader(translate_ui("🛡️ SOW IA GLOBAL TRUST", language))
     st.caption("Un cadre de confiance fondé sur les collaborations acceptées, des évaluations réciproques et des signalements confidentiels.")
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre compte SOW IA pour accéder à GLOBAL TRUST.")
@@ -6024,7 +6024,7 @@ elif page == "SOWIA GLOBAL TRUST":
 
 
 elif page == "SOWIA NIGHT EXCHANGE":
-    st.subheader("🌙 SOW IA NIGHT EXCHANGE")
+    st.subheader(translate_ui("🌙 SOW IA NIGHT EXCHANGE", language))
     st.caption("Place de marché nocturne internationale pour applications et services numériques.")
     if not premium_active:
         st.warning("Cet espace professionnel est réservé aux comptes Premium.")
@@ -6775,7 +6775,7 @@ elif page == "SOWIA NIGHT EXCHANGE":
                     st.caption(f"Diagnostic : {type(exc).__name__}")
 
 elif page == "Bourse aux applications":
-    st.subheader("🧩 BOURSE AUX APPLICATIONS")
+    st.subheader(translate_ui("🧩 BOURSE AUX APPLICATIONS", language))
     st.caption("Découvrez les applications numériques partenaires validées dans l’écosystème SOW IA.")
     if not premium_active:
         st.warning("La Bourse aux applications est accessible aux comptes Premium.")
@@ -6973,7 +6973,7 @@ elif page == "Bourse aux applications":
             )
 
 elif page == "SOW IA Business Club":
-    st.subheader("🏛️ SOW IA BUSINESS CLUB")
+    st.subheader(translate_ui("🏛️ SOW IA BUSINESS CLUB", language))
     st.caption("Un réseau professionnel international. Votre profil n'apparaît dans l'annuaire que si vous activez explicitement sa publication.")
     st.markdown(
         '<div class="partner-intro"><h3>Rencontres professionnelles utiles</h3>'
@@ -7587,7 +7587,7 @@ elif page == "SOW IA Business Club":
 
 
 elif page == "Opportunités et revenus":
-    st.subheader("📈 Opportunités et revenus de SOW IA")
+    st.subheader(translate_ui("📈 Opportunités et revenus de SOW IA", language))
     st.caption(
         "Pilotez les niches commerciales, les offres et les prévisions. "
         "Les montants saisis ici sont des estimations, pas des ventes encaissées."
@@ -7705,7 +7705,7 @@ elif page == "Décisions humaines vs SOW IA":
     )
 
 elif page == "Stratégie & scénarios":
-    st.subheader("🧭 Laboratoire de scénarios stratégiques")
+    st.subheader(translate_ui("🧭 Laboratoire de scénarios stratégiques", language))
     st.caption(
         "SOW IA compare des scénarios prudents, d'accélération, de rupture et de résilience. "
         "Le classement aide à décider ; il ne déclenche jamais seul un déploiement."
@@ -7830,7 +7830,7 @@ elif page == "Stratégie & scénarios":
         st.error("Le laboratoire de scénarios est momentanément indisponible. Aucune action n'a été lancée.")
 
 elif page == "Technologies & fournisseurs":
-    st.subheader("🧪 Sélection des meilleures technologies")
+    st.subheader(translate_ui("🧪 Sélection des meilleures technologies", language))
     st.caption(
         "SOW IA compare les solutions sur des critères communs. "
         "Un score n'est valable que si les preuves sont documentées ; "
@@ -7999,7 +7999,7 @@ elif page == "Technologies & fournisseurs":
         st.error("Le comparateur de technologies est momentanément indisponible. Aucune solution n'a été sélectionnée.")
 
 elif page == "Finance & investissements":
-    st.subheader("💹 SOW IA Finance — Bourse, Crypto & Investissements")
+    st.subheader(translate_ui("💹 SOW IA Finance — Bourse, Crypto & Investissements", language))
     st.caption(
         "Première version : suivi et calculs en lecture seule à partir de données saisies par vous. "
         "Aucune cotation n'est téléchargée automatiquement et aucun ordre n'est passé."
@@ -8148,7 +8148,7 @@ elif page == "Finance & investissements":
 
 
 elif page == "Revenus & paiements":
-    st.subheader("💶 Revenus & paiements")
+    st.subheader(translate_ui("💶 Revenus & paiements", language))
     st.caption(
         "Vue privée des transactions confirmées enregistrées pour votre compte. "
         "Les montants restent séparés par fournisseur et devise."
@@ -8429,7 +8429,7 @@ elif page == "Revenus & paiements":
 
 
 elif page == "Centre de notifications":
-    st.subheader("🔔 Centre de notifications SOW IA")
+    st.subheader(translate_ui("🔔 Centre de notifications SOW IA", language))
     st.caption(
         "Un point de consultation unique pour vos notifications, alertes stratégiques, "
         "échéances professionnelles et anomalies du registre financier. Les données sont "
@@ -8628,7 +8628,7 @@ elif page == "Centre de notifications":
 
 
 elif page == "SOWIA CONTROL CENTER":
-    st.subheader("🛰️ SOW IA CONTROL CENTER")
+    st.subheader(translate_ui("🛰️ SOW IA CONTROL CENTER", language))
     st.caption(
         "Supervision technique en lecture seule. Aucun paiement, remboursement, "
         "abonnement ou changement de configuration n'est déclenché depuis cette page."
