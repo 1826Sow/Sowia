@@ -1,6 +1,6 @@
 import pytest
 from sowia_global_negotiation import (
-    build_nonbinding_offer, build_reply_draft, detect_negotiation_signals,
+    build_case_memory_entry, build_nonbinding_offer, build_reply_draft, detect_negotiation_signals,
     validate_case, validate_finalization, validate_stage, STAGES,
 )
 
@@ -80,3 +80,22 @@ def test_stage_is_allowlisted():
     assert validate_stage(STAGES[0]) == STAGES[0]
     with pytest.raises(ValueError):
         validate_stage("Auto-signé")
+
+
+def test_case_memory_entry_is_compact_and_preserves_human_review_status():
+    item = {
+        **case(),
+        "stage": "Négociation",
+        "signals": ["prix", "délais"],
+        "draft": "Merci pour votre retour. Nous pouvons étudier ces conditions.",
+    }
+    entry = build_case_memory_entry(item)
+    assert "Partenaire : Acme" in entry
+    assert "Étape : Négociation" in entry
+    assert "Réponse préparée (non envoyée)" in entry
+    assert len(entry) <= 1000
+
+
+def test_case_memory_entry_rejects_incomplete_case():
+    with pytest.raises(ValueError):
+        build_case_memory_entry({"partner": "", "objective": "Distribution", "stage": "Négociation"})
