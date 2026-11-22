@@ -916,7 +916,7 @@ def extract_explicit_memory_request(message):
         return None
     position, marker = min(matches, key=lambda item: item[0])
     content = text[position + len(marker):].strip(" \t\r\n:;,.—-")
-    if not content or len(content) > 1000:
+    if not content or len(content) > 20000:
         return None
     sensitive_markers = (
         "mot de passe", "password", "api_key", "api key", "clé secrète",
