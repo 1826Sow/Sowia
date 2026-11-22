@@ -525,12 +525,19 @@ if cloud_mode:
         supabase_client = None
 
     if current_user is None:
+        language = st.selectbox(
+            "🌐 Language / Langue",
+            SOWIA_LANGUAGES,
+            index=SOWIA_LANGUAGES.index(st.session_state.get("sowia_language", "Français"))
+            if st.session_state.get("sowia_language", "Français") in SOWIA_LANGUAGES else 0,
+            key="sowia_language",
+        )
         st.markdown(
             '<div class="hero"><h1>SOW IA</h1><p>Votre espace personnel sécurisé.</p></div>',
             unsafe_allow_html=True,
         )
         st.subheader(translate_ui("Connexion à SOW IA", language))
-        st.write("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA : utilisez votre mot de passe ou demandez un lien sécurisé à usage unique. Aucun compte GitHub n’est nécessaire.")
+        st.write(translate_ui("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA : utilisez votre mot de passe ou demandez un lien sécurisé à usage unique. Aucun compte GitHub n’est nécessaire.", language))
         callback_code_present = bool(st.query_params.get("code") or st.query_params.get("token_hash"))
         callback_error = str(st.query_params.get("error", "")).strip()
         callback_error_description = str(st.query_params.get("error_description", "")).strip()
@@ -570,15 +577,15 @@ if cloud_mode:
         ).strip().lower() in {"1", "true", "yes"}
 
         if email_login_only:
-            st.markdown("#### Connexion à mon compte SOW IA")
-            with st.expander("Créer un compte SOW IA — nouveau compte uniquement", expanded=False):
-                st.markdown("#### Créer un compte SOW IA")
-                st.caption("Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.")
+            st.markdown("#### " + translate_ui("Connexion à mon compte SOW IA", language))
+            with st.expander(translate_ui("Créer un compte SOW IA — nouveau compte uniquement", language), expanded=False):
+                st.markdown("#### " + translate_ui("Créer un compte SOW IA", language))
+                st.caption(translate_ui("Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.", language))
                 with st.form("sowia_email_signup_form", clear_on_submit=False):
-                    signup_email = st.text_input("Votre adresse e-mail", max_chars=254, key="sowia_signup_email")
-                    signup_password = st.text_input("Mot de passe (8 caractères minimum)", type="password", key="sowia_signup_password")
-                    signup_password_confirm = st.text_input("Confirmer le mot de passe", type="password", key="sowia_signup_password_confirm")
-                    signup_submitted = st.form_submit_button("Créer mon compte", type="primary", use_container_width=True)
+                    signup_email = st.text_input(translate_ui("Votre adresse e-mail", language), max_chars=254, key="sowia_signup_email")
+                    signup_password = st.text_input(translate_ui("Mot de passe (8 caractères minimum)", language), type="password", key="sowia_signup_password")
+                    signup_password_confirm = st.text_input(translate_ui("Confirmer le mot de passe", language), type="password", key="sowia_signup_password_confirm")
+                    signup_submitted = st.form_submit_button(translate_ui("Créer mon compte", language), type="primary", use_container_width=True)
                 if signup_submitted:
                     candidate_signup_email = str(signup_email or "").strip().lower()
                     if (
@@ -588,11 +595,11 @@ if cloud_mode:
                         or candidate_signup_email.endswith("@")
                         or "." not in candidate_signup_email.rsplit("@", 1)[-1]
                     ):
-                        st.error("Saisissez une adresse e-mail valide.")
+                        st.error(translate_ui("Saisissez une adresse e-mail valide.", language))
                     elif len(signup_password or "") < 8:
-                        st.error("Le mot de passe doit contenir au moins 8 caractères.")
+                        st.error(translate_ui("Le mot de passe doit contenir au moins 8 caractères.", language))
                     elif signup_password != signup_password_confirm:
-                        st.error("Les deux mots de passe ne correspondent pas.")
+                        st.error(translate_ui("Les deux mots de passe ne correspondent pas.", language))
                     elif not redirect_to:
                         st.error("L'adresse de retour sécurisée de SOW IA n'est pas valide.")
                     else:
@@ -611,7 +618,7 @@ if cloud_mode:
                                 st.caption("Diagnostic : " + type(signup_exc).__name__ + ((" · " + signup_code[:80]) if signup_code else ""))
 
 
-            st.markdown("#### Connexion avec mot de passe")
+            st.markdown("#### " + translate_ui("Connexion avec mot de passe", language))
             st.caption(
                 "Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter "
                 "directement avec votre mot de passe, sans attendre un nouveau lien e-mail."
@@ -620,13 +627,13 @@ if cloud_mode:
             # This is more reliable in Android WebView, where embedded form
             # submission can fail to dispatch the Streamlit event after typing.
             password_login_email = st.text_input(
-                "Adresse e-mail",
+                translate_ui("Adresse e-mail", language),
                 value=str(st.session_state.get("sowia_email_login_pending", "") or ""),
                 max_chars=254,
                 key="sowia_password_login_email",
             )
             password_login_secret = st.text_input(
-                "Mot de passe",
+                translate_ui("Mot de passe", language),
                 type="password",
                 key="sowia_password_login_secret",
             )
@@ -678,20 +685,20 @@ if cloud_mode:
                             st.caption("Diagnostic : " + type(password_exc).__name__ + " · " + safe_code)
 
             st.divider()
-            st.markdown("#### Connexion par e-mail")
+            st.markdown("#### " + translate_ui("Connexion par e-mail", language))
             st.caption(
                 "Saisissez l'adresse e-mail déjà associée à votre compte SOW IA, "
                 "puis validez. Un lien sécurisé à usage unique sera envoyé ; "
                 "aucun nouveau compte ne sera créé."
             )
             email_address = st.text_input(
-                "Adresse e-mail du compte SOW IA",
+                translate_ui("Adresse e-mail du compte SOW IA", language),
                 value=str(st.session_state.get("sowia_email_login_pending", "") or ""),
                 max_chars=254,
                 key="sowia_email_login_address",
             )
             if st.button(
-                "Valider",
+                translate_ui("Valider", language),
                 key="sowia_send_email_link",
                 type="primary",
                 use_container_width=True,
@@ -743,12 +750,12 @@ if cloud_mode:
                     login_url = github_authorization_url(supabase_client, redirect_to)
                     st.session_state.sowia_github_login_url = login_url
                 st.link_button(
-                    "Continuer avec GitHub",
+                    translate_ui("Continuer avec GitHub", language),
                     login_url,
                     type="primary",
                     use_container_width=True,
                 )
-                if st.button("Recommencer la connexion", use_container_width=True):
+                if st.button(translate_ui("Recommencer la connexion", language), use_container_width=True):
                     st.session_state.pop("sowia_github_login_url", None)
                     st.rerun()
             except Exception:
