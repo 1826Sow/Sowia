@@ -280,3 +280,10 @@ def test_multiline_markdown_translates_catalogue_lines_and_preserves_code_and_ht
     source = "### Titre\\n- Pays\\n\\n```python\\nPays\\n```\\n<div>Pays</div>"
     fake_st.markdown(source)
     assert calls[-1] == "### Title\\n- Country\\n\\n```python\\nPays\\n```\\n<div>Pays</div>"
+
+
+def test_french_remains_the_canonical_display_language():
+    from i18n import translate
+
+    for label in ("Valider", "Annuler", "Pays", "Décisions évaluées"):
+        assert translate(label, "Français") == label
