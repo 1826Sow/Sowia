@@ -79,3 +79,18 @@ def test_primary_navigation_controls_use_the_active_language():
     assert 'translate_ui("📁 Dossier de navigation", language)' in source
     assert 'translate_ui("🧭 Outil à ouvrir", language)' in source
     assert 'translate_ui("←  RETOUR À LA PAGE PRÉCÉDENTE", language)' in source
+
+
+def test_account_access_labels_are_translated_in_all_supported_languages():
+    keys = ("Connexion à mon compte SOW IA", "Créer un compte SOW IA", "Votre adresse e-mail", "Mot de passe (8 caractères minimum)", "Confirmer le mot de passe", "Connexion avec mot de passe", "Connexion par e-mail", "Continuer avec GitHub")
+    for language in ("English", "Español", "中文", "Deutsch", "العربية"):
+        assert all(translate(key, language) != key for key in keys)
+
+
+def test_account_access_controls_use_translation_without_changing_validation_button():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert 'translate_ui("Connexion à mon compte SOW IA", language)' in source
+    assert 'translate_ui("Votre adresse e-mail", language)' in source
+    assert 'translate_ui("Mot de passe", language)' in source
+    assert 'key="sowia_password_login_submit"' in source
+    assert '"VALIDER"' in source
