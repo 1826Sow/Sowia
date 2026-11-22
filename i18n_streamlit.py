@@ -13,7 +13,7 @@ _LOCALIZABLE_STREAMLIT_CALLS = (
     "text_input", "text_area", "selectbox", "radio", "checkbox",
     "toggle", "file_uploader", "date_input", "time_input",
     "number_input", "slider", "select_slider", "multiselect",
-    "expander", "metric", "markdown", "write", "text", "tabs", "status",
+    "expander", "metric", "markdown", "text", "tabs", "status",
 )
 
 
@@ -31,13 +31,13 @@ def _translate_markdown_text(value, language, translate):
             output.append(line)
             continue
 
-        ending = "\n" if line.endswith("\n") else ""
+        ending = "\\n" if line.endswith("\\n") else ""
         body = line[:-1] if ending else line
         patterns = (
-            r"^(\s*#{1,6}\s+)(.+)$",
-            r"^(\s*\*\*)(.+?)(\*\*\s*)$",
-            r"^(\s*(?:[-*+]\s+|\d+\.\s+))(.+)$",
-            r"^(\s*>\s*)(.+)$",
+            r"^(\\s*#{1,6}\\s+)(.+)$",
+            r"^(\\s*\\*\\*)(.+?)(\\*\\*\\s*)$",
+            r"^(\\s*(?:[-*+]\\s+|\\d+\\.\\s+))(.+)$",
+            r"^(\\s*>\\s*)(.+)$",
         )
         translated_line = body
         for pattern in patterns:
@@ -58,7 +58,7 @@ def _translate_markdown_text(value, language, translate):
 
 
 def install_streamlit_localization(st_module, translate, get_language):
-    """Localize st.* and DeltaGenerator methods used by sidebar/columns/tabs."""
+    """Localize UI labels while leaving arbitrary st.write content untouched."""
 
     def wrap_method(target, method_name, bound):
         original = getattr(target, method_name, None)
@@ -118,3 +118,4 @@ def install_streamlit_localization(st_module, translate, get_language):
         generator_type = type(sidebar)
         for method_name in _LOCALIZABLE_STREAMLIT_CALLS:
             wrap_method(generator_type, method_name, bound=True)
+"
