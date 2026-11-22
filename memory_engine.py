@@ -8,6 +8,11 @@ import unicodedata
 
 MAX_CONTEXT_CHARS = 12000
 DEFAULT_MAX_ITEMS = 30
+_METADATA_FIELDS = (
+    "title", "summary", "tags", "category", "document_name",
+    "document_title", "file_name", "project_title", "agent", "agent_name",
+    "source",
+)
 _STOP_WORDS = {
     "a", "à", "au", "aux", "avec", "ce", "ces", "dans", "de", "des", "du",
     "elle", "en", "et", "eux", "il", "je", "la", "le", "les", "leur", "lui",
@@ -25,10 +30,15 @@ def _normalise(value):
 
 
 def _tokens(value):
+    # Keep short technical vocabulary such as IA, AI, UI, API and SQL.
     return {
         token for token in re.findall(r"[\w'-]{2,}", _normalise(value), flags=re.UNICODE)
         if token not in _STOP_WORDS and not token.isdigit()
     }
+
+
+def _phrase(value):
+    return " ".join(re.findall(r"[\w'-]+", _normalise(value), flags=re.UNICODE))
 
 
 def _content(item):
@@ -37,26 +47,60 @@ def _content(item):
     return str(item or "").strip()
 
 
-def _score(content, query_tokens, query_text):
+def _metadata_text(item):
+    """Build searchable metadata without exposing it in the returned prompt."""
+    if not isinstance(item, dict):
+        return ""
+
+    parts = []
+    for field in _METADATA_FIELDS:
+        value = item.get(field)
+        if value is None:
+            continue
+        if isinstance(value, (list, tuple, set)):
+            parts.extend(str(part) for part in value if part is not None)
+        elif isinstance(value, dict):
+            parts.extend(str(part) for part in value.values() if part is not None)
+        else:
+            parts.append(str(value))
+    return " ".join(parts)
+
+
+def _score(content, searchable_text, query_tokens, query_text):
     content_tokens = _tokens(content)
-    if not query_tokens or not content_tokens:
+    searchable_tokens = _tokens(searchable_text)
+    if not query_tokens or not searchable_tokens:
         return 0.0
-    overlap = query_tokens.intersection(content_tokens)
+
+    overlap = query_tokens.intersection(searchable_tokens)
     if not overlap:
         return 0.0
-    coverage = len(overlap) / max(1, len(query_tokens))
-    precision = len(overlap) / max(1, len(content_tokens))
-    phrase_bonus = 2.0 if query_text and _normalise(query_text) in _normalise(content) else 0.0
+
+    body_hits = overlap.intersection(content_tokens)
+    metadata_hits = overlap.difference(content_tokens)
+    # A direct body match is strongest; metadata still makes a note discoverable.
+    weighted_hits = len(body_hits) + (0.65 * len(metadata_hits))
+    coverage = weighted_hits / max(1, len(query_tokens))
+    precision = weighted_hits / max(1, len(searchable_tokens))
+    query_phrase = _phrase(query_text)
+    body_phrase = _phrase(content)
+    metadata_phrase = _phrase(searchable_text)
+    phrase_bonus = 0.0
+    if query_phrase and query_phrase in body_phrase:
+        phrase_bonus = 2.0
+    elif query_phrase and query_phrase in metadata_phrase:
+        phrase_bonus = 0.75
     return (coverage * 5.0) + (precision * 1.5) + phrase_bonus
 
 
 def select_relevant_memories(
     memories, query="", max_items=DEFAULT_MAX_ITEMS, max_chars=MAX_CONTEXT_CHARS
 ):
-    """Return a bounded, relevance-ranked context from already-authorized memories.
+    """Return bounded, relevance-ranked text from already-authorized memories.
 
     Project context is pinned first. For a generic query, preserve newest-first
     source order rather than guessing relevance. Duplicate notes are omitted.
+    Metadata can improve retrieval but is never injected into the assistant prompt.
     """
     safe_items = max(0, min(int(max_items), 100))
     safe_chars = max(0, min(int(max_chars), MAX_CONTEXT_CHARS))
@@ -74,7 +118,8 @@ def select_relevant_memories(
             continue
         seen.add(fingerprint)
         is_project_context = content.casefold().startswith("projet actif :")
-        score = _score(content, query_tokens, query_text)
+        searchable_text = " ".join(part for part in (content, _metadata_text(item)) if part)
+        score = _score(content, searchable_text, query_tokens, query_text)
         # Keep active project facts available even when the question uses
         # different vocabulary; they are scoped by the caller before this step.
         candidates.append((0 if is_project_context else 1, -score, index, content))
@@ -111,10 +156,11 @@ def build_agent_memory_context(
     authorized_memories, query="", max_items=DEFAULT_MAX_ITEMS,
     max_chars=MAX_CONTEXT_CHARS,
 ):
-    """Shared retrieval entry point for assistants and future authorized agents.
+    """Shared retrieval entry point for assistants and authorized agents.
 
-    Security boundary: the caller is responsible for enforcing identity,
-    workspace, project and agent permissions before passing records here.
+    Security boundary: the caller must enforce identity, workspace, project and
+    agent permissions before passing records here. This helper does not broaden
+    access, retrieve remote data, or modify persistent memory.
     """
     return select_relevant_memories(
         authorized_memories, query=query,
