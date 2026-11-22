@@ -100,3 +100,11 @@ def test_account_validation_messages_are_translated():
     keys = ("Saisissez une adresse e-mail valide.", "Le mot de passe doit contenir au moins 8 caractères.", "Les deux mots de passe ne correspondent pas.", "Saisissez votre mot de passe.", "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.")
     for language in ("English", "Español", "中文", "Deutsch", "العربية"):
         assert all(translate(key, language) != key for key in keys)
+
+def test_home_catalog_renders_every_navigation_destination_with_its_own_artwork():
+    source = Path("app.py").read_text(encoding="utf-8")
+    assert "for section_title, section_pages in NAV_GROUPS.items():" in source
+    assert "navigation_art_data(destination, catalog_index)" in source
+    assert "data:image/svg+xml;base64," in source
+    assert 'key=f"home_group_{destination}"' in source
+    assert "with st.expander(section_title, expanded=False)" not in source
