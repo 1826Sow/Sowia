@@ -777,6 +777,15 @@ _COMMON_UI_TRANSLATIONS = {
 # specialist workspaces. These are display-only translations.
 _SPECIALIST_UI_TRANSLATIONS = {
     "English": {
+        "Diagnostic :": "Diagnostic:",
+        "Diagnostic technique :": "Technical diagnostics:",
+        "Statut :": "Status:",
+        "Enregistrement impossible :": "Unable to save:",
+        "Décision refusée par Supabase :": "Decision rejected by Supabase:",
+        "Création impossible :": "Unable to create:",
+        "Évaluation non enregistrée :": "Evaluation not saved:",
+        "Échec du transfert PDF :": "PDF transfer failed:",
+        "Diagnostic e-mail :": "Email diagnostics:",
         "🌐 Langue / Language": "🌐 Language",
         "← Retour": "← Back",
         "Découvrir": "Discover",
@@ -828,6 +837,15 @@ _SPECIALIST_UI_TRANSLATIONS = {
         "Aucune écriture en contrôle manuel ou avec un autre statut dans les lignes chargées.": "No entries requiring manual review or carrying another status were found in the loaded rows.",
     },
     "Español": {
+        "Diagnostic :": "Diagnóstico:",
+        "Diagnostic technique :": "Diagnóstico técnico:",
+        "Statut :": "Estado:",
+        "Enregistrement impossible :": "No se puede guardar:",
+        "Décision refusée par Supabase :": "Decisión rechazada por Supabase:",
+        "Création impossible :": "No se puede crear:",
+        "Évaluation non enregistrée :": "Evaluación no guardada:",
+        "Échec du transfert PDF :": "Error en la transferencia del PDF:",
+        "Diagnostic e-mail :": "Diagnóstico del correo:",
         "🌐 Langue / Language": "🌐 Idioma",
         "← Retour": "← Volver",
         "Découvrir": "Descubrir",
@@ -879,6 +897,15 @@ _SPECIALIST_UI_TRANSLATIONS = {
         "Aucune écriture en contrôle manuel ou avec un autre statut dans les lignes chargées.": "No hay registros que requieran revisión manual o tengan otro estado entre las filas cargadas.",
     },
     "中文": {
+        "Diagnostic :": "诊断：",
+        "Diagnostic technique :": "技术诊断：",
+        "Statut :": "状态：",
+        "Enregistrement impossible :": "无法保存：",
+        "Décision refusée par Supabase :": "Supabase 已拒绝该决策：",
+        "Création impossible :": "无法创建：",
+        "Évaluation non enregistrée :": "评估未保存：",
+        "Échec du transfert PDF :": "PDF 传输失败：",
+        "Diagnostic e-mail :": "电子邮件诊断：",
         "🌐 Langue / Language": "🌐 语言",
         "← Retour": "← 返回",
         "Découvrir": "了解",
@@ -930,6 +957,15 @@ _SPECIALIST_UI_TRANSLATIONS = {
         "Aucune écriture en contrôle manuel ou avec un autre statut dans les lignes chargées.": "已加载的记录中没有需要人工审核或状态异常的条目。",
     },
     "Deutsch": {
+        "Diagnostic :": "Diagnose:",
+        "Diagnostic technique :": "Technische Diagnose:",
+        "Statut :": "Status:",
+        "Enregistrement impossible :": "Speichern nicht möglich:",
+        "Décision refusée par Supabase :": "Entscheidung von Supabase abgelehnt:",
+        "Création impossible :": "Erstellung nicht möglich:",
+        "Évaluation non enregistrée :": "Bewertung nicht gespeichert:",
+        "Échec du transfert PDF :": "PDF-Übertragung fehlgeschlagen:",
+        "Diagnostic e-mail :": "E-Mail-Diagnose:",
         "🌐 Langue / Language": "🌐 Sprache",
         "← Retour": "← Zurück",
         "Découvrir": "Entdecken",
@@ -981,6 +1017,15 @@ _SPECIALIST_UI_TRANSLATIONS = {
         "Aucune écriture en contrôle manuel ou avec un autre statut dans les lignes chargées.": "In den geladenen Zeilen gibt es keine Einträge mit manueller Prüfung oder anderem Status.",
     },
     "العربية": {
+        "Diagnostic :": "التشخيص:",
+        "Diagnostic technique :": "التشخيص التقني:",
+        "Statut :": "الحالة:",
+        "Enregistrement impossible :": "تعذر الحفظ:",
+        "Décision refusée par Supabase :": "رفض Supabase القرار:",
+        "Création impossible :": "تعذر الإنشاء:",
+        "Évaluation non enregistrée :": "لم يتم حفظ التقييم:",
+        "Échec du transfert PDF :": "فشل نقل ملف PDF:",
+        "Diagnostic e-mail :": "تشخيص البريد الإلكتروني:",
         "🌐 Langue / Language": "🌐 اللغة",
         "← Retour": "← رجوع",
         "Découvrir": "اكتشف",
@@ -1074,4 +1119,23 @@ def translate(text: str, language: str = "Français") -> str:
     translated = _PAGE_TRANSLATIONS.get(language, {}).get(text)
     if translated is not None:
         return translated
-    return _CORE_TRANSLATIONS.get(language, {}).get(text, text)
+    translated = _CORE_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+
+    # Dynamic diagnostic/status messages often append an identifier or provider
+    # detail to a fixed French prefix. Translate only known colon-terminated
+    # catalogue prefixes and preserve the dynamic suffix byte-for-byte.
+    catalogues = (
+        _COMMON_UI_TRANSLATIONS, _SPECIALIST_UI_TRANSLATIONS,
+        _BASE_TRANSLATIONS, _EXTRA_TRANSLATIONS, _NAV_TRANSLATIONS,
+        _SECTION_TRANSLATIONS, _NAV_CONTROL_TRANSLATIONS,
+        _AUTH_TRANSLATIONS, _AUTH_MESSAGE_TRANSLATIONS,
+        _PAGE_TRANSLATIONS, _CORE_TRANSLATIONS,
+    )
+    for catalogue in catalogues:
+        entries = catalogue.get(language, {})
+        for source in sorted(entries, key=len, reverse=True):
+            if source.endswith((":", " :")) and text.startswith(source) and len(text) > len(source):
+                return entries[source] + text[len(source):]
+    return text
