@@ -1362,7 +1362,7 @@ def navigation_category_art(category):
         return "assets/categories/intelligence.svg"
     if any(word in value for word in ("gouvernance", "performance")):
         return "assets/categories/governance.svg"
-    if any(word in value for word in ("finance", "paiement", "revenu")):
+    if any(word in value for word in ("finance", "financial", "paiement", "revenu")):
         return "assets/categories/finance.svg"
     if any(word in value for word in ("abonnement", "compte")):
         return "assets/categories/admin-support.svg"
