@@ -2743,6 +2743,7 @@ elif page == "Assistant IA":
                         reply = answer(
                             request_history,
                             memories=memories,
+                            language=language,
                         )
                         st.markdown(reply)
                         try:
