@@ -296,6 +296,101 @@ _NAV_TRANSLATIONS = {
 }
 
 
+_SECTION_TRANSLATIONS = {
+    "English": {
+        "Bienvenue dans SOW IA": "Welcome to SOW IA",
+        "Bienvenue sur le Hub SOW IA": "Welcome to the SOW IA Hub",
+        "🌍 Développement mondial de SOW IA": "🌍 SOW IA global growth",
+        "💬 Mon Assistant IA": "💬 My AI assistant",
+        "🧠 Ma mémoire — espace {workspace_label}": "🧠 My memory — {workspace_label} space",
+        "🌐 Recherche Web": "🌐 Web search",
+        "📄 Analyse PDF": "📄 PDF analysis",
+        "🪄 Créer un PDF": "🪄 Create a PDF",
+        "📁 Mes documents": "📁 My documents",
+        "🕘 Historique": "🕘 History",
+        "👑 Abonnement Premium": "👑 Premium subscription",
+        "🪪 SOW IA GLOBAL ID": "🪪 SOW IA GLOBAL ID",
+        "🌐 SOW IA GLOBAL DIRECTORY": "🌐 SOW IA GLOBAL DIRECTORY",
+        "⚖️ SOW IA GLOBAL DECISION ENGINE": "⚖️ SOW IA GLOBAL DECISION ENGINE",
+        "🌙 SOW IA NIGHT EXCHANGE": "🌙 SOW IA NIGHT EXCHANGE",
+        "🧩 BOURSE AUX APPLICATIONS": "🧩 APP MARKETPLACE",
+        "🏛️ SOW IA BUSINESS CLUB": "🏛️ SOW IA BUSINESS CLUB",
+        "💹 SOW IA Finance — Bourse, Crypto & Investissements": "💹 SOW IA Finance — Markets, Crypto & Investments",
+        "💶 Revenus & paiements": "💶 Revenue & payments",
+        "🔔 Centre de notifications SOW IA": "🔔 SOW IA notification center",
+        "🛰️ SOW IA CONTROL CENTER": "🛰️ SOW IA CONTROL CENTER",
+    },
+    "Español": {
+        "Bienvenue dans SOW IA": "Te damos la bienvenida a SOW IA",
+        "Bienvenue sur le Hub SOW IA": "Bienvenido al centro SOW IA",
+        "🌍 Développement mondial de SOW IA": "🌍 Expansión global de SOW IA",
+        "💬 Mon Assistant IA": "💬 Mi asistente IA",
+        "🌐 Recherche Web": "🌐 Búsqueda web",
+        "📄 Analyse PDF": "📄 Análisis PDF",
+        "🪄 Créer un PDF": "🪄 Crear un PDF",
+        "📁 Mes documents": "📁 Mis documentos",
+        "🕘 Historique": "🕘 Historial",
+        "👑 Abonnement Premium": "👑 Suscripción Premium",
+        "🌙 SOW IA NIGHT EXCHANGE": "🌙 SOW IA NIGHT EXCHANGE",
+        "🧩 BOURSE AUX APPLICATIONS": "🧩 MERCADO DE APLICACIONES",
+        "🏛️ SOW IA BUSINESS CLUB": "🏛️ CLUB DE EMPRESAS SOW IA",
+        "💶 Revenus & paiements": "💶 Ingresos y pagos",
+        "🔔 Centre de notifications SOW IA": "🔔 Centro de notificaciones SOW IA",
+    },
+    "中文": {
+        "Bienvenue dans SOW IA": "欢迎使用 SOW IA",
+        "Bienvenue sur le Hub SOW IA": "欢迎来到 SOW IA 工作中心",
+        "🌍 Développement mondial de SOW IA": "🌍 SOW IA 全球拓展",
+        "💬 Mon Assistant IA": "💬 我的人工智能助手",
+        "🌐 Recherche Web": "🌐 网页搜索",
+        "📄 Analyse PDF": "📄 PDF 分析",
+        "🪄 Créer un PDF": "🪄 创建 PDF",
+        "📁 Mes documents": "📁 我的文档",
+        "🕘 Historique": "🕘 历史记录",
+        "👑 Abonnement Premium": "👑 Premium 订阅",
+        "🌙 SOW IA NIGHT EXCHANGE": "🌙 SOW IA 夜间交换",
+        "🧩 BOURSE AUX APPLICATIONS": "🧩 应用市场",
+        "🏛️ SOW IA BUSINESS CLUB": "🏛️ SOW IA 商业俱乐部",
+        "💶 Revenus & paiements": "💶 收入与支付",
+        "🔔 Centre de notifications SOW IA": "🔔 SOW IA 通知中心",
+    },
+    "Deutsch": {
+        "Bienvenue dans SOW IA": "Willkommen bei SOW IA",
+        "Bienvenue sur le Hub SOW IA": "Willkommen im SOW IA-Hub",
+        "🌍 Développement mondial de SOW IA": "🌍 Internationale Expansion von SOW IA",
+        "💬 Mon Assistant IA": "💬 Mein KI-Assistent",
+        "🌐 Recherche Web": "🌐 Websuche",
+        "📄 Analyse PDF": "📄 PDF-Analyse",
+        "🪄 Créer un PDF": "🪄 PDF erstellen",
+        "📁 Mes documents": "📁 Meine Dokumente",
+        "🕘 Historique": "🕘 Verlauf",
+        "👑 Abonnement Premium": "👑 Premium-Abonnement",
+        "🌙 SOW IA NIGHT EXCHANGE": "🌙 SOW IA NIGHT EXCHANGE",
+        "🧩 BOURSE AUX APPLICATIONS": "🧩 APP-MARKTPLATZ",
+        "🏛️ SOW IA BUSINESS CLUB": "🏛️ SOW IA BUSINESS-CLUB",
+        "💶 Revenus & paiements": "💶 Einnahmen & Zahlungen",
+        "🔔 Centre de notifications SOW IA": "🔔 SOW IA-Benachrichtigungszentrale",
+    },
+    "العربية": {
+        "Bienvenue dans SOW IA": "مرحباً بك في SOW IA",
+        "Bienvenue sur le Hub SOW IA": "مرحباً بك في مركز SOW IA",
+        "🌍 Développement mondial de SOW IA": "🌍 التوسع العالمي لـ SOW IA",
+        "💬 Mon Assistant IA": "💬 مساعدي الذكي",
+        "🌐 Recherche Web": "🌐 بحث الويب",
+        "📄 Analyse PDF": "📄 تحليل PDF",
+        "🪄 Créer un PDF": "🪄 إنشاء PDF",
+        "📁 Mes documents": "📁 مستنداتي",
+        "🕘 Historique": "🕘 السجل",
+        "👑 Abonnement Premium": "👑 اشتراك Premium",
+        "🌙 SOW IA NIGHT EXCHANGE": "🌙 SOW IA للتبادل الليلي",
+        "🧩 BOURSE AUX APPLICATIONS": "🧩 سوق التطبيقات",
+        "🏛️ SOW IA BUSINESS CLUB": "🏛️ نادي أعمال SOW IA",
+        "💶 Revenus & paiements": "💶 الإيرادات والمدفوعات",
+        "🔔 Centre de notifications SOW IA": "🔔 مركز إشعارات SOW IA",
+    },
+}
+
+
 def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     # Keep the product name visually consistent in every translated UI label.
@@ -314,6 +409,9 @@ def translate(text: str, language: str = "Français") -> str:
     if translated is not None:
         return translated
     translated = _NAV_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _SECTION_TRANSLATIONS.get(language, {}).get(text)
     if translated is not None:
         return translated
     return _CORE_TRANSLATIONS.get(language, {}).get(text, text)
