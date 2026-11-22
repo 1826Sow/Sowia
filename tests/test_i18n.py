@@ -138,3 +138,26 @@ def test_authentication_guidance_does_not_fall_back_to_french(language):
     ]
     for source in sources:
         assert translate(source, language) != source, f"Untranslated authentication text for {language}: {source}"
+
+
+@pytest.mark.parametrize("language,expected", [
+    ("English", "Your saved projects"),
+    ("Español", "Tus proyectos guardados"),
+    ("Deutsch", "Ihre gespeicherten Projekte"),
+    ("中文", "已保存的项目"),
+    ("العربية", "مشاريعك المحفوظة"),
+])
+def test_project_register_saved_projects_heading_is_translated(language, expected):
+    assert translate("Vos projets enregistrés", language) == expected
+
+
+@pytest.mark.parametrize("language,expected", [
+    ("English", "Project saved and confirmed (reference 123)."),
+    ("Español", "Proyecto guardado y confirmado (referencia 123)."),
+    ("Deutsch", "Projekt gespeichert und bestätigt (Referenz 123)."),
+    ("中文", "项目已保存并确认（参考编号 123）。"),
+    ("العربية", "تم حفظ المشروع وتأكيده (المرجع 123)."),
+])
+def test_project_register_save_confirmation_is_translated(language, expected):
+    template = translate("Projet enregistré et confirmé (référence {project_id}).", language)
+    assert template.format(project_id=123) == expected
