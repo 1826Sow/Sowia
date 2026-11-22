@@ -177,3 +177,22 @@ def test_sidebar_and_nested_delta_generators_are_localized():
     assert sidebar.button("Ouvrir") == "English:Ouvrir"
     assert nested_column.button("Enregistrer") == "English:Enregistrer"
     assert sidebar.markdown("Titre") == "English:Titre"
+
+
+def test_chat_input_label_and_placeholder_follow_active_language():
+    calls = []
+
+    def chat_input(label=None, **kwargs):
+        calls.append((label, kwargs))
+        return "unchanged-user-message"
+
+    fake_st = SimpleNamespace(chat_input=chat_input)
+    install_streamlit_localization(
+        fake_st, lambda value, language: f"{language}:{value}", lambda: "English"
+    )
+
+    assert fake_st.chat_input("Votre message", placeholder="Écrire ici") == "unchanged-user-message"
+    assert calls[-1] == (
+        "English:Votre message",
+        {"placeholder": "English:Écrire ici"},
+    )
