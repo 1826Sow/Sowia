@@ -120,3 +120,5 @@ jobs:
           retention-days: 30
 
 # Integration build includes the full SOW IA feature set.
+
+# Final integrated APK verification run.
