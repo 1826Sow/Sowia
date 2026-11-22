@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 import streamlit as st
 from settings import get_setting
 from i18n import LANGUAGES as SOWIA_LANGUAGES, translate as translate_ui
+from sowia_visuals import render_page_visual
 
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
@@ -1423,6 +1424,9 @@ with nav_label_col:
     st.caption("Rubrique actuelle")
     st.markdown("**" + html.escape(translate_ui(page, language)) + "**")
 
+# Every destination receives its own accessible modern illustration.
+st.markdown(render_page_visual(page), unsafe_allow_html=True)
+
 st.markdown(
     '<div class="hero"><div class="hero-kicker">' + html.escape(translate_ui("PLATEFORME INTELLIGENTE · VISION INTERNATIONALE", language)) + '</div>'
     '<h1>🌐 SOW IA</h1>'
@@ -1440,7 +1444,6 @@ if page == "Accueil":
         st.image("assets/sowia-global-platform.svg", width=320)
     st.subheader(translate_ui("Bienvenue dans SOW IA", language))
     st.caption(translate_ui("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.", language))
-    st.image("assets/sections/home-executive.svg", use_container_width=True)
     st.markdown(
         '<section class="sowia-command-center">'
         '<div class="sowia-command-kicker">' + html.escape(translate_ui("COMMENCEZ VOTRE EXPLORATION", language)) + '</div>'
