@@ -196,3 +196,35 @@ def test_chat_input_label_and_placeholder_follow_active_language():
         "English:Votre message",
         {"placeholder": "English:Écrire ici"},
     )
+
+
+
+def test_spinner_and_progress_messages_follow_active_language():
+    calls = []
+
+    class FakeSpinner:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+    def spinner(message):
+        calls.append(("spinner", message))
+        return FakeSpinner()
+
+    def progress(value, **kwargs):
+        calls.append(("progress", value, kwargs))
+        return "progress-result"
+
+    fake_st = SimpleNamespace(spinner=spinner, progress=progress)
+    install_streamlit_localization(
+        fake_st, lambda value, language: f"{language}:{value}", lambda: "Deutsch"
+    )
+
+    with fake_st.spinner("Analyse du document en cours..."):
+        pass
+    assert calls[-1] == ("spinner", "Deutsch:Analyse du document en cours...")
+
+    assert fake_st.progress(35, text="Préparation en cours") == "progress-result"
+    assert calls[-1] == ("progress", 35, {"text": "Deutsch:Préparation en cours"})
