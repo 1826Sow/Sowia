@@ -3614,6 +3614,58 @@ elif page == "Développement mondial":
                 "Aucun message n'est envoyé depuis cette rubrique. Les prix, délais, exclusivités "
                 "et clauses doivent être confirmés par une personne habilitée."
             )
+            with st.expander("📄 Préparer une proposition commerciale", expanded=False):
+                st.caption(
+                    "SOW IA utilise uniquement les conditions que vous saisissez. "
+                    "Le résultat reste un brouillon non contractuel."
+                )
+                with st.form("sowia_nonbinding_offer_form"):
+                    offer_scope = st.text_area("Périmètre proposé", max_chars=1200)
+                    offer_deliverables = st.text_area("Livrables envisagés", max_chars=1200)
+                    offer_cols = st.columns(2)
+                    with offer_cols[0]:
+                        offer_price = st.text_input("Montant proposé", value="0.00")
+                        offer_currency = st.text_input("Devise ISO", value="EUR", max_chars=3)
+                        offer_timeline = st.text_input("Calendrier indicatif", max_chars=300)
+                    with offer_cols[1]:
+                        offer_payment = st.text_input("Modalités de paiement proposées", max_chars=500)
+                        offer_validity = st.number_input("Validité souhaitée (jours)", min_value=1, max_value=90, value=30)
+                    offer_generate = st.form_submit_button("Générer le brouillon d'offre")
+                if offer_generate:
+                    try:
+                        offer_draft = sowia_global_negotiation.build_nonbinding_offer(
+                            partner=active_negotiation["partner"],
+                            country=active_negotiation["country"] or "À confirmer",
+                            objective=active_negotiation["objective"],
+                            scope=offer_scope,
+                            deliverables=offer_deliverables,
+                            currency=offer_currency,
+                            price=offer_price,
+                            timeline=offer_timeline,
+                            payment_terms=offer_payment,
+                            validity_days=int(offer_validity),
+                        )
+                        st.session_state["sowia_nonbinding_offer_draft"] = offer_draft
+                        st.success("Brouillon d'offre généré. Vérification humaine obligatoire.")
+                    except ValueError as offer_error:
+                        st.error(str(offer_error))
+                saved_offer = st.session_state.get("sowia_nonbinding_offer_draft")
+                if saved_offer:
+                    st.text_area(
+                        "Proposition commerciale — brouillon à valider",
+                        value=saved_offer, height=320,
+                        key="sowia_nonbinding_offer_preview",
+                    )
+                    st.download_button(
+                        "Télécharger le brouillon TXT",
+                        data=saved_offer.encode("utf-8"),
+                        file_name="SOWIA_proposition_commerciale_brouillon.txt",
+                        mime="text/plain",
+                    )
+                    st.caption(
+                        "Ce fichier n'est pas envoyé au partenaire et ne vaut pas signature "
+                        "ou acceptation contractuelle."
+                    )
             updated_stage = st.selectbox(
                 "Suivi de la négociation", sowia_global_negotiation.STAGES,
                 index=sowia_global_negotiation.STAGES.index(active_negotiation["stage"]),
