@@ -17,12 +17,29 @@ create index if not exists sowia_messages_user_session_idx
 create table if not exists public.sowia_memory_items (
     id bigint generated always as identity primary key,
     user_id uuid not null references auth.users(id) on delete cascade,
-    content text not null check (char_length(content) between 1 and 1000),
-    created_at timestamptz not null default now()
+    content text not null check (char_length(content) between 1 and 20000),
+    category text not null default 'general'
+        check (category in ('general','profile','preference','project','decision','technical','workflow','reference','agent')),
+    importance smallint not null default 3 check (importance between 1 and 5),
+    tags text[] not null default '{}'::text[],
+    source text not null default 'user'
+        check (source in ('user','conversation','project','document','system')),
+    metadata jsonb not null default '{}'::jsonb
+        check (jsonb_typeof(metadata) = 'object'),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    archived_at timestamptz
 );
 
 create index if not exists sowia_memory_user_created_idx
     on public.sowia_memory_items (user_id, created_at desc);
+
+create index if not exists sowia_memory_items_search_idx
+    on public.sowia_memory_items using gin (to_tsvector('simple', content))
+    where archived_at is null;
+
+create index if not exists sowia_messages_search_idx
+    on public.sowia_messages using gin (to_tsvector('simple', content));
 
 alter table public.sowia_messages enable row level security;
 alter table public.sowia_memory_items enable row level security;
