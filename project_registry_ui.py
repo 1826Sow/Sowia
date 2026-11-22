@@ -51,7 +51,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
         projects = project_registry.list_projects(client, user, workspace_id)
     except Exception as exc:
         st.error(_t("Le registre n'est pas encore accessible. La migration Supabase dédiée doit être appliquée après validation.", language))
-        st.caption(f"Diagnostic : {type(exc).__name__}")
+        st.caption(_t("Diagnostic :", language) + f" {type(exc).__name__}")
         return
 
     try:
@@ -59,7 +59,7 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
     except Exception as exc:
         conversations = []
         st.warning(_t("La liste des conversations n'est pas disponible pour le moment. Les projets restent accessibles.", language))
-        st.caption(f"Diagnostic conversations : {type(exc).__name__}")
+        st.caption(_t("Diagnostic conversations :", language) + f" {type(exc).__name__}")
 
     status_counts = {
         status: sum(1 for project in projects if project.get("status") == status)
@@ -94,11 +94,11 @@ def render(client, user, workspace_id, cloud_mode, premium_active, language="Fra
                 )
                 if not created or len(created) != 1 or not created[0].get("id"):
                     raise RuntimeError("La création du projet n’a pas été confirmée par la base de données.")
-                st.success(f"Projet enregistré et confirmé (référence {created[0]['id']}).")
+                st.success(_t("Projet enregistré et confirmé (référence {project_id}).", language).format(project_id=created[0]['id']))
                 st.rerun()
             except Exception as exc:
                 st.error(_t("Le projet n'a pas été enregistré. Vérifiez les champs et la connexion.", language))
-                st.caption(f"Diagnostic : {type(exc).__name__} — {str(exc)[:300]}")
+                st.caption(_t("Diagnostic :", language) + f" {type(exc).__name__} — {str(exc)[:300]}")
 
     st.divider()
     st.markdown("### " + _t("Vos projets enregistrés", language))
