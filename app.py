@@ -1348,19 +1348,27 @@ def navigation_icon_for(label):
 
 
 def navigation_category_art(category):
-    """Map every navigation family to an existing category illustration."""
+    """Return a dedicated illustration for each of the nine navigation families."""
     value = str(category).lower()
     if any(word in value for word in ("personnel", "document")):
         return "assets/categories/personnel.svg"
-    if any(word in value for word in ("intelligence", "assistant")):
-        return "assets/categories/intelligence.svg"
+    if any(word in value for word in ("échanges", "echanges", "projets")):
+        return "assets/categories/exchanges-projects.svg"
     if any(word in value for word in ("global", "mondial", "international")):
         return "assets/categories/global.svg"
-    if any(word in value for word in ("business", "entreprise", "collaboration", "partenaire")):
+    if any(word in value for word in ("business", "entreprise", "collaboration", "partenaire", "opportunité")):
         return "assets/categories/business.svg"
-    if any(word in value for word in ("finance", "paiement", "revenu", "abonnement")):
+    if any(word in value for word in ("intelligence", "assistant")):
+        return "assets/categories/intelligence.svg"
+    if any(word in value for word in ("gouvernance", "performance")):
+        return "assets/categories/governance.svg"
+    if any(word in value for word in ("finance", "paiement", "revenu")):
         return "assets/categories/finance.svg"
-    return "assets/categories/admin.svg"
+    if any(word in value for word in ("abonnement", "compte")):
+        return "assets/categories/admin-support.svg"
+    if any(word in value for word in ("administration", "assistance", "contrôle", "control", "aide")):
+        return "assets/categories/admin-support.svg"
+    return "assets/categories/admin-support.svg"
 
 
 with st.sidebar:
