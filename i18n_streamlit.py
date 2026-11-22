@@ -13,7 +13,7 @@ _LOCALIZABLE_STREAMLIT_CALLS = (
     "text_input", "text_area", "selectbox", "radio", "checkbox",
     "toggle", "file_uploader", "date_input", "time_input",
     "number_input", "slider", "select_slider", "multiselect",
-    "expander", "metric", "markdown", "text", "tabs", "status",
+    "expander", "metric", "markdown", "text", "tabs", "status", "chat_input",
 )
 
 
