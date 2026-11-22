@@ -267,3 +267,16 @@ def test_sidebar_and_nested_delta_generators_are_localized():
     assert sidebar.button("Ouvrir") == "English:Ouvrir"
     assert nested_column.button("Enregistrer") == "English:Enregistrer"
     assert sidebar.markdown("Titre") == "English:Titre"
+
+
+def test_multiline_markdown_translates_catalogue_lines_and_preserves_code_and_html():
+    calls = []
+    fake_st = SimpleNamespace(markdown=lambda body, **kwargs: calls.append(body))
+    install_streamlit_localization(
+        fake_st,
+        lambda value, language: {"Titre": "Title", "Pays": "Country"}.get(value, value),
+        lambda: "English",
+    )
+    source = "### Titre\\n- Pays\\n\\n```python\\nPays\\n```\\n<div>Pays</div>"
+    fake_st.markdown(source)
+    assert calls[-1] == "### Title\\n- Country\\n\\n```python\\nPays\\n```\\n<div>Pays</div>"
