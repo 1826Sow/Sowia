@@ -50,4 +50,4 @@ def test_memory_context_summary_counts_categories_without_content():
 
 
 def test_default_context_budget_is_expanded():
-    assert MAX_MEMORY_CONTEXT_CHARS >= 30000
+    assert MAX_MEMORY_CONTEXT_CHARS >= 60000
