@@ -3209,7 +3209,7 @@ elif page == "Développement mondial":
                 )
                 with st.spinner("Préparation de la campagne…"):
                     try:
-                        campaign_text = answer([{"role": "user", "content": campaign_prompt}])
+                        campaign_text = answer([{"role": "user", "content": campaign_prompt}], language=campaign_language)
                         st.session_state["growth_campaign_draft"] = campaign_text
                     except Exception:
                         st.error("La génération de la campagne a échoué. Vérifiez le fournisseur IA et réessayez.")
@@ -3849,7 +3849,7 @@ elif page == "Analyse PDF":
             )
         if pdf_summary_clicked or pdf_analyze_clicked:
             task = (
-                "Rédige un résumé structuré de ce document en français. Présente son sujet, "
+                "Rédige un résumé structuré de ce document dans la langue sélectionnée. Présente son sujet, "
                 "les idées principales, les faits ou chiffres importants, les conclusions "
                 "et les éventuels points de vigilance. N'invente aucune information."
                 if pdf_summary_clicked else pdf_question.strip()
@@ -3863,6 +3863,7 @@ elif page == "Analyse PDF":
                         response = answer(
                             [{"role": "user", "content": task}],
                             document_context=relevant_context,
+                            language=language,
                         )
                         st.markdown("**Réponse de SOW IA**")
                         st.write(response)
@@ -4137,6 +4138,7 @@ elif page == "Mes documents":
                                                 st.session_state.get("selected_saved_pdf_text", ""),
                                                 saved_pdf_question.strip(),
                                             ),
+                                            language=language,
                                         )
                                         st.session_state["saved_pdf_answer"] = response
                                         st.session_state["saved_pdf_answer_path"] = stored_path
