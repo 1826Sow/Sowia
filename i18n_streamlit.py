@@ -13,7 +13,7 @@ _LOCALIZABLE_STREAMLIT_CALLS = (
     "text_input", "text_area", "selectbox", "radio", "checkbox",
     "toggle", "file_uploader", "date_input", "time_input",
     "number_input", "slider", "select_slider", "multiselect",
-    "expander", "metric",
+    "expander", "metric", "markdown", "write", "text", "tabs", "status",
 )
 
 
@@ -28,7 +28,23 @@ def install_streamlit_localization(st_module, translate, get_language):
         def localized(*args, __original=original, __method=method_name, **kwargs):
             language = get_language() or "Français"
             if args and isinstance(args[0], str):
-                args = (translate(args[0], language),) + args[1:]
+                first = args[0]
+                if __method == "markdown":
+                    # Translate exact catalogue phrases only; leave HTML, CSS,
+                    # links and code blocks untouched.
+                    import re
+                    if not any(token in first.lower() for token in ("<", "```", "![", "](")):
+                        match = re.match(r"^(#{1,6}\\s+|\\*\\*)(.*?)(\\*\\*)?$", first, re.S)
+                        if match:
+                            prefix, body, suffix = match.group(1), match.group(2), match.group(3) or ""
+                            first = prefix + translate(body, language) + suffix
+                        else:
+                            first = translate(first, language)
+                else:
+                    first = translate(first, language)
+                args = (first,) + args[1:]
+            elif __method == "tabs" and args and isinstance(args[0], (list, tuple)):
+                args = (type(args[0])(translate(item, language) if isinstance(item, str) else item for item in args[0]),) + args[1:]
             elif isinstance(kwargs.get("label"), str):
                 kwargs["label"] = translate(kwargs["label"], language)
 
