@@ -134,3 +134,25 @@ def validate_finalization(checklist):
     missing = [key for key in required if checklist.get(key) is not True]
     return {"ready_for_human_review": not missing, "missing": missing,
             "can_auto_sign": False, "can_auto_accept": False}
+
+
+def build_case_memory_entry(case):
+    """Create a compact, durable memory note for a negotiation case."""
+    if not isinstance(case, dict):
+        raise ValueError("Dossier de négociation invalide.")
+    partner = str(case.get("partner") or "").strip()
+    country = str(case.get("country") or "À préciser").strip()
+    objective = str(case.get("objective") or "").strip()
+    stage = validate_stage(case.get("stage"))
+    if not partner or not objective:
+        raise ValueError("Le partenaire et l'objectif sont obligatoires pour archiver le dossier.")
+    incoming = " ".join(str(case.get("incoming_message") or "").split())
+    draft = " ".join(str(case.get("draft") or "").split())
+    signals = case.get("signals") or []
+    signal_text = ", ".join(str(item) for item in signals[:8]) or "Aucun signal détecté"
+    entry = (
+        f"SOW IA — DOSSIER DE NÉGOCIATION\nPartenaire : {partner}\nPays : {country}\n"
+        f"Objectif : {objective}\nÉtape : {stage}\nSignaux : {signal_text}\n"
+        f"Dernier échange : {incoming}\nRéponse préparée (non envoyée) : {draft}"
+    )
+    return entry[:1000]
