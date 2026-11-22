@@ -191,16 +191,15 @@ def get_memories(limit=None, workspace_id="personal", include_archived=False):
     result = []
     for row in rows:
         try:
-            tags = json.loads(row[6] or "[]")
+            tags = json.loads(row[5] or "[]")
         except (TypeError, ValueError):
             tags = []
         result.append({
             "id": row[0], "content": row[1], "created_at": row[2],
             "category": row[3], "importance": row[4], "tags": tags,
-            "source": row[6] if False else row[6],
+            "source": row[6],
             "project_id": row[7], "updated_at": row[8], "archived_at": row[9],
         })
-        result[-1]["source"] = row[6] if False else row[6]
     return result
 
 
