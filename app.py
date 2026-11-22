@@ -2758,7 +2758,7 @@ elif page == "Ma mémoire":
 elif page == "Développement mondial":
     st.subheader(translate_ui("🌍 Développement mondial de SOW IA", language))
     st.caption("Repérez des partenaires, préparez vos prises de contact et construisez votre promotion internationale. Rien n'est envoyé ou publié automatiquement.")
-    partner_tab, greeting_tab, agenda_tab, promo_tab, market_tab, radar_tab, negotiation_tab = st.tabs(["🤝 Partenaires", "🎉 Vœux internationaux", "🗓️ Agenda relationnel", "📣 Promotion multilingue", "🌐 Stratégie pays", "📡 Radar opportunités", "🤝 Négociation & accords"])
+    partner_tab, greeting_tab, agenda_tab, promo_tab, visibility_tab, market_tab, radar_tab, negotiation_tab = st.tabs(["🤝 Partenaires", "🎉 Vœux internationaux", "🗓️ Agenda relationnel", "📣 Promotion multilingue", "🎤 Visibilité mondiale", "🌐 Stratégie pays", "📡 Radar opportunités", "🤝 Négociation & accords"])
 
     with partner_tab:
         st.markdown("#### Prospection internationale")
@@ -3133,6 +3133,110 @@ elif page == "Développement mondial":
             st.text_area("Campagne préparée — à valider avant publication", value=st.session_state["growth_campaign_draft"], height=360)
             st.caption("La publication automatique sera ajoutée après connexion et validation des comptes sociaux. Aucun message n'est publié depuis cet écran.")
 
+
+    with visibility_tab:
+        import global_visibility
+        st.markdown("#### 🎤 Faire connaître SOW IA dans les écosystèmes mondiaux")
+        st.write(
+            "Repérez les salons, conférences IA, concours de pitch, demo days, "
+            "incubateurs, accélérateurs et réseaux d'investisseurs. La recherche couvre "
+            "les hubs technologiques et les marchés émergents, sans limiter SOW IA à une liste de pays."
+        )
+        visibility_cols = st.columns(2)
+        with visibility_cols[0]:
+            visibility_region = st.selectbox(
+                "Région du monde",
+                global_visibility.REGIONS,
+                key="sowia_visibility_region",
+            )
+            visibility_country = st.text_input(
+                "Pays, ville ou hub (facultatif)",
+                placeholder="Ex. Silicon Valley, Shenzhen, Séoul, Bali, Dakar, Dubaï…",
+                max_chars=120,
+                key="sowia_visibility_country",
+            )
+        with visibility_cols[1]:
+            visibility_audience = st.selectbox(
+                "Public à rencontrer",
+                global_visibility.AUDIENCES,
+                key="sowia_visibility_audience",
+            )
+            visibility_year = st.selectbox(
+                "Année des événements",
+                [2026, 2027, 2028],
+                index=1,
+                key="sowia_visibility_year",
+            )
+        st.caption(
+            "Marchés à couvrir en priorité : États-Unis, Chine, Singapour, Corée du Sud, "
+            "Taïwan, Indonésie (dont Bali), Inde, Sénégal, Suisse, France et Émirats arabes unis. "
+            "Les autres pays restent accessibles par recherche libre."
+        )
+        if st.button(
+            "🌍 Rechercher les scènes où présenter SOW IA",
+            type="primary",
+            key="sowia_visibility_search",
+        ):
+            try:
+                visibility_queries = global_visibility.build_visibility_queries(
+                    visibility_region,
+                    visibility_country,
+                    visibility_audience,
+                    int(visibility_year),
+                )
+                collected_visibility = []
+                with st.spinner("Recherche des événements, programmes et réseaux internationaux…"):
+                    for visibility_query in visibility_queries:
+                        collected_visibility.extend(search_web(visibility_query, max_results=8))
+                st.session_state["sowia_visibility_results"] = global_visibility.normalize_visibility_results(
+                    collected_visibility
+                )
+                st.session_state["sowia_visibility_search_scope"] = (
+                    visibility_country.strip() or visibility_region
+                )
+            except (RuntimeError, ValueError) as visibility_error:
+                st.error(str(visibility_error))
+            except Exception:
+                st.error("La recherche de visibilité a échoué. Vérifiez le service de recherche puis réessayez.")
+        visibility_results = st.session_state.get("sowia_visibility_results", [])
+        if visibility_results:
+            st.success(
+                f"{len(visibility_results)} piste(s) trouvée(s) pour "
+                f"{st.session_state.get('sowia_visibility_search_scope', 'le monde')} — "
+                "dates, candidatures et conditions à confirmer auprès des organisateurs."
+            )
+            for visibility_index, visibility_item in enumerate(visibility_results):
+                with st.container(border=True):
+                    st.markdown(f"**{visibility_item['title']}**")
+                    st.caption(visibility_item["domain"] + " · " + visibility_item["status"])
+                    if visibility_item["content"]:
+                        st.write(visibility_item["content"])
+                    st.link_button("Consulter la source", visibility_item["url"])
+                    if st.button(
+                        "Enregistrer dans mon CRM international",
+                        key=f"sowia_visibility_save_{visibility_index}",
+                    ):
+                        if not cloud_mode or current_user is None:
+                            st.warning("Connectez-vous à votre espace sécurisé pour enregistrer cette piste.")
+                        else:
+                            try:
+                                cloud_storage.add_growth_lead(
+                                    supabase_client,
+                                    current_user,
+                                    organization=visibility_item["title"],
+                                    country=st.session_state.get("sowia_visibility_search_scope", "Monde"),
+                                    region=visibility_region,
+                                    partner_type="Événement / écosystème startup",
+                                    website=visibility_item["url"],
+                                    source_url=visibility_item["url"],
+                                    notes=visibility_item["content"][:1800],
+                                    workspace_id=st.session_state.get("workspace_id", "personal"),
+                                )
+                                st.success("Piste enregistrée dans votre CRM.")
+                            except Exception:
+                                st.error("Enregistrement impossible. Vérifiez la configuration de votre CRM.")
+        else:
+            st.info("Lancez une recherche pour identifier les événements et réseaux adaptés à SOW IA.")
 
     with market_tab:
         import international_market_strategy as market_strategy
