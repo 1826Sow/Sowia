@@ -1056,7 +1056,7 @@ with st.sidebar:
         st.session_state["sowia_accessibility_saved"] = dict(defaults)
     if st.session_state.get("sowia_privacy_screen", False):
         st.button(
-            "🔓 Déverrouiller l'écran",
+            translate_ui("🔓 Déverrouiller l’écran", language),
             key="sowia_privacy_unlock",
             on_click=disable_privacy_screen,
             use_container_width=True,
@@ -1064,16 +1064,16 @@ with st.sidebar:
         )
     else:
         st.button(
-            "🔒 Verrouiller maintenant",
+            translate_ui("🔒 Verrouiller maintenant", language),
             key="sowia_privacy_lock",
             on_click=enable_privacy_screen,
             use_container_width=True,
             type="primary",
         )
     privacy_screen = st.toggle(
-        "Protection d'écran",
+        translate_ui("Protection d’écran", language),
         key="sowia_privacy_screen",
-        help="Masque le contenu principal. Le bouton ci-dessus permet de verrouiller ou déverrouiller immédiatement.",
+        help=translate_ui("Masque tout l’écran de l’application. Le bouton de déverrouillage reste accessible.", language),
     )
     privacy_values = {
         "voice_readout": bool(st.session_state.get("sowia_voice_readout", False)),
@@ -1094,7 +1094,7 @@ with st.sidebar:
     workspace_options = ["Personnel", "Professionnel"] if premium_active else ["Personnel"]
     if st.session_state.get("workspace_choice") not in workspace_options:
         st.session_state["workspace_choice"] = "Personnel"
-    workspace_choice = st.radio("Espace de travail", workspace_options, key="workspace_choice", horizontal=True, format_func=lambda value: translate_ui(value, language))
+    workspace_choice = st.radio(translate_ui("Espace de travail", language), workspace_options, key="workspace_choice", horizontal=True, format_func=lambda value: translate_ui(value, language))
     if not premium_active:
         if premium_entitlement_unavailable:
             st.caption("Vérification Premium indisponible : l'espace Professionnel reste verrouillé par sécurité.")
@@ -1165,7 +1165,7 @@ if privacy_screen:
     # A main-area unlock control remains reachable on mobile even when the
     # Streamlit sidebar is collapsed. Only the other main-area blocks are blurred.
     st.button(
-        "🔓 DÉSACTIVER LA PROTECTION D'ÉCRAN",
+        translate_ui("🔓 DÉSACTIVER LA PROTECTION D’ÉCRAN", language),
         key="sowia_privacy_unlock_main",
         on_click=disable_privacy_screen,
         use_container_width=True,
@@ -1173,12 +1173,8 @@ if privacy_screen:
     )
     st.markdown(
         """<style>
-        /* A dedicated overlay avoids blurring or disabling the unlock control itself. */
-        section[data-testid="stMain"] {
-            position: relative !important;
-            isolation: isolate !important;
-        }
-        section[data-testid="stMain"]::before {
+        /* Blur the complete app, including the sidebar; leave the unlock action reachable. */
+        body::before {
             content: "";
             position: fixed;
             inset: 0;
@@ -1190,7 +1186,7 @@ if privacy_screen:
         }
         section[data-testid="stMain"] .st-key-sowia_privacy_unlock_main {
             position: fixed !important;
-            top: 68px !important;
+            top: max(68px, calc(env(safe-area-inset-top) + 12px)) !important;
             left: 50% !important;
             right: auto !important;
             transform: translateX(-50%) !important;
