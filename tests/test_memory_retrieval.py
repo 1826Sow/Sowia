@@ -21,6 +21,16 @@ def test_retrieval_falls_back_to_recent_notes_when_no_tokens_match():
     ]
 
 
+def test_unmatched_dictionary_fallback_returns_text_not_storage_records():
+    memories = [{"id": 8, "content": "Souvenir récent", "created_at": "2026-11-22"}]
+    assert select_relevant_memories("aucun mot commun", memories) == ["Souvenir récent"]
+
+
+def test_metadata_only_records_are_not_injected_as_empty_memory():
+    memories = [{"id": 1, "content": "", "title": "Titre sans contenu"}]
+    assert select_relevant_memories("Titre", memories) == []
+
+
 def test_retrieval_accepts_plain_strings_and_limits_results():
     assert select_relevant_memories("météo Paris", ["Météo de Paris", "Cuisine", "Projet"], limit=1) == [
         "Météo de Paris"
