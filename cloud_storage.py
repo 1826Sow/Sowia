@@ -142,7 +142,7 @@ def list_memories(client, user, workspace_id="personal", limit=1000, offset=0,
                   include_archived=False):
     """List a page of the owner's durable memory; storage has no fixed note-count cap."""
     safe_limit = min(max(int(limit), 1), 1000)
-    safe_offset = min(max(int(offset), 0), 1_000_000)
+    safe_offset = max(int(offset), 0)
     query = (
         client.table("sowia_memory_items")
         .select("id, content, created_at, updated_at, category, importance, tags, source, project_id, archived_at")
