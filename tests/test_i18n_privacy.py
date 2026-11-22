@@ -94,3 +94,9 @@ def test_account_access_controls_use_translation_without_changing_validation_but
     assert 'translate_ui("Mot de passe", language)' in source
     assert 'key="sowia_password_login_submit"' in source
     assert '"VALIDER"' in source
+
+
+def test_account_validation_messages_are_translated():
+    keys = ("Saisissez une adresse e-mail valide.", "Le mot de passe doit contenir au moins 8 caractères.", "Les deux mots de passe ne correspondent pas.", "Saisissez votre mot de passe.", "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.")
+    for language in ("English", "Español", "中文", "Deutsch", "العربية"):
+        assert all(translate(key, language) != key for key in keys)
