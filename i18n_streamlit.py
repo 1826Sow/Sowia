@@ -34,7 +34,7 @@ def install_streamlit_localization(st_module, translate, get_language):
                     # links and code blocks untouched.
                     import re
                     if not any(token in first.lower() for token in ("<", "```", "![", "](")):
-                        match = re.match(r"^(#{1,6}\\s+|\\*\\*)(.*?)(\\*\\*)?$", first, re.S)
+                        match = re.match(r"^(#{1,6}\s+|\*\*)(.*?)(\*\*)?$", first, re.S)
                         if match:
                             prefix, body, suffix = match.group(1), match.group(2), match.group(3) or ""
                             first = prefix + translate(body, language) + suffix
