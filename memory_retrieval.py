@@ -36,6 +36,13 @@ def _tokens(value):
     ]
 
 
+def _memory_content(item):
+    """Return the text payload expected by the existing assistant prompt."""
+    if isinstance(item, dict):
+        return str(item.get("content", "") or "").strip()
+    return str(item or "").strip()
+
+
 def _note_text(item):
     if isinstance(item, dict):
         parts = [item.get("content", "")]
@@ -76,15 +83,16 @@ def select_relevant_memories(query, memories, limit=10):
 
     items = []
     for item in memories or []:
+        content = _memory_content(item)
         searchable_text = _note_text(item)
-        if searchable_text:
-            items.append((item, searchable_text))
+        if content and searchable_text:
+            items.append((content, searchable_text))
     if not items:
         return []
 
     query_tokens = _tokens(query)
     if not query_tokens:
-        return [str(item.get("content", "")).strip() if isinstance(item, dict) else str(item or "").strip() for item, _ in items[:limit]]
+        return [content for content, _ in items[:limit]]
     query_text = " ".join(query_tokens)
 
     ranked = []
@@ -94,6 +102,6 @@ def select_relevant_memories(query, memories, limit=10):
             ranked.append((score, index, item))
 
     if not ranked:
-        return [item for item, _ in items[:limit]]
+        return [content for content, _ in items[:limit]]
     ranked.sort(key=lambda row: (-row[0], row[1]))
-    return [str(item.get("content", "")).strip() if isinstance(item, dict) else str(item or "").strip() for _, _, item in ranked[:limit]]
+    return [content for _, _, content in ranked[:limit]]
