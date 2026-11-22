@@ -118,3 +118,5 @@ jobs:
           path: maintenance-output/*
           if-no-files-found: error
           retention-days: 30
+
+# Integration build includes the full SOW IA feature set.
