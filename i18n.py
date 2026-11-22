@@ -674,6 +674,70 @@ for _language, _entries in _AUTH_FLOW_TRANSLATIONS.items():
 for _language, _entries in _COMMON_AUTH_LANDING.items():
     _COMMON_UI_TRANSLATIONS.setdefault(_language, {}).update(_entries)
 
+
+_POST_LOGIN_TRANSLATIONS = {
+    "English": {
+        "PLATEFORME INTELLIGENTE · VISION INTERNATIONALE": "SMART PLATFORM · INTERNATIONAL VISION",
+        "La technologie au service des décisions, de la productivité et des opportunités. Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.": "Technology serving better decisions, productivity and opportunities. An environment designed to support individuals, businesses and partners in their growth.",
+        "🔐 Espaces de travail sécurisés": "🔐 Secure workspaces",
+        "🌍 Ambition internationale": "🌍 International ambition",
+        "🤝 Collaboration professionnelle": "🤝 Professional collaboration",
+        "Bienvenue dans SOW IA": "Welcome to SOW IA",
+        "Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.": "Your control center: useful indicators, key points to watch and essential shortcuts.",
+        "COMMENCEZ VOTRE EXPLORATION": "START EXPLORING",
+        "✨ Découvrez ce que SOW IA peut faire avec vous": "✨ Discover what SOW IA can do with you",
+        "Choisissez un premier parcours et explorez les outils adaptés à vos besoins.": "Choose a starting point and explore tools tailored to your needs."
+    },
+    "Español": {
+        "PLATEFORME INTELLIGENTE · VISION INTERNATIONALE": "PLATAFORMA INTELIGENTE · VISIÓN INTERNACIONAL",
+        "La technologie au service des décisions, de la productivité et des opportunités. Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.": "Tecnología al servicio de las decisiones, la productividad y las oportunidades. Un entorno diseñado para acompañar a particulares, empresas y socios en su desarrollo.",
+        "🔐 Espaces de travail sécurisés": "🔐 Espacios de trabajo seguros",
+        "🌍 Ambition internationale": "🌍 Ambición internacional",
+        "🤝 Collaboration professionnelle": "🤝 Colaboración profesional",
+        "Bienvenue dans SOW IA": "Te damos la bienvenida a SOW IA",
+        "Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.": "Tu centro de control: indicadores útiles, puntos de atención y accesos esenciales.",
+        "COMMENCEZ VOTRE EXPLORATION": "COMIENZA A EXPLORAR",
+        "✨ Découvrez ce que SOW IA peut faire avec vous": "✨ Descubre lo que SOW IA puede hacer contigo",
+        "Choisissez un premier parcours et explorez les outils adaptés à vos besoins.": "Elige un primer recorrido y explora las herramientas que se adaptan a tus necesidades."
+    },
+    "中文": {
+        "PLATEFORME INTELLIGENTE · VISION INTERNATIONALE": "智能平台 · 国际视野",
+        "La technologie au service des décisions, de la productivité et des opportunités. Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.": "以技术助力决策、提升效率并创造机遇。为个人、企业和合作伙伴的发展提供支持。",
+        "🔐 Espaces de travail sécurisés": "🔐 安全工作空间",
+        "🌍 Ambition internationale": "🌍 国际化愿景",
+        "🤝 Collaboration professionnelle": "🤝 专业协作",
+        "Bienvenue dans SOW IA": "欢迎使用 SOW IA",
+        "Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.": "您的控制中心：关键指标、注意事项和常用入口。",
+        "COMMENCEZ VOTRE EXPLORATION": "开始探索",
+        "✨ Découvrez ce que SOW IA peut faire avec vous": "✨ 探索 SOW IA 能为您做什么",
+        "Choisissez un premier parcours et explorez les outils adaptés à vos besoins.": "选择一个起点，探索适合您需求的工具。"
+    },
+    "Deutsch": {
+        "PLATEFORME INTELLIGENTE · VISION INTERNATIONALE": "INTELLIGENTE PLATTFORM · INTERNATIONALE PERSPEKTIVE",
+        "La technologie au service des décisions, de la productivité et des opportunités. Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.": "Technologie für bessere Entscheidungen, Produktivität und neue Chancen. Eine Umgebung, die Privatpersonen, Unternehmen und Partner bei ihrer Entwicklung unterstützt.",
+        "🔐 Espaces de travail sécurisés": "🔐 Sichere Arbeitsbereiche",
+        "🌍 Ambition internationale": "🌍 Internationale Ausrichtung",
+        "🤝 Collaboration professionnelle": "🤝 Professionelle Zusammenarbeit",
+        "Bienvenue dans SOW IA": "Willkommen bei SOW IA",
+        "Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.": "Ihre Steuerzentrale: wichtige Kennzahlen, Hinweise und zentrale Zugänge.",
+        "COMMENCEZ VOTRE EXPLORATION": "ENTDECKEN SIE SOW IA",
+        "✨ Découvrez ce que SOW IA peut faire avec vous": "✨ Entdecken Sie, was SOW IA für Sie tun kann",
+        "Choisissez un premier parcours et explorez les outils adaptés à vos besoins.": "Wählen Sie einen Einstieg und entdecken Sie passende Werkzeuge."
+    },
+    "العربية": {
+        "PLATEFORME INTELLIGENTE · VISION INTERNATIONALE": "منصة ذكية · رؤية دولية",
+        "La technologie au service des décisions, de la productivité et des opportunités. Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.": "تقنية تدعم اتخاذ القرارات والإنتاجية والفرص. بيئة مصممة لمساندة الأفراد والشركات والشركاء في تطوير أعمالهم.",
+        "🔐 Espaces de travail sécurisés": "🔐 مساحات عمل آمنة",
+        "🌍 Ambition internationale": "🌍 طموح دولي",
+        "🤝 Collaboration professionnelle": "🤝 تعاون مهني",
+        "Bienvenue dans SOW IA": "مرحبًا بك في SOW IA",
+        "Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.": "مركز التحكم الخاص بك: مؤشرات مفيدة ونقاط مهمة وروابط أساسية.",
+        "COMMENCEZ VOTRE EXPLORATION": "ابدأ الاستكشاف",
+        "✨ Découvrez ce que SOW IA peut faire avec vous": "✨ اكتشف ما يمكن أن تقدمه لك SOW IA",
+        "Choisissez un premier parcours et explorez les outils adaptés à vos besoins.": "اختر نقطة بداية واستكشف الأدوات المناسبة لاحتياجاتك."
+    }
+}
+
 def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     # Keep the product name visually consistent in every translated UI label.
@@ -682,6 +746,9 @@ def translate(text: str, language: str = "Français") -> str:
     text = str(text).replace("SOWIA", "SOW IA").replace("Sowia", "SOW IA")
     if language not in LANGUAGES:
         language = "Français"
+    translated = _POST_LOGIN_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
     # Preserve common Markdown wrappers while translating their visible text.
     # This covers headings, bold/italic labels and simple list entries without
     # changing Markdown structure or user-authored content.

@@ -15,13 +15,15 @@ def test_email_login_uses_one_validate_button_for_existing_account():
     source = Path("app.py").read_text(encoding="utf-8")
     auth_source = Path("sowia_supabase_auth.py").read_text(encoding="utf-8")
 
-    assert 'st.text_input(\n                "Adresse e-mail du compte SOW IA"' in source
-    assert 'st.button(\n                "Valider"' in source
-    assert "email_magic_link(email_client, candidate_login_email, redirect_to)" in source
-    assert "aucun nouveau compte ne sera créé" in source
+    # The current Android-friendly login uses the existing account's email and
+    # password in a single explicit validation action (not a magic-link form).
+    assert 'key="sowia_password_login_email"' in source
+    assert 'key="sowia_password_login_secret"' in source
+    assert 'key="sowia_password_login_submit"' in source
+    assert "sign_in_email_password(" in source
+    assert "sign_in_with_password" in auth_source
     assert "sowia_email_change_view" not in source
     assert 'st.form("sowia_email_change_form"' not in source
-    assert '"should_create_user": False' in auth_source
 
 
 def test_email_access_requires_explicit_allowlist():
