@@ -3,7 +3,7 @@
 **Statut :** préparation documentaire uniquement — aucune candidature soumise.  
 **Programme :** 27 janvier – 2 avril 2027, entièrement virtuel, 10 semaines.  
 **Coût annoncé :** gratuit, sans prise de participation.  
-**Date limite annoncée :** 1er décembre 2026, 23:59 GMT+8 (soit 16:59 à Paris le 1er décembre, sous réserve de l'heure officielle du portail).
+**Date limite annoncée :** 1er décembre 2026, 23:59 GMT+8 (soit 16:59 à Paris le 1er décembre).
 
 Sources officielles :
 - https://venture-lab.ai/apply/founder
@@ -51,6 +51,10 @@ SOW IA has a publicly accessible Streamlit application and an active software re
 6. Disponibilité pour participer aux sessions en anglais pendant les dix semaines (environ 4–5 heures hebdomadaires pendant la phase de construction).
 7. Confirmation que le candidat a au moins 18 ans et peut accepter les conditions du programme.
 
+## Vérification de confidentialité avant toute soumission
+
+La page officielle de candidature indique que le site est exploité indépendamment et n'est pas détenu, contrôlé ou maintenu par INSEAD. Son avis de confidentialité précise que les données saisies via ses formulaires sont collectées, traitées et stockées par l'opérateur du site, et non par INSEAD. Avant de transmettre des coordonnées ou des documents sensibles, le fondateur doit lire l'avis de confidentialité et les conditions du formulaire, et vérifier qu'il accepte ce traitement. Ne jamais transmettre de mots de passe, clés API, secrets Supabase, pièces d'identité ou données bancaires dans les réponses libres.
+
 ## Décision de candidature
 
 Le programme officiel accepte les fondateurs early-stage du monde entier, y compris au stade de l'idée, et ne demande ni frais ni equity. Le programme se déroule en anglais et demande un engagement régulier. La candidature reste à relire et à soumettre par le fondateur ; aucune donnée personnelle n'a été inventée et aucune soumission n'a été effectuée.
@@ -59,4 +63,3 @@ Le programme officiel accepte les fondateurs early-stage du monde entier, y comp
 
 - **Microsoft GenAI Studio 2027 :** clôture annoncée le 1er décembre 2026, mais critères exigeants : startup française post-MVP avec traction client, cas d'usage IA identifiés et présence régulière à STATION F. Ne pas candidater sans preuve de ces critères et disponibilité à Paris. https://nextaihub-microsoft.agorize.com/fr/challenges/promotion-2027?lang=fr
 - **Hello Tomorrow Global Challenge 2027 :** clôture annoncée le 30 novembre 2026 ; exige notamment une base scientifique/technologique validée ou un prototype/preuve de concept et une équipe d'au moins deux personnes. L'ambition FINAL TECH seule ne démontre pas ces critères. https://hello-tomorrow.org/faq-global-challenge/
-
