@@ -3610,6 +3610,15 @@ elif page == "Développement mondial":
                 value=active_negotiation["draft"], height=260,
                 key="sowia_negotiation_draft_preview",
             )
+            if st.button("🧠 Archiver ce dossier dans ma mémoire", key="sowia_archive_negotiation_case"):
+                try:
+                    archive_entry = sowia_global_negotiation.build_case_memory_entry(active_negotiation)
+                    add_app_memory(archive_entry)
+                    st.success("Dossier archivé dans la mémoire de cet espace. Vous pourrez le retrouver dans « Ma mémoire ».")
+                except (ValueError, PermissionError) as archive_error:
+                    st.error(str(archive_error))
+                except Exception:
+                    st.error("Archivage impossible pour le moment. Vérifiez votre connexion et réessayez.")
             st.warning(
                 "Aucun message n'est envoyé depuis cette rubrique. Les prix, délais, exclusivités "
                 "et clauses doivent être confirmés par une personne habilitée."
