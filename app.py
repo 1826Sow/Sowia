@@ -1743,6 +1743,7 @@ if page == "Accueil":
         "💶 05 · SOW IA FINANCIAL HUB": "assets/categories/finance.svg",
         "🛡️ 06 · Administration & assistance": "assets/categories/admin.svg",
     }
+    catalog_index = 0
     for folder_title, folder_items in home_folders:
         with st.expander(folder_title, expanded=False):
             art_cols = st.columns([1, 2, 1])
@@ -1751,6 +1752,8 @@ if page == "Accueil":
             folder_cols = st.columns(2)
             for index, (destination, description) in enumerate(folder_items):
                 with folder_cols[index % 2]:
+                    st.image(navigation_art_data(destination, catalog_index), use_container_width=True)
+                    catalog_index += 1
                     # Normalize the visible product name without changing internal route keys.
                     st.markdown(f"**{destination.replace('SOWIA', 'SOW IA').replace('Sowia', 'SOW IA')}**")
                     st.caption(description.replace("SOWIA", "SOW IA").replace("Sowia", "SOW IA"))
