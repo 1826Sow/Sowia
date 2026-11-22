@@ -14,6 +14,7 @@ _LOCALIZABLE_STREAMLIT_CALLS = (
     "toggle", "file_uploader", "date_input", "time_input",
     "number_input", "slider", "select_slider", "multiselect",
     "expander", "metric", "markdown", "text", "tabs", "status", "chat_input",
+    "spinner", "progress",
 )
 
 
@@ -98,7 +99,7 @@ def install_streamlit_localization(st_module, translate, get_language):
                     for item in labels
                 )
 
-            for display_kwarg in ("placeholder", "help"):
+            for display_kwarg in ("placeholder", "help", "text"):
                 display_value = kwargs.get(display_kwarg)
                 if isinstance(display_value, str):
                     kwargs[display_kwarg] = translate(display_value, language)
