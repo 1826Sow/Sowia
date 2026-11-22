@@ -448,7 +448,16 @@ if not getattr(st, "_sowia_i18n_display_patch", False):
 auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "true")).strip().lower() in {"1", "true", "yes"}
 supabase_enabled = configuration_ready()
 if auth_required and not supabase_enabled:
-    st.error("SOW IA est en mode protégé, mais Supabase n'est pas encore configuré. L'accès est fermé jusqu'à la configuration de l'authentification.")
+    missing_supabase_settings = []
+    if not str(get_setting("SUPABASE_URL", "")).strip():
+        missing_supabase_settings.append("SUPABASE_URL")
+    if not str(get_setting("SUPABASE_ANON_KEY", "")).strip():
+        missing_supabase_settings.append("SUPABASE_ANON_KEY (ou son alias public SOWIA_SUPABASE_PUBLISHABLE_KEY)")
+    st.error("SOW IA reste en mode protégé : la configuration Supabase n'est pas entièrement détectée.")
+    if missing_supabase_settings:
+        st.warning("Paramètre(s) non détecté(s) par l'application : " + " ; ".join(missing_supabase_settings) + ".")
+    else:
+        st.warning("Les deux paramètres sont détectés, mais la clé publique est refusée par le contrôle de sécurité. Aucune valeur secrète n'est affichée.")
     st.stop()
 
 # Supabase ne doit être utilisé que si l'authentification obligatoire est activée.
