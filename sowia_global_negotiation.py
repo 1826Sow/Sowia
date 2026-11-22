@@ -1,8 +1,9 @@
 """Human-approved commercial negotiation workflow for SOW IA.
 
-This module prepares replies and tracks negotiation stages. It never sends,
-signs, accepts binding terms, or commits funds.
+Prepares replies and non-binding proposal drafts. It never sends, signs,
+accepts binding terms, or commits funds.
 """
+from decimal import Decimal, InvalidOperation
 from urllib.parse import urlparse
 
 STAGES = (
@@ -24,10 +25,8 @@ def validate_case(partner, country, objective, incoming_message, boundaries=""):
     limits = {"partner": 160, "country": 100, "objective": 500,
               "incoming_message": MAX_TEXT, "boundaries": 1200}
     for key, value in values.items():
-        if not value:
-            if key in {"partner", "objective", "incoming_message"}:
-                raise ValueError("Renseignez le partenaire, l'objectif et le dernier message reçu.")
-            continue
+        if not value and key in {"partner", "objective", "incoming_message"}:
+            raise ValueError("Renseignez le partenaire, l'objectif et le dernier message reçu.")
         if len(value) > limits[key]:
             raise ValueError(f"Le champ {key} dépasse la limite de {limits[key]} caractères.")
     return values
@@ -48,7 +47,6 @@ def detect_negotiation_signals(message):
 
 
 def build_reply_draft(case, language="Français"):
-    """Prepare a non-binding reply; all commercial terms remain subject to approval."""
     case = validate_case(**case)
     signals = detect_negotiation_signals(case["incoming_message"])
     objective = case["objective"]
@@ -58,9 +56,8 @@ def build_reply_draft(case, language="Français"):
             f"Subject: Follow-up on our discussion\n\nHello {case['partner']},\n\n"
             f"Thank you for your message and for considering a collaboration with SOW IA. "
             f"Our objective is: {objective}. I noted the following points: {', '.join(signals)}. "
-            f"To prepare a relevant proposal, could you confirm your expectations, decision process "
-            f"and any applicable requirements?\n\n"
-            f"Our current discussion boundaries are: {boundaries} "
+            "To prepare a relevant proposal, could you confirm your expectations, decision process "
+            f"and any applicable requirements?\n\nOur current discussion boundaries are: {boundaries} "
             "No commercial term is confirmed at this stage; any offer will be subject to written approval.\n\n"
             "Kind regards,\nSOW IA"
         )
@@ -75,6 +72,51 @@ def build_reply_draft(case, language="Français"):
         "Aucune condition commerciale n'est confirmée à ce stade. Toute offre définitive "
         "devra faire l'objet d'une validation écrite préalable.\n\n"
         "Bien cordialement,\nSOW IA"
+    )
+
+
+def build_nonbinding_offer(partner, country, objective, scope, deliverables,
+                           currency, price, timeline, payment_terms, validity_days):
+    """Build a proposal only from explicit user-entered commercial terms."""
+    fields = {
+        "partner": (partner, 160), "country": (country, 100),
+        "objective": (objective, 500), "scope": (scope, 1200),
+        "deliverables": (deliverables, 1200), "timeline": (timeline, 300),
+        "payment_terms": (payment_terms, 500),
+    }
+    clean = {}
+    for key, (value, maximum) in fields.items():
+        value = str(value or "").strip()
+        if not value:
+            raise ValueError(f"Le champ {key} est obligatoire.")
+        if len(value) > maximum:
+            raise ValueError(f"Le champ {key} dépasse {maximum} caractères.")
+        clean[key] = value
+    currency = str(currency or "").strip().upper()
+    if len(currency) != 3 or not currency.isalpha():
+        raise ValueError("Utilisez un code devise ISO à trois lettres, par exemple EUR.")
+    try:
+        amount = Decimal(str(price)).quantize(Decimal("0.01"))
+    except (InvalidOperation, ValueError):
+        raise ValueError("Montant invalide.") from None
+    if not amount.is_finite() or amount < 0:
+        raise ValueError("Le montant doit être positif ou nul.")
+    if not isinstance(validity_days, int) or not 1 <= validity_days <= 90:
+        raise ValueError("La validité doit être comprise entre 1 et 90 jours.")
+    return (
+        "PROPOSITION COMMERCIALE — PROJET NON CONTRACTUEL\n\n"
+        f"Destinataire : {clean['partner']} ({clean['country']})\n"
+        f"Objectif : {clean['objective']}\n\n"
+        f"Périmètre proposé\n{clean['scope']}\n\n"
+        f"Livrables envisagés\n{clean['deliverables']}\n\n"
+        f"Calendrier indicatif\n{clean['timeline']}\n\n"
+        f"Budget proposé : {amount:.2f} {currency}\n"
+        f"Modalités de paiement proposées : {clean['payment_terms']}\n"
+        f"Durée de validité souhaitée : {validity_days} jours\n\n"
+        "IMPORTANT — BROUILLON À VALIDER : cette proposition est préparatoire et non "
+        "contractuelle. Elle ne constitue ni une offre ferme, ni une acceptation, ni un "
+        "engagement de SOW IA. Les montants, taxes, délais, obligations, droits, garanties "
+        "et clauses doivent être vérifiés et approuvés par une personne habilitée avant tout envoi."
     )
 
 
