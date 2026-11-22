@@ -431,6 +431,15 @@ _NAV_CONTROL_TRANSLATIONS = {
 }
 
 
+
+_AUTH_TRANSLATIONS = {
+    "English": {"Connexion à mon compte SOW IA":"Sign in to my SOW IA account","Créer un compte SOW IA — nouveau compte uniquement":"Create a SOW IA account — new accounts only","Créer un compte SOW IA":"Create a SOW IA account","Votre adresse e-mail":"Your email address","Mot de passe (8 caractères minimum)":"Password (at least 8 characters)","Confirmer le mot de passe":"Confirm password","Créer mon compte":"Create my account","Connexion avec mot de passe":"Sign in with password","Connexion par e-mail":"Sign in by email","Adresse e-mail":"Email address","Mot de passe":"Password","Adresse e-mail du compte SOW IA":"Email address for your SOW IA account","Valider":"Submit","Continuer avec GitHub":"Continue with GitHub","Recommencer la connexion":"Restart sign-in"},
+    "Español": {"Connexion à mon compte SOW IA":"Iniciar sesión en mi cuenta SOW IA","Créer un compte SOW IA — nouveau compte uniquement":"Crear una cuenta SOW IA — solo cuentas nuevas","Créer un compte SOW IA":"Crear una cuenta SOW IA","Votre adresse e-mail":"Tu correo electrónico","Mot de passe (8 caractères minimum)":"Contraseña (mínimo 8 caracteres)","Confirmer le mot de passe":"Confirmar contraseña","Créer mon compte":"Crear mi cuenta","Connexion avec mot de passe":"Iniciar sesión con contraseña","Connexion par e-mail":"Iniciar sesión por correo electrónico","Adresse e-mail":"Correo electrónico","Mot de passe":"Contraseña","Adresse e-mail du compte SOW IA":"Correo electrónico de tu cuenta SOW IA","Valider":"Enviar","Continuer avec GitHub":"Continuar con GitHub","Recommencer la connexion":"Reiniciar el inicio de sesión"},
+    "中文": {"Connexion à mon compte SOW IA":"登录我的 SOW IA 账户","Créer un compte SOW IA — nouveau compte uniquement":"创建 SOW IA 账户 — 仅限新账户","Créer un compte SOW IA":"创建 SOW IA 账户","Votre adresse e-mail":"电子邮箱地址","Mot de passe (8 caractères minimum)":"密码（至少 8 个字符）","Confirmer le mot de passe":"确认密码","Créer mon compte":"创建我的账户","Connexion avec mot de passe":"使用密码登录","Connexion par e-mail":"通过电子邮件登录","Adresse e-mail":"电子邮箱地址","Mot de passe":"密码","Adresse e-mail du compte SOW IA":"SOW IA 账户电子邮箱","Valider":"提交","Continuer avec GitHub":"使用 GitHub 继续","Recommencer la connexion":"重新开始登录"},
+    "Deutsch": {"Connexion à mon compte SOW IA":"Bei meinem SOW IA-Konto anmelden","Créer un compte SOW IA — nouveau compte uniquement":"SOW IA-Konto erstellen — nur für neue Konten","Créer un compte SOW IA":"SOW IA-Konto erstellen","Votre adresse e-mail":"Ihre E-Mail-Adresse","Mot de passe (8 caractères minimum)":"Passwort (mindestens 8 Zeichen)","Confirmer le mot de passe":"Passwort bestätigen","Créer mon compte":"Mein Konto erstellen","Connexion avec mot de passe":"Mit Passwort anmelden","Connexion par e-mail":"Per E-Mail anmelden","Adresse e-mail":"E-Mail-Adresse","Mot de passe":"Passwort","Adresse e-mail du compte SOW IA":"E-Mail-Adresse Ihres SOW IA-Kontos","Valider":"Bestätigen","Continuer avec GitHub":"Mit GitHub fortfahren","Recommencer la connexion":"Anmeldung neu starten"},
+    "العربية": {"Connexion à mon compte SOW IA":"تسجيل الدخول إلى حساب SOW IA","Créer un compte SOW IA — nouveau compte uniquement":"إنشاء حساب SOW IA — للحسابات الجديدة فقط","Créer un compte SOW IA":"إنشاء حساب SOW IA","Votre adresse e-mail":"عنوان بريدك الإلكتروني","Mot de passe (8 caractères minimum)":"كلمة المرور (8 أحرف على الأقل)","Confirmer le mot de passe":"تأكيد كلمة المرور","Créer mon compte":"إنشاء حسابي","Connexion avec mot de passe":"تسجيل الدخول بكلمة المرور","Connexion par e-mail":"تسجيل الدخول عبر البريد الإلكتروني","Adresse e-mail":"عنوان البريد الإلكتروني","Mot de passe":"كلمة المرور","Adresse e-mail du compte SOW IA":"البريد الإلكتروني لحساب SOW IA","Valider":"إرسال","Continuer avec GitHub":"المتابعة باستخدام GitHub","Recommencer la connexion":"إعادة بدء تسجيل الدخول"}
+};
+
 def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     # Keep the product name visually consistent in every translated UI label.
@@ -455,6 +464,9 @@ def translate(text: str, language: str = "Français") -> str:
     if translated is not None:
         return translated
     translated = _NAV_CONTROL_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _AUTH_TRANSLATIONS.get(language, {}).get(text)
     if translated is not None:
         return translated
     return _CORE_TRANSLATIONS.get(language, {}).get(text, text)
