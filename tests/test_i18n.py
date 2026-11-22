@@ -32,3 +32,23 @@ def test_common_interface_actions_are_translated(language, expected):
 def test_markdown_headings_keep_formatting_when_translated():
     assert translate("### Vue d'ensemble", "English") == "### Overview"
 
+@pytest.mark.parametrize("language,expected", [
+    ("English", "Your secure personal workspace."),
+    ("Español", "Tu espacio personal seguro."),
+    ("中文", "您的安全个人工作空间。"),
+    ("Deutsch", "Ihr sicherer persönlicher Arbeitsbereich."),
+    ("العربية", "مساحتك الشخصية الآمنة."),
+])
+def test_pre_login_workspace_copy_is_localized(language, expected):
+    assert translate("Votre espace personnel sécurisé.", language) == expected
+
+
+@pytest.mark.parametrize("language,expected", [
+    ("English", "Sign in with password"),
+    ("Español", "Iniciar sesión con contraseña"),
+    ("中文", "使用密码登录"),
+    ("Deutsch", "Mit Passwort anmelden"),
+    ("العربية", "تسجيل الدخول بكلمة المرور"),
+])
+def test_password_login_heading_is_localized(language, expected):
+    assert translate("Connexion avec mot de passe", language) == expected
