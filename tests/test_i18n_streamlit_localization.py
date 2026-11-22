@@ -106,3 +106,20 @@ def test_placeholders_help_and_common_ui_labels_are_localized():
     assert kwargs["placeholder"] == "Enter your name"
     assert kwargs["help"] == "Save useful information"
     assert kwargs["key"] == "profile_name"
+
+
+def test_shared_interface_vocabulary_exists_for_all_supported_languages():
+    from i18n import LANGUAGES, translate
+
+    expected = {
+        "English": "Confirm",
+        "Español": "Confirmar",
+        "中文": "确认",
+        "Deutsch": "Bestätigen",
+        "العربية": "تأكيد",
+    }
+
+    assert len(LANGUAGES) == 6
+    for language, expected_label in expected.items():
+        assert translate("Valider", language) == expected_label
+        assert translate("Annuler", language) != "Annuler"
