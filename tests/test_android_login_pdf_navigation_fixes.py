@@ -3,7 +3,7 @@ from pathlib import Path
 
 def test_password_login_uses_mobile_friendly_button_outside_streamlit_form():
     source = Path("app.py").read_text(encoding="utf-8")
-    start = source.index('st.markdown("#### Connexion avec mot de passe")')
+    start = source.index('st.markdown("#### " + translate_ui("Connexion avec mot de passe", language))')
     end = source.index('            if password_login_submitted:', start)
     login_block = source[start:end]
 
