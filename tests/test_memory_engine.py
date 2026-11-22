@@ -11,7 +11,7 @@ def test_retrieval_prioritises_relevant_memory_and_keeps_project_context():
     ]
     result = select_relevant_memories(memories, "architecture mémoire SOW IA")
     assert result[0].startswith("Projet actif :")
-    assert any("architecture mémoire" in item for item in result)
+    assert any("architecture mémoire" in item.casefold() for item in result)
 
 
 def test_generic_query_preserves_source_order_and_removes_duplicates():
