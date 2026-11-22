@@ -92,3 +92,49 @@ def test_english_authentication_guidance_and_errors_are_translated():
         "Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.",
         "English",
     ).startswith("Sign-up request sent.")
+
+
+@pytest.mark.parametrize("language,expected", [
+    ("English", "The passwords do not match."),
+    ("Español", "Las contraseñas no coinciden."),
+    ("Deutsch", "Die beiden Passwörter stimmen nicht überein."),
+    ("中文", "两次输入的密码不一致。"),
+    ("العربية", "كلمتا المرور غير متطابقتين."),
+])
+def test_authentication_password_mismatch_is_translated_in_every_supported_language(language, expected):
+    assert translate("Les deux mots de passe ne correspondent pas.", language) == expected
+
+
+@pytest.mark.parametrize("language,expected", [
+    ("English", "Enter a valid email address."),
+    ("Español", "Introduce una dirección de correo electrónico válida."),
+    ("Deutsch", "Geben Sie eine gültige E-Mail-Adresse ein."),
+    ("中文", "请输入有效的电子邮箱地址。"),
+    ("العربية", "أدخل عنوان بريد إلكتروني صالحًا."),
+])
+def test_authentication_email_validation_is_translated_in_every_supported_language(language, expected):
+    assert translate("Saisissez une adresse e-mail valide.", language) == expected
+
+
+@pytest.mark.parametrize("language,expected", [
+    ("English", "Create a SOW IA account"),
+    ("Español", "Crear una cuenta SOW IA"),
+    ("Deutsch", "SOW IA-Konto erstellen"),
+    ("中文", "创建 SOW IA 账户"),
+    ("العربية", "إنشاء حساب SOW IA"),
+])
+def test_account_creation_heading_is_translated_in_every_supported_language(language, expected):
+    assert translate("Créer un compte SOW IA", language) == expected
+
+
+@pytest.mark.parametrize("language", ["English", "Español", "Deutsch", "中文", "العربية"])
+def test_authentication_guidance_does_not_fall_back_to_french(language):
+    sources = [
+        "Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA : utilisez votre mot de passe ou demandez un lien sécurisé à usage unique. Aucun compte GitHub n’est nécessaire.",
+        "Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.",
+        "Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter directement avec votre mot de passe, sans attendre un nouveau lien e-mail.",
+        "Saisissez l'adresse e-mail déjà associée à votre compte SOW IA, puis validez. Un lien sécurisé à usage unique sera envoyé ; aucun nouveau compte ne sera créé.",
+        "Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.",
+    ]
+    for source in sources:
+        assert translate(source, language) != source, f"Untranslated authentication text for {language}: {source}"
