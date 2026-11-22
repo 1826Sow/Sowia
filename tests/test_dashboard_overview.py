@@ -15,6 +15,7 @@ class _FakeStreamlit:
     def __init__(self):
         self.metrics = []
         self.buttons = []
+        self.session_state = {}
 
     def markdown(self, *args, **kwargs):
         pass
@@ -29,7 +30,7 @@ class _FakeStreamlit:
         self.metrics.append(args)
 
     def button(self, *args, **kwargs):
-        self.buttons.append(args)
+        self.buttons.append((args, kwargs))
 
     def columns(self, count):
         return [_Context() for _ in range(count)]
@@ -78,7 +79,7 @@ def test_render_reads_only_the_active_workspace(monkeypatch):
         ("conversations", "professional"),
     ]
     assert all(call[1] is client and call[2] is user for call in calls)
-    assert len(fake_st.buttons) == 2
+    assert len(fake_st.buttons) == 6
 
 
 def test_render_does_not_read_professional_data_without_premium(monkeypatch):
@@ -90,3 +91,24 @@ def test_render_does_not_read_professional_data_without_premium(monkeypatch):
     dashboard_overview.render(
         object(), object(), "professional", True, False, navigate=lambda page: None
     )
+
+
+def test_quick_action_prefills_assistant_without_sending(monkeypatch):
+    fake_st = _FakeStreamlit()
+    monkeypatch.setattr(dashboard_overview, "st", fake_st)
+    destinations = []
+    dashboard_overview._launch_assistant_prompt(
+        "Prépare un plan d’action.", destinations.append
+    )
+    assert fake_st.session_state["sowia_chat_prompt_restore"] == "Prépare un plan d’action."
+    assert destinations == ["Assistant IA"]
+
+
+def test_quick_actions_offer_four_editable_prompts(monkeypatch):
+    fake_st = _FakeStreamlit()
+    monkeypatch.setattr(dashboard_overview, "st", fake_st)
+    dashboard_overview._render_quick_actions(lambda page: None)
+    assert len(fake_st.buttons) == 4
+    assert all(kwargs.get("on_click") is dashboard_overview._launch_assistant_prompt
+               for _, kwargs in fake_st.buttons)
+    assert all(kwargs.get("args", ())[0] for _, kwargs in fake_st.buttons)
