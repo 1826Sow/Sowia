@@ -123,3 +123,59 @@ def test_shared_interface_vocabulary_exists_for_all_supported_languages():
     for language, expected_label in expected.items():
         assert translate("Valider", language) == expected_label
         assert translate("Annuler", language) != "Annuler"
+
+
+def test_existing_option_formatter_is_preserved_and_its_caption_is_translated():
+    calls = []
+
+    def selectbox(label, options, **kwargs):
+        calls.append((label, options, kwargs))
+        return options[0]
+
+    fake_st = SimpleNamespace(selectbox=selectbox)
+    options = [{"id": "personal", "label": "Espace personnel"}]
+    original_formatter = lambda option: option["label"]
+
+    install_streamlit_localization(
+        fake_st,
+        lambda value, language: f"{language}:{value}",
+        lambda: "English",
+    )
+
+    assert fake_st.selectbox(
+        "Espace",
+        options,
+        format_func=original_formatter,
+        key="space",
+    ) == options[0]
+    label, original_options, kwargs = calls[-1]
+    assert label == "English:Espace"
+    assert original_options is options
+    assert kwargs["format_func"](options[0]) == "English:Espace personnel"
+    assert kwargs["key"] == "space"
+
+
+def test_select_slider_and_link_button_are_localized_without_changing_values():
+    calls = []
+
+    def select_slider(label, options, **kwargs):
+        calls.append(("select_slider", label, options, kwargs))
+        return options[0]
+
+    def link_button(label, url, **kwargs):
+        calls.append(("link_button", label, url, kwargs))
+        return True
+
+    fake_st = SimpleNamespace(select_slider=select_slider, link_button=link_button)
+    options = ["Débutant", "Avancé"]
+    translate = lambda value, language: f"{language}:{value}"
+    install_streamlit_localization(fake_st, translate, lambda: "Deutsch")
+
+    assert fake_st.select_slider("Niveau", options, key="level") == "Débutant"
+    assert calls[-1][1] == "Deutsch:Niveau"
+    assert calls[-1][2] is options
+    assert calls[-1][3]["format_func"]("Débutant") == "Deutsch:Débutant"
+
+    assert fake_st.link_button("Ouvrir le guide", "https://example.test") is True
+    assert calls[-1][1] == "Deutsch:Ouvrir le guide"
+    assert calls[-1][2] == "https://example.test"
