@@ -823,9 +823,6 @@ def _translate_missing_interface_copy(text: str, language: str) -> str:
         or text.lstrip().startswith(("```", "{", "["))
     ):
         return text
-    # Avoid translating strings that are already in the target language.
-    if language == "English" and not re.search(r"[àâçéèêëîïôùûüÿœæ]", text, re.I):
-        return text
     try:
         response = requests.get(
             "https://translate.googleapis.com/translate_a/single",
