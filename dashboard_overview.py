@@ -20,6 +20,33 @@ def _format_updated(value):
         return "Date indisponible"
 
 
+def _launch_assistant_prompt(prompt, navigate):
+    """Prefill the assistant composer and navigate without sending automatically."""
+    st.session_state["sowia_chat_prompt_restore"] = prompt
+    navigate("Assistant IA")
+
+
+def _render_quick_actions(navigate):
+    st.markdown("#### ⚡ Actions rapides")
+    st.caption("Choisissez une tâche : le message sera préparé dans l’assistant, sans être envoyé automatiquement.")
+    actions = [
+        ("🗓️ Organiser mes priorités", "Aide-moi à organiser mes priorités et à construire un plan d’action clair pour les prochaines étapes."),
+        ("📄 Analyser un PDF", "Je souhaite analyser un document PDF. Guide-moi pour l’importer, puis aide-moi à en extraire les informations importantes."),
+        ("✍️ Rédiger un document", "Aide-moi à rédiger un document clair et professionnel. Commence par me demander le type de document et son objectif."),
+        ("🌍 Traduire un texte", "Aide-moi à traduire un texte. Je vais te fournir le texte et préciser la langue cible."),
+    ]
+    columns = st.columns(2)
+    for index, (label, prompt) in enumerate(actions):
+        with columns[index % 2]:
+            st.button(
+                label,
+                key=f"dashboard_action_{index}",
+                use_container_width=True,
+                on_click=_launch_assistant_prompt,
+                args=(prompt, navigate),
+            )
+
+
 def render(client, user, workspace_id, cloud_mode, premium_active, navigate):
     """Show recent projects and conversations for the active owner/workspace only."""
     if workspace_id == "professional" and not premium_active:
@@ -107,3 +134,5 @@ def render(client, user, workspace_id, cloud_mode, premium_active, navigate):
             "Une partie des données n’a pas pu être chargée. "
             "Aucun projet ni échange n’a été modifié."
         )
+
+    _render_quick_actions(navigate)
