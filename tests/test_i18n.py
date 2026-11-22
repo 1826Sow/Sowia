@@ -33,10 +33,10 @@ def test_markdown_headings_keep_formatting_when_translated():
     assert translate("### Vue d'ensemble", "English") == "### Overview"
 
 @pytest.mark.parametrize("language,expected", [
-    ("English", "Your secure personal workspace."),
+    ("English", "Your secure personal space."),
     ("Español", "Tu espacio personal seguro."),
-    ("中文", "您的安全个人工作空间。"),
-    ("Deutsch", "Ihr sicherer persönlicher Arbeitsbereich."),
+    ("中文", "您的安全个人空间。"),
+    ("Deutsch", "Ihr sicherer persönlicher Bereich."),
     ("العربية", "مساحتك الشخصية الآمنة."),
 ])
 def test_pre_login_workspace_copy_is_localized(language, expected):
