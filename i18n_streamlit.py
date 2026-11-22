@@ -31,6 +31,10 @@ def install_streamlit_localization(st_module, translate, get_language):
                 kwargs["label"] = translate(kwargs["label"], language)
             # Translate option captions at display time while preserving the
             # original option objects used by session state and business logic.
+            for display_kwarg in ("placeholder", "help"):
+                display_value = kwargs.get(display_kwarg)
+                if isinstance(display_value, str):
+                    kwargs[display_kwarg] = translate(display_value, language)
             if method_name in ("selectbox", "radio", "multiselect"):
                 kwargs.setdefault(
                     "format_func",
