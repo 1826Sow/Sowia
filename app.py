@@ -1282,7 +1282,8 @@ if privacy_screen:
             background: rgba(5, 16, 31, .58);
             -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
-            pointer-events: none;
+            /* Capture all taps while locked; the dedicated unlock button stays above this layer. */
+            pointer-events: auto;
         }
         section[data-testid="stMain"] .st-key-sowia_privacy_unlock_main {
             position: fixed !important;
@@ -2526,21 +2527,42 @@ elif page == "Assistant IA":
                     <script>
                     const text = document.getElementById('sowiaVoiceText').textContent;
                     const status = document.getElementById('sowiaVoiceStatus');
-                    document.getElementById('sowiaSpeak').onclick = () => {
-                      if (!('speechSynthesis' in window)) { status.textContent = 'Lecture vocale non prise en charge par ce navigateur.'; return; }
-                      window.speechSynthesis.cancel();
+                    const speakButton = document.getElementById('sowiaSpeak');
+                    const stopButton = document.getElementById('sowiaStop');
+                    const synth = ('speechSynthesis' in window) ? window.speechSynthesis : null;
+                    const targetLanguage = '""" + speech_language + """';
+                    const speak = () => {
+                      if (!synth || typeof SpeechSynthesisUtterance === 'undefined') {
+                        status.textContent = 'Lecture vocale non prise en charge sur cet appareil.';
+                        return;
+                      }
+                      synth.cancel();
                       const utterance = new SpeechSynthesisUtterance(text);
-                      utterance.lang = '""" + speech_language + """';
-                      const availableVoices = window.speechSynthesis.getVoices();
-                      const matchingVoice = availableVoices.find(voice => voice.lang.toLowerCase() === utterance.lang.toLowerCase())
-                        || availableVoices.find(voice => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase()));
-                      if (matchingVoice) utterance.voice = matchingVoice;
+                      utterance.lang = targetLanguage;
+                      const chooseVoice = () => {
+                        const voices = synth.getVoices();
+                        const target = targetLanguage.toLowerCase();
+                        const match = voices.find(voice => voice.lang.toLowerCase() === target)
+                          || voices.find(voice => voice.lang.toLowerCase().startsWith(target.slice(0, 2)));
+                        if (match) utterance.voice = match;
+                      };
+                      chooseVoice();
                       utterance.onstart = () => status.textContent = 'Lecture en cours';
                       utterance.onend = () => status.textContent = 'Lecture terminée';
-                      utterance.onerror = () => status.textContent = 'Lecture indisponible';
-                      window.speechSynthesis.speak(utterance);
+                      utterance.onerror = event => {
+                        status.textContent = event.error === 'canceled' ? 'Lecture arrêtée' : 'Lecture indisponible';
+                      };
+                      // Android/WebView may populate its installed voices asynchronously.
+                      if (synth.getVoices().length === 0) {
+                        synth.addEventListener('voiceschanged', chooseVoice, { once: true });
+                      }
+                      synth.speak(utterance);
                     };
-                    document.getElementById('sowiaStop').onclick = () => { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); status.textContent = 'Lecture arrêtée'; };
+                    speakButton.addEventListener('click', speak);
+                    stopButton.addEventListener('click', () => {
+                      if (synth) synth.cancel();
+                      status.textContent = 'Lecture arrêtée';
+                    });
                     </script></div>""",
                     height=75,
                 )
