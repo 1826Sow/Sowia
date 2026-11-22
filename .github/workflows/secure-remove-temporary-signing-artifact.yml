@@ -1,0 +1,42 @@
+name: Securely remove one temporary signing artifact
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/secure-remove-temporary-signing-artifact.yml"
+
+permissions:
+  actions: write
+
+jobs:
+  remove-one-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete only the known temporary signing artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          ARTIFACT_ID: "14390142417"
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /dev/null -w "%{http_code}" \
+            -X DELETE \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            "https://api.github.com/repos/$REPOSITORY/actions/artifacts/$ARTIFACT_ID")"
+          if [[ "$code" != "204" && "$code" != "404" ]]; then
+            echo "Deletion not confirmed; GitHub returned HTTP $code."
+            exit 1
+          fi
+          verify="$(curl -sS -o /dev/null -w "%{http_code}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            "https://api.github.com/repos/$REPOSITORY/actions/artifacts/$ARTIFACT_ID")"
+          if [[ "$verify" != "404" ]]; then
+            echo "Artifact still exists; verification returned HTTP $verify."
+            exit 1
+          fi
+          echo "Confirmed: artifact $ARTIFACT_ID has been deleted."
