@@ -17,18 +17,25 @@ create index if not exists sowia_messages_user_session_idx
 create table if not exists public.sowia_memory_items (
     id bigint generated always as identity primary key,
     user_id uuid not null references auth.users(id) on delete cascade,
-    content text not null check (char_length(content) between 1 and 20000),
-    category text not null default 'general'
-        check (category in ('general','profile','preference','project','decision','technical','workflow','reference','agent')),
-    importance smallint not null default 3 check (importance between 1 and 5),
+    content text not null,
+    category text not null default 'general',
+    importance smallint not null default 3,
     tags text[] not null default '{}'::text[],
-    source text not null default 'user'
-        check (source in ('user','conversation','project','document','system')),
-    metadata jsonb not null default '{}'::jsonb
-        check (jsonb_typeof(metadata) = 'object'),
+    source text not null default 'user',
+    metadata jsonb not null default '{}'::jsonb,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
-    archived_at timestamptz
+    archived_at timestamptz,
+    constraint sowia_memory_items_content_check
+        check (char_length(content) between 1 and 20000),
+    constraint sowia_memory_items_category_check
+        check (category in ('general','profile','preference','project','decision','technical','workflow','reference','agent')),
+    constraint sowia_memory_items_importance_check
+        check (importance between 1 and 5),
+    constraint sowia_memory_items_source_check
+        check (source in ('user','conversation','project','document','system')),
+    constraint sowia_memory_items_metadata_object_check
+        check (jsonb_typeof(metadata) = 'object')
 );
 
 create index if not exists sowia_memory_user_created_idx
