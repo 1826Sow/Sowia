@@ -121,7 +121,19 @@ def select_relevant_memories(memories, query="", max_chars=MAX_MEMORY_CONTEXT_CH
     for _score, _index, item, content, category, importance, source, _overlap in candidates[:max_items]:
         category_label = MEMORY_CATEGORIES.get(category, category.replace("_", " ").title())
         session_id = str(item.get("session_id") or "").strip()
-        origin = f" · conversation {session_id[:24]}" if session_id else ""
+        source_id = str(item.get("source_id") or item.get("id") or "").strip()
+        project_id = item.get("project_id")
+        created_at = str(item.get("created_at") or "").strip()[:10]
+        provenance = []
+        if source_id:
+            provenance.append(f"id {source_id[:18]}")
+        if created_at:
+            provenance.append(created_at)
+        if session_id:
+            provenance.append(f"conversation {session_id[:20]}")
+        if project_id is not None:
+            provenance.append(f"projet {project_id}")
+        origin = " · " + " · ".join(provenance) if provenance else ""
         prefix = f"- [{category_label} · priorité {importance}/5 · {source}{origin}] "
         remaining = max_chars - used - (1 if lines else 0)
         if remaining <= len(prefix):
