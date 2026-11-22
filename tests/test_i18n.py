@@ -65,3 +65,30 @@ def test_english_language_selection_does_not_change_internal_french_keys():
 ])
 def test_english_project_register_labels_are_translated(source, expected):
     assert translate(source, "English") == expected
+
+
+@pytest.mark.parametrize("source,expected", [
+    ("Votre espace personnel sécurisé.", "Your secure personal space."),
+    ("Connexion à mon compte SOW IA", "Sign in to my SOW IA account"),
+    ("Créer un compte SOW IA", "Create a SOW IA account"),
+    ("Votre adresse e-mail", "Your email address"),
+    ("Mot de passe (8 caractères minimum)", "Password (at least 8 characters)"),
+    ("Confirmer le mot de passe", "Confirm password"),
+    ("Créer mon compte", "Create my account"),
+    ("Connexion avec mot de passe", "Sign in with password"),
+    ("Connexion par e-mail", "Sign in by email"),
+    ("Adresse e-mail du compte SOW IA", "Email address for your SOW IA account"),
+    ("Continuer avec GitHub", "Continue with GitHub"),
+    ("Recommencer la connexion", "Restart sign-in"),
+])
+def test_english_authentication_labels_are_translated(source, expected):
+    assert translate(source, "English") == expected
+
+
+def test_english_authentication_guidance_and_errors_are_translated():
+    assert translate("Saisissez une adresse e-mail valide.", "English") == "Enter a valid email address."
+    assert translate("Les deux mots de passe ne correspondent pas.", "English") == "The passwords do not match."
+    assert translate(
+        "Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.",
+        "English",
+    ).startswith("Sign-up request sent.")
