@@ -1162,8 +1162,7 @@ with st.sidebar:
     st.caption("Votre compte et vos espaces de travail")
 
 if privacy_screen:
-    # A main-area unlock control remains reachable on mobile even when the
-    # Streamlit sidebar is collapsed. Only the other main-area blocks are blurred.
+    # Keep the unlock control reachable on mobile while the complete app is obscured.
     st.button(
         translate_ui("🔓 DÉSACTIVER LA PROTECTION D’ÉCRAN", language),
         key="sowia_privacy_unlock_main",
@@ -1201,24 +1200,6 @@ if privacy_screen:
             color: #fff !important;
             box-shadow: 0 8px 28px rgba(0,0,0,.55) !important;
             pointer-events: auto !important;
-        }
-        body::after {
-            content: "🔒 Protection d'écran activée";
-            position: fixed;
-            z-index: 999999;
-            top: 12px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: min(92vw, 680px);
-            padding: 12px 16px;
-            border: 1px solid #b8c6d5;
-            border-radius: 12px;
-            background: rgba(15, 35, 56, .98);
-            color: #fff !important;
-            text-align: center;
-            font-weight: 700;
-            box-shadow: 0 8px 28px rgba(0,0,0,.25);
-            pointer-events: none;
         }
         </style>""",
         unsafe_allow_html=True,
