@@ -11,6 +11,11 @@ def test_project_linked_memory_migration_is_additive_and_workspace_scoped():
     assert "p.user_id = sowia_memory_items.user_id" in migration
     assert "p.workspace_id = sowia_memory_items.workspace_id" in migration
     assert "project_id is null" in migration
+    assert "create trigger sowia_memory_project_scope_guard" in migration
+    assert "and p.archived_at is null" in migration
+    assert "from pg_policies" in migration
+    assert "drop policy %I on public.sowia_memory_items" in migration
+    assert 'create policy "memory_insert_own"' in migration
 
 
 def test_assistant_retrieves_general_and_selected_project_memory_only():
