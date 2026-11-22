@@ -456,9 +456,7 @@ if cloud_mode:
                     pass
                 clear_authenticated_session_state(st.session_state)
                 st.error(
-                    "Connexion refusée : le compte authentifié ne correspond pas "
-                    "à l'adresse e-mail qui a demandé le lien. Recommencez avec "
-                    "l'adresse du compte SOW IA souhaité."
+                    translate_ui("Connexion refusée : le compte authentifié ne correspond pas à l'adresse e-mail qui a demandé le lien. Recommencez avec l'adresse du compte SOW IA souhaité.", language)
                 )
                 st.stop()
             # The expected address is cleared only after the identity matches.
@@ -507,18 +505,14 @@ if cloud_mode:
             # Keep diagnostics useful without rendering raw exception text or
             # tracebacks, which may contain credentials, OAuth codes or tokens.
             st.error(
-                "La connexion sécurisée Supabase n'a pas abouti. "
-                "L'accès reste fermé par sécurité. Rechargez cette page pour "
-                "générer une nouvelle tentative GitHub.\n\n"
-                f"Étape : {auth_stage}.\nCode technique : {type(exc).__name__}"
+                translate_ui("La connexion sécurisée Supabase n'a pas abouti. L'accès reste fermé par sécurité. Rechargez cette page pour générer une nouvelle tentative GitHub.", language) + f"\n\n{translate_ui('Étape :', language)} {auth_stage}.\n{translate_ui('Code technique :', language)} {type(exc).__name__}"
             )
             with st.expander(translate_ui("Détails techniques pour le diagnostic", language)):
                 st.caption(
-                    "Les détails sensibles sont masqués. Communiquez le code "
-                    "technique et l'étape indiquée au support."
+                    translate_ui("Les détails sensibles sont masqués. Communiquez le code technique et l'étape indiquée au support.", language)
                 )
             st.stop()
-        st.warning("Supabase ne répond pas correctement : SOW IA continue en mode local temporaire. Les fonctions locales, dont la création de PDF, restent accessibles. Les données locales ne sont pas destinées à un usage partagé.")
+        st.warning(translate_ui("Supabase ne répond pas correctement : SOW IA continue en mode local temporaire. Les fonctions locales, dont la création de PDF, restent accessibles. Les données locales ne sont pas destinées à un usage partagé.", language))
         st.caption(translate_ui("Les détails techniques sont masqués pour protéger les informations de connexion.", language))
         cloud_mode = False
         current_user = None
@@ -753,8 +747,7 @@ if cloud_mode:
             except Exception:
                 st.session_state.pop("sowia_github_login_url", None)
                 st.warning(
-                    "La connexion GitHub n'a pas pu être préparée. Vérifiez la "
-                    "configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase."
+                    translate_ui("La connexion GitHub n'a pas pu être préparée. Vérifiez la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.", language)
                 )
         st.stop()
 
