@@ -1004,3 +1004,49 @@ _PROJECT_REGISTER_DIAGNOSTICS = {
 }
 for _language, _catalogue in _PROJECT_REGISTER_DIAGNOSTICS.items():
     _EXTRA_TRANSLATIONS[_language].update(_catalogue)
+
+
+_AUTH_EARLY_FAILURE_COMPLETION = {
+    "English": {
+        "Connexion refusée : le compte authentifié ne correspond pas à l'adresse e-mail qui a demandé le lien. Recommencez avec l'adresse du compte SOW IA souhaité.": "Sign-in rejected: the authenticated account does not match the email address that requested the link. Restart with the intended SOW IA account address.",
+        "La connexion sécurisée Supabase n'a pas abouti. L'accès reste fermé par sécurité. Rechargez cette page pour générer une nouvelle tentative GitHub.": "Secure Supabase sign-in failed. Access remains blocked for security. Reload this page to start a new GitHub attempt.",
+        "Les détails sensibles sont masqués. Communiquez le code technique et l'étape indiquée au support.": "Sensitive details are hidden. Provide the technical code and step shown to support.",
+        "Bienvenue sur le Hub SOW IA": "Welcome to the SOW IA Hub",
+        "Étape :": "Step:",
+        "Code technique :": "Technical code:",
+    },
+    "Español": {
+        "Connexion refusée : le compte authentifié ne correspond pas à l'adresse e-mail qui a demandé le lien. Recommencez avec l'adresse du compte SOW IA souhaité.": "Inicio de sesión rechazado: la cuenta autenticada no coincide con el correo que solicitó el enlace. Vuelve a intentarlo con la dirección de la cuenta SOW IA correcta.",
+        "La connexion sécurisée Supabase n'a pas abouti. L'accès reste fermé par sécurité. Rechargez cette page pour générer une nouvelle tentative GitHub.": "No se pudo iniciar sesión de forma segura en Supabase. El acceso permanece bloqueado por seguridad. Recarga esta página para iniciar un nuevo intento con GitHub.",
+        "Les détails sensibles sont masqués. Communiquez le code technique et l'étape indiquée au support.": "Los datos sensibles están ocultos. Comunica al soporte el código técnico y el paso indicado.",
+        "Bienvenue sur le Hub SOW IA": "Te damos la bienvenida al Hub de SOW IA",
+        "Étape :": "Paso:",
+        "Code technique :": "Código técnico:",
+    },
+    "Deutsch": {
+        "Connexion refusée : le compte authentifié ne correspond pas à l'adresse e-mail qui a demandé le lien. Recommencez avec l'adresse du compte SOW IA souhaité.": "Anmeldung abgelehnt: Das angemeldete Konto stimmt nicht mit der E-Mail-Adresse überein, die den Link angefordert hat. Starten Sie den Vorgang mit der gewünschten SOW IA-Kontoadresse erneut.",
+        "La connexion sécurisée Supabase n'a pas abouti. L'accès reste fermé par sécurité. Rechargez cette page pour générer une nouvelle tentative GitHub.": "Die sichere Supabase-Anmeldung ist fehlgeschlagen. Der Zugriff bleibt aus Sicherheitsgründen gesperrt. Laden Sie die Seite neu, um einen neuen GitHub-Versuch zu starten.",
+        "Les détails sensibles sont masqués. Communiquez le code technique et l'étape indiquée au support.": "Vertrauliche Details sind ausgeblendet. Teilen Sie dem Support den technischen Code und den angegebenen Schritt mit.",
+        "Bienvenue sur le Hub SOW IA": "Willkommen im SOW IA Hub",
+        "Étape :": "Schritt:",
+        "Code technique :": "Technischer Code:",
+    },
+    "中文": {
+        "Connexion refusée : le compte authentifié ne correspond pas à l'adresse e-mail qui a demandé le lien. Recommencez avec l'adresse du compte SOW IA souhaité.": "登录被拒绝：当前已验证账户与请求链接的电子邮箱不匹配。请使用目标 SOW IA 账户邮箱重新登录。",
+        "La connexion sécurisée Supabase n'a pas abouti. L'accès reste fermé par sécurité. Rechargez cette page pour générer une nouvelle tentative GitHub.": "Supabase 安全登录失败。出于安全考虑，访问仍被阻止。请刷新页面以重新尝试 GitHub 登录。",
+        "Les détails sensibles sont masqués. Communiquez le code technique et l'étape indiquée au support.": "敏感信息已隐藏。请向支持团队提供显示的技术代码和步骤。",
+        "Bienvenue sur le Hub SOW IA": "欢迎使用 SOW IA Hub",
+        "Étape :": "步骤：",
+        "Code technique :": "技术代码：",
+    },
+    "العربية": {
+        "Connexion refusée : le compte authentifié ne correspond pas à l'adresse e-mail qui a demandé le lien. Recommencez avec l'adresse du compte SOW IA souhaité.": "تم رفض تسجيل الدخول: الحساب الذي تم التحقق منه لا يطابق عنوان البريد الإلكتروني الذي طلب الرابط. أعد المحاولة باستخدام عنوان حساب SOW IA المطلوب.",
+        "La connexion sécurisée Supabase n'a pas abouti. L'accès reste fermé par sécurité. Rechargez cette page pour générer une nouvelle tentative GitHub.": "فشل تسجيل الدخول الآمن إلى Supabase. يظل الوصول محظورًا لأسباب أمنية. أعد تحميل الصفحة لبدء محاولة جديدة عبر GitHub.",
+        "Les détails sensibles sont masqués. Communiquez le code technique et l'étape indiquée au support.": "تم إخفاء التفاصيل الحساسة. أبلغ الدعم بالرمز التقني والخطوة الموضحة.",
+        "Bienvenue sur le Hub SOW IA": "مرحبًا بك في مركز SOW IA",
+        "Étape :": "الخطوة:",
+        "Code technique :": "الرمز التقني:",
+    },
+}
+for _language, _catalogue in _AUTH_EARLY_FAILURE_COMPLETION.items():
+    _EXTRA_TRANSLATIONS[_language].update(_catalogue)
