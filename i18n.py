@@ -504,6 +504,128 @@ _AUTH_MESSAGE_TRANSLATIONS = {
     },
 }
 
+
+# Main application screens. These labels are rendered after sign-in and must
+# follow the same account language as the navigation and workspace controls.
+_PAGE_TRANSLATIONS = {
+    "English": {
+        "✨ SOW IA GLOBAL PARTNER NETWORK — suggestions de partenaires": "✨ SOW IA GLOBAL PARTNER NETWORK — partner suggestions",
+        "🤝 GLOBAL CONNECT — demandes de mise en relation": "🤝 GLOBAL CONNECT — connection requests",
+        "💬 GLOBAL MESSENGER — conversations acceptées": "💬 GLOBAL MESSENGER — accepted conversations",
+        "🔔 GLOBAL NOTIFICATIONS — centre de notifications": "🔔 GLOBAL NOTIFICATIONS — notification center",
+        "🛡️ SOW IA GLOBAL ACTION GOVERNANCE": "🛡️ SOW IA GLOBAL ACTION GOVERNANCE",
+        "📈 SOW IA GLOBAL PERFORMANCE & IMPACT": "📈 SOW IA GLOBAL PERFORMANCE & IMPACT",
+        "🌐 SOW IA GLOBAL PORTFOLIO CONTROL": "🌐 SOW IA GLOBAL PORTFOLIO CONTROL",
+        "📑 SOW IA GLOBAL EXECUTIVE REPORTS": "📑 SOW IA GLOBAL EXECUTIVE REPORTS",
+        "🌍 SOW IA GLOBAL AUTONOMOUS STRATEGY": "🌍 SOW IA GLOBAL AUTONOMOUS STRATEGY",
+        "🧠 SOW IA GLOBAL LEARNING ENGINE": "🧠 SOW IA GLOBAL LEARNING ENGINE",
+        "🛡️ SOW IA GLOBAL ADMIN & MODERATION": "🛡️ SOW IA GLOBAL ADMIN & MODERATION",
+        "📈 Opportunités et revenus de SOW IA": "📈 SOW IA opportunities & revenue",
+        "🧭 Laboratoire de scénarios stratégiques": "🧭 Strategic scenario lab",
+        "🧪 Sélection des meilleures technologies": "🧪 Best technology selection",
+        "💹 SOW IA Finance — Bourse, Crypto & Investissements": "💹 SOW IA Finance — Markets, Crypto & Investments",
+        "🛰️ SOW IA CONTROL CENTER": "🛰️ SOW IA CONTROL CENTER",
+        "✨ SOW IA GLOBAL PARTNER NETWORK": "✨ SOW IA GLOBAL PARTNER NETWORK",
+        "📁 Dossier de navigation": "📁 Navigation section",
+        "🧭 Outil à ouvrir": "🧭 Tool to open",
+        "Rubrique actuelle": "Current section",
+        "Toutes les catégories et leurs rubriques sont accessibles ici.": "All categories and their sections are available here.",
+        "Votre compte et vos espaces de travail": "Your account and workspaces",
+    },
+    "Español": {
+        "✨ SOW IA GLOBAL PARTNER NETWORK — suggestions de partenaires": "✨ SOW IA GLOBAL PARTNER NETWORK — sugerencias de socios",
+        "🤝 GLOBAL CONNECT — demandes de mise en relation": "🤝 GLOBAL CONNECT — solicitudes de contacto",
+        "💬 GLOBAL MESSENGER — conversations acceptées": "💬 GLOBAL MESSENGER — conversaciones aceptadas",
+        "🔔 GLOBAL NOTIFICATIONS — centre de notifications": "🔔 GLOBAL NOTIFICATIONS — centro de notificaciones",
+        "🛡️ SOW IA GLOBAL ACTION GOVERNANCE": "🛡️ GOBERNANZA DE ACCIONES SOW IA GLOBAL",
+        "📈 SOW IA GLOBAL PERFORMANCE & IMPACT": "📈 RENDIMIENTO E IMPACTO GLOBAL DE SOW IA",
+        "🌐 SOW IA GLOBAL PORTFOLIO CONTROL": "🌐 CONTROL GLOBAL DE CARTERA SOW IA",
+        "📑 SOW IA GLOBAL EXECUTIVE REPORTS": "📑 INFORMES EJECUTIVOS GLOBALES SOW IA",
+        "🌍 SOW IA GLOBAL AUTONOMOUS STRATEGY": "🌍 ESTRATEGIA AUTÓNOMA GLOBAL SOW IA",
+        "🧠 SOW IA GLOBAL LEARNING ENGINE": "🧠 MOTOR DE APRENDIZAJE GLOBAL SOW IA",
+        "🛡️ SOW IA GLOBAL ADMIN & MODERATION": "🛡️ ADMINISTRACIÓN Y MODERACIÓN GLOBAL SOW IA",
+        "📈 Opportunités et revenus de SOW IA": "📈 Oportunidades e ingresos de SOW IA",
+        "🧭 Laboratoire de scénarios stratégiques": "🧭 Laboratorio de escenarios estratégicos",
+        "🧪 Sélection des meilleures technologies": "🧪 Selección de las mejores tecnologías",
+        "💹 SOW IA Finance — Bourse, Crypto & Investissements": "💹 Finanzas SOW IA — mercados, cripto e inversiones",
+        "🛰️ SOW IA CONTROL CENTER": "🛰️ CENTRO DE CONTROL SOW IA",
+        "📁 Dossier de navigation": "📁 Sección de navegación",
+        "🧭 Outil à ouvrir": "🧭 Herramienta que abrir",
+        "Rubrique actuelle": "Sección actual",
+        "Toutes les catégories et leurs rubriques sont accessibles ici.": "Todas las categorías y sus secciones están disponibles aquí.",
+        "Votre compte et vos espaces de travail": "Tu cuenta y tus espacios de trabajo",
+    },
+    "中文": {
+        "✨ SOW IA GLOBAL PARTNER NETWORK — suggestions de partenaires": "✨ SOW IA 全球合作伙伴网络 — 合作伙伴推荐",
+        "🤝 GLOBAL CONNECT — demandes de mise en relation": "🤝 GLOBAL CONNECT — 联系请求",
+        "💬 GLOBAL MESSENGER — conversations acceptées": "💬 GLOBAL MESSENGER — 已接受的对话",
+        "🔔 GLOBAL NOTIFICATIONS — centre de notifications": "🔔 GLOBAL NOTIFICATIONS — 通知中心",
+        "🛡️ SOW IA GLOBAL ACTION GOVERNANCE": "🛡️ SOW IA 全球行动治理",
+        "📈 SOW IA GLOBAL PERFORMANCE & IMPACT": "📈 SOW IA 全球绩效与影响",
+        "🌐 SOW IA GLOBAL PORTFOLIO CONTROL": "🌐 SOW IA 全球投资组合管理",
+        "📑 SOW IA GLOBAL EXECUTIVE REPORTS": "📑 SOW IA 全球执行报告",
+        "🌍 SOW IA GLOBAL AUTONOMOUS STRATEGY": "🌍 SOW IA 全球自主战略",
+        "🧠 SOW IA GLOBAL LEARNING ENGINE": "🧠 SOW IA 全球学习引擎",
+        "🛡️ SOW IA GLOBAL ADMIN & MODERATION": "🛡️ SOW IA 全球管理与审核",
+        "📈 Opportunités et revenus de SOW IA": "📈 SOW IA 机会与收入",
+        "🧭 Laboratoire de scénarios stratégiques": "🧭 战略情景实验室",
+        "🧪 Sélection des meilleures technologies": "🧪 最佳技术选择",
+        "💹 SOW IA Finance — Bourse, Crypto & Investissements": "💹 SOW IA 金融 — 股票、加密货币与投资",
+        "🛰️ SOW IA CONTROL CENTER": "🛰️ SOW IA 控制中心",
+        "📁 Dossier de navigation": "📁 导航分类",
+        "🧭 Outil à ouvrir": "🧭 要打开的工具",
+        "Rubrique actuelle": "当前栏目",
+        "Toutes les catégories et leurs rubriques sont accessibles ici.": "所有类别及其栏目均可在此访问。",
+        "Votre compte et vos espaces de travail": "您的账户和工作区",
+    },
+    "Deutsch": {
+        "✨ SOW IA GLOBAL PARTNER NETWORK — suggestions de partenaires": "✨ SOW IA GLOBAL PARTNER NETWORK — Partnervorschläge",
+        "🤝 GLOBAL CONNECT — demandes de mise en relation": "🤝 GLOBAL CONNECT — Kontaktanfragen",
+        "💬 GLOBAL MESSENGER — conversations acceptées": "💬 GLOBAL MESSENGER — angenommene Gespräche",
+        "🔔 GLOBAL NOTIFICATIONS — centre de notifications": "🔔 GLOBAL NOTIFICATIONS — Benachrichtigungszentrale",
+        "🛡️ SOW IA GLOBAL ACTION GOVERNANCE": "🛡️ SOW IA GLOBALE AKTIONSSTEUERUNG",
+        "📈 SOW IA GLOBAL PERFORMANCE & IMPACT": "📈 SOW IA GLOBALE LEISTUNG & WIRKUNG",
+        "🌐 SOW IA GLOBAL PORTFOLIO CONTROL": "🌐 SOW IA GLOBALE PORTFOLIOSTEUERUNG",
+        "📑 SOW IA GLOBAL EXECUTIVE REPORTS": "📑 SOW IA GLOBALE MANAGEMENTBERICHTE",
+        "🌍 SOW IA GLOBAL AUTONOMOUS STRATEGY": "🌍 SOW IA GLOBALE AUTONOME STRATEGIE",
+        "🧠 SOW IA GLOBAL LEARNING ENGINE": "🧠 SOW IA GLOBALE LERNPLATTFORM",
+        "🛡️ SOW IA GLOBAL ADMIN & MODERATION": "🛡️ SOW IA GLOBALE ADMINISTRATION & MODERATION",
+        "📈 Opportunités et revenus de SOW IA": "📈 SOW IA Chancen & Einnahmen",
+        "🧭 Laboratoire de scénarios stratégiques": "🧭 Labor für strategische Szenarien",
+        "🧪 Sélection des meilleures technologies": "🧪 Auswahl der besten Technologien",
+        "💹 SOW IA Finance — Bourse, Crypto & Investissements": "💹 SOW IA Finanzen — Börse, Krypto & Investitionen",
+        "🛰️ SOW IA CONTROL CENTER": "🛰️ SOW IA KONTROLLZENTRUM",
+        "📁 Dossier de navigation": "📁 Navigationsbereich",
+        "🧭 Outil à ouvrir": "🧭 Werkzeug öffnen",
+        "Rubrique actuelle": "Aktueller Bereich",
+        "Toutes les catégories et leurs rubriques sont accessibles ici.": "Alle Kategorien und Bereiche sind hier verfügbar.",
+        "Votre compte et vos espaces de travail": "Ihr Konto und Ihre Arbeitsbereiche",
+    },
+    "العربية": {
+        "✨ SOW IA GLOBAL PARTNER NETWORK — suggestions de partenaires": "✨ شبكة شركاء SOW IA العالمية — اقتراحات الشركاء",
+        "🤝 GLOBAL CONNECT — demandes de mise en relation": "🤝 GLOBAL CONNECT — طلبات التواصل",
+        "💬 GLOBAL MESSENGER — conversations acceptées": "💬 GLOBAL MESSENGER — المحادثات المقبولة",
+        "🔔 GLOBAL NOTIFICATIONS — centre de notifications": "🔔 GLOBAL NOTIFICATIONS — مركز الإشعارات",
+        "🛡️ SOW IA GLOBAL ACTION GOVERNANCE": "🛡️ حوكمة إجراءات SOW IA العالمية",
+        "📈 SOW IA GLOBAL PERFORMANCE & IMPACT": "📈 الأداء والتأثير العالمي لـ SOW IA",
+        "🌐 SOW IA GLOBAL PORTFOLIO CONTROL": "🌐 إدارة محفظة SOW IA العالمية",
+        "📑 SOW IA GLOBAL EXECUTIVE REPORTS": "📑 التقارير التنفيذية العالمية لـ SOW IA",
+        "🌍 SOW IA GLOBAL AUTONOMOUS STRATEGY": "🌍 الاستراتيجية الذاتية العالمية لـ SOW IA",
+        "🧠 SOW IA GLOBAL LEARNING ENGINE": "🧠 محرك التعلم العالمي لـ SOW IA",
+        "🛡️ SOW IA GLOBAL ADMIN & MODERATION": "🛡️ الإدارة والإشراف العالمي لـ SOW IA",
+        "📈 Opportunités et revenus de SOW IA": "📈 فرص وإيرادات SOW IA",
+        "🧭 Laboratoire de scénarios stratégiques": "🧭 مختبر السيناريوهات الاستراتيجية",
+        "🧪 Sélection des meilleures technologies": "🧪 اختيار أفضل التقنيات",
+        "💹 SOW IA Finance — Bourse, Crypto & Investissements": "💹 SOW IA المالية — الأسهم والعملات الرقمية والاستثمارات",
+        "🛰️ SOW IA CONTROL CENTER": "🛰️ مركز التحكم SOW IA",
+        "📁 Dossier de navigation": "📁 قسم التنقل",
+        "🧭 Outil à ouvrir": "🧭 الأداة المراد فتحها",
+        "Rubrique actuelle": "القسم الحالي",
+        "Toutes les catégories et leurs rubriques sont accessibles ici.": "جميع الفئات وأقسامها متاحة هنا.",
+        "Votre compte et vos espaces de travail": "حسابك ومساحات العمل الخاصة بك",
+    },
+}
+
 def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     # Keep the product name visually consistent in every translated UI label.
@@ -534,6 +656,9 @@ def translate(text: str, language: str = "Français") -> str:
     if translated is not None:
         return translated
     translated = _AUTH_MESSAGE_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _PAGE_TRANSLATIONS.get(language, {}).get(text)
     if translated is not None:
         return translated
     return _CORE_TRANSLATIONS.get(language, {}).get(text, text)
