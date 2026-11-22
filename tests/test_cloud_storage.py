@@ -47,6 +47,10 @@ class FakeQuery:
         self.operations.append(("range", start, end))
         return self
 
+    def is_(self, field, value):
+        self.filters.append((field, f"is.{value}"))
+        return self
+
     def execute(self):
         if ("select", "id") in self.operations:
             return SimpleNamespace(data=[{"id": 123}])
@@ -59,6 +63,11 @@ class FakeClient:
 
     def table(self, name):
         return self.tables.setdefault(name, FakeQuery())
+
+    def rpc(self, name, params):
+        self.rpc_name = name
+        self.rpc_params = params
+        return self.tables.setdefault("rpc:" + name, FakeQuery())
 
 
 def test_create_conversation_is_scoped_to_owner_and_workspace():
@@ -121,6 +130,11 @@ def test_add_memory_writes_user_and_workspace(workspace):
         "user_id": "user-123",
         "workspace_id": workspace,
         "content": "Ma note",
+        "category": "general",
+        "importance": 3,
+        "tags": [],
+        "source": "user",
+        "project_id": None,
     }
 
 
@@ -132,7 +146,7 @@ def test_memory_input_is_validated_before_database_write():
     with pytest.raises(ValueError):
         cloud_storage.add_memory(Client(), User(), "   ")
     with pytest.raises(ValueError):
-        cloud_storage.add_memory(Client(), User(), "x" * 1001)
+        cloud_storage.add_memory(Client(), User(), "x" * 20001)
 
 
 def test_delete_memory_is_scoped_to_user_memory_and_workspace():
@@ -542,3 +556,41 @@ def test_list_conversations_supports_incremental_history_windows_safely():
     assert ("range", 0, 999) in query.operations
     assert ("user_id", "user-123") in query.filters
     assert ("workspace_id", "personal") in query.filters
+
+
+def test_memory_list_uses_pagination_without_a_100_note_cap():
+    client = FakeClient()
+    cloud_storage.list_memories(client, User(), "personal", limit=1000, offset=1000)
+    query = client.tables["sowia_memory_items"]
+    assert ("range", 1000, 1999) in query.operations
+    assert ("archived_at", "is.null") in query.filters
+
+
+def test_memory_insert_persists_category_priority_tags_and_project():
+    client = FakeClient()
+    cloud_storage.add_memory(
+        client, User(), "Technical decision", category="technical",
+        importance=5, tags=["SOW IA", "Supabase", "SOW IA"],
+        source="project", project_id=12,
+    )
+    payload = client.tables["sowia_memory_items"].inserted
+    assert payload["category"] == "technical"
+    assert payload["importance"] == 5
+    assert payload["tags"] == ["SOW IA", "Supabase"]
+    assert payload["project_id"] == 12
+
+
+def test_memory_search_uses_scoped_rpc_and_excludes_current_session():
+    client = FakeClient()
+    cloud_storage.search_memory_context(
+        client, User(), "SOW IA project memory", "professional",
+        exclude_session_id="active-session", limit=60,
+    )
+    assert client.rpc_name == "sowia_search_memory_context"
+    assert client.rpc_params == {
+        "p_workspace_id": "professional",
+        "p_query": "SOW IA project memory",
+        "p_exclude_session_id": "active-session",
+        "p_project_id": None,
+        "p_match_count": 60,
+    }

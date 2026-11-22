@@ -1,5 +1,6 @@
 """Local SQLite storage for conversations and user-managed memory, separated by workspace."""
 import sqlite3
+import json
 import threading
 from pathlib import Path
 from datetime import datetime, timezone
@@ -25,6 +26,26 @@ def _ensure_workspace_column(conn, table):
         conn.execute(
             f"ALTER TABLE {table} ADD COLUMN workspace_id TEXT NOT NULL DEFAULT 'personal'"
         )
+
+
+def _ensure_memory_columns(conn):
+    """Add metadata columns to existing local databases without losing notes."""
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(memory_items)")}
+    definitions = {
+        "category": "TEXT NOT NULL DEFAULT 'general'",
+        "importance": "INTEGER NOT NULL DEFAULT 3",
+        "tags": "TEXT NOT NULL DEFAULT '[]'",
+        "source": "TEXT NOT NULL DEFAULT 'user'",
+        "project_id": "INTEGER",
+        "updated_at": "TEXT",
+        "archived_at": "TEXT",
+    }
+    for name, definition in definitions.items():
+        if name not in columns:
+            conn.execute(f"ALTER TABLE memory_items ADD COLUMN {name} {definition}")
+    conn.execute(
+        "UPDATE memory_items SET updated_at=created_at WHERE updated_at IS NULL"
+    )
 
 
 def _connect():
@@ -56,6 +77,7 @@ def _connect():
                 )
                 _ensure_workspace_column(conn, "messages")
                 _ensure_workspace_column(conn, "memory_items")
+                _ensure_memory_columns(conn)
                 conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_messages_session_workspace_id "
                     "ON messages(session_id, workspace_id, id)"
@@ -100,36 +122,85 @@ def clear_history(session_id, workspace_id="personal"):
         )
 
 
-def add_memory(content, workspace_id="personal"):
-    """Save a short memory note after validating its size."""
+MEMORY_CATEGORIES = {
+    "general", "profile", "preference", "project", "decision",
+    "technical", "workflow", "reference", "agent",
+}
+MAX_MEMORY_NOTE_CHARS = 20_000
+
+
+def add_memory(content, workspace_id="personal", category="general",
+               importance=3, tags=None, source="user", project_id=None):
+    """Save a durable memory note without an arbitrary record-count limit."""
     workspace = _workspace_id(workspace_id)
-    cleaned = (content or "").strip()
+    cleaned = str(content or "").strip()
     if not cleaned:
         raise ValueError("La note mémoire ne peut pas être vide.")
-    if len(cleaned) > 1000:
-        raise ValueError("Une note mémoire ne peut pas dépasser 1 000 caractères.")
+    if len(cleaned) > MAX_MEMORY_NOTE_CHARS:
+        raise ValueError("Une note mémoire ne peut pas dépasser 20 000 caractères.")
+    if category not in MEMORY_CATEGORIES:
+        raise ValueError("Catégorie de mémoire non prise en charge.")
+    if isinstance(importance, bool) or not isinstance(importance, int) or not 1 <= importance <= 5:
+        raise ValueError("La priorité doit être comprise entre 1 et 5.")
+    if source not in {"user", "conversation", "project", "document", "system"}:
+        raise ValueError("Source de mémoire non prise en charge.")
+    clean_tags = []
+    for tag in tags or []:
+        value = " ".join(str(tag or "").split())[:50]
+        if value and value not in clean_tags:
+            clean_tags.append(value)
+        if len(clean_tags) >= 20:
+            break
+    linked_project = int(project_id) if project_id is not None else None
+    if linked_project is not None and linked_project < 1:
+        raise ValueError("Identifiant de projet invalide.")
+    now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
-        count = conn.execute(
-            "SELECT COUNT(*) FROM memory_items WHERE workspace_id=?", (workspace,)
-        ).fetchone()[0]
-        if count >= 100:
-            raise ValueError("La mémoire contient déjà 100 notes. Supprimez-en une avant d'en ajouter.")
         cursor = conn.execute(
-            "INSERT INTO memory_items(content, created_at, workspace_id) VALUES(?, ?, ?)",
-            (cleaned, datetime.now(timezone.utc).isoformat(), workspace),
+            """INSERT INTO memory_items(
+                content, created_at, workspace_id, category, importance,
+                tags, source, project_id, updated_at
+            ) VALUES(?,?,?,?,?,?,?,?,?)""",
+            (
+                cleaned, now, workspace, category, importance,
+                json.dumps(clean_tags, ensure_ascii=False), source,
+                linked_project, now,
+            ),
         )
         return cursor.lastrowid
 
 
-def get_memories(limit=100, workspace_id="personal"):
+def get_memories(limit=None, workspace_id="personal", include_archived=False):
+    """Read all durable local notes by default; optional pagination remains bounded."""
     workspace = _workspace_id(workspace_id)
-    safe_limit = min(max(int(limit), 1), 100)
+    sql = (
+        "SELECT id, content, created_at, category, importance, tags, source, "
+        "project_id, updated_at, archived_at FROM memory_items "
+        "WHERE workspace_id=?"
+    )
+    params = [workspace]
+    if not include_archived:
+        sql += " AND archived_at IS NULL"
+    sql += " ORDER BY importance DESC, updated_at DESC, id DESC"
+    if limit is not None:
+        safe_limit = min(max(int(limit), 1), 1000)
+        sql += " LIMIT ?"
+        params.append(safe_limit)
     with _connect() as conn:
-        rows = conn.execute(
-            "SELECT id, content, created_at FROM memory_items WHERE workspace_id=? ORDER BY id DESC LIMIT ?",
-            (workspace, safe_limit),
-        ).fetchall()
-    return [{"id": row[0], "content": row[1], "created_at": row[2]} for row in rows]
+        rows = conn.execute(sql, params).fetchall()
+    result = []
+    for row in rows:
+        try:
+            tags = json.loads(row[5] or "[]")
+        except (TypeError, ValueError):
+            tags = []
+        result.append({
+            "id": row[0], "content": row[1], "created_at": row[2],
+            "category": row[3], "importance": row[4], "tags": tags,
+            "source": row[6],
+            "project_id": row[7], "updated_at": row[8], "archived_at": row[9],
+        })
+    return result
 
 
 def delete_memory(memory_id, workspace_id="personal"):

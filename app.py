@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 import streamlit as st
 from settings import get_setting
 from i18n import LANGUAGES as SOWIA_LANGUAGES, translate as translate_ui
+from sowia_visuals import render_page_visual
 
 from config import APP_NAME, API_KEY, MODEL
 from assistant import answer
@@ -53,6 +54,7 @@ import sowia_global_messenger
 import sowia_global_alerts
 import sowia_business_card
 import project_registry_ui
+import project_registry
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
@@ -84,7 +86,7 @@ def reset_signed_pdf_upload(prefix):
     st.session_state[prefix + "_pdf_upload_nonce"] = str(uuid.uuid4())
 
 
-st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-brain-icon.svg", layout="wide")
+st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-global-platform.svg", layout="wide")
 st.markdown(
     """<style>
     :root { color-scheme: dark; }
@@ -456,9 +458,7 @@ if cloud_mode:
                     pass
                 clear_authenticated_session_state(st.session_state)
                 st.error(
-                    "Connexion refusée : le compte authentifié ne correspond pas "
-                    "à l'adresse e-mail qui a demandé le lien. Recommencez avec "
-                    "l'adresse du compte SOW IA souhaité."
+                    translate_ui("Connexion refusée : le compte authentifié ne correspond pas à l'adresse e-mail qui a demandé le lien. Recommencez avec l'adresse du compte SOW IA souhaité.", language)
                 )
                 st.stop()
             # The expected address is cleared only after the identity matches.
@@ -507,40 +507,43 @@ if cloud_mode:
             # Keep diagnostics useful without rendering raw exception text or
             # tracebacks, which may contain credentials, OAuth codes or tokens.
             st.error(
-                "La connexion sécurisée Supabase n'a pas abouti. "
-                "L'accès reste fermé par sécurité. Rechargez cette page pour "
-                "générer une nouvelle tentative GitHub.\n\n"
-                f"Étape : {auth_stage}.\nCode technique : {type(exc).__name__}"
+                translate_ui("La connexion sécurisée Supabase n'a pas abouti. L'accès reste fermé par sécurité. Rechargez cette page pour générer une nouvelle tentative GitHub.", language) + f"\n\n{translate_ui('Étape :', language)} {auth_stage}.\n{translate_ui('Code technique :', language)} {type(exc).__name__}"
             )
-            with st.expander("Détails techniques pour le diagnostic"):
+            with st.expander(translate_ui("Détails techniques pour le diagnostic", language)):
                 st.caption(
-                    "Les détails sensibles sont masqués. Communiquez le code "
-                    "technique et l'étape indiquée au support."
+                    translate_ui("Les détails sensibles sont masqués. Communiquez le code technique et l'étape indiquée au support.", language)
                 )
             st.stop()
-        st.warning("Supabase ne répond pas correctement : SOW IA continue en mode local temporaire. Les fonctions locales, dont la création de PDF, restent accessibles. Les données locales ne sont pas destinées à un usage partagé.")
-        st.caption("Les détails techniques sont masqués pour protéger les informations de connexion.")
+        st.warning(translate_ui("Supabase ne répond pas correctement : SOW IA continue en mode local temporaire. Les fonctions locales, dont la création de PDF, restent accessibles. Les données locales ne sont pas destinées à un usage partagé.", language))
+        st.caption(translate_ui("Les détails techniques sont masqués pour protéger les informations de connexion.", language))
         cloud_mode = False
         current_user = None
         supabase_client = None
 
     if current_user is None:
+        language = st.selectbox(
+            "🌐 Language / Langue",
+            SOWIA_LANGUAGES,
+            index=SOWIA_LANGUAGES.index(st.session_state.get("sowia_language", "Français"))
+            if st.session_state.get("sowia_language", "Français") in SOWIA_LANGUAGES else 0,
+            key="sowia_language",
+        )
         st.markdown(
-            '<div class="hero"><h1>SOW IA</h1><p>Votre espace personnel sécurisé.</p></div>',
+            f'<div class="hero"><h1>SOW IA</h1><p>{translate_ui("Votre espace personnel sécurisé.", language)}</p></div>',
             unsafe_allow_html=True,
         )
         st.subheader(translate_ui("Connexion à SOW IA", language))
-        st.write("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA : utilisez votre mot de passe ou demandez un lien sécurisé à usage unique. Aucun compte GitHub n’est nécessaire.")
+        st.write(translate_ui("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA : utilisez votre mot de passe ou demandez un lien sécurisé à usage unique. Aucun compte GitHub n’est nécessaire.", language))
         callback_code_present = bool(st.query_params.get("code") or st.query_params.get("token_hash"))
         callback_error = str(st.query_params.get("error", "")).strip()
         callback_error_description = str(st.query_params.get("error_description", "")).strip()
         st.caption(
-            "Diagnostic de retour : "
-            + ("retour de connexion reçu" if callback_code_present else "aucun retour de connexion reçu")
+            translate_ui("Diagnostic de retour :", language) + " "
+            + translate_ui("retour de connexion reçu" if callback_code_present else "aucun retour de connexion reçu", language)
             + (f" · erreur de connexion : {callback_error}" if callback_error else "")
         )
         if callback_error_description:
-            st.warning("Motif communiqué par le fournisseur : " + callback_error_description[:300])
+            st.warning(translate_ui("Motif communiqué par le fournisseur :", language) + " " + callback_error_description[:300])
         # Resolve the exact HTTPS callback independently of either login provider.
         from urllib.parse import urlsplit, urlunsplit
         current_app_url = str(getattr(st.context, "url", "") or "").strip()
@@ -559,9 +562,9 @@ if cloud_mode:
             redirect_to = urlunsplit(
                 (parts.scheme, parts.netloc, parts.path.rstrip("/"), "", "")
             )
-            st.caption("Adresse de retour sécurisée : " + redirect_to)
+            st.caption(translate_ui("Adresse de retour sécurisée :", language) + " " + redirect_to)
         else:
-            st.error("Adresse publique HTTPS invalide. Ouvrez SOW IA depuis son adresse Streamlit officielle.")
+            st.error(translate_ui("Adresse publique HTTPS invalide. Ouvrez SOW IA depuis son adresse Streamlit officielle.", language))
 
         # Email login is the standard production path. Set SOWIA_EMAIL_LOGIN_ONLY=false
         # only when an operator intentionally wants to restore GitHub OAuth instead.
@@ -570,15 +573,15 @@ if cloud_mode:
         ).strip().lower() in {"1", "true", "yes"}
 
         if email_login_only:
-            st.markdown("#### Connexion à mon compte SOW IA")
-            with st.expander("Créer un compte SOW IA — nouveau compte uniquement", expanded=False):
-                st.markdown("#### Créer un compte SOW IA")
-                st.caption("Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.")
+            st.markdown("#### " + translate_ui("Connexion à mon compte SOW IA", language))
+            with st.expander(translate_ui("Créer un compte SOW IA — nouveau compte uniquement", language), expanded=False):
+                st.markdown("#### " + translate_ui("Créer un compte SOW IA", language))
+                st.caption(translate_ui("Créez votre compte avec votre adresse e-mail. Vous recevrez un message pour confirmer cette adresse avant de vous connecter.", language))
                 with st.form("sowia_email_signup_form", clear_on_submit=False):
-                    signup_email = st.text_input("Votre adresse e-mail", max_chars=254, key="sowia_signup_email")
-                    signup_password = st.text_input("Mot de passe (8 caractères minimum)", type="password", key="sowia_signup_password")
-                    signup_password_confirm = st.text_input("Confirmer le mot de passe", type="password", key="sowia_signup_password_confirm")
-                    signup_submitted = st.form_submit_button("Créer mon compte", type="primary", use_container_width=True)
+                    signup_email = st.text_input(translate_ui("Votre adresse e-mail", language), max_chars=254, key="sowia_signup_email")
+                    signup_password = st.text_input(translate_ui("Mot de passe (8 caractères minimum)", language), type="password", key="sowia_signup_password")
+                    signup_password_confirm = st.text_input(translate_ui("Confirmer le mot de passe", language), type="password", key="sowia_signup_password_confirm")
+                    signup_submitted = st.form_submit_button(translate_ui("Créer mon compte", language), type="primary", use_container_width=True)
                 if signup_submitted:
                     candidate_signup_email = str(signup_email or "").strip().lower()
                     if (
@@ -588,50 +591,49 @@ if cloud_mode:
                         or candidate_signup_email.endswith("@")
                         or "." not in candidate_signup_email.rsplit("@", 1)[-1]
                     ):
-                        st.error("Saisissez une adresse e-mail valide.")
+                        st.error(translate_ui("Saisissez une adresse e-mail valide.", language))
                     elif len(signup_password or "") < 8:
-                        st.error("Le mot de passe doit contenir au moins 8 caractères.")
+                        st.error(translate_ui("Le mot de passe doit contenir au moins 8 caractères.", language))
                     elif signup_password != signup_password_confirm:
-                        st.error("Les deux mots de passe ne correspondent pas.")
+                        st.error(translate_ui("Les deux mots de passe ne correspondent pas.", language))
                     elif not redirect_to:
-                        st.error("L'adresse de retour sécurisée de SOW IA n'est pas valide.")
+                        st.error(translate_ui("L'adresse de retour sécurisée de SOW IA n'est pas valide.", language))
                     else:
                         try:
                             signup_client = create_email_user_client()
                             signup_email_user(signup_client, candidate_signup_email, signup_password, redirect_to)
                             st.session_state["sowia_signup_pending"] = candidate_signup_email
-                            st.success("Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.")
+                            st.success(translate_ui("Demande d'inscription envoyée. Ouvrez l'e-mail de confirmation de Supabase pour activer votre compte, puis revenez sur SOW IA pour vous connecter.", language))
                         except Exception as signup_exc:
                             signup_message = str(getattr(signup_exc, "message", "") or "").strip()
                             signup_code = str(getattr(signup_exc, "code", "") or "").strip()
                             if "already registered" in signup_message.lower() or "already been registered" in signup_message.lower():
-                                st.error("Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.")
+                                st.error(translate_ui("Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.", language))
                             else:
-                                st.error("La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.")
-                                st.caption("Diagnostic : " + type(signup_exc).__name__ + ((" · " + signup_code[:80]) if signup_code else ""))
+                                st.error(translate_ui("La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.", language))
+                                st.caption(translate_ui("Diagnostic :", language) + " " + type(signup_exc).__name__ + ((" · " + signup_code[:80]) if signup_code else ""))
 
 
-            st.markdown("#### Connexion avec mot de passe")
+            st.markdown("#### " + translate_ui("Connexion avec mot de passe", language))
             st.caption(
-                "Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter "
-                "directement avec votre mot de passe, sans attendre un nouveau lien e-mail."
+                translate_ui("Après avoir confirmé votre adresse e-mail, vous pourrez vous connecter directement avec votre mot de passe, sans attendre un nouveau lien e-mail.", language)
             )
             # Keep the two fields and the submit action outside st.form.
             # This is more reliable in Android WebView, where embedded form
             # submission can fail to dispatch the Streamlit event after typing.
             password_login_email = st.text_input(
-                "Adresse e-mail",
+                translate_ui("Adresse e-mail", language),
                 value=str(st.session_state.get("sowia_email_login_pending", "") or ""),
                 max_chars=254,
                 key="sowia_password_login_email",
             )
             password_login_secret = st.text_input(
-                "Mot de passe",
+                translate_ui("Mot de passe", language),
                 type="password",
                 key="sowia_password_login_secret",
             )
             password_login_submitted = st.button(
-                "VALIDER",
+                translate_ui("VALIDER", language),
                 key="sowia_password_login_submit",
                 type="primary",
                 use_container_width=True,
@@ -646,9 +648,9 @@ if cloud_mode:
                         or candidate_password_email.endswith("@")
                         or "." not in candidate_password_email.rsplit("@", 1)[-1]
                     ):
-                        st.error("Saisissez une adresse e-mail valide.")
+                        st.error(translate_ui("Saisissez une adresse e-mail valide.", language))
                     elif not password_login_secret:
-                        st.error("Saisissez votre mot de passe.")
+                        st.error(translate_ui("Saisissez votre mot de passe.", language))
                     else:
                         password_client = create_email_user_client()
                         sign_in_email_password(
@@ -667,31 +669,28 @@ if cloud_mode:
                     safe_message = " ".join(safe_message.split())[:180].lower()
                     if "email not confirmed" in safe_message or "email_not_confirmed" in safe_code.lower():
                         st.error(
-                            "Votre adresse e-mail n'est pas encore confirmée. "
-                            "Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez."
+                            translate_ui("Votre adresse e-mail n'est pas encore confirmée. Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez.", language)
                         )
                     else:
                         st.error(
-                            "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe."
+                            translate_ui("Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.", language)
                         )
                         if safe_code:
-                            st.caption("Diagnostic : " + type(password_exc).__name__ + " · " + safe_code)
+                            st.caption(translate_ui("Diagnostic :", language) + " " + type(password_exc).__name__ + " · " + safe_code)
 
             st.divider()
-            st.markdown("#### Connexion par e-mail")
+            st.markdown("#### " + translate_ui("Connexion par e-mail", language))
             st.caption(
-                "Saisissez l'adresse e-mail déjà associée à votre compte SOW IA, "
-                "puis validez. Un lien sécurisé à usage unique sera envoyé ; "
-                "aucun nouveau compte ne sera créé."
+                translate_ui("Saisissez l'adresse e-mail déjà associée à votre compte SOW IA, puis validez. Un lien sécurisé à usage unique sera envoyé ; aucun nouveau compte ne sera créé.", language)
             )
             email_address = st.text_input(
-                "Adresse e-mail du compte SOW IA",
+                translate_ui("Adresse e-mail du compte SOW IA", language),
                 value=str(st.session_state.get("sowia_email_login_pending", "") or ""),
                 max_chars=254,
                 key="sowia_email_login_address",
             )
             if st.button(
-                "Valider",
+                translate_ui("Valider", language),
                 key="sowia_send_email_link",
                 type="primary",
                 use_container_width=True,
@@ -705,7 +704,7 @@ if cloud_mode:
                         or candidate_login_email.endswith("@")
                         or "." not in candidate_login_email.rsplit("@", 1)[-1]
                     ):
-                        st.error("Saisissez une adresse e-mail valide.")
+                        st.error(translate_ui("Saisissez une adresse e-mail valide.", language))
                     else:
                         if not redirect_to:
                             raise ValueError("URL HTTPS de retour invalide")
@@ -713,13 +712,9 @@ if cloud_mode:
                             email_client = create_email_user_client()
                             email_magic_link(email_client, candidate_login_email, redirect_to)
                             st.session_state["sowia_email_login_pending"] = candidate_login_email
-                            st.success(
-                                "Si cette adresse correspond à un compte SOW IA, "
-                                "un lien sécurisé vient d'être envoyé. Consultez aussi "
-                                "les courriers indésirables."
-                            )
+                            st.success(translate_ui("Si cette adresse correspond à un compte SOW IA, un lien sécurisé vient d'être envoyé. Consultez aussi les courriers indésirables.", language))
                 except Exception as email_exc:
-                    st.error("Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.")
+                    st.error(translate_ui("Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.", language))
                     safe_message = str(getattr(email_exc, "message", "") or str(email_exc)).strip()
                     safe_message = " ".join(safe_message.split())[:240]
                     safe_code = str(getattr(email_exc, "code", "") or "").strip()[:80]
@@ -731,7 +726,7 @@ if cloud_mode:
                         diagnostic_parts.append("status=" + str(safe_status)[:12])
                     if safe_message:
                         diagnostic_parts.append("message=" + safe_message)
-                    st.caption("Diagnostic e-mail : " + " · ".join(diagnostic_parts))
+                    st.caption(translate_ui("Diagnostic e-mail :", language) + " " + " · ".join(diagnostic_parts))
 
         else:
             # Preserve the established production sign-in method by default.
@@ -743,19 +738,18 @@ if cloud_mode:
                     login_url = github_authorization_url(supabase_client, redirect_to)
                     st.session_state.sowia_github_login_url = login_url
                 st.link_button(
-                    "Continuer avec GitHub",
+                    translate_ui("Continuer avec GitHub", language),
                     login_url,
                     type="primary",
                     use_container_width=True,
                 )
-                if st.button("Recommencer la connexion", use_container_width=True):
+                if st.button(translate_ui("Recommencer la connexion", language), use_container_width=True):
                     st.session_state.pop("sowia_github_login_url", None)
                     st.rerun()
             except Exception:
                 st.session_state.pop("sowia_github_login_url", None)
                 st.warning(
-                    "La connexion GitHub n'a pas pu être préparée. Vérifiez la "
-                    "configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase."
+                    translate_ui("La connexion GitHub n'a pas pu être préparée. Vérifiez la configuration de l'adresse HTTPS publique et du fournisseur GitHub dans Supabase.", language)
                 )
         st.stop()
 
@@ -826,15 +820,86 @@ def clear_app_history():
         return cloud_storage.clear_history(supabase_client, current_user, st.session_state.session_id, st.session_state.get("workspace_id", "personal"))
     return local_clear_history(st.session_state.session_id, st.session_state.get("workspace_id", "personal"))
 
-def get_app_memories():
+def get_app_memories(offset=0, limit=1000):
+    workspace = st.session_state.get("workspace_id", "personal")
     if cloud_mode:
-        return cloud_storage.list_memories(supabase_client, current_user, st.session_state.get("workspace_id", "personal"))
-    return local_get_memories(workspace_id=st.session_state.get("workspace_id", "personal"))
+        return cloud_storage.list_memories(
+            supabase_client, current_user, workspace,
+            limit=limit, offset=offset,
+        )
+    return local_get_memories(workspace_id=workspace)[offset:offset + limit]
 
-def add_app_memory(content):
+def get_all_app_memories():
+    workspace = st.session_state.get("workspace_id", "personal")
+    if not cloud_mode:
+        return local_get_memories(workspace_id=workspace)
+    all_items = []
+    offset = 0
+    while True:
+        batch = cloud_storage.list_memories(
+            supabase_client, current_user, workspace,
+            limit=1000, offset=offset,
+        )
+        all_items.extend(batch)
+        if len(batch) < 1000:
+            break
+        offset += len(batch)
+    return all_items
+
+def get_app_memory_context(query):
+    """Retrieve relevant notes and older exchanges without loading the whole archive."""
+    workspace = st.session_state.get("workspace_id", "personal")
     if cloud_mode:
-        return cloud_storage.add_memory(supabase_client, current_user, content, st.session_state.get("workspace_id", "personal"))
-    return local_add_memory(content, st.session_state.get("workspace_id", "personal"))
+        try:
+            active_project_id = None
+            try:
+                active_session_id = str(st.session_state.get("session_id") or "")
+                if active_session_id:
+                    active_projects = (
+                        supabase_client.table("sowia_projects")
+                        .select("id")
+                        .eq("user_id", str(current_user.id))
+                        .eq("workspace_id", workspace)
+                        .eq("conversation_session_id", active_session_id)
+                        .is_("archived_at", "null")
+                        .limit(1)
+                        .execute().data or []
+                    )
+                    if active_projects:
+                        active_project_id = active_projects[0].get("id")
+            except Exception:
+                pass
+            found = cloud_storage.search_memory_context(
+                supabase_client, current_user, query, workspace,
+                exclude_session_id=st.session_state.get("session_id"),
+                project_id=active_project_id,
+                limit=80,
+            )
+            if found:
+                return found
+        except Exception:
+            # Keep assistant availability if the optional retrieval RPC is not yet deployed.
+            pass
+        return cloud_storage.list_memories(
+            supabase_client, current_user, workspace, limit=1000
+        )
+    return local_get_memories(workspace_id=workspace)
+
+def add_app_memory(content, category=None, importance=3, tags=None, project_id=None):
+    from memory_engine import infer_memory_category
+    selected_category = category or infer_memory_category(content)
+    if cloud_mode:
+        return cloud_storage.add_memory(
+            supabase_client, current_user, content,
+            st.session_state.get("workspace_id", "personal"),
+            category=selected_category, importance=importance,
+            tags=tags, project_id=project_id,
+        )
+    return local_add_memory(
+        content, st.session_state.get("workspace_id", "personal"),
+        category=selected_category, importance=importance,
+        tags=tags, project_id=project_id,
+    )
 
 def delete_app_memory(memory_id):
     if cloud_mode:
@@ -856,7 +921,7 @@ def extract_explicit_memory_request(message):
         return None
     position, marker = min(matches, key=lambda item: item[0])
     content = text[position + len(marker):].strip(" \t\r\n:;,.—-")
-    if not content or len(content) > 1000:
+    if not content or len(content) > 20000:
         return None
     sensitive_markers = (
         "mot de passe", "password", "api_key", "api key", "clé secrète",
@@ -883,7 +948,7 @@ NAV_GROUPS = {
         "SOW IA Business Club", "Opportunités et revenus", "Technologies & fournisseurs",
         "SOWIA GLOBAL COLLABORATION HUB",
     ],
-    "🧠 Intelligence & décisions": [
+    "🌐 Intelligence & décisions": [
         "Décisions humaines vs SOW IA", "SOWIA GLOBAL INTELLIGENCE", "SOWIA GLOBAL PULSE",
         "SOWIA GLOBAL STRATEGIC FORECAST", "SOWIA GLOBAL DECISION ENGINE",
         "SOWIA GLOBAL LEARNING ENGINE", "Stratégie & scénarios",
@@ -1024,7 +1089,7 @@ else:
     st.session_state.pop("sowia_premium_status_cache", None)
 
 with st.sidebar:
-    st.image("assets/sowia-brain-brand.svg", use_container_width=True)
+    st.image("assets/sowia-global-platform.svg", use_container_width=True)
     preference_owner = str(getattr(current_user, "id", "")) if cloud_mode and current_user is not None else "local"
     if st.session_state.get("sowia_language_loaded_for") != preference_owner:
         saved_language = "Français"
@@ -1198,7 +1263,21 @@ if privacy_screen:
             background: rgba(5, 16, 31, .58);
             -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
-            pointer-events: none;
+            pointer-events: auto;
+        }
+        /* The privacy veil also covers the sidebar, including account identity and menu content. */
+        section[data-testid="stSidebar"] {
+            position: relative !important;
+        }
+        section[data-testid="stSidebar"]::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 999998;
+            background: rgba(5, 16, 31, .58);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            pointer-events: auto;
         }
         section[data-testid="stMain"] .st-key-sowia_privacy_unlock_main {
             position: fixed !important;
@@ -1417,14 +1496,16 @@ with nav_label_col:
     st.caption("Rubrique actuelle")
     st.markdown("**" + html.escape(translate_ui(page, language)) + "**")
 
+# Every destination receives its own accessible modern illustration.
+st.markdown(render_page_visual(page), unsafe_allow_html=True)
+
 st.markdown(
-    '<div class="hero"><div class="hero-kicker">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>'
-    '<h1>🧠 SOW IA</h1>'
-    '<p>La technologie au service des décisions, de la productivité et des opportunités. '
-    'Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.</p>'
-    '<div class="hero-meta"><span class="hero-chip">🔐 Espaces de travail sécurisés</span>'
-    '<span class="hero-chip">🌍 Ambition internationale</span>'
-    '<span class="hero-chip">🤝 Collaboration professionnelle</span></div></div>',
+    '<div class="hero"><div class="hero-kicker">' + html.escape(translate_ui("PLATEFORME INTELLIGENTE · VISION INTERNATIONALE", language)) + '</div>'
+    '<h1>🌐 SOW IA</h1>'
+    '<p>' + html.escape(translate_ui("La technologie au service des décisions, de la productivité et des opportunités. Un environnement conçu pour accompagner les particuliers, les entreprises et les partenaires dans leur développement.", language)) + '</p>'
+    '<div class="hero-meta"><span class="hero-chip">' + html.escape(translate_ui("🔐 Espaces de travail sécurisés", language)) + '</span>'
+    '<span class="hero-chip">' + html.escape(translate_ui("🌍 Ambition internationale", language)) + '</span>'
+    '<span class="hero-chip">' + html.escape(translate_ui("🤝 Collaboration professionnelle", language)) + '</span></div></div>',
     unsafe_allow_html=True,
 )
 st.write("")
@@ -1432,15 +1513,14 @@ st.write("")
 if page == "Accueil":
     sowia_home_brand_cols = st.columns([1, 2, 1])
     with sowia_home_brand_cols[1]:
-        st.image("assets/sowia-brain-brand.svg", width=320)
-    st.subheader("Bienvenue dans SOW IA")
-    st.caption("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.")
-    st.image("assets/sections/home-executive.svg", use_container_width=True)
+        st.image("assets/sowia-global-platform.svg", width=320)
+    st.subheader(translate_ui("Bienvenue dans SOW IA", language))
+    st.caption(translate_ui("Votre centre de pilotage : les indicateurs utiles, les points de vigilance et les accès essentiels.", language))
     st.markdown(
         '<section class="sowia-command-center">'
-        '<div class="sowia-command-kicker">COMMENCEZ VOTRE EXPLORATION</div>'
-        '<h2>✨ Découvrez ce que SOW IA peut faire avec vous</h2>'
-        '<p>Choisissez un premier parcours et explorez les outils adaptés à vos besoins.</p>'
+        '<div class="sowia-command-kicker">' + html.escape(translate_ui("COMMENCEZ VOTRE EXPLORATION", language)) + '</div>'
+        '<h2>' + html.escape(translate_ui("✨ Découvrez ce que SOW IA peut faire avec vous", language)) + '</h2>'
+        '<p>' + html.escape(translate_ui("Choisissez un premier parcours et explorez les outils adaptés à vos besoins.", language)) + '</p>'
         '</section>',
         unsafe_allow_html=True,
     )
@@ -1678,7 +1758,7 @@ if page == "Accueil":
             ("Technologies & fournisseurs", "Solutions et fournisseurs"),
             ("SOWIA GLOBAL COLLABORATION HUB", "Collaboration entre acteurs"),
         ]),
-        ("🧠 04 · Intelligence & stratégie", [
+        ("🌐 04 · Intelligence & stratégie", [
             ("Décisions humaines vs SOW IA", "Comparer les décisions"),
             ("Stratégie & scénarios", "Étudier les scénarios"),
             ("SOWIA GLOBAL INTELLIGENCE", "Intelligence globale"),
@@ -1708,7 +1788,7 @@ if page == "Accueil":
         "👤 01 · Personnel & documents": "assets/categories/personnel.svg",
         "🌐 02 · Écosystème mondial": "assets/categories/global.svg",
         "🤝 03 · Entreprises & opportunités": "assets/categories/business.svg",
-        "🧠 04 · Intelligence & stratégie": "assets/categories/intelligence.svg",
+        "🌐 04 · Intelligence & stratégie": "assets/categories/intelligence.svg",
         "💶 05 · SOW IA FINANCIAL HUB": "assets/categories/finance.svg",
         "🛡️ 06 · Administration & assistance": "assets/categories/admin.svg",
     }
@@ -1763,7 +1843,7 @@ elif page == "Hub SOWIA":
     hub_quick_access = [
         ("💬 Mes échanges & projets", "Mes échanges & projets", "Gérer vos projets, leurs statuts et les livrables associés."),
         ("↩ Reprendre mes échanges", "Historique", "Retrouver les conversations disponibles."),
-        ("🧠 Continuer avec SOW IA", "Assistant IA", "Reprendre le travail avec l’assistant."),
+        ("🌐 Continuer avec SOW IA", "Assistant IA", "Reprendre le travail avec l’assistant."),
         ("📄 Mes livrables & documents", "Mes documents", "Consulter les PDF et fichiers enregistrés."),
         ("🧪 Laboratoire PDF", "Analyse PDF", "Analyser un document ou poursuivre son traitement."),
         ("🌙 SOWIA NIGHT EXCHANGE", "SOWIA NIGHT EXCHANGE", "La bourse internationale des applications et services numériques."),
@@ -1798,7 +1878,7 @@ elif page == "Hub SOWIA":
     st.caption("Vos outils quotidiens, votre mémoire et vos documents privés.")
     personal_items = [
         ("💬 Assistant IA", "Assistant IA", "Dialoguer avec SOW IA"),
-        ("🧠 Mémoire", "Ma mémoire", "Retrouver vos informations utiles"),
+        ("🌐 Mémoire", "Ma mémoire", "Retrouver vos informations utiles"),
         ("📄 Documents", "Mes documents", "Gérer vos fichiers personnels"),
         ("🌐 Recherche", "Recherche Web", "Explorer des informations et des sources"),
     ]
@@ -1864,7 +1944,7 @@ elif page == "Hub SOWIA":
         else:
             st.info("Connectez-vous à votre compte sécurisé pour afficher les indicateurs professionnels enregistrés.")
         business_pillars = [
-            ("🧠 1. Intelligence & décisions", [
+            ("🌐 1. Intelligence & décisions", [
                 ("Décisions humaines vs SOWIA", "Décisions humaines vs SOW IA", "Comparer les décisions et conserver les résultats pour les statistiques."),
                 ("Stratégie & scénarios", "Stratégie & scénarios", "Étudier plusieurs scénarios avant de choisir."),
             ]),
@@ -2140,7 +2220,7 @@ elif page == "Hub SOWIA":
             ("SOW IA Business Club", "Relations et partenariats professionnels"),
             ("Opportunités et revenus", "Suivre les opportunités commerciales"),
         ]),
-        ("🧠 Stratégie & intelligence", [
+        ("🌐 Stratégie & intelligence", [
             ("Décisions humaines vs SOW IA", "Comparer les décisions et leurs résultats"),
             ("SOWIA GLOBAL INTELLIGENCE", "Outils d'intelligence globale"),
             ("SOWIA GLOBAL PULSE", "Suivre les signaux et tendances"),
@@ -2230,6 +2310,7 @@ elif page == "Mes échanges & projets":
         st.session_state.get("workspace_id", "personal"),
         cloud_mode,
         premium_active,
+        language,
     )
 
 elif page == "Assistant IA":
@@ -2381,32 +2462,9 @@ elif page == "Assistant IA":
         with st.chat_message(role):
             st.markdown(message)
             if role == "assistant" and voice_readout:
-                safe_message = html.escape(str(message), quote=True)
+                from accessibility import speech_readout_component
                 st.components.v1.html(
-                    """<div style="font-family:Arial,sans-serif;padding:4px 0">
-                    <button id="sowiaSpeak" style="padding:10px 16px;border:2px solid #174b67;border-radius:10px;background:#102943;color:#eff9ff;font-weight:700;min-height:44px">🔊 Écouter cette réponse</button>
-                    <button id="sowiaStop" style="padding:10px 16px;border:2px solid #555;border-radius:10px;background:#102943;color:#eff9ff;font-weight:700;min-height:44px">■ Arrêter</button>
-                    <span id="sowiaVoiceStatus" role="status" aria-live="polite"></span>
-                    <div id="sowiaVoiceText" style="display:none">""" + safe_message + """</div>
-                    <script>
-                    const text = document.getElementById('sowiaVoiceText').textContent;
-                    const status = document.getElementById('sowiaVoiceStatus');
-                    document.getElementById('sowiaSpeak').onclick = () => {
-                      if (!('speechSynthesis' in window)) { status.textContent = 'Lecture vocale non prise en charge par ce navigateur.'; return; }
-                      window.speechSynthesis.cancel();
-                      const utterance = new SpeechSynthesisUtterance(text);
-                      utterance.lang = '""" + speech_language + """';
-                      const availableVoices = window.speechSynthesis.getVoices();
-                      const matchingVoice = availableVoices.find(voice => voice.lang.toLowerCase() === utterance.lang.toLowerCase())
-                        || availableVoices.find(voice => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase()));
-                      if (matchingVoice) utterance.voice = matchingVoice;
-                      utterance.onstart = () => status.textContent = 'Lecture en cours';
-                      utterance.onend = () => status.textContent = 'Lecture terminée';
-                      utterance.onerror = () => status.textContent = 'Lecture indisponible';
-                      window.speechSynthesis.speak(utterance);
-                    };
-                    document.getElementById('sowiaStop').onclick = () => { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); status.textContent = 'Lecture arrêtée'; };
-                    </script></div>""",
+                    speech_readout_component(message, language),
                     height=75,
                 )
     if not API_KEY:
@@ -2528,7 +2586,7 @@ elif page == "Assistant IA":
                     try:
                         reply = answer(
                             request_history,
-                            memories=[item["content"] for item in memories],
+                            memories=get_app_memory_context(prompt),
                         )
                         st.markdown(reply)
                         try:
@@ -2582,7 +2640,7 @@ elif page == "Ma mémoire":
         if st.session_state.get("workspace_id") == "professional"
         else "personnel"
     )
-    st.subheader(f"🧠 Ma mémoire — espace {workspace_label}")
+    st.subheader(f"🌐 Ma mémoire — espace {workspace_label}")
     st.write("Ajoutez les informations que SOW IA pourra réutiliser dans ses prochaines réponses.")
     if cloud_mode:
         st.success(f"Vos notes sont enregistrées dans votre espace {workspace_label} Supabase.")
@@ -2592,35 +2650,95 @@ elif page == "Ma mémoire":
             "Elle convient au développement local, pas à une utilisation publique multi-utilisateur. "
             "N'y enregistrez pas de données sensibles."
         )
+    st.caption(
+        "La mémoire n'a plus de plafond fixe de notes. Les informations sont classées "
+        "et les éléments utiles sont retrouvés automatiquement selon la question."
+    )
+    memory_project_options = [None]
+    memory_project_labels = {None: "Mémoire générale"}
+    if cloud_mode and current_user is not None:
+        try:
+            for project in project_registry.list_projects(
+                supabase_client, current_user,
+                st.session_state.get("workspace_id", "personal"),
+                limit=500,
+            ):
+                project_id = project.get("id")
+                if project_id is not None:
+                    memory_project_options.append(project_id)
+                    memory_project_labels[project_id] = str(project.get("title") or f"Projet {project_id}")
+        except Exception:
+            pass
     with st.form("add_memory_form", clear_on_submit=True):
         note = st.text_area(
             "Information à mémoriser",
-            placeholder="Ex. : Je préfère recevoir les explications en français et étape par étape.",
-            max_chars=1000,
+            placeholder="Ajoutez une préférence, une décision, un projet, une règle technique ou un savoir utile aux futurs agents.",
+            max_chars=20000,
+            height=180,
         )
-        submitted = st.form_submit_button("Enregistrer dans ma mémoire")
+        memory_project_id = st.selectbox(
+            "Associer à un projet (facultatif)",
+            memory_project_options,
+            format_func=lambda value: memory_project_labels.get(value, "Mémoire générale"),
+        )
+        memory_cols = st.columns(2)
+        with memory_cols[0]:
+            memory_category = st.selectbox(
+                "Catégorie",
+                ["general", "profile", "preference", "project", "decision", "technical", "workflow", "reference", "agent"],
+                format_func=lambda value: {
+                    "general": "Général", "profile": "Profil", "preference": "Préférences",
+                    "project": "Projet", "decision": "Décisions", "technical": "Technique",
+                    "workflow": "Méthodes de travail", "reference": "Références", "agent": "Agents IA",
+                }[value],
+            )
+        with memory_cols[1]:
+            memory_importance = st.slider("Priorité de conservation", 1, 5, 3)
+        submitted = st.form_submit_button("Enregistrer dans ma mémoire", type="primary")
         if submitted:
             try:
-                add_app_memory(note)
-                st.success("Note ajoutée à la mémoire.")
+                if not note.strip():
+                    raise ValueError("Ajoutez une information avant l'enregistrement.")
+                inserted = add_app_memory(note, category=memory_category, importance=memory_importance, project_id=memory_project_id)
+                if cloud_mode and not inserted:
+                    raise RuntimeError("La base n'a pas confirmé l'enregistrement.")
+                st.session_state["sowia_memory_offset"] = 0
+                st.success("Information enregistrée dans la mémoire durable.")
                 st.rerun()
-            except (ValueError, PermissionError) as exc:
+            except (ValueError, PermissionError, RuntimeError) as exc:
                 st.error(str(exc))
     st.markdown("#### Informations mémorisées")
-    memories = get_app_memories()
+    memory_page_size = 1000
+    memory_offset = int(st.session_state.get("sowia_memory_offset", 0))
+    memories = get_app_memories(offset=memory_offset, limit=memory_page_size)
+    if memory_offset:
+        if st.button("← Revenir aux informations précédentes", key="sowia_memory_previous_page"):
+            st.session_state["sowia_memory_offset"] = max(0, memory_offset - memory_page_size)
+            st.rerun()
     if not memories:
         st.caption("Aucune note enregistrée pour le moment.")
     else:
         st.download_button(
             "Télécharger ma mémoire (.txt)",
-            data=format_memory_export(memories, workspace_label),
+            data=format_memory_export(get_all_app_memories(), workspace_label),
             file_name=f"sowia_memoire_{workspace_label}.txt",
             mime="text/plain; charset=utf-8",
             use_container_width=True,
             help="Télécharge une copie des notes de cet espace uniquement.",
         )
+    st.caption(f"{len(memories)} information(s) affichée(s) dans cette page. Les archives sont conservées indépendamment du budget de contexte de l'assistant.")
+    if len(memories) == memory_page_size:
+        if st.button("Charger les 1 000 informations suivantes →", key="sowia_memory_next_page"):
+            st.session_state["sowia_memory_offset"] = memory_offset + memory_page_size
+            st.rerun()
     for item in memories:
         with st.container(border=True):
+            category_label = {
+                "general": "Général", "profile": "Profil", "preference": "Préférences",
+                "project": "Projet", "decision": "Décisions", "technical": "Technique",
+                "workflow": "Méthodes de travail", "reference": "Références", "agent": "Agents IA",
+            }.get(item.get("category") or "general", "Général")
+            st.caption(f"{category_label} · priorité {item.get('importance', 3)}/5")
             st.write(item["content"])
             if st.button("Supprimer cette note", key=f"delete_memory_{item['id']}"):
                 delete_app_memory(item["id"])
@@ -5475,7 +5593,7 @@ elif page == "SOWIA GLOBAL AUTONOMOUS STRATEGY":
 
 
 elif page == "SOWIA GLOBAL LEARNING ENGINE":
-    st.subheader("🧠 SOW IA GLOBAL LEARNING ENGINE")
+    st.subheader("🌐 SOW IA GLOBAL LEARNING ENGINE")
     st.caption("Confrontez les recommandations enregistrées aux choix réellement effectués et aux résultats observés.")
     st.warning("Ce registre documente l'expérience : il ne prouve pas de causalité, ne connaît pas les résultats contrefactuels et ne réentraîne pas automatiquement le modèle d'IA. Les décisions d'origine restent figées.")
     if not cloud_mode or current_user is None:

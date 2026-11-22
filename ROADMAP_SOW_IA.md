@@ -40,12 +40,19 @@ Critère de sortie : les parcours existants passent les tests disponibles et les
 - Tableau de bord lisible avec états « En cours », « À tester », « Validé » et « Terminé ».
 - Centre « Mes échanges & projets » : conversations, projets, archives et livrables.
 
-## Phase 3 — Mémoire et continuité des projets
+## Phase 3 — Mémoire durable, recherche et continuité des projets
 
-- Mémoire contrôlée et consultable par l'utilisateur.
-- Historique des décisions, documents liés et étapes validées.
-- Reprise d'un projet à son dernier état réellement validé.
-- Contrôles de confidentialité, export et suppression des données.
+- Archives de mémoire sans plafond fixe de notes, avec pagination et export complet.
+- Notes structurées : profil, préférences, projets, décisions, technique, méthodes, références et agents.
+- Priorité, tags, provenance, date, espace de travail et lien optionnel à un projet.
+- Récupération hybride par recherche plein texte et classement de pertinence dans les anciennes conversations.
+- Exclusion de la conversation active des résultats historiques pour éviter les doublons.
+- Budget de contexte séparé de la capacité de stockage : sélection pertinente, déduplication et limites explicites du prompt.
+- Cloisonnement strict par utilisateur, espace et projet via RLS et contrôle relationnel côté base.
+- Export portable de l'archive et suppression explicite des éléments.
+- Préparation d'une future mémoire partagée par agents avec droits explicites ; aucune donnée privée ne devient globale par défaut.
+
+Critères de sortie : tests d'isolation multi-utilisateur, tests de pertinence, tests de pagination et de restauration, vérification des politiques RLS et contrôle des coûts.
 
 ## Phase 4 — Intelligence et recherche
 

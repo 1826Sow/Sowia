@@ -130,18 +130,94 @@ def touch_conversation(client, user, session_id, workspace_id="personal", title=
         .eq("session_id", identifier).execute())
 
 
-def list_memories(client, user, workspace_id="personal"):
-    return (client.table("sowia_memory_items").select("id, content, created_at")
-        .eq("user_id", _user_id(user)).eq("workspace_id", _workspace_id(workspace_id))
-        .order("created_at", desc=True).limit(100).execute().data)
+MEMORY_CATEGORIES = {
+    "general", "profile", "preference", "project", "decision",
+    "technical", "workflow", "reference", "agent",
+}
+MEMORY_SOURCES = {"user", "conversation", "project", "document", "system"}
+MAX_MEMORY_NOTE_CHARS = 20_000
 
-def add_memory(client, user, content, workspace_id="personal"):
-    cleaned = (content or "").strip()
-    if not cleaned or len(cleaned) > 1000:
-        raise ValueError("La note doit contenir entre 1 et 1 000 caractères.")
-    return (client.table("sowia_memory_items").insert({
-        "user_id": _user_id(user), "workspace_id": _workspace_id(workspace_id), "content": cleaned
-    }).execute().data)
+
+def list_memories(client, user, workspace_id="personal", limit=1000, offset=0,
+                  include_archived=False):
+    """List a page of the owner's durable memory; storage has no fixed note-count cap."""
+    safe_limit = min(max(int(limit), 1), 1000)
+    safe_offset = max(int(offset), 0)
+    query = (
+        client.table("sowia_memory_items")
+        .select("id, content, created_at, updated_at, category, importance, tags, source, project_id, archived_at")
+        .eq("user_id", _user_id(user))
+        .eq("workspace_id", _workspace_id(workspace_id))
+    )
+    if not include_archived:
+        query = query.is_("archived_at", "null")
+    return (
+        query.order("importance", desc=True)
+        .order("updated_at", desc=True)
+        .range(safe_offset, safe_offset + safe_limit - 1)
+        .execute().data or []
+    )
+
+
+def add_memory(client, user, content, workspace_id="personal", category="general",
+               importance=3, tags=None, source="user", project_id=None):
+    """Persist a durable, categorized memory item without an arbitrary count limit."""
+    cleaned = str(content or "").strip()
+    if not cleaned or len(cleaned) > MAX_MEMORY_NOTE_CHARS:
+        raise ValueError("La note doit contenir entre 1 et 20 000 caractères.")
+    if category not in MEMORY_CATEGORIES:
+        raise ValueError("Catégorie de mémoire non prise en charge.")
+    try:
+        priority = int(importance)
+    except (TypeError, ValueError):
+        raise ValueError("La priorité doit être comprise entre 1 et 5.")
+    if priority < 1 or priority > 5 or isinstance(importance, bool):
+        raise ValueError("La priorité doit être comprise entre 1 et 5.")
+    if source not in MEMORY_SOURCES:
+        raise ValueError("Source de mémoire non prise en charge.")
+    cleaned_tags = []
+    for tag in tags or []:
+        value = " ".join(str(tag or "").split())[:50]
+        if value and value not in cleaned_tags:
+            cleaned_tags.append(value)
+        if len(cleaned_tags) >= 20:
+            break
+    linked_project = None
+    if project_id is not None:
+        linked_project = int(project_id)
+        if linked_project < 1:
+            raise ValueError("Identifiant de projet invalide.")
+    return (
+        client.table("sowia_memory_items")
+        .insert({
+            "user_id": _user_id(user),
+            "workspace_id": _workspace_id(workspace_id),
+            "content": cleaned,
+            "category": category,
+            "importance": priority,
+            "tags": cleaned_tags,
+            "source": source,
+            "project_id": linked_project,
+        })
+        .select("id, content, created_at, category, importance, tags, source, project_id")
+        .execute().data
+    )
+
+
+def search_memory_context(client, user, query, workspace_id="personal",
+                          exclude_session_id=None, project_id=None, limit=80):
+    """Search durable notes and prior exchanges through a user-scoped SQL RPC."""
+    _user_id(user)
+    safe_limit = min(max(int(limit), 1), 100)
+    result = client.rpc("sowia_search_memory_context", {
+        "p_workspace_id": _workspace_id(workspace_id),
+        "p_query": str(query or "")[:2000],
+        "p_exclude_session_id": _session_id(exclude_session_id) if exclude_session_id else None,
+        "p_project_id": int(project_id) if project_id is not None else None,
+        "p_match_count": safe_limit,
+    }).execute().data or []
+    return result
+
 
 def delete_memory(client, user, memory_id, workspace_id="personal"):
     return (client.table("sowia_memory_items").delete().eq("id", memory_id)

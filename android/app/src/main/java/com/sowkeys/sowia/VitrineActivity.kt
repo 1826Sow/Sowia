@@ -57,12 +57,24 @@ private fun VitrineScreen(onEnter: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Image(
-                painter = painterResource(id = R.drawable.sowia_vitrine),
+                painter = painterResource(id = R.drawable.sowia_global_vitrine),
                 contentDescription = "Vitrine officielle SOW IA — Édition Sowkeys",
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f, fill = true),
                 contentScale = ContentScale.Fit
+            )
+            Text(
+                text = "SOW IA",
+                color = Color(0xFFF4D28A),
+                fontSize = 27.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "L’INTELLIGENCE EN ACTION",
+                color = Color(0xFF9BEFFF),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
             )
             Button(
                 onClick = onEnter,

@@ -23,6 +23,17 @@ def format_memory_export(memories: Iterable[Mapping], workspace_label: str) -> s
         lines.append(f"Note {index}")
         if created_at:
             lines.append(f"Date : {created_at}")
+        category = str(item.get("category") or "general").strip()
+        importance = item.get("importance", 3)
+        source = str(item.get("source") or "user").strip()
+        tags = item.get("tags") or []
+        lines.append(f"Catégorie : {category}")
+        lines.append(f"Priorité : {importance}/5")
+        lines.append(f"Source : {source}")
+        if tags:
+            lines.append("Tags : " + ", ".join(str(tag) for tag in tags))
+        if item.get("project_id") is not None:
+            lines.append(f"Projet ID : {item['project_id']}")
         lines.append(content)
         lines.append("")
 

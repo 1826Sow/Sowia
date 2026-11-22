@@ -56,8 +56,8 @@ def test_memory_rejects_empty_and_oversized_notes(tmp_path, monkeypatch):
     monkeypatch.setattr(storage, "DB_PATH", tmp_path / "sowia-test.db")
     with pytest.raises(ValueError, match="vide"):
         storage.add_memory("   ")
-    with pytest.raises(ValueError, match="1 000"):
-        storage.add_memory("x" * 1001)
+    with pytest.raises(ValueError, match="20 000"):
+        storage.add_memory("x" * 20001)
 
 
 def test_history_and_memory_are_isolated_by_workspace(tmp_path, monkeypatch):
@@ -91,3 +91,25 @@ def test_database_schema_is_initialized_for_each_database_path(tmp_path, monkeyp
     monkeypatch.setattr(storage, "DB_PATH", second_db)
     storage.save_message("session-1", "user", "Second")
     assert storage.get_history("session-1") == [{"role": "user", "content": "Second"}]
+
+
+def test_local_memory_has_no_100_record_limit_and_persists_metadata(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "unbounded-memory.db")
+    for number in range(125):
+        storage.add_memory(
+            f"Memory {number}", category="technical", importance=5,
+            tags=["SOW IA"], source="project",
+        )
+    memories = storage.get_memories(workspace_id="personal")
+    assert len(memories) == 125
+    assert memories[0]["category"] == "technical"
+    assert memories[0]["importance"] == 5
+    assert memories[0]["tags"] == ["SOW IA"]
+    assert memories[0]["source"] == "project"
+
+
+def test_local_memory_accepts_long_notes_up_to_new_limit(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "long-memory.db")
+    note = "A" * 15000
+    storage.add_memory(note)
+    assert storage.get_memories()[0]["content"] == note
