@@ -522,6 +522,14 @@ def translate(text: str, language: str = "Français") -> str:
     text = str(text).replace("SOWIA", "SOW IA").replace("Sowia", "SOW IA")
     if language not in LANGUAGES:
         language = "Français"
+    # Keep Markdown heading markers while translating their visible title.
+    for _heading_prefix in ("###### ", "##### ", "#### ", "### ", "## ", "# "):
+        if text.startswith(_heading_prefix):
+            _heading = text[len(_heading_prefix):]
+            _translated_heading = translate(_heading, language)
+            if _translated_heading != _heading:
+                return _heading_prefix + _translated_heading
+            break
     # Merge the original catalogue with the additional navigation labels.
     # Separate dictionaries prevent duplicate language keys from overwriting
     # the broader translation catalogue during module loading.
