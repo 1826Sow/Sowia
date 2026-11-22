@@ -179,3 +179,20 @@ def test_select_slider_and_link_button_are_localized_without_changing_values():
     assert fake_st.link_button("Ouvrir le guide", "https://example.test") is True
     assert calls[-1][1] == "Deutsch:Ouvrir le guide"
     assert calls[-1][2] == "https://example.test"
+
+
+def test_specialist_workspace_vocabulary_is_translated_in_every_supported_language():
+    from i18n import translate
+
+    examples = {
+        "English": ("Country", "Open source"),
+        "Español": ("País", "Abrir la fuente"),
+        "中文": ("国家/地区", "打开来源"),
+        "Deutsch": ("Land", "Quelle öffnen"),
+        "العربية": ("البلد", "فتح المصدر"),
+    }
+
+    for language, (country, source) in examples.items():
+        assert translate("Pays", language) == country
+        assert translate("Ouvrir la source", language) == source
+        assert translate("Confirmer la suppression", language) != "Confirmer la suppression"
