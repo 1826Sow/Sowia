@@ -22,3 +22,16 @@ def test_privacy_overlay_covers_the_whole_app_and_keeps_unlock_available():
     assert "backdrop-filter: blur(16px)" in source
     assert ".st-key-sowia_privacy_unlock_main" in source
     assert "env(safe-area-inset-top)" in source
+
+
+
+def test_navigation_categories_are_translated_for_supported_languages():
+    categories = {
+        "English": "🌙 App marketplace",
+        "Español": "🌙 Mercado de aplicaciones",
+        "中文": "🌙 应用市场",
+        "Deutsch": "🌙 App-Marktplatz",
+        "العربية": "🌙 سوق التطبيقات",
+    }
+    for language, expected in categories.items():
+        assert translate("🌙 Bourse aux applications", language) == expected
