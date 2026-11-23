@@ -1,4 +1,5 @@
 name: SOW IA Android direct-install APK
+# Fresh run requested for free public APK distribution; application source and secrets remain untouched.
 
 on:
   workflow_dispatch:
