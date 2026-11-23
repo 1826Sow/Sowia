@@ -1,4 +1,5 @@
 name: SOW IA Android private test APK
+# Fresh public-distribution candidate build; debug APK only, no signing secrets required.
 
 on:
   workflow_dispatch:
