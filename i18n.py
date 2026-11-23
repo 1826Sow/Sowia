@@ -145,6 +145,13 @@ _BASE_TRANSLATIONS = {
 
 _EXTRA_TRANSLATIONS = {
     "English": {
+        "Rechercher sur Internet pour cette réponse": "Search the Internet for this answer",
+        "SOW IA consultera jusqu'à cinq sources publiques et ajoutera leurs liens à la réponse.": "SOW IA will consult up to five public sources and add their links to the answer.",
+        "Recherche de sources publiques…": "Searching public sources…",
+        "Aucune source exploitable n'a été trouvée. La réponse sera générée sans recherche Web.": "No usable sources were found. The answer will be generated without web search.",
+        "La recherche Web n'a pas abouti ; la conversation continue sans sources en ligne.": "Web search was unsuccessful; the conversation will continue without online sources.",
+        "Sources consultées": "Sources consulted",
+
         "💬 Mon Assistant IA": "💬 My AI assistant",
         "🧠 Ma mémoire — espace {workspace_label}": "🧠 My memory — {workspace_label} space",
         "🌍 Développement mondial de SOW IA": "🌍 SOW IA global growth",
@@ -159,6 +166,13 @@ _EXTRA_TRANSLATIONS = {
         "Connexion à SOW IA": "Sign in to SOW IA",
     },
     "Español": {
+        "Rechercher sur Internet pour cette réponse": "Buscar en Internet para esta respuesta",
+        "SOW IA consultera jusqu'à cinq sources publiques et ajoutera leurs liens à la réponse.": "SOW IA consultará hasta cinco fuentes públicas y añadirá sus enlaces a la respuesta.",
+        "Recherche de sources publiques…": "Buscando fuentes públicas…",
+        "Aucune source exploitable n'a été trouvée. La réponse sera générée sans recherche Web.": "No se encontraron fuentes utilizables. La respuesta se generará sin búsqueda web.",
+        "La recherche Web n'a pas abouti ; la conversation continue sans sources en ligne.": "La búsqueda web no se completó; la conversación continuará sin fuentes en línea.",
+        "Sources consultées": "Fuentes consultadas",
+
         "💬 Mon Assistant IA": "💬 Mi asistente IA",
         "🌍 Développement mondial de SOW IA": "🌍 Expansión global de SOW IA",
         "🌐 Recherche Web": "🌐 Búsqueda web",
@@ -172,6 +186,13 @@ _EXTRA_TRANSLATIONS = {
         "Connexion à SOW IA": "Iniciar sesión en SOW IA",
     },
     "中文": {
+        "Rechercher sur Internet pour cette réponse": "为此回答搜索互联网",
+        "SOW IA consultera jusqu'à cinq sources publiques et ajoutera leurs liens à la réponse.": "SOW IA 将查阅最多五个公开来源，并在回答中添加链接。",
+        "Recherche de sources publiques…": "正在搜索公开来源…",
+        "Aucune source exploitable n'a été trouvée. La réponse sera générée sans recherche Web.": "未找到可用来源。回答将不使用网络搜索生成。",
+        "La recherche Web n'a pas abouti ; la conversation continue sans sources en ligne.": "网络搜索未成功；对话将继续，不使用在线来源。",
+        "Sources consultées": "已查阅的来源",
+
         "💬 Mon Assistant IA": "💬 我的人工智能助手",
         "🌍 Développement mondial de SOW IA": "🌍 SOW IA 全球拓展",
         "🌐 Recherche Web": "🌐 网页搜索",
@@ -185,6 +206,13 @@ _EXTRA_TRANSLATIONS = {
         "Connexion à SOW IA": "登录 SOW IA",
     },
     "Deutsch": {
+        "Rechercher sur Internet pour cette réponse": "Für diese Antwort im Internet suchen",
+        "SOW IA consultera jusqu'à cinq sources publiques et ajoutera leurs liens à la réponse.": "SOW IA prüft bis zu fünf öffentliche Quellen und fügt deren Links zur Antwort hinzu.",
+        "Recherche de sources publiques…": "Öffentliche Quellen werden gesucht…",
+        "Aucune source exploitable n'a été trouvée. La réponse sera générée sans recherche Web.": "Es wurden keine nutzbaren Quellen gefunden. Die Antwort wird ohne Websuche erstellt.",
+        "La recherche Web n'a pas abouti ; la conversation continue sans sources en ligne.": "Die Websuche war nicht erfolgreich; das Gespräch wird ohne Online-Quellen fortgesetzt.",
+        "Sources consultées": "Verwendete Quellen",
+
         "💬 Mon Assistant IA": "💬 Mein KI-Assistent",
         "🌍 Développement mondial de SOW IA": "🌍 Internationale Expansion von SOW IA",
         "🌐 Recherche Web": "🌐 Websuche",
@@ -198,6 +226,13 @@ _EXTRA_TRANSLATIONS = {
         "Connexion à SOW IA": "Bei SOW IA anmelden",
     },
     "العربية": {
+        "Rechercher sur Internet pour cette réponse": "ابحث في الإنترنت عن هذه الإجابة",
+        "SOW IA consultera jusqu'à cinq sources publiques et ajoutera leurs liens à la réponse.": "سيطّلع SOW IA على ما يصل إلى خمسة مصادر عامة ويضيف روابطها إلى الإجابة.",
+        "Recherche de sources publiques…": "جارٍ البحث عن مصادر عامة…",
+        "Aucune source exploitable n'a été trouvée. La réponse sera générée sans recherche Web.": "لم يتم العثور على مصادر قابلة للاستخدام. ستُنشأ الإجابة دون بحث على الويب.",
+        "La recherche Web n'a pas abouti ; la conversation continue sans sources en ligne.": "لم ينجح البحث على الويب؛ ستستمر المحادثة دون مصادر عبر الإنترنت.",
+        "Sources consultées": "المصادر التي تمت مراجعتها",
+
         "💬 Mon Assistant IA": "💬 مساعدي الذكي",
         "🌍 Développement mondial de SOW IA": "🌍 التوسع العالمي لـ SOW IA",
         "🌐 Recherche Web": "🌐 بحث الويب",
