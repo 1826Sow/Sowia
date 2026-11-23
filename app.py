@@ -2707,7 +2707,7 @@ elif page == "Assistant IA":
                         web_context = None
                         if use_web_search:
                             try:
-                                from web_context import build_web_context, prepare_web_sources
+                                from web_context import build_web_context, format_web_source_link, prepare_web_sources
                                 with st.spinner(translate_ui("Recherche de sources publiques…", language)):
                                     web_sources = prepare_web_sources(search_web(prompt, max_results=5))
                                 web_context = build_web_context(web_sources)
@@ -2725,7 +2725,7 @@ elif page == "Assistant IA":
                         )
                         if web_sources:
                             reply += "\n\n**" + translate_ui("Sources consultées", language) + ":**\n" + "\n".join(
-                                f"- [{source['title']}]({source['url']})"
+                                format_web_source_link(source)
                                 for source in web_sources
                             )
                         st.markdown(reply)
