@@ -1,5 +1,5 @@
 name: SOW IA Android private test APK
-# Fresh public-distribution candidate build; debug APK only, no signing secrets required.
+# Builds the current Android app, verifies its package, and publishes a clearly labelled test release.
 
 on:
   workflow_dispatch:
@@ -11,11 +11,11 @@ on:
       - 'android/**'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-test-apk:
-    name: Build private installable test APK
+    name: Build and publish Android test APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -59,7 +59,7 @@ jobs:
           sha256sum release-output/SOW-IA-Android-TEST.apk | tee release-output/SHA256SUMS.txt
           echo "Debug APK package ID verified. This is a test build, not a Play Store release."
 
-      - name: Upload private test APK
+      - name: Upload temporary workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: sowia-android-private-test-apk
@@ -67,4 +67,19 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-# Rebuild trigger: keep this workflow ready to package the latest main-branch Android app.
+      - name: Publish public test release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="sowia-android-test"
+          TITLE="SOW IA Android — version de test"
+          NOTES="Version Android de test distribuée gratuitement. Cette compilation utilise une signature de débogage et peut nécessiter la désinstallation d'une version signée différemment. Ce n'est pas une publication Google Play."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-output/SOW-IA-Android-TEST.apk release-output/SHA256SUMS.txt --clobber
+            gh release edit "$TAG" --title "$TITLE" --notes "$NOTES" --prerelease
+          else
+            gh release create "$TAG" release-output/SOW-IA-Android-TEST.apk release-output/SHA256SUMS.txt --title "$TITLE" --notes "$NOTES" --prerelease
+          fi
+
+# The stable public asset URL remains the same when the test APK is rebuilt.
