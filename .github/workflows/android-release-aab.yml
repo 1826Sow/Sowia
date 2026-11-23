@@ -42,102 +42,136 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Prefer the complete legacy SOWIA_UPLOAD_* set when present.
-          # Otherwise keep using the complete ANDROID_* set.
-          if [[ -n "${SOWIA_UPLOAD_KEYSTORE_BASE64:-}" && -n "${SOWIA_UPLOAD_KEYSTORE_PASSWORD:-}" && -n "${SOWIA_UPLOAD_KEY_ALIAS:-}" && -n "${SOWIA_UPLOAD_KEY_PASSWORD:-}" ]]; then
-            ANDROID_KEYSTORE_BASE64="$SOWIA_UPLOAD_KEYSTORE_BASE64"
-            ANDROID_KEYSTORE_PASSWORD="$SOWIA_UPLOAD_KEYSTORE_PASSWORD"
-            ANDROID_KEY_ALIAS="$SOWIA_UPLOAD_KEY_ALIAS"
-            ANDROID_KEY_PASSWORD="$SOWIA_UPLOAD_KEY_PASSWORD"
-          fi
-          export ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD
-          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
-            if [ -z "${!name:-}" ]; then
-              echo "::error::Required signing secret $name is missing. No signing key will be generated or replaced."
-              exit 1
-            fi
-          done
-
-          KEYSTORE_PATH="$RUNNER_TEMP/sowia-existing-upload-key"
-          export ANDROID_KEYSTORE_BASE64
           python3 - <<'PY'
-          import base64, os, re
+          import base64
+          import os
+          import re
+          import subprocess
+          import zipfile
           from pathlib import Path
-          value = "".join(os.environ["ANDROID_KEYSTORE_BASE64"].strip().split())
-          value = re.sub(r"[^A-Za-z0-9+/=_-]", "", value)
-          value = value.replace("-", "+").replace("_", "/").rstrip("=")
-          if not value:
-              raise SystemExit("The existing keystore secret contains no Base64 data.")
-          value += "=" * (-len(value) % 4)
-          try:
-              raw = base64.b64decode(value, validate=True)
-          except Exception:
-              raise SystemExit("The existing keystore secret is not valid Base64.")
-          if not raw:
-              raise SystemExit("The decoded existing keystore is empty.")
-          Path(os.environ["RUNNER_TEMP"], "sowia-existing-upload-key").write_bytes(raw)
-          print("Existing keystore decoded; no signing material was changed.")
+
+          expected = "A967AA50C0257BFF7D7EFA0D102035A61AAE4A0A085717702152BECCADF304F4"
+          root = Path(os.environ["RUNNER_TEMP"])
+          key_candidates = [
+              ("SOWIA_UPLOAD_KEYSTORE_BASE64", os.environ.get("SOWIA_UPLOAD_KEYSTORE_BASE64", "")),
+              ("ANDROID_KEYSTORE_BASE64", os.environ.get("ANDROID_KEYSTORE_BASE64", "")),
+          ]
+          store_passwords = list(dict.fromkeys(
+              x for x in (
+                  os.environ.get("SOWIA_UPLOAD_KEYSTORE_PASSWORD", ""),
+                  os.environ.get("ANDROID_KEYSTORE_PASSWORD", ""),
+                  os.environ.get("SOWIA_UPLOAD_KEY_PASSWORD", ""),
+                  os.environ.get("ANDROID_KEY_PASSWORD", ""),
+              ) if x
+          ))
+          key_passwords = list(dict.fromkeys(
+              x for x in (
+                  os.environ.get("SOWIA_UPLOAD_KEY_PASSWORD", ""),
+                  os.environ.get("ANDROID_KEY_PASSWORD", ""),
+                  os.environ.get("SOWIA_UPLOAD_KEYSTORE_PASSWORD", ""),
+                  os.environ.get("ANDROID_KEYSTORE_PASSWORD", ""),
+              ) if x
+          ))
+          aliases = list(dict.fromkeys(
+              x for x in (
+                  os.environ.get("SOWIA_UPLOAD_KEY_ALIAS", ""),
+                  os.environ.get("ANDROID_KEY_ALIAS", ""),
+              ) if x
+          ))
+          if not any(value.strip() for _, value in key_candidates):
+              raise SystemExit("No existing upload-keystore data is configured. No key was generated.")
+          if not store_passwords or not key_passwords:
+              raise SystemExit("Existing signing password fields are incomplete. No key was generated.")
+
+          def run(args):
+              return subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+          selected = None
+          decoded_count = 0
+          for label, encoded in key_candidates:
+              if not encoded.strip():
+                  continue
+              value = "".join(encoded.strip().split())
+              if value.startswith("data:") and "," in value:
+                  value = value.split(",", 1)[1]
+              value = re.sub(r"[^A-Za-z0-9+/=_-]", "", value)
+              value = value.replace("-", "+").replace("_", "/").rstrip("=")
+              if not value:
+                  continue
+              value += "=" * (-len(value) % 4)
+              try:
+                  raw = base64.b64decode(value, validate=True)
+              except Exception:
+                  continue
+              if not raw:
+                  continue
+              decoded_count += 1
+              keystore = root / ("sowia-existing-upload-" + str(decoded_count))
+              keystore.write_bytes(raw)
+
+              for store_type in ("JKS", "PKCS12"):
+                  for store_password in store_passwords:
+                      listing = run([
+                          "keytool", "-list", "-v", "-storetype", store_type,
+                          "-keystore", str(keystore), "-storepass", store_password
+                      ])
+                      if listing.returncode != 0:
+                          continue
+                      found_aliases = re.findall(r"^Alias name: (.+)$", listing.stdout, re.M)
+                      candidates = list(dict.fromkeys(aliases + found_aliases))
+                      for alias in candidates:
+                          cert = run([
+                              "keytool", "-list", "-v", "-storetype", store_type,
+                              "-keystore", str(keystore), "-storepass", store_password,
+                              "-alias", alias
+                          ])
+                          if cert.returncode != 0:
+                              continue
+                          match = re.search(r"SHA256:\s*([0-9A-Fa-f:]+)", cert.stdout)
+                          actual = re.sub(r":", "", match.group(1)).upper() if match else ""
+                          if actual != expected:
+                              continue
+
+                          probe = root / "sowia-signing-probe.jar"
+                          with zipfile.ZipFile(probe, "w"):
+                              pass
+                          for key_password in key_passwords:
+                              signed = run([
+                                  "jarsigner", "-keystore", str(keystore),
+                                  "-storetype", store_type, "-storepass", store_password,
+                                  "-keypass", key_password, str(probe), alias
+                              ])
+                              if signed.returncode == 0:
+                                  selected = (keystore, store_type, store_password, alias, key_password, label)
+                                  break
+                          probe.unlink(missing_ok=True)
+                          if selected:
+                              break
+                      if selected:
+                          break
+                  if selected:
+                      break
+              if selected:
+                  break
+
+          if not selected:
+              raise SystemExit(
+                  "No configured keystore/password/alias combination both unlocks the private key "
+                  "and matches the registered Google Play upload certificate. No signing material was changed."
+              )
+
+          keystore, store_type, store_password, alias, key_password, source = selected
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+              env.write(f"ANDROID_KEYSTORE_PATH={keystore}\n")
+              env.write(f"ANDROID_KEYSTORE_TYPE={store_type}\n")
+              env.write(f"ANDROID_KEYSTORE_PASSWORD={store_password}\n")
+              env.write(f"ANDROID_KEY_ALIAS={alias}\n")
+              env.write(f"ANDROID_KEY_PASSWORD={key_password}\n")
+          print(
+              "Original Google Play upload certificate, keystore format, alias, and private-key access verified. "
+              f"Existing credential set selected: {source}. No secret or signing key was modified."
+          )
           PY
-
-          EXPECTED_CERT_SHA256="A967AA50C0257BFF7D7EFA0D102035A61AAE4A0A085717702152BECCADF304F4"
-          STORE_TYPE=""
-          STORE_PASSWORD=""
-          for candidate_password in "$ANDROID_KEYSTORE_PASSWORD" "$ANDROID_KEY_PASSWORD"; do
-            for candidate_type in JKS PKCS12; do
-              if keytool -list -storetype "$candidate_type" -keystore "$KEYSTORE_PATH" -storepass "$candidate_password" >/dev/null 2>&1; then
-                STORE_TYPE="$candidate_type"
-                STORE_PASSWORD="$candidate_password"
-                break 2
-              fi
-            done
-          done
-          if [ -z "$STORE_TYPE" ]; then
-            echo "::error::The existing keystore file decoded correctly, but neither configured password opens it as JKS or PKCS12. No signing material was changed."
-            exit 1
-          fi
-          echo "Existing keystore opened successfully (format: $STORE_TYPE)."
-
-          KEY_ALIAS="$ANDROID_KEY_ALIAS"
-          if ! keytool -list -storetype "$STORE_TYPE" -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
-            ALIASES="$(keytool -list -v -storetype "$STORE_TYPE" -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" 2>/dev/null | awk -F': ' '/^Alias name:/{print $2}')"
-            ALIAS_COUNT="$(printf '%s\n' "$ALIASES" | sed '/^$/d' | wc -l | tr -d ' ')"
-            if [ "$ALIAS_COUNT" != "1" ]; then
-              echo "::error::The keystore opens, but the configured alias is absent and there is not exactly one alias to identify safely."
-              exit 1
-            fi
-            KEY_ALIAS="$ALIASES"
-          fi
-
-          ACTUAL_CERT_SHA256="$(keytool -list -v -storetype "$STORE_TYPE" -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" 2>/dev/null | awk -F': ' '/SHA256:/{gsub(/:/,"",$2); print toupper($2); exit}')"
-          if [ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]; then
-            echo "::error::The existing keystore certificate does not match the registered Play upload certificate. Release signing is stopped."
-            exit 1
-          fi
-          echo "Registered Play upload certificate fingerprint verified."
-
-          python3 - <<'PY'
-          from zipfile import ZipFile
-          with ZipFile("signing-probe.jar", "w"):
-              pass
-          PY
-          KEY_PASSWORD="$ANDROID_KEY_PASSWORD"
-          if ! jarsigner -keystore "$KEYSTORE_PATH" -storetype "$STORE_TYPE" -storepass "$STORE_PASSWORD" -keypass "$KEY_PASSWORD" signing-probe.jar "$KEY_ALIAS" >/dev/null 2>&1; then
-            if ! jarsigner -keystore "$KEYSTORE_PATH" -storetype "$STORE_TYPE" -storepass "$STORE_PASSWORD" -keypass "$STORE_PASSWORD" signing-probe.jar "$KEY_ALIAS" >/dev/null 2>&1; then
-              echo "::error::The original keystore and certificate are correct, but neither configured password unlocks the private key."
-              exit 1
-            fi
-            KEY_PASSWORD="$STORE_PASSWORD"
-          fi
-          rm -f signing-probe.jar
-
-          {
-            echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH"
-            echo "ANDROID_KEYSTORE_TYPE=$STORE_TYPE"
-            echo "ANDROID_KEYSTORE_PASSWORD=$STORE_PASSWORD"
-            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS"
-            echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD"
-          } >> "$GITHUB_ENV"
-          echo "Original Play upload key, certificate, alias, and private-key access verified. No signing material was modified."
 
       - name: Validate Supabase configuration and build current release AAB
         env:
