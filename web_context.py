@@ -40,10 +40,13 @@ def prepare_web_sources(results):
 
 
 def format_web_source_link(source):
-    """Format a validated source as a Markdown link without allowing title injection."""
+    """Format a validated source as a Markdown link without title injection."""
     title = str(source.get("title") or "Source sans titre")
-    title = re.sub(r"([\\\`*_{}\[\]()#+\-.!|>])", r"\\\1", title)
-    url = quote(str(source.get("url") or ""), safe=":/?#[]@!
+    for char in ("\\", "[", "]", "(", ")"):
+        title = title.replace(char, "\\" + char)
+    url = quote(str(source.get("url") or ""), safe=":/?#[]@!$&()*+,;=%-._~")
+    return f"- [{title}](<{url}>)"
+
 def build_web_context(sources):
 '()*+,;=%-._~")
     return f"- [{title}](<{url}>)"
