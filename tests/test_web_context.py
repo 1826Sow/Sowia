@@ -33,3 +33,16 @@ def test_build_web_context_includes_source_urls_and_bounds_context():
     assert "Documentation" in context
     assert "https://docs.example.test" in context
     assert "Useful detail" in context
+
+
+def test_format_web_source_link_escapes_markdown_title_and_url_delimiters():
+    from web_context import format_web_source_link
+
+    link = format_web_source_link({
+        "title": "Docs] (click here) [x]",
+        "url": "https://example.test/a path?q=one&x=<tag>",
+    })
+
+    assert r"\]" in link
+    assert r"\(" in link
+    assert "(<https://example.test/a%20path?q=one&x=%3Ctag%3E>)" in link
