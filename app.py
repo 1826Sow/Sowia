@@ -2556,6 +2556,8 @@ elif page == "Assistant IA":
             active_memory_project = memory_project_by_id.get(active_memory_project_id)
             st.session_state["sowia_active_memory_project_id"] = active_memory_project_id
         except Exception as project_context_error:
+            # Do not reuse a stale project selection if the project list cannot be loaded.
+            st.session_state["sowia_active_memory_project_id"] = None
             st.caption("Le contexte projet n'est pas disponible pour le moment. La mémoire générale reste active.")
     memories = get_app_memories()
     memories = [
