@@ -37,3 +37,11 @@ def test_project_memory_foreign_key_has_a_dedicated_covering_index():
     migration = (ROOT / "supabase/migrations/20261122113531_sowia_memory_project_fk_index.sql").read_text(encoding="utf-8")
     assert "on public.sowia_memory_items (project_id)" in migration
     assert "where project_id is not null" in migration
+
+
+def test_unavailable_project_context_clears_stale_active_project_selection():
+    source = (ROOT / "app.py").read_text(encoding="utf-8")
+    failure_branch = source.split("except Exception as project_context_error:", 1)[1].split(
+        "memories = get_app_memories()", 1
+    )[0]
+    assert 'st.session_state["sowia_active_memory_project_id"] = None' in failure_branch
