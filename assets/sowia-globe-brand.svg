@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 520" role="img" aria-label="SOW IA — globe numérique moderne, réseau mondial et intelligence artificielle">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#041126"/><stop offset=".55" stop-color="#092849"/><stop offset="1" stop-color="#06152c"/></linearGradient>
+ <radialGradient id="aura"><stop stop-color="#12cfff" stop-opacity=".34"/><stop offset="1" stop-color="#07182d" stop-opacity="0"/></radialGradient>
+ <linearGradient id="ocean" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1ce7ff"/><stop offset=".48" stop-color="#087bc7"/><stop offset="1" stop-color="#123b80"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff2b0"/><stop offset=".5" stop-color="#f4b83e"/><stop offset="1" stop-color="#b97818"/></linearGradient>
+ <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <clipPath id="sphere"><circle cx="360" cy="218" r="145"/></clipPath>
+</defs>
+<rect width="720" height="520" rx="34" fill="url(#bg)"/>
+<ellipse cx="360" cy="218" rx="285" ry="235" fill="url(#aura)"/>
+<g fill="none" stroke="#1bdcff" opacity=".28"><circle cx="360" cy="218" r="190" stroke-dasharray="3 12" stroke-width="2"/><ellipse cx="360" cy="218" rx="245" ry="92" transform="rotate(-22 360 218)"/><ellipse cx="360" cy="218" rx="245" ry="92" transform="rotate(35 360 218)"/></g>
+<g clip-path="url(#sphere)">
+ <circle cx="360" cy="218" r="145" fill="url(#ocean)"/>
+ <path d="M236 123l34-28 36 8 18 27-15 22-29 4-12 25-29-6-19-24zM328 90l34-18 39 14 12 27-18 19-36-8-20 18-24-19zM405 122l40-20 43 17 27 35-13 31-39 4-17 28-34-8-17-34zM285 221l37-22 27 12 10 29-22 20-9 41-32 11-24-30 8-33zM375 220l35-15 34 17 10 38-25 24-6 38-37 8-24-30 9-39zM457 267l27-8 28 24-10 33-31 7-22-25z" fill="#73edda" opacity=".82" stroke="#c5fff6" stroke-opacity=".55" stroke-width="2"/>
+ <g fill="none" stroke="#d8fbff" opacity=".34"><ellipse cx="360" cy="218" rx="62" ry="145"/><ellipse cx="360" cy="218" rx="112" ry="145"/><path d="M218 218h284M237 158h246M237 278h246"/></g>
+ <g fill="none" stroke="#ffe39a" stroke-width="2" opacity=".8"><path d="M248 171Q360 90 470 171M230 250Q360 330 490 250"/></g>
+</g>
+<circle cx="360" cy="218" r="145" fill="none" stroke="#b9f7ff" stroke-width="4" filter="url(#glow)"/>
+<g fill="none" stroke="url(#gold)" stroke-width="3" opacity=".95"><ellipse cx="360" cy="218" rx="205" ry="73" transform="rotate(-18 360 218)"/><path d="M175 264Q360 385 545 264" opacity=".7"/></g>
+<g fill="#fff1ad" filter="url(#glow)"><circle cx="190" cy="319" r="6"/><circle cx="536" cy="116" r="7"/><circle cx="493" cy="335" r="5"/><circle cx="260" cy="54" r="4"/></g>
+<g stroke="#27dfff" stroke-width="2" opacity=".85"><path d="M190 319L250 277 314 294 360 218 427 173 536 116M314 294L493 335" fill="none"/><circle cx="250" cy="277" r="5" fill="#a7faff"/><circle cx="427" cy="173" r="5" fill="#a7faff"/></g>
+<text x="360" y="432" text-anchor="middle" font-family="Arial,sans-serif" font-size="78" font-weight="900" letter-spacing="4" fill="#eefaff">SOW <tspan fill="url(#gold)">IA</tspan></text>
+<path d="M118 451H602" stroke="url(#gold)" stroke-width="2"/>
+<text x="360" y="482" text-anchor="middle" font-family="Arial,sans-serif" font-size="21" font-weight="600" letter-spacing="2" fill="#bfefff">INTELLIGENCE • MONDE • OPPORTUNITÉS</text>
+</svg>
