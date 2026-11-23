@@ -51,6 +51,7 @@ import sowia_global_directory
 import sowia_global_connect
 import sowia_global_messenger
 import sowia_global_alerts
+import sowia_global_negotiation
 import sowia_business_card
 import project_registry_ui
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
@@ -2757,7 +2758,7 @@ elif page == "Ma mémoire":
 elif page == "Développement mondial":
     st.subheader(translate_ui("🌍 Développement mondial de SOW IA", language))
     st.caption("Repérez des partenaires, préparez vos prises de contact et construisez votre promotion internationale. Rien n'est envoyé ou publié automatiquement.")
-    partner_tab, greeting_tab, agenda_tab, promo_tab, market_tab, radar_tab = st.tabs(["🤝 Partenaires", "🎉 Vœux internationaux", "🗓️ Agenda relationnel", "📣 Promotion multilingue", "🌐 Stratégie pays", "📡 Radar opportunités"])
+    partner_tab, greeting_tab, agenda_tab, promo_tab, visibility_tab, market_tab, radar_tab, negotiation_tab = st.tabs(["🤝 Partenaires", "🎉 Vœux internationaux", "🗓️ Agenda relationnel", "📣 Promotion multilingue", "🎤 Visibilité mondiale", "🌐 Stratégie pays", "📡 Radar opportunités", "🤝 Négociation & accords"])
 
     with partner_tab:
         st.markdown("#### Prospection internationale")
@@ -3132,6 +3133,110 @@ elif page == "Développement mondial":
             st.text_area("Campagne préparée — à valider avant publication", value=st.session_state["growth_campaign_draft"], height=360)
             st.caption("La publication automatique sera ajoutée après connexion et validation des comptes sociaux. Aucun message n'est publié depuis cet écran.")
 
+
+    with visibility_tab:
+        import global_visibility
+        st.markdown("#### 🎤 Faire connaître SOW IA dans les écosystèmes mondiaux")
+        st.write(
+            "Repérez les salons, conférences IA, concours de pitch, demo days, "
+            "incubateurs, accélérateurs et réseaux d'investisseurs. La recherche couvre "
+            "les hubs technologiques et les marchés émergents, sans limiter SOW IA à une liste de pays."
+        )
+        visibility_cols = st.columns(2)
+        with visibility_cols[0]:
+            visibility_region = st.selectbox(
+                "Région du monde",
+                global_visibility.REGIONS,
+                key="sowia_visibility_region",
+            )
+            visibility_country = st.text_input(
+                "Pays, ville ou hub (facultatif)",
+                placeholder="Ex. Silicon Valley, Shenzhen, Séoul, Bali, Dakar, Dubaï…",
+                max_chars=120,
+                key="sowia_visibility_country",
+            )
+        with visibility_cols[1]:
+            visibility_audience = st.selectbox(
+                "Public à rencontrer",
+                global_visibility.AUDIENCES,
+                key="sowia_visibility_audience",
+            )
+            visibility_year = st.selectbox(
+                "Année des événements",
+                [2026, 2027, 2028],
+                index=1,
+                key="sowia_visibility_year",
+            )
+        st.caption(
+            "Marchés à couvrir en priorité : États-Unis, Chine, Singapour, Corée du Sud, "
+            "Taïwan, Indonésie (dont Bali), Inde, Sénégal, Suisse, France et Émirats arabes unis. "
+            "Les autres pays restent accessibles par recherche libre."
+        )
+        if st.button(
+            "🌍 Rechercher les scènes où présenter SOW IA",
+            type="primary",
+            key="sowia_visibility_search",
+        ):
+            try:
+                visibility_queries = global_visibility.build_visibility_queries(
+                    visibility_region,
+                    visibility_country,
+                    visibility_audience,
+                    int(visibility_year),
+                )
+                collected_visibility = []
+                with st.spinner("Recherche des événements, programmes et réseaux internationaux…"):
+                    for visibility_query in visibility_queries:
+                        collected_visibility.extend(search_web(visibility_query, max_results=8))
+                st.session_state["sowia_visibility_results"] = global_visibility.normalize_visibility_results(
+                    collected_visibility
+                )
+                st.session_state["sowia_visibility_search_scope"] = (
+                    visibility_country.strip() or visibility_region
+                )
+            except (RuntimeError, ValueError) as visibility_error:
+                st.error(str(visibility_error))
+            except Exception:
+                st.error("La recherche de visibilité a échoué. Vérifiez le service de recherche puis réessayez.")
+        visibility_results = st.session_state.get("sowia_visibility_results", [])
+        if visibility_results:
+            st.success(
+                f"{len(visibility_results)} piste(s) trouvée(s) pour "
+                f"{st.session_state.get('sowia_visibility_search_scope', 'le monde')} — "
+                "dates, candidatures et conditions à confirmer auprès des organisateurs."
+            )
+            for visibility_index, visibility_item in enumerate(visibility_results):
+                with st.container(border=True):
+                    st.markdown(f"**{visibility_item['title']}**")
+                    st.caption(visibility_item["domain"] + " · " + visibility_item["status"])
+                    if visibility_item["content"]:
+                        st.write(visibility_item["content"])
+                    st.link_button("Consulter la source", visibility_item["url"])
+                    if st.button(
+                        "Enregistrer dans mon CRM international",
+                        key=f"sowia_visibility_save_{visibility_index}",
+                    ):
+                        if not cloud_mode or current_user is None:
+                            st.warning("Connectez-vous à votre espace sécurisé pour enregistrer cette piste.")
+                        else:
+                            try:
+                                cloud_storage.add_growth_lead(
+                                    supabase_client,
+                                    current_user,
+                                    organization=visibility_item["title"],
+                                    country=st.session_state.get("sowia_visibility_search_scope", "Monde"),
+                                    region=visibility_region,
+                                    partner_type="Événement / écosystème startup",
+                                    website=visibility_item["url"],
+                                    source_url=visibility_item["url"],
+                                    notes=visibility_item["content"][:1800],
+                                    workspace_id=st.session_state.get("workspace_id", "personal"),
+                                )
+                                st.success("Piste enregistrée dans votre CRM.")
+                            except Exception:
+                                st.error("Enregistrement impossible. Vérifiez la configuration de votre CRM.")
+        else:
+            st.info("Lancez une recherche pour identifier les événements et réseaux adaptés à SOW IA.")
 
     with market_tab:
         import international_market_strategy as market_strategy
@@ -3548,6 +3653,167 @@ elif page == "Développement mondial":
         else:
             st.info("Le registre est vide. Enregistrez une piste pour commencer votre suivi.")
 
+
+
+    with negotiation_tab:
+        st.markdown("#### 🤝 Centre de négociation commerciale")
+        st.caption(
+            "Centralisez les échanges, préparez des réponses adaptées et suivez chaque étape "
+            "jusqu'à la revue finale. Cette première version prépare les messages : elle ne les envoie pas."
+        )
+        with st.form("sowia_global_negotiation_case_form"):
+            neg_cols = st.columns(2)
+            with neg_cols[0]:
+                neg_partner = st.text_input("Entreprise / interlocuteur", max_chars=160)
+                neg_country = st.text_input("Pays", max_chars=100)
+                neg_language = st.selectbox("Langue de réponse", ["Français", "English"])
+            with neg_cols[1]:
+                neg_objective = st.text_input(
+                    "Objectif de la négociation", max_chars=500,
+                    placeholder="Ex. obtenir un accord de distribution pour SOW IA",
+                )
+                neg_stage = st.selectbox(
+                    "Étape actuelle", sowia_global_negotiation.STAGES
+                )
+            neg_incoming = st.text_area(
+                "Dernier message reçu / résumé fidèle de l'échange",
+                max_chars=4000, height=160,
+            )
+            neg_boundaries = st.text_area(
+                "Vos limites et conditions non négociables",
+                max_chars=1200, height=90,
+                placeholder="Ex. prix minimum, zone, délais, aucun engagement sans contrat signé…",
+            )
+            neg_generate = st.form_submit_button(
+                "Analyser et préparer une réponse", type="primary"
+            )
+        if neg_generate:
+            try:
+                neg_case = sowia_global_negotiation.validate_case(
+                    neg_partner, neg_country, neg_objective, neg_incoming, neg_boundaries
+                )
+                neg_draft = sowia_global_negotiation.build_reply_draft(
+                    neg_case, language=neg_language
+                )
+                st.session_state["sowia_negotiation_case"] = {
+                    **neg_case, "language": neg_language, "stage": neg_stage,
+                    "draft": neg_draft,
+                    "signals": sowia_global_negotiation.detect_negotiation_signals(neg_incoming),
+                }
+                st.success("Analyse terminée. Le brouillon est prêt pour relecture.")
+            except ValueError as neg_error:
+                st.error(str(neg_error))
+        active_negotiation = st.session_state.get("sowia_negotiation_case")
+        if active_negotiation:
+            st.divider()
+            st.markdown("##### Analyse de l'échange")
+            st.write("Points détectés : " + " · ".join(active_negotiation["signals"]))
+            st.caption("Partenaire : " + active_negotiation["partner"] + " · " + active_negotiation["country"])
+            st.text_area(
+                "Réponse proposée — à relire et approuver avant tout envoi",
+                value=active_negotiation["draft"], height=260,
+                key="sowia_negotiation_draft_preview",
+            )
+            if st.button("🧠 Archiver ce dossier dans ma mémoire", key="sowia_archive_negotiation_case"):
+                try:
+                    archive_entry = sowia_global_negotiation.build_case_memory_entry(active_negotiation)
+                    add_app_memory(archive_entry)
+                    st.success("Dossier archivé dans la mémoire de cet espace. Vous pourrez le retrouver dans « Ma mémoire ».")
+                except (ValueError, PermissionError) as archive_error:
+                    st.error(str(archive_error))
+                except Exception:
+                    st.error("Archivage impossible pour le moment. Vérifiez votre connexion et réessayez.")
+            st.warning(
+                "Aucun message n'est envoyé depuis cette rubrique. Les prix, délais, exclusivités "
+                "et clauses doivent être confirmés par une personne habilitée."
+            )
+            with st.expander("📄 Préparer une proposition commerciale", expanded=False):
+                st.caption(
+                    "SOW IA utilise uniquement les conditions que vous saisissez. "
+                    "Le résultat reste un brouillon non contractuel."
+                )
+                with st.form("sowia_nonbinding_offer_form"):
+                    offer_scope = st.text_area("Périmètre proposé", max_chars=1200)
+                    offer_deliverables = st.text_area("Livrables envisagés", max_chars=1200)
+                    offer_cols = st.columns(2)
+                    with offer_cols[0]:
+                        offer_price = st.text_input("Montant proposé", value="0.00")
+                        offer_currency = st.text_input("Devise ISO", value="EUR", max_chars=3)
+                        offer_timeline = st.text_input("Calendrier indicatif", max_chars=300)
+                    with offer_cols[1]:
+                        offer_payment = st.text_input("Modalités de paiement proposées", max_chars=500)
+                        offer_validity = st.number_input("Validité souhaitée (jours)", min_value=1, max_value=90, value=30)
+                    offer_generate = st.form_submit_button("Générer le brouillon d'offre")
+                if offer_generate:
+                    try:
+                        offer_draft = sowia_global_negotiation.build_nonbinding_offer(
+                            partner=active_negotiation["partner"],
+                            country=active_negotiation["country"] or "À confirmer",
+                            objective=active_negotiation["objective"],
+                            scope=offer_scope,
+                            deliverables=offer_deliverables,
+                            currency=offer_currency,
+                            price=offer_price,
+                            timeline=offer_timeline,
+                            payment_terms=offer_payment,
+                            validity_days=int(offer_validity),
+                        )
+                        st.session_state["sowia_nonbinding_offer_draft"] = offer_draft
+                        st.success("Brouillon d'offre généré. Vérification humaine obligatoire.")
+                    except ValueError as offer_error:
+                        st.error(str(offer_error))
+                saved_offer = st.session_state.get("sowia_nonbinding_offer_draft")
+                if saved_offer:
+                    st.text_area(
+                        "Proposition commerciale — brouillon à valider",
+                        value=saved_offer, height=320,
+                        key="sowia_nonbinding_offer_preview",
+                    )
+                    st.download_button(
+                        "Télécharger le brouillon TXT",
+                        data=saved_offer.encode("utf-8"),
+                        file_name="SOWIA_proposition_commerciale_brouillon.txt",
+                        mime="text/plain",
+                    )
+                    st.caption(
+                        "Ce fichier n'est pas envoyé au partenaire et ne vaut pas signature "
+                        "ou acceptation contractuelle."
+                    )
+            updated_stage = st.selectbox(
+                "Suivi de la négociation", sowia_global_negotiation.STAGES,
+                index=sowia_global_negotiation.STAGES.index(active_negotiation["stage"]),
+                key="sowia_negotiation_stage_update",
+            )
+            if st.button("Mettre à jour l'étape dans cette session"):
+                active_negotiation["stage"] = sowia_global_negotiation.validate_stage(updated_stage)
+                st.success("Étape mise à jour dans la session en cours.")
+            st.markdown("##### Contrôle avant finalisation")
+            st.caption("Cochez uniquement après vérification réelle des éléments.")
+            check_cols = st.columns(2)
+            with check_cols[0]:
+                check_identity = st.checkbox("Identité et pouvoir du partenaire vérifiés")
+                check_scope = st.checkbox("Périmètre et livrables confirmés")
+                check_price = st.checkbox("Prix et conditions approuvés")
+            with check_cols[1]:
+                check_legal = st.checkbox("Revue juridique effectuée si nécessaire")
+                check_signatory = st.checkbox("Signataire habilité identifié")
+            final_gate = sowia_global_negotiation.validate_finalization({
+                "identity_verified": check_identity,
+                "scope_confirmed": check_scope,
+                "price_approved": check_price,
+                "legal_review": check_legal,
+                "authorized_signatory": check_signatory,
+            })
+            if final_gate["ready_for_human_review"]:
+                st.success("Dossier prêt pour la revue et la décision finale d'une personne habilitée.")
+            else:
+                st.info("Éléments restant à vérifier : " + ", ".join(final_gate["missing"]))
+            st.caption(
+                "SOW IA ne signe pas, n'accepte pas automatiquement une offre et ne déclenche "
+                "aucun paiement. La conclusion contractuelle reste sous contrôle humain."
+            )
+        else:
+            st.info("Créez un dossier à partir d'un échange reçu pour commencer le suivi.")
 
 elif page == "Recherche Web":
     st.subheader(translate_ui("🌐 Recherche Web", language))
@@ -5841,7 +6107,7 @@ elif page == "SOWIA GLOBAL INTELLIGENCE":
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre compte SOW IA pour enregistrer vos évaluations dans votre espace privé.")
     else:
-        intel_tabs = st.tabs(["📊 Vue stratégique", "＋ Évaluer un marché", "📁 Mon registre"])
+        intel_tabs = st.tabs(["📊 Vue stratégique", "＋ Évaluer un marché", "📁 Mon registre", "🔎 Recherche assistée"])
         with intel_tabs[0]:
             st.markdown("#### Six critères communs pour comparer les opportunités")
             st.write("Demande du marché · Alignement stratégique · Accessibilité · Partenaires disponibles · Préparation réglementaire · Qualité des preuves")
@@ -5946,6 +6212,86 @@ elif page == "SOWIA GLOBAL INTELLIGENCE":
                             st.rerun()
             except Exception as history_error:
                 st.error("Historique indisponible : " + type(history_error).__name__)
+
+
+        with intel_tabs[3]:
+            st.markdown("#### 🔎 Étudier un marché à partir de sources publiques")
+            st.caption(
+                "SOW IA prépare une recherche ciblée et organise les pistes documentaires. "
+                "Les résultats ne sont ni certifiés ni enregistrés automatiquement."
+            )
+            with st.form("sowia_global_market_research_form"):
+                market_country = st.text_input(
+                    "Pays ou marché ciblé", max_chars=100,
+                    placeholder="Ex. Sénégal, France, Singapour",
+                )
+                market_sector = st.text_input(
+                    "Secteur d'activité", max_chars=100,
+                    placeholder="Ex. logiciels, agriculture, tourisme",
+                )
+                market_objective = st.text_input(
+                    "Besoin ou objectif commercial", max_chars=180,
+                    placeholder="Ex. identifier la demande et les distributeurs",
+                )
+                market_search_submit = st.form_submit_button(
+                    "Rechercher des informations publiques", type="primary"
+                )
+            if market_search_submit:
+                try:
+                    from sowia_global_market_research import (
+                        build_market_research_query, normalize_market_sources,
+                        build_research_summary,
+                    )
+                    market_query = build_market_research_query(
+                        market_country, market_sector, market_objective
+                    )
+                    with st.spinner("Recherche de sources publiques…"):
+                        raw_market_sources = search_web(market_query, max_results=8)
+                    market_sources = normalize_market_sources(raw_market_sources)
+                    st.session_state["sowia_market_research_result"] = {
+                        "country": market_country.strip(),
+                        "sector": market_sector.strip(),
+                        "objective": market_objective.strip(),
+                        "sources": market_sources,
+                        "summary": build_research_summary(
+                            market_country, market_sector, market_objective,
+                            raw_market_sources,
+                        ),
+                    }
+                except (RuntimeError, ValueError) as market_error:
+                    st.error(str(market_error))
+                except Exception as market_error:
+                    st.error("La recherche de marché n'a pas abouti. Réessayez plus tard.")
+                    st.caption("Diagnostic : " + type(market_error).__name__)
+
+            market_result = st.session_state.get("sowia_market_research_result")
+            if market_result:
+                st.divider()
+                st.metric("Sources publiques à examiner", len(market_result["sources"]))
+                st.warning(
+                    "Ces résultats sont des pistes de recherche. Vérifiez chaque source, "
+                    "sa date et son autorité avant de noter ou de retenir une opportunité."
+                )
+                for source_index, source in enumerate(market_result["sources"], start=1):
+                    with st.container(border=True):
+                        st.markdown(f"**{source_index}. {source['title']}**")
+                        st.caption(f"{source['domain']} · Pertinence de recherche : "
+                                   + (f"{source['search_relevance']:.2f}" if source["search_relevance"] is not None else "non communiquée")
+                                   + " · Statut : à vérifier")
+                        if source["content"]:
+                            st.write(source["content"])
+                        st.link_button("Consulter la source", source["url"])
+                st.markdown("##### Synthèse de recherche à conserver ou à retravailler")
+                st.text_area(
+                    "Compte rendu et sources",
+                    value=market_result["summary"],
+                    height=300,
+                    key="sowia_market_research_summary_display",
+                )
+                st.caption(
+                    "Aucune entreprise n'est contactée, aucun message n'est envoyé "
+                    "et aucune donnée n'est enregistrée sans votre action."
+                )
 
 
 elif page == "SOWIA GLOBAL PULSE":
