@@ -790,7 +790,11 @@ _POST_LOGIN_TRANSLATIONS = {
         "Dernières transactions": "Latest Transactions",
         "État des composants": "Component Status",
         "Journal des incidents": "Incident Log",
-        "Alertes techniques": "Technical Alerts"
+        "Alertes techniques": "Technical Alerts",
+        "🎯 Actions prioritaires": "🎯 Priority actions",
+        "👤 Espace Personnel": "👤 Personal Workspace",
+        "🏢 Espace Professionnel": "🏢 Professional Workspace",
+        "🖼️ Conversion d’images et de PDF": "🖼️ Image and PDF Conversion"
     },
     "Español": {
         "PLATEFORME INTELLIGENTE · VISION INTERNATIONALE": "PLATAFORMA INTELIGENTE · VISIÓN INTERNACIONAL",
