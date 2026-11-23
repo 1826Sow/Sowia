@@ -15,8 +15,8 @@ def test_email_login_uses_one_validate_button_for_existing_account():
     source = Path("app.py").read_text(encoding="utf-8")
     auth_source = Path("sowia_supabase_auth.py").read_text(encoding="utf-8")
 
-    assert 'st.text_input(\n                "Adresse e-mail du compte SOW IA"' in source
-    assert 'st.button(\n                "Valider"' in source
+    assert 'translate_ui("Adresse e-mail du compte SOW IA", language)' in source
+    assert 'translate_ui("Valider", language)' in source
     assert "email_magic_link(email_client, candidate_login_email, redirect_to)" in source
     assert "aucun nouveau compte ne sera créé" in source
     assert "sowia_email_change_view" not in source
@@ -38,7 +38,7 @@ def test_email_signup_is_available_without_a_fixed_email_allowlist():
     source = Path("app.py").read_text(encoding="utf-8")
 
     assert 'st.form("sowia_email_signup_form"' in source
-    assert 'st.form_submit_button("Créer mon compte"' in source
+    assert 'translate_ui("Créer mon compte", language)' in source
     assert "signup_email_user(signup_client, candidate_signup_email, signup_password, redirect_to)" in source
     assert "Every account created through Supabase email confirmation is eligible" in source
     assert "email_is_allowed(authenticated_email, allowed_emails)" not in source

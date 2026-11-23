@@ -4,6 +4,12 @@ LANGUAGES = ["Français", "English", "Español", "中文", "Deutsch", "العر�
 
 _BASE_TRANSLATIONS = {
     "English": {
+        "🔓 Déverrouiller l’écran": "🔓 Unlock screen",
+        "🔒 Verrouiller maintenant": "🔒 Lock now",
+        "Protection d’écran": "Screen privacy",
+        "Masque tout l’écran de l’application. Le bouton de déverrouillage reste accessible.": "Blurs the entire app screen. The unlock button remains available.",
+        "🔓 DÉSACTIVER LA PROTECTION D’ÉCRAN": "🔓 TURN OFF SCREEN PRIVACY",
+        "Espace de travail": "Workspace",
         "Intelligence artificielle": "Artificial intelligence", "Personnel": "Personal", "Professionnel": "Professional",
         "Accueil": "Home", "Assistant IA": "AI assistant", "Ma mémoire": "My memory", "Recherche Web": "Web search",
         "Analyse PDF": "PDF analysis", "Créer un PDF": "Create a PDF", "Mes documents": "My documents", "Historique": "History",
@@ -19,6 +25,12 @@ _BASE_TRANSLATIONS = {
         "Vérifiez votre configuration": "Check your configuration", "Consultez les indications d’utilisation": "Read the usage guide",
     },
     "Español": {
+        "🔓 Déverrouiller l’écran": "🔓 Desbloquear pantalla",
+        "🔒 Verrouiller maintenant": "🔒 Bloquear ahora",
+        "Protection d’écran": "Privacidad de pantalla",
+        "Masque tout l’écran de l’application. Le bouton de déverrouillage reste accessible.": "Desenfoca toda la aplicación. El botón para desbloquear sigue disponible.",
+        "🔓 DÉSACTIVER LA PROTECTION D’ÉCRAN": "🔓 DESACTIVAR PRIVACIDAD DE PANTALLA",
+        "Espace de travail": "Espacio de trabajo",
         "Intelligence artificielle": "Inteligencia artificial", "Personnel": "Personal", "Professionnel": "Profesional",
         "Accueil": "Inicio", "Assistant IA": "Asistente IA", "Ma mémoire": "Mi memoria", "Recherche Web": "Búsqueda web",
         "Analyse PDF": "Análisis PDF", "Créer un PDF": "Crear un PDF", "Mes documents": "Mis documentos",
@@ -34,6 +46,12 @@ _BASE_TRANSLATIONS = {
         "Vérifiez votre configuration": "Revisa tu configuración", "Consultez les indications d’utilisation": "Consulta la guía de uso",
     },
     "中文": {
+        "🔓 Déverrouiller l’écran": "🔓 解锁屏幕",
+        "🔒 Verrouiller maintenant": "🔒 立即锁定",
+        "Protection d’écran": "屏幕隐私保护",
+        "Masque tout l’écran de l’application. Le bouton de déverrouillage reste accessible.": "模糊整个应用屏幕，解锁按钮仍可使用。",
+        "🔓 DÉSACTIVER LA PROTECTION D’ÉCRAN": "🔓 关闭屏幕隐私保护",
+        "Espace de travail": "工作区",
         "Intelligence artificielle": "人工智能", "Personnel": "个人空间", "Professionnel": "专业空间", "Accueil": "首页",
         "Assistant IA": "人工智能助手", "Ma mémoire": "我的记忆", "Recherche Web": "网页搜索", "Analyse PDF": "PDF 分析",
         "Créer un PDF": "创建 PDF", "Mes documents": "我的文档", "Historique": "历史记录", "Abonnement": "订阅",
@@ -47,6 +65,12 @@ _BASE_TRANSLATIONS = {
         "Vérifiez votre configuration": "检查设置", "Consultez les indications d’utilisation": "查看使用指南",
     },
     "Deutsch": {
+        "🔓 Déverrouiller l’écran": "🔓 Bildschirm entsperren",
+        "🔒 Verrouiller maintenant": "🔒 Jetzt sperren",
+        "Protection d’écran": "Bildschirmschutz",
+        "Masque tout l’écran de l’application. Le bouton de déverrouillage reste accessible.": "Die gesamte App wird unscharf dargestellt. Die Entsperrtaste bleibt erreichbar.",
+        "🔓 DÉSACTIVER LA PROTECTION D’ÉCRAN": "🔓 BILDSCHIRMSCHUTZ DEAKTIVIEREN",
+        "Espace de travail": "Arbeitsbereich",
         "Intelligence artificielle": "Künstliche Intelligenz", "Personnel": "Persönlich", "Professionnel": "Geschäftlich",
         "Accueil": "Startseite", "Assistant IA": "KI-Assistent", "Ma mémoire": "Mein Gedächtnis", "Recherche Web": "Websuche",
         "Analyse PDF": "PDF-Analyse", "Créer un PDF": "PDF erstellen", "Mes documents": "Meine Dokumente", "Historique": "Verlauf",
@@ -61,6 +85,12 @@ _BASE_TRANSLATIONS = {
         "Vérifiez votre configuration": "Einstellungen prüfen", "Consultez les indications d’utilisation": "Benutzerhandbuch öffnen",
     },
     "العربية": {
+        "🔓 Déverrouiller l’écran": "🔓 إلغاء قفل الشاشة",
+        "🔒 Verrouiller maintenant": "🔒 قفل الآن",
+        "Protection d’écran": "خصوصية الشاشة",
+        "Masque tout l’écran de l’application. Le bouton de déverrouillage reste accessible.": "يتم تعتيم شاشة التطبيق بالكامل مع إبقاء زر إلغاء القفل متاحًا.",
+        "🔓 DÉSACTIVER LA PROTECTION D’ÉCRAN": "🔓 إيقاف خصوصية الشاشة",
+        "Espace de travail": "مساحة العمل",
         "Intelligence artificielle": "الذكاء الاصطناعي", "Personnel": "شخصي", "Professionnel": "مهني", "Accueil": "الرئيسية",
         "Assistant IA": "مساعد الذكاء الاصطناعي", "Ma mémoire": "ذاكرتي", "Recherche Web": "بحث الويب", "Analyse PDF": "تحليل PDF",
         "Créer un PDF": "إنشاء PDF", "Mes documents": "مستنداتي", "Historique": "السجل", "Abonnement": "الاشتراك",
@@ -156,6 +186,324 @@ _CORE_TRANSLATIONS = {
 }
 
 
+
+_NAV_TRANSLATIONS = {
+    "English": {
+        "👤 Personnel & documents": "👤 Personal & documents",
+        "🌙 Bourse aux applications": "🌙 App marketplace",
+        "📚 Échanges & projets": "📚 Exchanges & projects",
+        "🌐 Écosystème mondial": "🌐 Global ecosystem",
+        "🤝 Entreprises & opportunités": "🤝 Business & opportunities",
+        "🧠 Intelligence & décisions": "🧠 Intelligence & decisions",
+        "🏛️ Gouvernance & performance": "🏛️ Governance & performance",
+        "💶 SOW IA FINANCIAL HUB": "💶 SOW IA FINANCIAL HUB",
+        "💳 Abonnements & compte": "💳 Subscriptions & account",
+        "🛡️ Administration & assistance": "🛡️ Administration & support",
+        "Hub SOW IA": "SOW IA Hub", "Bourse aux applications": "App marketplace",
+        "Mes échanges & projets": "My exchanges & projects",
+        "Opportunités et revenus": "Opportunities & revenue",
+        "Technologies & fournisseurs": "Technology & providers",
+        "Stratégie & scénarios": "Strategy & scenarios",
+        "Finance & investissements": "Finance & investments",
+        "Revenus & paiements": "Revenue & payments",
+        "Centre de notifications": "Notification center",
+        "Décisions humaines vs SOW IA": "Human decisions vs SOW IA",
+    },
+    "Español": {
+        "👤 Personnel & documents": "👤 Personal y documentos",
+        "🌙 Bourse aux applications": "🌙 Mercado de aplicaciones",
+        "📚 Échanges & projets": "📚 Intercambios y proyectos",
+        "🌐 Écosystème mondial": "🌐 Ecosistema mundial",
+        "🤝 Entreprises & opportunités": "🤝 Empresas y oportunidades",
+        "🧠 Intelligence & décisions": "🧠 Inteligencia y decisiones",
+        "🏛️ Gouvernance & performance": "🏛️ Gobernanza y rendimiento",
+        "💶 SOW IA FINANCIAL HUB": "💶 CENTRO FINANCIERO SOW IA",
+        "💳 Abonnements & compte": "💳 Suscripciones y cuenta",
+        "🛡️ Administration & assistance": "🛡️ Administración y ayuda",
+        "Hub SOW IA": "Centro SOW IA", "Bourse aux applications": "Mercado de aplicaciones",
+        "Mes échanges & projets": "Mis intercambios y proyectos",
+        "Opportunités et revenus": "Oportunidades e ingresos",
+        "Technologies & fournisseurs": "Tecnologías y proveedores",
+        "Stratégie & scénarios": "Estrategia y escenarios",
+        "Finance & investissements": "Finanzas e inversiones",
+        "Revenus & paiements": "Ingresos y pagos",
+        "Centre de notifications": "Centro de notificaciones",
+        "Décisions humaines vs SOW IA": "Decisiones humanas vs SOW IA",
+    },
+    "中文": {
+        "👤 Personnel & documents": "👤 个人与文档",
+        "🌙 Bourse aux applications": "🌙 应用市场",
+        "📚 Échanges & projets": "📚 交流与项目",
+        "🌐 Écosystème mondial": "🌐 全球生态系统",
+        "🤝 Entreprises & opportunités": "🤝 企业与机会",
+        "🧠 Intelligence & décisions": "🧠 智能与决策",
+        "🏛️ Gouvernance & performance": "🏛️ 治理与绩效",
+        "💶 SOW IA FINANCIAL HUB": "💶 SOW IA 金融中心",
+        "💳 Abonnements & compte": "💳 订阅与账户",
+        "🛡️ Administration & assistance": "🛡️ 管理与支持",
+        "Hub SOW IA": "SOW IA 工作中心", "Bourse aux applications": "应用市场",
+        "Mes échanges & projets": "我的交流与项目",
+        "Opportunités et revenus": "机会与收入",
+        "Technologies & fournisseurs": "技术与供应商",
+        "Stratégie & scénarios": "战略与方案",
+        "Finance & investissements": "金融与投资",
+        "Revenus & paiements": "收入与支付",
+        "Centre de notifications": "通知中心",
+        "Décisions humaines vs SOW IA": "人工决策与 SOW IA 对比",
+    },
+    "Deutsch": {
+        "👤 Personnel & documents": "👤 Persönliches & Dokumente",
+        "🌙 Bourse aux applications": "🌙 App-Marktplatz",
+        "📚 Échanges & projets": "📚 Austausch & Projekte",
+        "🌐 Écosystème mondial": "🌐 Globales Ökosystem",
+        "🤝 Entreprises & opportunités": "🤝 Unternehmen & Chancen",
+        "🧠 Intelligence & décisions": "🧠 Intelligenz & Entscheidungen",
+        "🏛️ Gouvernance & performance": "🏛️ Governance & Leistung",
+        "💶 SOW IA FINANCIAL HUB": "💶 SOW IA FINANZ-HUB",
+        "💳 Abonnements & compte": "💳 Abonnements & Konto",
+        "🛡️ Administration & assistance": "🛡️ Verwaltung & Hilfe",
+        "Hub SOW IA": "SOW IA-Zentrale", "Bourse aux applications": "App-Marktplatz",
+        "Mes échanges & projets": "Meine Austausche & Projekte",
+        "Opportunités et revenus": "Chancen & Einnahmen",
+        "Technologies & fournisseurs": "Technologien & Anbieter",
+        "Stratégie & scénarios": "Strategie & Szenarien",
+        "Finance & investissements": "Finanzen & Investitionen",
+        "Revenus & paiements": "Einnahmen & Zahlungen",
+        "Centre de notifications": "Benachrichtigungszentrale",
+        "Décisions humaines vs SOW IA": "Menschliche Entscheidungen vs. SOW IA",
+    },
+    "العربية": {
+        "👤 Personnel & documents": "👤 الشخصي والمستندات",
+        "🌙 Bourse aux applications": "🌙 سوق التطبيقات",
+        "📚 Échanges & projets": "📚 التبادلات والمشاريع",
+        "🌐 Écosystème mondial": "🌐 النظام العالمي",
+        "🤝 Entreprises & opportunités": "🤝 الشركات والفرص",
+        "🧠 Intelligence & décisions": "🧠 الذكاء والقرارات",
+        "🏛️ Gouvernance & performance": "🏛️ الحوكمة والأداء",
+        "💶 SOW IA FINANCIAL HUB": "💶 المركز المالي SOW IA",
+        "💳 Abonnements & compte": "💳 الاشتراكات والحساب",
+        "🛡️ Administration & assistance": "🛡️ الإدارة والدعم",
+        "Hub SOW IA": "مركز SOW IA", "Bourse aux applications": "سوق التطبيقات",
+        "Mes échanges & projets": "تبادلاتي ومشاريعي",
+        "Opportunités et revenus": "الفرص والإيرادات",
+        "Technologies & fournisseurs": "التقنيات والموردون",
+        "Stratégie & scénarios": "الاستراتيجية والسيناريوهات",
+        "Finance & investissements": "التمويل والاستثمارات",
+        "Revenus & paiements": "الإيرادات والمدفوعات",
+        "Centre de notifications": "مركز الإشعارات",
+        "Décisions humaines vs SOW IA": "القرارات البشرية مقابل SOW IA",
+    },
+}
+
+
+_SECTION_TRANSLATIONS = {
+    "English": {
+        "Bienvenue dans SOW IA": "Welcome to SOW IA",
+        "Bienvenue sur le Hub SOW IA": "Welcome to the SOW IA Hub",
+        "🌍 Développement mondial de SOW IA": "🌍 SOW IA global growth",
+        "💬 Mon Assistant IA": "💬 My AI assistant",
+        "🧠 Ma mémoire — espace {workspace_label}": "🧠 My memory — {workspace_label} space",
+        "🌐 Recherche Web": "🌐 Web search",
+        "📄 Analyse PDF": "📄 PDF analysis",
+        "🪄 Créer un PDF": "🪄 Create a PDF",
+        "📁 Mes documents": "📁 My documents",
+        "🕘 Historique": "🕘 History",
+        "👑 Abonnement Premium": "👑 Premium subscription",
+        "🪪 SOW IA GLOBAL ID": "🪪 SOW IA GLOBAL ID",
+        "🌐 SOW IA GLOBAL DIRECTORY": "🌐 SOW IA GLOBAL DIRECTORY",
+        "⚖️ SOW IA GLOBAL DECISION ENGINE": "⚖️ SOW IA GLOBAL DECISION ENGINE",
+        "🌙 SOW IA NIGHT EXCHANGE": "🌙 SOW IA NIGHT EXCHANGE",
+        "🧩 BOURSE AUX APPLICATIONS": "🧩 APP MARKETPLACE",
+        "🏛️ SOW IA BUSINESS CLUB": "🏛️ SOW IA BUSINESS CLUB",
+        "💹 SOW IA Finance — Bourse, Crypto & Investissements": "💹 SOW IA Finance — Markets, Crypto & Investments",
+        "💶 Revenus & paiements": "💶 Revenue & payments",
+        "🔔 Centre de notifications SOW IA": "🔔 SOW IA notification center",
+        "🛰️ SOW IA CONTROL CENTER": "🛰️ SOW IA CONTROL CENTER",
+    },
+    "Español": {
+        "Bienvenue dans SOW IA": "Te damos la bienvenida a SOW IA",
+        "Bienvenue sur le Hub SOW IA": "Bienvenido al centro SOW IA",
+        "🌍 Développement mondial de SOW IA": "🌍 Expansión global de SOW IA",
+        "💬 Mon Assistant IA": "💬 Mi asistente IA",
+        "🌐 Recherche Web": "🌐 Búsqueda web",
+        "📄 Analyse PDF": "📄 Análisis PDF",
+        "🪄 Créer un PDF": "🪄 Crear un PDF",
+        "📁 Mes documents": "📁 Mis documentos",
+        "🕘 Historique": "🕘 Historial",
+        "👑 Abonnement Premium": "👑 Suscripción Premium",
+        "🌙 SOW IA NIGHT EXCHANGE": "🌙 SOW IA NIGHT EXCHANGE",
+        "🧩 BOURSE AUX APPLICATIONS": "🧩 MERCADO DE APLICACIONES",
+        "🏛️ SOW IA BUSINESS CLUB": "🏛️ CLUB DE EMPRESAS SOW IA",
+        "💶 Revenus & paiements": "💶 Ingresos y pagos",
+        "🔔 Centre de notifications SOW IA": "🔔 Centro de notificaciones SOW IA",
+    },
+    "中文": {
+        "Bienvenue dans SOW IA": "欢迎使用 SOW IA",
+        "Bienvenue sur le Hub SOW IA": "欢迎来到 SOW IA 工作中心",
+        "🌍 Développement mondial de SOW IA": "🌍 SOW IA 全球拓展",
+        "💬 Mon Assistant IA": "💬 我的人工智能助手",
+        "🌐 Recherche Web": "🌐 网页搜索",
+        "📄 Analyse PDF": "📄 PDF 分析",
+        "🪄 Créer un PDF": "🪄 创建 PDF",
+        "📁 Mes documents": "📁 我的文档",
+        "🕘 Historique": "🕘 历史记录",
+        "👑 Abonnement Premium": "👑 Premium 订阅",
+        "🌙 SOW IA NIGHT EXCHANGE": "🌙 SOW IA 夜间交换",
+        "🧩 BOURSE AUX APPLICATIONS": "🧩 应用市场",
+        "🏛️ SOW IA BUSINESS CLUB": "🏛️ SOW IA 商业俱乐部",
+        "💶 Revenus & paiements": "💶 收入与支付",
+        "🔔 Centre de notifications SOW IA": "🔔 SOW IA 通知中心",
+    },
+    "Deutsch": {
+        "Bienvenue dans SOW IA": "Willkommen bei SOW IA",
+        "Bienvenue sur le Hub SOW IA": "Willkommen im SOW IA-Hub",
+        "🌍 Développement mondial de SOW IA": "🌍 Internationale Expansion von SOW IA",
+        "💬 Mon Assistant IA": "💬 Mein KI-Assistent",
+        "🌐 Recherche Web": "🌐 Websuche",
+        "📄 Analyse PDF": "📄 PDF-Analyse",
+        "🪄 Créer un PDF": "🪄 PDF erstellen",
+        "📁 Mes documents": "📁 Meine Dokumente",
+        "🕘 Historique": "🕘 Verlauf",
+        "👑 Abonnement Premium": "👑 Premium-Abonnement",
+        "🌙 SOW IA NIGHT EXCHANGE": "🌙 SOW IA NIGHT EXCHANGE",
+        "🧩 BOURSE AUX APPLICATIONS": "🧩 APP-MARKTPLATZ",
+        "🏛️ SOW IA BUSINESS CLUB": "🏛️ SOW IA BUSINESS-CLUB",
+        "💶 Revenus & paiements": "💶 Einnahmen & Zahlungen",
+        "🔔 Centre de notifications SOW IA": "🔔 SOW IA-Benachrichtigungszentrale",
+    },
+    "العربية": {
+        "Bienvenue dans SOW IA": "مرحباً بك في SOW IA",
+        "Bienvenue sur le Hub SOW IA": "مرحباً بك في مركز SOW IA",
+        "🌍 Développement mondial de SOW IA": "🌍 التوسع العالمي لـ SOW IA",
+        "💬 Mon Assistant IA": "💬 مساعدي الذكي",
+        "🌐 Recherche Web": "🌐 بحث الويب",
+        "📄 Analyse PDF": "📄 تحليل PDF",
+        "🪄 Créer un PDF": "🪄 إنشاء PDF",
+        "📁 Mes documents": "📁 مستنداتي",
+        "🕘 Historique": "🕘 السجل",
+        "👑 Abonnement Premium": "👑 اشتراك Premium",
+        "🌙 SOW IA NIGHT EXCHANGE": "🌙 SOW IA للتبادل الليلي",
+        "🧩 BOURSE AUX APPLICATIONS": "🧩 سوق التطبيقات",
+        "🏛️ SOW IA BUSINESS CLUB": "🏛️ نادي أعمال SOW IA",
+        "💶 Revenus & paiements": "💶 الإيرادات والمدفوعات",
+        "🔔 Centre de notifications SOW IA": "🔔 مركز إشعارات SOW IA",
+    },
+}
+
+
+
+_NAV_CONTROL_TRANSLATIONS = {
+    "English": {
+        "📁 Dossier de navigation": "📁 Navigation section",
+        "🧭 Outil à ouvrir": "🧭 Tool to open",
+        "←  RETOUR À LA PAGE PRÉCÉDENTE": "←  BACK TO PREVIOUS PAGE",
+        "Se connecter avec une autre adresse e-mail": "Sign in with another email address",
+        "Se déconnecter": "Sign out",
+    },
+    "Español": {
+        "📁 Dossier de navigation": "📁 Sección de navegación",
+        "🧭 Outil à ouvrir": "🧭 Herramienta que abrir",
+        "←  RETOUR À LA PAGE PRÉCÉDENTE": "←  VOLVER A LA PÁGINA ANTERIOR",
+        "Se connecter avec une autre adresse e-mail": "Iniciar sesión con otro correo electrónico",
+        "Se déconnecter": "Cerrar sesión",
+    },
+    "中文": {
+        "📁 Dossier de navigation": "📁 导航分类",
+        "🧭 Outil à ouvrir": "🧭 要打开的工具",
+        "←  RETOUR À LA PAGE PRÉCÉDENTE": "←  返回上一页",
+        "Se connecter avec une autre adresse e-mail": "使用其他电子邮件地址登录",
+        "Se déconnecter": "退出登录",
+    },
+    "Deutsch": {
+        "📁 Dossier de navigation": "📁 Navigationsbereich",
+        "🧭 Outil à ouvrir": "🧭 Werkzeug öffnen",
+        "←  RETOUR À LA PAGE PRÉCÉDENTE": "←  ZURÜCK ZUR VORHERIGEN SEITE",
+        "Se connecter avec une autre adresse e-mail": "Mit einer anderen E-Mail-Adresse anmelden",
+        "Se déconnecter": "Abmelden",
+    },
+    "العربية": {
+        "📁 Dossier de navigation": "📁 قسم التنقل",
+        "🧭 Outil à ouvrir": "🧭 الأداة المراد فتحها",
+        "←  RETOUR À LA PAGE PRÉCÉDENTE": "←  العودة إلى الصفحة السابقة",
+        "Se connecter avec une autre adresse e-mail": "تسجيل الدخول باستخدام بريد إلكتروني آخر",
+        "Se déconnecter": "تسجيل الخروج",
+    },
+}
+
+
+
+_AUTH_TRANSLATIONS = {
+    "English": {"Connexion à mon compte SOW IA":"Sign in to my SOW IA account","Créer un compte SOW IA — nouveau compte uniquement":"Create a SOW IA account — new accounts only","Créer un compte SOW IA":"Create a SOW IA account","Votre adresse e-mail":"Your email address","Mot de passe (8 caractères minimum)":"Password (at least 8 characters)","Confirmer le mot de passe":"Confirm password","Créer mon compte":"Create my account","Connexion avec mot de passe":"Sign in with password","Connexion par e-mail":"Sign in by email","Adresse e-mail":"Email address","Mot de passe":"Password","Adresse e-mail du compte SOW IA":"Email address for your SOW IA account","Valider":"Submit","Continuer avec GitHub":"Continue with GitHub","Recommencer la connexion":"Restart sign-in"},
+    "Español": {"Connexion à mon compte SOW IA":"Iniciar sesión en mi cuenta SOW IA","Créer un compte SOW IA — nouveau compte uniquement":"Crear una cuenta SOW IA — solo cuentas nuevas","Créer un compte SOW IA":"Crear una cuenta SOW IA","Votre adresse e-mail":"Tu correo electrónico","Mot de passe (8 caractères minimum)":"Contraseña (mínimo 8 caracteres)","Confirmer le mot de passe":"Confirmar contraseña","Créer mon compte":"Crear mi cuenta","Connexion avec mot de passe":"Iniciar sesión con contraseña","Connexion par e-mail":"Iniciar sesión por correo electrónico","Adresse e-mail":"Correo electrónico","Mot de passe":"Contraseña","Adresse e-mail du compte SOW IA":"Correo electrónico de tu cuenta SOW IA","Valider":"Enviar","Continuer avec GitHub":"Continuar con GitHub","Recommencer la connexion":"Reiniciar el inicio de sesión"},
+    "中文": {"Connexion à mon compte SOW IA":"登录我的 SOW IA 账户","Créer un compte SOW IA — nouveau compte uniquement":"创建 SOW IA 账户 — 仅限新账户","Créer un compte SOW IA":"创建 SOW IA 账户","Votre adresse e-mail":"电子邮箱地址","Mot de passe (8 caractères minimum)":"密码（至少 8 个字符）","Confirmer le mot de passe":"确认密码","Créer mon compte":"创建我的账户","Connexion avec mot de passe":"使用密码登录","Connexion par e-mail":"通过电子邮件登录","Adresse e-mail":"电子邮箱地址","Mot de passe":"密码","Adresse e-mail du compte SOW IA":"SOW IA 账户电子邮箱","Valider":"提交","Continuer avec GitHub":"使用 GitHub 继续","Recommencer la connexion":"重新开始登录"},
+    "Deutsch": {"Connexion à mon compte SOW IA":"Bei meinem SOW IA-Konto anmelden","Créer un compte SOW IA — nouveau compte uniquement":"SOW IA-Konto erstellen — nur für neue Konten","Créer un compte SOW IA":"SOW IA-Konto erstellen","Votre adresse e-mail":"Ihre E-Mail-Adresse","Mot de passe (8 caractères minimum)":"Passwort (mindestens 8 Zeichen)","Confirmer le mot de passe":"Passwort bestätigen","Créer mon compte":"Mein Konto erstellen","Connexion avec mot de passe":"Mit Passwort anmelden","Connexion par e-mail":"Per E-Mail anmelden","Adresse e-mail":"E-Mail-Adresse","Mot de passe":"Passwort","Adresse e-mail du compte SOW IA":"E-Mail-Adresse Ihres SOW IA-Kontos","Valider":"Bestätigen","Continuer avec GitHub":"Mit GitHub fortfahren","Recommencer la connexion":"Anmeldung neu starten"},
+    "العربية": {"Connexion à mon compte SOW IA":"تسجيل الدخول إلى حساب SOW IA","Créer un compte SOW IA — nouveau compte uniquement":"إنشاء حساب SOW IA — للحسابات الجديدة فقط","Créer un compte SOW IA":"إنشاء حساب SOW IA","Votre adresse e-mail":"عنوان بريدك الإلكتروني","Mot de passe (8 caractères minimum)":"كلمة المرور (8 أحرف على الأقل)","Confirmer le mot de passe":"تأكيد كلمة المرور","Créer mon compte":"إنشاء حسابي","Connexion avec mot de passe":"تسجيل الدخول بكلمة المرور","Connexion par e-mail":"تسجيل الدخول عبر البريد الإلكتروني","Adresse e-mail":"عنوان البريد الإلكتروني","Mot de passe":"كلمة المرور","Adresse e-mail du compte SOW IA":"البريد الإلكتروني لحساب SOW IA","Valider":"إرسال","Continuer avec GitHub":"المتابعة باستخدام GitHub","Recommencer la connexion":"إعادة بدء تسجيل الدخول"}
+};
+
+
+_AUTH_MESSAGE_TRANSLATIONS = {
+    "English": {
+        "Saisissez une adresse e-mail valide.": "Enter a valid email address.",
+        "Le mot de passe doit contenir au moins 8 caractères.": "The password must contain at least 8 characters.",
+        "Les deux mots de passe ne correspondent pas.": "The passwords do not match.",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "This address already has an account. Use the email sign-in section.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "Account creation failed. Check the email address and try again.",
+        "Saisissez votre mot de passe.": "Enter your password.",
+        "Votre adresse e-mail n'est pas encore confirmée. Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez.": "Your email address is not confirmed yet. Open the confirmation message from SOW IA, then try again.",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "Unable to sign in. Check your email address and password.",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "Unable to validate this address or send the sign-in link. Check the address and Supabase email configuration.",
+        "Recommencer la connexion": "Restart sign-in",
+    },
+    "Español": {
+        "Saisissez une adresse e-mail valide.": "Introduce una dirección de correo electrónico válida.",
+        "Le mot de passe doit contenir au moins 8 caractères.": "La contraseña debe tener al menos 8 caracteres.",
+        "Les deux mots de passe ne correspondent pas.": "Las contraseñas no coinciden.",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "Esta dirección ya tiene una cuenta. Usa la sección de inicio de sesión por correo electrónico.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "No se pudo crear la cuenta. Comprueba el correo electrónico e inténtalo de nuevo.",
+        "Saisissez votre mot de passe.": "Introduce tu contraseña.",
+        "Votre adresse e-mail n'est pas encore confirmée. Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez.": "Tu dirección de correo aún no está confirmada. Abre el mensaje de confirmación de SOW IA y vuelve a intentarlo.",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "No se pudo iniciar sesión. Comprueba tu correo electrónico y contraseña.",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "No se pudo validar esta dirección ni enviar el enlace de acceso. Comprueba la dirección y la configuración de correo de Supabase.",
+        "Recommencer la connexion": "Reiniciar el inicio de sesión",
+    },
+    "中文": {
+        "Saisissez une adresse e-mail valide.": "请输入有效的电子邮箱地址。",
+        "Le mot de passe doit contenir au moins 8 caractères.": "密码至少需要 8 个字符。",
+        "Les deux mots de passe ne correspondent pas.": "两次输入的密码不一致。",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "此邮箱已注册账户。请使用电子邮件登录。",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "账户创建失败。请检查电子邮箱地址后重试。",
+        "Saisissez votre mot de passe.": "请输入密码。",
+        "Votre adresse e-mail n'est pas encore confirmée. Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez.": "您的电子邮箱尚未确认。请打开 SOW IA 发送的确认邮件，然后重试。",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "无法登录。请检查电子邮箱地址和密码。",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "无法验证此邮箱或发送登录链接。请检查邮箱地址和 Supabase 邮件配置。",
+        "Recommencer la connexion": "重新开始登录",
+    },
+    "Deutsch": {
+        "Saisissez une adresse e-mail valide.": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+        "Le mot de passe doit contenir au moins 8 caractères.": "Das Passwort muss mindestens 8 Zeichen enthalten.",
+        "Les deux mots de passe ne correspondent pas.": "Die Passwörter stimmen nicht überein.",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "Für diese Adresse besteht bereits ein Konto. Verwenden Sie die E-Mail-Anmeldung.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "Das Konto konnte nicht erstellt werden. Prüfen Sie die E-Mail-Adresse und versuchen Sie es erneut.",
+        "Saisissez votre mot de passe.": "Geben Sie Ihr Passwort ein.",
+        "Votre adresse e-mail n'est pas encore confirmée. Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez.": "Ihre E-Mail-Adresse wurde noch nicht bestätigt. Öffnen Sie die Bestätigungsnachricht von SOW IA und versuchen Sie es erneut.",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "Anmeldung nicht möglich. Prüfen Sie Ihre E-Mail-Adresse und Ihr Passwort.",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "Die Adresse konnte nicht bestätigt oder der Anmeldelink nicht gesendet werden. Prüfen Sie die Adresse und die E-Mail-Konfiguration von Supabase.",
+        "Recommencer la connexion": "Anmeldung neu starten",
+    },
+    "العربية": {
+        "Saisissez une adresse e-mail valide.": "أدخل عنوان بريد إلكتروني صالحًا.",
+        "Le mot de passe doit contenir au moins 8 caractères.": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
+        "Les deux mots de passe ne correspondent pas.": "كلمتا المرور غير متطابقتين.",
+        "Cette adresse possède déjà un compte. Utilisez la rubrique Connexion par e-mail.": "هذا العنوان مرتبط بحساب بالفعل. استخدم قسم تسجيل الدخول عبر البريد الإلكتروني.",
+        "La création du compte n'a pas abouti. Vérifiez l'adresse e-mail et réessayez.": "تعذر إنشاء الحساب. تحقق من عنوان البريد الإلكتروني وحاول مرة أخرى.",
+        "Saisissez votre mot de passe.": "أدخل كلمة المرور.",
+        "Votre adresse e-mail n'est pas encore confirmée. Ouvrez le message de confirmation envoyé par SOW IA, puis réessayez.": "لم يتم تأكيد بريدك الإلكتروني بعد. افتح رسالة التأكيد من SOW IA ثم حاول مرة أخرى.",
+        "Connexion impossible. Vérifiez l'adresse e-mail et le mot de passe.": "تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور.",
+        "Impossible de valider cette adresse ou d'envoyer le lien de connexion. Vérifiez l'adresse et la configuration e-mail de Supabase.": "تعذر التحقق من العنوان أو إرسال رابط تسجيل الدخول. تحقق من العنوان وإعدادات البريد الإلكتروني في Supabase.",
+        "Recommencer la connexion": "إعادة بدء تسجيل الدخول",
+    },
+}
+
 def translate(text: str, language: str = "Français") -> str:
     """Translate a supported interface label; French is the canonical fallback."""
     # Keep the product name visually consistent in every translated UI label.
@@ -171,6 +519,21 @@ def translate(text: str, language: str = "Français") -> str:
     if translated is not None:
         return translated
     translated = _EXTRA_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _NAV_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _SECTION_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _NAV_CONTROL_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _AUTH_TRANSLATIONS.get(language, {}).get(text)
+    if translated is not None:
+        return translated
+    translated = _AUTH_MESSAGE_TRANSLATIONS.get(language, {}).get(text)
     if translated is not None:
         return translated
     return _CORE_TRANSLATIONS.get(language, {}).get(text, text)
