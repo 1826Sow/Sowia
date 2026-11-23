@@ -18,13 +18,32 @@ _LOCALIZABLE_STREAMLIT_CALLS = (
 )
 
 
-def _translate_markdown_phrase(value, language, translate):
-    """Translate only curated Markdown UI phrases; never send dynamic text externally."""
+def _translate_markdown_phrase(value, language, translate, *, allow_fallback=False):
+    """Translate a short UI heading; ordinary Markdown text stays catalogue-only."""
     try:
-        return translate(value, language, allow_fallback=False)
+        return translate(value, language, allow_fallback=allow_fallback)
     except TypeError:
         # Keep compatibility with simple injected translators used by tests.
         return translate(value, language)
+
+
+def _translate_html_headings(value, language, translate):
+    """Translate visible HTML heading nodes without touching paragraphs, CSS or attributes."""
+    heading_pattern = re.compile(
+        r'(?P<opening><(?:h[1-6]|(?:div|span)\\b[^>]*class=["\\'][^"\\']*(?:title|heading|kicker)[^"\\']*["\\'][^>]*)>)'
+        r'(?P<text>[^<>]{1,180})'
+        r'(?P<closing></(?:h[1-6]|div|span)\\s*>)',
+        re.IGNORECASE,
+    )
+
+    def replace_heading(match):
+        visible = match.group("text")
+        translated = _translate_markdown_phrase(
+            visible, language, translate, allow_fallback=True
+        )
+        return match.group("opening") + translated + match.group("closing")
+
+    return heading_pattern.sub(replace_heading, value)
 
 
 def _translate_markdown_text(value, language, translate):
@@ -37,8 +56,15 @@ def _translate_markdown_text(value, language, translate):
             in_code_fence = not in_code_fence
             output.append(line)
             continue
-        if in_code_fence or not stripped or "<" in line or "](" in line or "![" in line:
+        if in_code_fence or not stripped or "](" in line or "![" in line:
             output.append(line)
+            continue
+
+        # HTML-based cards and hero sections often contain the visible page titles.
+        # Translate only explicit heading/title/kicker elements, never paragraph copy,
+        # CSS, attributes, URLs or user-authored content.
+        if "<" in line and ">" in line:
+            output.append(_translate_html_headings(line, language, translate))
             continue
 
         ending = "\n" if line.endswith("\n") else ""
@@ -50,15 +76,23 @@ def _translate_markdown_text(value, language, translate):
             r"^(\s*>\s*)(.+)$",
         )
         translated_line = body
-        for pattern in patterns:
+        for pattern_index, pattern in enumerate(patterns):
             match = re.match(pattern, body)
             if match:
+                # A Markdown heading is unambiguously interface chrome. Allow the
+                # cached short-label fallback for missing catalogue entries; keep
+                # list items and quoted/user text restricted to curated translations.
+                allow_fallback = pattern_index == 0
                 if len(match.groups()) == 2:
                     prefix, phrase = match.groups()
-                    translated_line = prefix + _translate_markdown_phrase(phrase, language, translate)
+                    translated_line = prefix + _translate_markdown_phrase(
+                        phrase, language, translate, allow_fallback=allow_fallback
+                    )
                 else:
                     prefix, phrase, suffix = match.groups()
-                    translated_line = prefix + _translate_markdown_phrase(phrase, language, translate) + suffix
+                    translated_line = prefix + _translate_markdown_phrase(
+                        phrase, language, translate, allow_fallback=allow_fallback
+                    ) + suffix
                 break
         else:
             if not any(token in body for token in ("**", chr(96), "{", "}")):
