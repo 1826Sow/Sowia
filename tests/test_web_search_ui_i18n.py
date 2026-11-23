@@ -107,3 +107,64 @@ def test_fact_check_no_evidence_message_is_localized(language, expected, monkeyp
     monkeypatch.setattr("i18n._translate_missing_interface_copy", lambda text, selected: text)
     source = "Aucune source exploitable n'a été retournée. Cela ne prouve pas que l'affirmation est fausse."
     assert translate(source, language) == expected
+
+
+@pytest.mark.parametrize(
+    "language,expected",
+    [
+        ("English", "Convert images to PDF"),
+        ("Español", "Convertir imágenes a PDF"),
+        ("中文", "将图片转换为 PDF"),
+        ("Deutsch", "Bilder in PDF umwandeln"),
+        ("العربية", "تحويل الصور إلى PDF"),
+    ],
+)
+def test_pdf_image_conversion_action_is_localized(language, expected, monkeypatch):
+    monkeypatch.setattr("i18n._translate_missing_interface_copy", lambda text, selected: text)
+    assert translate("Convertir les images en PDF", language) == expected
+
+
+@pytest.mark.parametrize(
+    "language,expected",
+    [
+        ("English", "Choose a PDF to convert"),
+        ("Español", "Elegir un PDF para convertir"),
+        ("中文", "选择要转换的 PDF"),
+        ("Deutsch", "PDF zur Konvertierung auswählen"),
+        ("العربية", "اختر ملف PDF للتحويل"),
+    ],
+)
+def test_pdf_upload_picker_is_localized(language, expected, monkeypatch):
+    monkeypatch.setattr("i18n._translate_missing_interface_copy", lambda text, selected: text)
+    assert translate("Choisir un PDF à convertir", language) == expected
+
+
+@pytest.mark.parametrize(
+    "language,expected",
+    [
+        ("English", "Download images (ZIP)"),
+        ("Español", "Descargar imágenes (ZIP)"),
+        ("中文", "下载图片（ZIP）"),
+        ("Deutsch", "Bilder herunterladen (ZIP)"),
+        ("العربية", "تنزيل الصور (ZIP)"),
+    ],
+)
+def test_pdf_image_download_action_is_localized(language, expected, monkeypatch):
+    monkeypatch.setattr("i18n._translate_missing_interface_copy", lambda text, selected: text)
+    assert translate("Télécharger les images (ZIP)", language) == expected
+
+
+@pytest.mark.parametrize(
+    "language,expected",
+    [
+        ("English", "Select a PDF from your phone. Private transfer to Supabase, 10 MB maximum."),
+        ("Español", "Selecciona un PDF desde tu teléfono. Transferencia privada a Supabase, máximo 10 MB."),
+        ("中文", "从手机选择 PDF。文件将私密传输到 Supabase，最大 10 MB。"),
+        ("Deutsch", "Wählen Sie ein PDF von Ihrem Telefon aus. Private Übertragung zu Supabase, maximal 10 MB."),
+        ("العربية", "اختر ملف PDF من هاتفك. نقل خاص إلى Supabase، بحد أقصى 10 ميغابايت."),
+    ],
+)
+def test_pdf_private_upload_explanation_is_localized(language, expected, monkeypatch):
+    monkeypatch.setattr("i18n._translate_missing_interface_copy", lambda text, selected: text)
+    source = "Sélectionnez un PDF depuis votre téléphone. Transfert privé vers Supabase, 10 Mo maximum."
+    assert translate(source, language) == expected
