@@ -2738,7 +2738,7 @@ elif page == "Assistant IA":
         st.session_state.sowia_confirm_clear_conversation = active_clear_session_id
         st.rerun()
     if pending_clear_session_id == active_clear_session_id:
-        st.warning("Cette action supprimera les messages de cette conversation uniquement. Les autres conversations et les projets associés seront conservés.")
+        st.warning("Cette action supprimera uniquement les messages de cette conversation. Votre mémoire personnelle et professionnelle enregistrée, les autres conversations et les projets associés ne seront pas supprimés.")
         clear_cols = st.columns(2)
         with clear_cols[0]:
             if st.button("Confirmer la suppression", key="sowia_confirm_clear_conversation_button", type="primary"):
