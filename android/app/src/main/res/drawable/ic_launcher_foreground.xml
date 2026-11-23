@@ -5,41 +5,57 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Globe outline -->
+    <!-- Premium orbital frame -->
     <path
         android:fillColor="@android:color/transparent"
-        android:strokeColor="#63E6E2"
-        android:strokeWidth="3.8"
+        android:strokeColor="#D9B66F"
+        android:strokeWidth="2.2"
         android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M54,24 C70.6,24 84,37.4 84,54 C84,70.6 70.6,84 54,84 C37.4,84 24,70.6 24,54 C24,37.4 37.4,24 54,24 Z" />
-
-    <!-- Meridians -->
+        android:pathData="M18,57 C18,34 34,17 56,17 C76,17 91,32 91,52" />
     <path
         android:fillColor="@android:color/transparent"
-        android:strokeColor="#63E6E2"
-        android:strokeWidth="2.5"
+        android:strokeColor="#D9B66F"
+        android:strokeWidth="1.4"
+        android:strokeAlpha="0.75"
+        android:pathData="M90,59 C88,79 72,92 52,92 C33,92 18,78 16,60" />
+
+    <!-- Main luminous globe -->
+    <path
+        android:fillColor="#102D4B"
+        android:strokeColor="#67E8E2"
+        android:strokeWidth="3.2"
+        android:pathData="M54,23 C71.1,23 85,36.9 85,54 C85,71.1 71.1,85 54,85 C36.9,85 23,71.1 23,54 C23,36.9 36.9,23 54,23 Z" />
+
+    <!-- Stylized continents -->
+    <path
+        android:fillColor="#38B9B6"
+        android:fillAlpha="0.82"
+        android:pathData="M39,34 L48,31 L53,36 L49,42 L42,43 L38,49 L31,46 L33,39 Z M59,34 L68,37 L75,45 L70,50 L64,48 L60,54 L54,50 L55,42 Z M43,57 L50,54 L57,58 L55,66 L49,73 L43,68 L39,62 Z M64,59 L73,57 L78,63 L72,70 L65,68 Z" />
+
+    <!-- Longitude and latitude, kept bold for launcher readability -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#C3FFFA"
+        android:strokeWidth="1.8"
         android:strokeLineCap="round"
-        android:pathData="M54,24 C43,34 39,44 39,54 C39,64 43,74 54,84 M54,24 C65,34 69,44 69,54 C69,64 65,74 54,84" />
+        android:pathData="M54,23 C43,33 39,43 39,54 C39,65 43,75 54,85 M54,23 C65,33 69,43 69,54 C69,65 65,75 54,85 M26,44 C42,50 66,50 82,44 M24,54 C41,59 67,59 84,54 M26,64 C42,58 66,58 82,64" />
 
-    <!-- Latitude lines -->
+    <!-- Intelligence network nodes -->
     <path
         android:fillColor="@android:color/transparent"
-        android:strokeColor="#A9F7F1"
-        android:strokeWidth="2.3"
-        android:strokeLineCap="round"
-        android:pathData="M29,42 C43,49 65,49 79,42 M25,54 C41,59 67,59 83,54 M29,66 C43,59 65,59 79,66" />
-
-    <!-- Connected intelligence nodes -->
-    <path
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#8B9CFF"
+        android:strokeColor="#D9B66F"
         android:strokeWidth="2"
         android:strokeLineCap="round"
-        android:pathData="M24,35 L15,28 M84,35 L93,28 M24,73 L15,80 M84,73 L93,80" />
+        android:pathData="M23,35 L13,27 M85,35 L95,27 M23,73 L13,81 M85,73 L95,81" />
+    <path android:fillColor="#F5D995" android:pathData="M10,24 C10,21.8 11.8,20 14,20 C16.2,20 18,21.8 18,24 C18,26.2 16.2,28 14,28 C11.8,28 10,26.2 10,24 Z M90,24 C90,21.8 91.8,20 94,20 C96.2,20 98,21.8 98,24 C98,26.2 96.2,28 94,28 C91.8,28 90,26.2 90,24 Z M10,84 C10,81.8 11.8,80 14,80 C16.2,80 18,81.8 18,84 C18,86.2 16.2,88 14,88 C11.8,88 10,86.2 10,84 Z M90,84 C90,81.8 91.8,80 94,80 C96.2,80 98,81.8 98,84 C98,86.2 96.2,88 94,88 C91.8,88 90,86.2 90,84 Z" />
 
-    <path android:fillColor="#FFFFFF" android:pathData="M12,25 C12,23.3 13.3,22 15,22 C16.7,22 18,23.3 18,25 C18,26.7 16.7,28 15,28 C13.3,28 12,26.7 12,25 Z M90,25 C90,23.3 91.3,22 93,22 C94.7,22 96,23.3 96,25 C96,26.7 94.7,28 93,28 C91.3,28 90,26.7 90,25 Z M12,83 C12,81.3 13.3,80 15,80 C16.7,80 18,81.3 18,83 C18,84.7 16.7,86 15,86 C13.3,86 12,84.7 12,83 Z M90,83 C90,81.3 91.3,80 93,80 C94.7,80 96,81.3 96,83 C96,84.7 94.7,86 93,86 C91.3,86 90,84.7 90,83 Z" />
-
-    <!-- Bright central point -->
-    <path android:fillColor="#FFFFFF" android:pathData="M51,51 C51,49.3 52.3,48 54,48 C55.7,48 57,49.3 57,51 C57,52.7 55.7,54 54,54 C52.3,54 51,52.7 51,51 Z" />
+    <!-- Central S-inspired intelligence core -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M61,43 C59,40 55,39 51,40 C46,41 44,47 48,50 L59,57 C64,60 62,67 57,69 C53,71 48,69 46,66" />
+    <path android:fillColor="#F5D995" android:pathData="M54,15 C56.2,15 58,16.8 58,19 C58,21.2 56.2,23 54,23 C51.8,23 50,21.2 50,19 C50,16.8 51.8,15 54,15 Z" />
 </vector>
