@@ -42,7 +42,7 @@ def test_clearing_conversation_messages_requires_confirmation_and_is_session_sco
     assert 'if pending_clear_session_id == active_clear_session_id:' in source
     assert 'clear_app_history()' in source
     assert 'st.session_state.pop("sowia_confirm_clear_conversation", None)' in source
-    assert 'Les autres conversations et les projets associés seront conservés.' in source
+    assert 'Votre mémoire personnelle et professionnelle enregistrée, les autres conversations et les projets associés ne seront pas supprimés.' in source
 
 
 def test_switching_conversation_discards_stale_clear_confirmation():
