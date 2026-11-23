@@ -125,3 +125,28 @@ def test_english_workspace_headings_are_translated_without_network(source, expec
     from i18n import _translate_missing_interface_copy
     monkeypatch.setattr("i18n._translate_missing_interface_copy", lambda text, language: text)
     assert translate(source, "English") == expected
+
+
+@pytest.mark.parametrize("language,expected", [
+    ("English", "Search the Internet for this answer"),
+    ("Español", "Buscar en Internet para esta respuesta"),
+    ("中文", "为此回答搜索互联网"),
+    ("Deutsch", "Für diese Antwort im Internet suchen"),
+    ("العربية", "ابحث في الإنترنت عن هذه الإجابة"),
+])
+def test_web_search_toggle_is_curated_in_all_supported_languages(language, expected, monkeypatch):
+    from i18n import _translate_missing_interface_copy
+    monkeypatch.setattr("i18n._translate_missing_interface_copy", lambda text, selected: text)
+    assert translate("Rechercher sur Internet pour cette réponse", language) == expected
+
+
+@pytest.mark.parametrize("language,expected", [
+    ("English", "Sources consulted"),
+    ("Español", "Fuentes consultadas"),
+    ("中文", "已查阅的来源"),
+    ("Deutsch", "Verwendete Quellen"),
+    ("العربية", "المصادر التي تمت مراجعتها"),
+])
+def test_web_search_source_heading_is_curated_in_all_supported_languages(language, expected, monkeypatch):
+    monkeypatch.setattr("i18n._translate_missing_interface_copy", lambda text, selected: text)
+    assert translate("Sources consultées", language) == expected
