@@ -3,11 +3,14 @@ import pytest
 import websearch
 
 
-def test_search_web_explains_streamlit_secret_when_key_is_missing(monkeypatch):
+def test_search_web_uses_free_public_search_when_tavily_key_is_missing(monkeypatch):
     monkeypatch.setattr(websearch, "TAVILY_API_KEY", "")
-
-    with pytest.raises(RuntimeError, match="secrets Streamlit"):
-        websearch.search_web("actualité")
+    monkeypatch.setattr(websearch, "_free_search", lambda query, count: [
+        {"title": "Exemple", "url": "https://example.test", "content": "Résumé"}
+    ])
+    assert websearch.search_web("  actualité  ") == [
+        {"title": "Exemple", "url": "https://example.test", "content": "Résumé"}
+    ]
 
 
 @pytest.mark.parametrize("query", ["", "   ", None])
