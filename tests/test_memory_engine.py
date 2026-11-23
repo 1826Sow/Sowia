@@ -93,3 +93,20 @@ def test_retrieval_does_not_mutate_authorized_memory_records():
     original = dict(record)
     build_agent_memory_context([record], "architecture")
     assert record == original
+
+
+@pytest.mark.parametrize(
+    ("memory", "query"),
+    [
+        ("SOW IA 支持长期保存项目记忆与重要决定。", "长期记忆"),
+        ("SOW IA는 프로젝트의 장기기억과 중요한 결정을 저장합니다.", "장기기억"),
+        ("SOW IA はプロジェクトの長期記憶と重要な決定を保存します。", "長期記憶"),
+    ],
+)
+def test_memory_search_matches_cjk_phrases_without_spaces(memory, query):
+    assert select_relevant_memories([memory], query) == [memory]
+
+
+def test_cjk_tokenization_keeps_existing_latin_technical_search():
+    memory = "SOW IA stores API and PDF project notes."
+    assert select_relevant_memories([memory], "API PDF") == [memory]

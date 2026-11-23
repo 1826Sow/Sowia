@@ -31,11 +31,23 @@ def _normalise(value):
 
 def _tokens(value):
     # Keep short technical vocabulary such as IA, AI, UI, API and SQL.
-    return {
-        token for token in re.findall(r"[\w'-]{2,}", _normalise(value), flags=re.UNICODE)
-        if token not in _STOP_WORDS and not token.isdigit()
-    }
-
+    # Chinese, Japanese and Korean text often has no spaces between words;
+    # add overlapping character bigrams so substring queries can match it.
+    raw_tokens = re.findall(r"[\w'-]{2,}", _normalise(value), flags=re.UNICODE)
+    tokens = set()
+    for token in raw_tokens:
+        if token in _STOP_WORDS or token.isdigit():
+            continue
+        tokens.add(token)
+        if any(
+            "\u3400" <= char <= "\u4dbf"
+            or "\u4e00" <= char <= "\u9fff"
+            or "\u3040" <= char <= "\u30ff"
+            or "\uac00" <= char <= "\ud7af"
+            for char in token
+        ):
+            tokens.update(token[index:index + 2] for index in range(len(token) - 1))
+    return tokens
 
 def _phrase(value):
     return " ".join(re.findall(r"[\w'-]+", _normalise(value), flags=re.UNICODE))

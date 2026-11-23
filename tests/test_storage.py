@@ -91,3 +91,16 @@ def test_database_schema_is_initialized_for_each_database_path(tmp_path, monkeyp
     monkeypatch.setattr(storage, "DB_PATH", second_db)
     storage.save_message("session-1", "user", "Second")
     assert storage.get_history("session-1") == [{"role": "user", "content": "Second"}]
+
+
+def test_clearing_a_conversation_never_deletes_persistent_memory(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "memory-survival.db")
+    memory_id = storage.add_memory("Le projet SOW IA doit conserver ses fonctions existantes.")
+    storage.save_message("session-to-delete", "user", "Effacer cette conversation.")
+    storage.clear_history("session-to-delete")
+
+    assert storage.get_history("session-to-delete") == []
+    memories = storage.get_memories()
+    assert len(memories) == 1
+    assert memories[0]["id"] == memory_id
+    assert memories[0]["content"] == "Le projet SOW IA doit conserver ses fonctions existantes."

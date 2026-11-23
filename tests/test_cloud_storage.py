@@ -572,3 +572,16 @@ def test_add_memory_rejects_invalid_project_id_before_database_write():
             raise AssertionError("Invalid project IDs must be rejected before database access")
     with pytest.raises(ValueError, match="Projet mémoire invalide"):
         cloud_storage.add_memory(Client(), User(), "Note liée", project_id="abc")
+
+
+def test_clearing_cloud_conversation_never_targets_persistent_memory_table():
+    client = FakeClient()
+    cloud_storage.clear_history(client, User(), "session-to-delete", "personal")
+
+    # The clear operation must be limited to the conversation-message table.
+    assert set(client.tables) == {"sowia_messages"}
+    assert "sowia_memory_items" not in client.tables
+    filters = client.tables["sowia_messages"].filters
+    assert ("user_id", "user-123") in filters
+    assert ("session_id", "session-to-delete") in filters
+    assert ("workspace_id", "personal") in filters

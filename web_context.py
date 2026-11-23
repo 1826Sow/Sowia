@@ -47,10 +47,6 @@ def format_web_source_link(source):
     url = quote(str(source.get("url") or ""), safe=":/?#[]@!$&()*+,;=%-._~")
     return f"- [{title}](<{url}>)"
 
-def build_web_context(sources):
-'()*+,;=%-._~")
-    return f"- [{title}](<{url}>)"
-
 
 def build_web_context(sources):
     """Create a bounded prompt context; source text remains explicitly untrusted."""
