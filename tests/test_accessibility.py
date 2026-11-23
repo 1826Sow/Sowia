@@ -35,3 +35,11 @@ def test_transcription_component_localizes_visible_controls_and_statuses():
     assert "بدء الميكروفون" in arabic
     assert "تم نسخ النص" in arabic
     assert "Démarrer le micro" in live_transcription_component("Français")
+
+
+def test_personal_navigation_art_uses_abstract_neural_visual_not_a_person():
+    artwork = (ROOT / "assets/categories/personnel.svg").read_text(encoding="utf-8")
+    assert 'aria-label="SOW IA — espace personnel, réseau neuronal abstrait et documents"' in artwork
+    assert "<ellipse" in artwork
+    assert "Documents · Mémoire · Assistant" in artwork
+    assert "circle cx='300' cy='105' r='42'" not in artwork
