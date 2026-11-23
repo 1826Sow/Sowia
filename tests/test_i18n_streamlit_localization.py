@@ -105,7 +105,7 @@ def test_markdown_headings_and_html_are_localized_safely():
 
 
 
-def test_markdown_uses_catalogue_only_without_external_fallback():
+def test_markdown_heading_can_use_fallback_but_dynamic_body_cannot():
     calls = []
 
     def translate(value, language, *, allow_fallback=True):
@@ -118,7 +118,7 @@ def test_markdown_uses_catalogue_only_without_external_fallback():
     fake_st.markdown("### Titre connu")
     fake_st.markdown("Contenu privé dynamique")
 
-    assert ("Titre connu", "English", False) in calls
+    assert ("Titre connu", "English", True) in calls
     assert ("Contenu privé dynamique", "English", False) in calls
     assert ("rendered", "### Texte traduit") in calls
     assert ("rendered", "Contenu privé dynamique") in calls
