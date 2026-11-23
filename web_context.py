@@ -1,5 +1,6 @@
 """Safe, bounded formatting of external web search results for assistant context."""
-from urllib.parse import urlparse
+import re
+from urllib.parse import quote, urlparse
 
 MAX_RESULTS = 5
 MAX_TITLE_CHARS = 200
@@ -35,6 +36,17 @@ def prepare_web_sources(results):
         if len(sources) >= MAX_RESULTS:
             break
     return sources
+
+
+
+def format_web_source_link(source):
+    """Format a validated source as a Markdown link without allowing title injection."""
+    title = str(source.get("title") or "Source sans titre")
+    title = re.sub(r"([\\\`*_{}\[\]()#+\-.!|>])", r"\\\1", title)
+    url = quote(str(source.get("url") or ""), safe=":/?#[]@!
+def build_web_context(sources):
+'()*+,;=%-._~")
+    return f"- [{title}](<{url}>)"
 
 
 def build_web_context(sources):
