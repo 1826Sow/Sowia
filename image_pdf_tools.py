@@ -86,7 +86,7 @@ def pdf_to_images_zip(pdf_bytes, image_format="PNG", scale=1.5):
                 image = None
                 try:
                     page_width, page_height = page.get_size()
-                    estimated_pixels = int(page_width * scale * 72) * int(page_height * scale * 72)
+                    estimated_pixels = int(page_width * scale) * int(page_height * scale)
                     if estimated_pixels > MAX_RENDER_PIXELS:
                         raise ValueError("Une page dépasse la limite de résolution autorisée.")
                     bitmap = page.render(scale=scale)
