@@ -20,10 +20,10 @@ def _normalise_image(payload):
         raise ValueError("Chaque image doit peser 20 Mo maximum.")
     try:
         with Image.open(BytesIO(payload)) as source:
+            if source.width < 1 or source.height < 1 or source.width * source.height > MAX_RENDER_PIXELS:
+                raise ValueError("Les dimensions de l’image sont invalides ou trop importantes.")
             source.load()
             image = ImageOps.exif_transpose(source)
-            if image.width < 1 or image.height < 1 or image.width * image.height > MAX_RENDER_PIXELS:
-                raise ValueError("Les dimensions de l’image sont invalides ou trop importantes.")
             if image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info):
                 rgba = image.convert("RGBA")
                 background = Image.new("RGB", rgba.size, "white")
@@ -85,6 +85,10 @@ def pdf_to_images_zip(pdf_bytes, image_format="PNG", scale=1.5):
                 bitmap = None
                 image = None
                 try:
+                    page_width, page_height = page.get_size()
+                    estimated_pixels = int(page_width * scale * 72) * int(page_height * scale * 72)
+                    if estimated_pixels > MAX_RENDER_PIXELS:
+                        raise ValueError("Une page dépasse la limite de résolution autorisée.")
                     bitmap = page.render(scale=scale)
                     image = bitmap.to_pil()
                     if image.width * image.height > MAX_RENDER_PIXELS:
