@@ -69,4 +69,29 @@ Le texte extrait d'un PDF sélectionné est conservé dans la session pour l'ana
 
 ## État des paiements
 
-Les paiements restent désactivés pendant la finalisation de SOW IA. Ce guide ne demande aucune activation PayPal et ne modifie aucun réglage de paiement.
+Le parcours PayPal Live a été autorisé et un test de paiement a été déclaré validé par le propriétaire. Cela ne suffit pas à confirmer que le parcours est actuellement opérationnel en production : la configuration des secrets côté hébergeur et serveur, la réception des webhooks et l'attribution effective des droits Premium doivent être vérifiées séparément.
+
+Aucun paiement réel ne doit être effectué pour un simple contrôle technique. Ne considérez jamais un retour navigateur comme une preuve de paiement. Les secrets PayPal doivent rester dans les gestionnaires de secrets prévus et ne doivent jamais être ajoutés au dépôt GitHub.
+
+
+### Contrôle de l'environnement SOWIA - TEST
+
+Lors du contrôle du 21 novembre 2026, le projet Supabase de test ne présentait pas les fonctions Edge `paypal-one-time` et `paypal-webhook` dans la liste des fonctions déployées. Les migrations PayPal du dépôt n'apparaissaient pas non plus dans son historique de migrations. Le parcours PayPal ne doit donc pas être considéré comme déployé et vérifié sur cet environnement. Ce constat concerne uniquement le projet de test inspecté ; il ne permet pas de conclure sur un éventuel autre projet Supabase.
+
+Avant toute activation sur un environnement cible, appliquer et vérifier les migrations requises, déployer les fonctions correspondantes, configurer les secrets côté Edge Function sans les exposer, puis vérifier le traitement des webhooks et l'attribution des droits Premium. Ne pas déployer partiellement la fonction ou activer les paiements si ces prérequis ne sont pas réunis.
+
+
+Le contrôle en lecture seule du schéma `public` a également confirmé que, parmi les tables attendues par le parcours PayPal, seule `sowia_entitlements` existe dans le projet de test. Les tables `sowia_paypal_catalog`, `sowia_paypal_webhook_events`, `sowia_subscriptions` et `sowia_financial_transactions` n'y sont pas présentes. Il faut donc vérifier et appliquer la chaîne complète de migrations dans l'ordre prévu avant tout déploiement des fonctions ; appliquer uniquement les migrations additives de fin serait insuffisant.
+
+
+Le workflow GitHub `.github/workflows/deploy-paypal-webhook.yml` cible explicitement le projet Supabase `qegcopordeqjiechmbhg` (projet `Sowia`, distinct de `SOWIA - TEST`) et exige une confirmation manuelle `DEPLOY`. Il ne doit pas être déclenché pendant la validation de test. Il ne déploie que `paypal-webhook`, pas `paypal-one-time`. La validation doit donc d'abord disposer d'un déploiement contrôlé sur le projet TEST et d'une procédure distincte pour chacune des deux fonctions ; aucune action de déploiement n'a été lancée.
+
+
+Le webhook récurrent utilise aussi la table `sowia_paypal_subscription_blocks` pour gérer les blocages d'accès. Elle est également absente du schéma public du projet TEST inspecté. Cette table doit être incluse dans l'inventaire et la préparation des migrations avant tout test du webhook ; ne pas déployer la fonction seule en espérant que le schéma soit complet.
+
+
+### Dépendances SQL du webhook — point bloquant supplémentaire
+
+La revue des migrations versionnées dans `supabase/migrations/` montre que les migrations `20261114000200_paypal_webhook_idempotency.sql` et `20261114000300_paypal_webhook_processing_lease.sql` modifient la table `sowia_paypal_webhook_events` (index unique et bail de traitement), mais aucune migration de ce dossier ne crée cette table. Le code de `paypal-webhook` utilise également `sowia_paypal_subscription_blocks`; cette table est absente du schéma TEST contrôlé. Il faut donc identifier ou écrire une migration de base manquante et vérifier son schéma/RLS avant d'appliquer les migrations additives. Ne pas exécuter isolément les migrations 140002/140003 : elles échoueraient si la table d'événements n'existe pas.
+
+Le projet TEST a été contrôlé par une requête de lecture seule sur `to_regclass` : `sowia_entitlements` existe ; `sowia_subscriptions`, `sowia_paypal_catalog`, `sowia_paypal_webhook_events`, `sowia_paypal_subscription_blocks` et `sowia_financial_transactions` n'existent pas. Aucune donnée n'a été modifiée.
