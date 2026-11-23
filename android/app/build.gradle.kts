@@ -70,6 +70,12 @@ android {
             versionCode = 11
             versionName = "0.2.7"
         }
+        create("playNew") {
+            dimension = "identity"
+            applicationId = "com.sowkeys.sowia.mobile"
+            versionCode = 1
+            versionName = "1.0.0"
+        }
     }
 
     signingConfigs {
