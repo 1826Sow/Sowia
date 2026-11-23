@@ -105,7 +105,7 @@ def test_markdown_headings_and_html_are_localized_safely():
 
 
 
-def test_markdown_uses_catalogue_only_without_external_fallback():
+def test_markdown_heading_can_use_fallback_but_dynamic_body_cannot():
     calls = []
 
     def translate(value, language, *, allow_fallback=True):
@@ -118,7 +118,7 @@ def test_markdown_uses_catalogue_only_without_external_fallback():
     fake_st.markdown("### Titre connu")
     fake_st.markdown("Contenu privé dynamique")
 
-    assert ("Titre connu", "English", False) in calls
+    assert ("Titre connu", "English", True) in calls
     assert ("Contenu privé dynamique", "English", False) in calls
     assert ("rendered", "### Texte traduit") in calls
     assert ("rendered", "Contenu privé dynamique") in calls
@@ -228,3 +228,54 @@ def test_spinner_and_progress_messages_follow_active_language():
 
     assert fake_st.progress(35, text="Préparation en cours") == "progress-result"
     assert calls[-1] == ("progress", 35, {"text": "Deutsch:Préparation en cours"})
+
+
+
+def test_missing_markdown_heading_uses_cached_fallback_but_body_copy_does_not():
+    calls = []
+
+    def translate(value, language, *, allow_fallback=True):
+        calls.append((value, allow_fallback))
+        if value == "Titre de rubrique non catalogué" and allow_fallback:
+            return "Uncatalogued section title"
+        return value
+
+    rendered = []
+    fake_st = SimpleNamespace(markdown=lambda body, **kwargs: rendered.append(body))
+    install_streamlit_localization(fake_st, translate, lambda: "English")
+
+    fake_st.markdown("### Titre de rubrique non catalogué")
+    fake_st.markdown("Texte de présentation non catalogué")
+
+    assert rendered == [
+        "### Uncatalogued section title",
+        "Texte de présentation non catalogué",
+    ]
+    assert ("Titre de rubrique non catalogué", True) in calls
+    assert ("Texte de présentation non catalogué", False) in calls
+
+
+def test_html_titles_and_kickers_are_translated_without_touching_paragraphs_or_css():
+    rendered = []
+
+    def translate(value, language, *, allow_fallback=True):
+        return {
+            "Titre HTML manquant": "Missing HTML title",
+            "PARCOURS NON CATALOGUÉ": "UNCATALOGUED JOURNEY",
+        }.get(value, value)
+
+    fake_st = SimpleNamespace(markdown=lambda body, **kwargs: rendered.append(body))
+    install_streamlit_localization(fake_st, translate, lambda: "English")
+
+    html = (
+        '<section class="hero">'
+        '<h2>Titre HTML manquant</h2>'
+        '<div class="sowia-command-kicker">PARCOURS NON CATALOGUÉ</div>'
+        '<p>Texte de présentation privé à conserver.</p>'
+        '</section>'
+    )
+    fake_st.markdown(html, unsafe_allow_html=True)
+
+    assert '<h2>Missing HTML title</h2>' in rendered[-1]
+    assert 'UNCATALOGUED JOURNEY' in rendered[-1]
+    assert '<p>Texte de présentation privé à conserver.</p>' in rendered[-1]
