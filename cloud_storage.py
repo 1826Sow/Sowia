@@ -1616,3 +1616,121 @@ def transition_global_project_milestone(client, user, milestone_id, status):
     if status not in {"pending","in_progress","blocked","completed","cancelled"}:
         raise ValueError("Statut de jalon invalide.")
     return client.rpc("sowia_global_milestone_transition", {"p_milestone_id":str(milestone_id),"p_status":status}).execute().data
+
+
+# SOWIA NIGHT EXCHANGE — persistent commercial register.
+
+def create_night_exchange_deal(
+    client, user, creator_app_id, counterparty_app_id, title, description="",
+    deal_kind="monetary", agreed_amount="0.00", currency="EUR",
+    commission_bps=0, idempotency_key=None,
+):
+    """Create a deal only through the server RPC, which derives the counterparty identity."""
+    import re
+    import uuid
+    from decimal import Decimal, InvalidOperation
+
+    _user_id(user)
+    title = str(title or "").strip()
+    description = str(description or "")
+    if not creator_app_id or not counterparty_app_id or str(creator_app_id) == str(counterparty_app_id):
+        raise ValueError("Sélectionnez deux applications approuvées différentes.")
+    if not 2 <= len(title) <= 160 or len(description) > 4000:
+        raise ValueError("Titre ou description du contrat invalide.")
+    if deal_kind not in {"monetary", "non_monetary"}:
+        raise ValueError("Type de contrat invalide.")
+    try:
+        amount = Decimal(str(agreed_amount)).quantize(Decimal("0.01"))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError("Montant du contrat invalide.") from None
+    if not amount.is_finite() or amount < 0 or amount > Decimal("9999999999999999.99"):
+        raise ValueError("Montant du contrat hors limites.")
+    currency = str(currency or "").strip().upper()
+    if not re.fullmatch(r"[A-Z]{3}", currency):
+        raise ValueError("Code devise invalide.")
+    if isinstance(commission_bps, bool) or not isinstance(commission_bps, int) or not 0 <= commission_bps <= 10000:
+        raise ValueError("Taux de commission invalide.")
+    if deal_kind == "non_monetary" and (amount != 0 or commission_bps != 0):
+        raise ValueError("Un échange non monétaire doit avoir un montant et une commission à zéro.")
+    key = str(idempotency_key or uuid.uuid4()).strip()
+    if not 16 <= len(key) <= 128:
+        raise ValueError("Clé d’idempotence invalide.")
+    result = client.rpc("sowia_nex_create_deal", {
+        "p_creator_app_id": str(creator_app_id),
+        "p_counterparty_app_id": str(counterparty_app_id),
+        "p_title": title,
+        "p_description": description,
+        "p_deal_kind": deal_kind,
+        "p_agreed_amount": format(amount, ".2f"),
+        "p_currency": currency,
+        "p_commission_bps": commission_bps,
+        "p_idempotency_key": key,
+    }).execute().data
+    if not result:
+        raise RuntimeError("La création du contrat n’a pas été confirmée par le serveur.")
+    return result
+
+
+def list_my_night_exchange_deals(client, user, limit=100):
+    """List deals involving the authenticated member; database RLS remains authoritative."""
+    user_id = _user_id(user)
+    cap = min(max(int(limit), 1), 200)
+    columns = (
+        "id,created_by,counterparty_user_id,creator_app_id,counterparty_app_id,"
+        "workspace_id,title,description,status,deal_kind,agreed_amount,currency,"
+        "commission_bps,planned_commission,created_at,updated_at"
+    )
+    created = (
+        client.table("sowia_nex_deals").select(columns)
+        .eq("created_by", user_id).order("created_at", desc=True)
+        .limit(cap).execute().data or []
+    )
+    received = (
+        client.table("sowia_nex_deals").select(columns)
+        .eq("counterparty_user_id", user_id).order("created_at", desc=True)
+        .limit(cap).execute().data or []
+    )
+    unique = {str(row.get("id")): row for row in created + received}
+    return sorted(
+        unique.values(), key=lambda row: str(row.get("created_at") or ""), reverse=True
+    )[:cap]
+
+
+def list_night_exchange_deal_events(client, user, deal_id, limit=100):
+    """Read the append-only event history for a deal; RLS checks participation."""
+    _user_id(user)
+    if not deal_id:
+        raise ValueError("Identifiant de contrat manquant.")
+    cap = min(max(int(limit), 1), 200)
+    return (
+        client.table("sowia_nex_deal_events")
+        .select("id,actor_user_id,event_type,event_payload,created_at")
+        .eq("deal_id", str(deal_id))
+        .order("created_at", desc=False)
+        .limit(cap)
+        .execute().data or []
+    )
+
+
+def transition_night_exchange_deal(
+    client, user, deal_id, target_status, idempotency_key, note="",
+):
+    """Apply a permitted contract transition through the atomic server RPC."""
+    _user_id(user)
+    allowed = {"accepted", "in_progress", "completed", "cancelled", "disputed"}
+    if not deal_id or target_status not in allowed:
+        raise ValueError("Transition de contrat invalide.")
+    key = str(idempotency_key or "").strip()
+    if not 16 <= len(key) <= 128:
+        raise ValueError("Clé d’idempotence invalide.")
+    if not isinstance(note, str) or len(note) > 1000:
+        raise ValueError("La note doit contenir au maximum 1000 caractères.")
+    result = client.rpc("sowia_nex_transition_deal", {
+        "p_deal_id": str(deal_id),
+        "p_target_status": target_status,
+        "p_idempotency_key": key,
+        "p_note": note or None,
+    }).execute().data
+    if not result:
+        raise RuntimeError("La transition n’a pas été confirmée par le serveur.")
+    return result
