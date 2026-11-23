@@ -1063,7 +1063,7 @@ else:
     st.session_state.pop("sowia_premium_status_cache", None)
 
 with st.sidebar:
-    st.image("assets/sowia-brain-brand.svg", use_container_width=True)
+    st.image("assets/sowia-globe-brand.svg", use_container_width=True)
     preference_owner = str(getattr(current_user, "id", "")) if cloud_mode and current_user is not None else "local"
     if st.session_state.get("sowia_language_loaded_for") != preference_owner:
         saved_language = st.session_state.get("sowia_pre_auth_language", "Français")
