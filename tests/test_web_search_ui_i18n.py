@@ -61,3 +61,49 @@ def test_web_search_input_prompt_is_localized(language, expected, monkeypatch):
 def test_fact_check_prompt_is_localized(language, expected, monkeypatch):
     monkeypatch.setattr("i18n._translate_missing_interface_copy", lambda text, selected: text)
     assert translate("Quelle affirmation souhaitez-vous vérifier ?", language) == expected
+
+
+@pytest.mark.parametrize(
+    "language,expected",
+    [
+        ("English", "Open source"),
+        ("Español", "Abrir la fuente"),
+        ("中文", "打开来源"),
+        ("Deutsch", "Quelle öffnen"),
+        ("العربية", "فتح المصدر"),
+    ],
+)
+def test_fact_check_source_action_is_localized(language, expected, monkeypatch):
+    monkeypatch.setattr("i18n._translate_missing_interface_copy", lambda text, selected: text)
+    assert translate("Ouvrir la source", language) == expected
+
+
+@pytest.mark.parametrize(
+    "language,expected",
+    [
+        ("English", "Status: To review"),
+        ("Español", "Estado: Pendiente de revisión"),
+        ("中文", "状态：待审查"),
+        ("Deutsch", "Status: Zu prüfen"),
+        ("العربية", "الحالة: قيد المراجعة"),
+    ],
+)
+def test_fact_check_evidence_status_is_localized(language, expected, monkeypatch):
+    monkeypatch.setattr("i18n._translate_missing_interface_copy", lambda text, selected: text)
+    assert translate("Statut : À examiner", language) == expected
+
+
+@pytest.mark.parametrize(
+    "language,expected",
+    [
+        ("English", "No usable sources were returned. This does not prove that the claim is false."),
+        ("Español", "No se encontraron fuentes utilizables. Esto no demuestra que la afirmación sea falsa."),
+        ("中文", "未返回可用来源。这并不能证明该说法是错误的。"),
+        ("Deutsch", "Es wurden keine verwertbaren Quellen gefunden. Das beweist nicht, dass die Aussage falsch ist."),
+        ("العربية", "لم يتم العثور على مصادر قابلة للاستخدام. وهذا لا يثبت أن الادعاء خاطئ."),
+    ],
+)
+def test_fact_check_no_evidence_message_is_localized(language, expected, monkeypatch):
+    monkeypatch.setattr("i18n._translate_missing_interface_copy", lambda text, selected: text)
+    source = "Aucune source exploitable n'a été retournée. Cela ne prouve pas que l'affirmation est fausse."
+    assert translate(source, language) == expected
