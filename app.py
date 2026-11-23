@@ -2613,6 +2613,12 @@ elif page == "Assistant IA":
             "dans le champ ci-dessous ; vous pouvez réessayer sans le retaper."
         )
         st.caption("Diagnostic technique : " + str(pending_save_error))
+    use_web_search = st.checkbox(
+        translate_ui("Rechercher sur Internet pour cette réponse", language),
+        key="sowia_chat_web_search",
+        value=False,
+        help=translate_ui("SOW IA consultera jusqu'à cinq sources publiques et ajoutera leurs liens à la réponse.", language),
+    )
     st.text_area(
         "Écrivez votre message...",
         key="sowia_chat_prompt",
@@ -2697,13 +2703,31 @@ elif page == "Assistant IA":
                 request_history = conversation_history + [{"role": "user", "content": prompt}]
                 with st.chat_message("assistant"):
                     try:
+                        web_sources = []
+                        web_context = None
+                        if use_web_search:
+                            try:
+                                from web_context import build_web_context, prepare_web_sources
+                                with st.spinner(translate_ui("Recherche de sources publiques…", language)):
+                                    web_sources = prepare_web_sources(search_web(prompt, max_results=5))
+                                web_context = build_web_context(web_sources)
+                                if not web_sources:
+                                    st.info(translate_ui("Aucune source exploitable n'a été trouvée. La réponse sera générée sans recherche Web.", language))
+                            except (RuntimeError, ValueError):
+                                st.warning(translate_ui("La recherche Web n'a pas abouti ; la conversation continue sans sources en ligne.", language))
                         reply = answer(
                             request_history,
                             memories=select_relevant_memories(
                                 memories, query=prompt
                             ),
                             language=language,
+                            web_context=web_context,
                         )
+                        if web_sources:
+                            reply += "\n\n**" + translate_ui("Sources consultées", language) + ":**\n" + "\n".join(
+                                f"- [{source['title']}]({source['url']})"
+                                for source in web_sources
+                            )
                         st.markdown(reply)
                         try:
                             save_app_message("assistant", reply)
