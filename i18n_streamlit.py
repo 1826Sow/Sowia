@@ -30,12 +30,11 @@ def _translate_markdown_phrase(value, language, translate, *, allow_fallback=Fal
 def _translate_html_headings(value, language, translate):
     """Translate visible HTML heading nodes without touching paragraphs, CSS or attributes."""
     heading_pattern = re.compile(
-        r'(?P<opening><(?:h[1-6]|(?:div|span)\\b[^>]*class=["\\'][^"\\']*(?:title|heading|kicker)[^"\\']*["\\'][^>]*)>)'
-        r'(?P<text>[^<>]{1,180})'
-        r'(?P<closing></(?:h[1-6]|div|span)\\s*>)',
+        r"(?P<opening><(?:h[1-6]|(?:div|span)\b[^>]*class=['\"][^'\"]*(?:title|heading|kicker)[^'\"]*['\"][^>]*)>)"
+        r"(?P<text>[^<>]{1,180})"
+        r"(?P<closing></(?:h[1-6]|div|span)\s*>)",
         re.IGNORECASE,
     )
-
     def replace_heading(match):
         visible = match.group("text")
         translated = _translate_markdown_phrase(
