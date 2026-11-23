@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from accessibility import live_transcription_component, supported_speech_locale
 
 
@@ -38,7 +40,7 @@ def test_transcription_component_localizes_visible_controls_and_statuses():
 
 
 def test_personal_navigation_art_uses_abstract_neural_visual_not_a_person():
-    artwork = (ROOT / "assets/categories/personnel.svg").read_text(encoding="utf-8")
+    artwork = (Path(__file__).resolve().parents[1] / "assets/categories/personnel.svg").read_text(encoding="utf-8")
     assert 'aria-label="SOW IA — espace personnel, réseau neuronal abstrait et documents"' in artwork
     assert "<ellipse" in artwork
     assert "Documents · Mémoire · Assistant" in artwork
