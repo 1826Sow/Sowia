@@ -71,7 +71,7 @@ def pdf_to_images_zip(pdf_bytes, image_format="PNG", scale=1.5):
     try:
         document = pdfium.PdfDocument(bytes(pdf_bytes))
     except Exception as exc:
-        raise ValueError("Le PDF est illisible, endommagé ou protégé par mot de passe.") from exc
+        raise ValueError("Le PDF sélectionné n’est pas un PDF valide : il est illisible, endommagé ou protégé par mot de passe.") from exc
     archive_buffer = BytesIO()
     try:
         page_count = len(document)
