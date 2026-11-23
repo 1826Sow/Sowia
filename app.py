@@ -20,6 +20,7 @@ from storage import (
     save_message as local_save_message,
 )
 from documents import extract_pdf_text
+from image_pdf_tools import images_to_pdf, pdf_to_images_zip
 from document_context import select_relevant_pdf_context
 from io import BytesIO
 from direct_pdf_upload import create_signed_pdf_upload, render_direct_pdf_upload
@@ -3712,6 +3713,34 @@ elif page == "Recherche Web":
 
 elif page == "Analyse PDF":
     st.subheader(translate_ui("📄 Analyse PDF", language))
+    st.markdown("### 🖼️ Conversion d’images et de PDF")
+    st.caption("Convertissez des images en PDF ou exportez les pages d’un PDF en images. Les conversions sont réalisées sur le serveur SOW IA, sans envoi vers un service tiers.")
+    with st.expander("Images numériques → un seul PDF", expanded=True):
+        analysis_images = st.file_uploader(
+            "Sélectionner une ou plusieurs images",
+            type=["jpg", "jpeg", "png", "webp"],
+            accept_multiple_files=True,
+            key="analysis_image_to_pdf_files",
+            help="JPG, JPEG, PNG ou WEBP · 20 Mo maximum par image · 50 Mo au total.",
+        )
+        if st.button("Convertir les images en PDF", key="analysis_convert_images_pdf", type="primary", disabled=not analysis_images):
+            try:
+                image_pdf_bytes = images_to_pdf([(item.name, item.getvalue()) for item in analysis_images])
+                st.success(f"PDF créé à partir de {len(analysis_images)} image(s).")
+                st.download_button("Télécharger le PDF", image_pdf_bytes, file_name="sowia_images_converties.pdf", mime="application/pdf", key="analysis_download_images_pdf")
+            except (ValueError, RuntimeError) as exc:
+                st.error(str(exc))
+    with st.expander("PDF → images PNG ou JPG"):
+        analysis_source_pdf = st.file_uploader("Choisir un PDF à convertir", type=["pdf"], key="analysis_pdf_to_images_file")
+        analysis_image_format = st.selectbox("Format des images", ["PNG", "JPG"], key="analysis_pdf_image_format")
+        if st.button("Convertir le PDF en images", key="analysis_convert_pdf_images", disabled=analysis_source_pdf is None):
+            try:
+                images_zip = pdf_to_images_zip(analysis_source_pdf.getvalue(), image_format=analysis_image_format)
+                st.success("Conversion terminée. Chaque page est disponible dans l’archive ZIP.")
+                st.download_button("Télécharger les images (ZIP)", images_zip, file_name="sowia_pages_en_images.zip", mime="application/zip", key="analysis_download_pdf_images")
+            except (ValueError, RuntimeError) as exc:
+                st.error(str(exc))
+    st.divider()
     st.caption("Sélectionnez un PDF depuis votre téléphone. Transfert privé vers Supabase, 10 Mo maximum.")
 
     if not cloud_mode or current_user is None:
@@ -3888,6 +3917,34 @@ elif page == "Analyse PDF":
 
 elif page == "Créer un PDF":
     st.subheader(translate_ui("🪄 Créer un PDF", language))
+    st.markdown("### 🖼️ Convertisseur d’images numériques")
+    st.caption("Créez un PDF à partir de photos ou transformez les pages d’un PDF en images téléchargeables.")
+    with st.expander("Assembler des images dans un PDF", expanded=True):
+        create_images = st.file_uploader(
+            "Ajouter des images JPG, PNG ou WEBP",
+            type=["jpg", "jpeg", "png", "webp"],
+            accept_multiple_files=True,
+            key="create_pdf_image_files",
+            help="20 Mo maximum par image · 50 Mo au total. L’ordre de sélection est conservé.",
+        )
+        if st.button("Créer un PDF avec ces images", key="create_pdf_from_images", type="primary", disabled=not create_images):
+            try:
+                image_pdf_bytes = images_to_pdf([(item.name, item.getvalue()) for item in create_images])
+                st.success(f"Document PDF prêt · {len(create_images)} image(s).")
+                st.download_button("Télécharger le PDF illustré", image_pdf_bytes, file_name="sowia_document_images.pdf", mime="application/pdf", key="download_create_image_pdf")
+            except (ValueError, RuntimeError) as exc:
+                st.error(str(exc))
+    with st.expander("Convertir un PDF en images"):
+        create_source_pdf = st.file_uploader("Sélectionner un PDF", type=["pdf"], key="create_pdf_to_images_file")
+        create_image_format = st.selectbox("Format de sortie", ["PNG", "JPG"], key="create_pdf_to_images_format")
+        if st.button("Exporter les pages en images", key="create_pdf_export_images", disabled=create_source_pdf is None):
+            try:
+                images_zip = pdf_to_images_zip(create_source_pdf.getvalue(), image_format=create_image_format)
+                st.success("Toutes les pages ont été converties.")
+                st.download_button("Télécharger les images (ZIP)", images_zip, file_name="sowia_pdf_images.zip", mime="application/zip", key="download_create_pdf_images")
+            except (ValueError, RuntimeError) as exc:
+                st.error(str(exc))
+    st.divider()
     st.write("Rédigez un document et téléchargez-le au format PDF. Cette fonction ne consomme aucun crédit IA.")
     if st.session_state.get("workspace_id") == "professional":
         st.markdown("#### Modèles professionnels")
