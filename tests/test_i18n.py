@@ -111,3 +111,17 @@ def test_missing_interface_translation_fails_open_without_network_for_multiline(
     monkeypatch.setattr(requests, "get", unexpected_get)
     source = "Texte de présentation\\nDeuxième ligne"
     assert _translate_missing_interface_copy(source, "English") == source
+
+
+@pytest.mark.parametrize("source,expected", [
+    ("### 🎯 Actions prioritaires", "### 🎯 Priority actions"),
+    ("### 👤 Espace Personnel", "### 👤 Personal Workspace"),
+    ("### 🏢 Espace Professionnel", "### 🏢 Professional Workspace"),
+    ("### 🖼️ Conversion d’images et de PDF", "### 🖼️ Image and PDF Conversion"),
+    ("#### Prospection internationale", "#### International Outreach"),
+    ("#### Dernières transactions", "#### Latest Transactions"),
+])
+def test_english_workspace_headings_are_translated_without_network(source, expected, monkeypatch):
+    from i18n import _translate_missing_interface_copy
+    monkeypatch.setattr("i18n._translate_missing_interface_copy", lambda text, language: text)
+    assert translate(source, "English") == expected
