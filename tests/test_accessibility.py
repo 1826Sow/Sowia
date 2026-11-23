@@ -22,3 +22,16 @@ def test_transcription_component_is_accessible_and_does_not_auto_submit():
     assert "recognition.start()" in component
     assert "GenUI.issueNewTurn" not in component
     assert "zh-CN" not in component
+
+
+def test_transcription_component_localizes_visible_controls_and_statuses():
+    english = live_transcription_component("English")
+    chinese = live_transcription_component("中文")
+    arabic = live_transcription_component("العربية")
+    assert "Start microphone" in english
+    assert "Microphone stopped. You can copy the text." in english
+    assert "开始使用麦克风" in chinese
+    assert "语音识别已中断：" in chinese
+    assert "بدء الميكروفون" in arabic
+    assert "تم نسخ النص" in arabic
+    assert "Démarrer le micro" in live_transcription_component("Français")
