@@ -41,7 +41,7 @@ val hasReleaseSigning = signingStoreFile.isNotBlank() &&
     signingKeyAlias.isNotBlank() &&
     signingKeyPassword.isNotBlank()
 
-// SOW IA targeted maintenance release 0.2.14
+// SOW IA Google Play maintenance release 0.2.15
 android {
     namespace = "com.sowkeys.sowia"
     compileSdk = 36
@@ -50,8 +50,8 @@ android {
         applicationId = "com.sowkeys.sowia"
         minSdk = 26
         targetSdk = 36
-        versionCode = 18
-        versionName = "0.2.14"
+        versionCode = 19
+        versionName = "0.2.15"
         buildConfigField("String", "SUPABASE_URL", buildConfigString(normalizeSupabaseProjectUrl(configValue("SOWIA_SUPABASE_URL"))))
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", buildConfigString(configValue("SOWIA_SUPABASE_PUBLISHABLE_KEY").ifBlank { configValue("SOWIA_SUPABASE_ANON_KEY") }))
     }
@@ -61,8 +61,8 @@ android {
         create("current") {
             dimension = "identity"
             applicationId = "com.sowkeys.sowia"
-            versionCode = 18
-            versionName = "0.2.14"
+            versionCode = 19
+            versionName = "0.2.15"
         }
         create("legacy") {
             dimension = "identity"
