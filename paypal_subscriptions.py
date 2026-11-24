@@ -168,14 +168,34 @@ def _api_headers(config, token, request_id=None):
 
 
 def ensure_premium_plan(admin_client):
-    """Return the persisted Sandbox plan ID, creating the product and plan once."""
+    """Return the persisted plan; create one automatically only in Sandbox.
+
+    In Live, the merchant must provision the plan in PayPal first and set
+    PAYPAL_PREMIUM_PLAN_ID. Register that existing ID for webhook reconciliation;
+    never create a Live product or plan automatically.
+    """
     config = paypal_subscription_configuration()
     if not config:
         raise RuntimeError("La configuration de l'abonnement PayPal n'est pas complète.")
-    if config["mode"] != "sandbox":
-        raise RuntimeError("La création automatique du forfait est limitée à PayPal Sandbox.")
     if admin_client is None:
         raise RuntimeError("Le stockage serveur Supabase n'est pas configuré.")
+
+    mode = config["mode"]
+    if mode == "live":
+        plan_id = str(config.get("plan_id") or "").strip()
+        if not re.fullmatch(r"P-[A-Z0-9]+", plan_id):
+            raise RuntimeError("PAYPAL_PREMIUM_PLAN_ID doit contenir le forfait PayPal Live existant.")
+        admin_client.table("sowia_paypal_catalog").upsert(
+            {
+                "mode": "live",
+                "paypal_product_id": None,
+                "paypal_plan_id": plan_id,
+                "amount": PREMIUM_PRICE,
+                "currency": PREMIUM_CURRENCY,
+            },
+            on_conflict="mode",
+        ).execute()
+        return plan_id
 
     existing = (
         admin_client.table("sowia_paypal_catalog")
@@ -188,69 +208,6 @@ def ensure_premium_plan(admin_client):
     if data and data.get("paypal_plan_id"):
         return str(data["paypal_plan_id"])
 
-    token = _access_token(config)
-    product_response = requests.post(
-        f"{config['base_url']}/v1/catalogs/products",
-        json={
-            "name": "SOW IA Premium",
-            "description": "Accès Premium SOW IA avec facturation mensuelle",
-            "type": "SERVICE",
-            "category": "SOFTWARE",
-        },
-        headers=_api_headers(config, token, "sowia-premium-product-sandbox-v1"),
-        timeout=TIMEOUT_SECONDS,
-    )
-    product_response.raise_for_status()
-    product_id = product_response.json().get("id")
-    if not product_id:
-        raise RuntimeError("PayPal n'a pas retourné l'identifiant du produit Premium.")
-
-    plan_response = requests.post(
-        f"{config['base_url']}/v1/billing/plans",
-        json={
-            "product_id": product_id,
-            "name": "SOW IA Premium — mensuel",
-            "description": "Abonnement mensuel SOW IA Premium",
-            "status": "ACTIVE",
-            "billing_cycles": [{
-                "frequency": {"interval_unit": "MONTH", "interval_count": 1},
-                "tenure_type": "REGULAR",
-                "sequence": 1,
-                "total_cycles": 0,
-                "pricing_scheme": {
-                    "fixed_price": {
-                        "value": PREMIUM_PRICE,
-                        "currency_code": PREMIUM_CURRENCY,
-                    }
-                },
-            }],
-            "payment_preferences": {
-                "auto_bill_outstanding": True,
-                "setup_fee": {"value": "0", "currency_code": PREMIUM_CURRENCY},
-                "setup_fee_failure_action": "CONTINUE",
-                "payment_failure_threshold": 3,
-            },
-        },
-        headers=_api_headers(config, token, "sowia-premium-plan-sandbox-v1"),
-        timeout=TIMEOUT_SECONDS,
-    )
-    plan_response.raise_for_status()
-    plan_id = plan_response.json().get("id")
-    if not plan_id:
-        raise RuntimeError("PayPal n'a pas retourné l'identifiant du forfait Premium.")
-
-    admin_client.table("sowia_paypal_catalog").upsert(
-        {
-            "mode": "sandbox",
-            "paypal_product_id": product_id,
-            "paypal_plan_id": plan_id,
-            "amount": PREMIUM_PRICE,
-            "currency": PREMIUM_CURRENCY,
-        },
-        on_conflict="mode",
-    ).execute()
-    return str(plan_id)
-
 
 def reconcile_returned_subscription(subscription_id: str, user_id: str):
     """Validate PayPal's browser return server-side and persist an ACTIVE subscription.
@@ -259,8 +216,8 @@ def reconcile_returned_subscription(subscription_id: str, user_id: str):
     re-fetched from PayPal using the server credentials before Premium is granted.
     """
     config = paypal_subscription_configuration()
-    if not config or config["mode"] != "sandbox":
-        raise RuntimeError("La réconciliation du retour est limitée à PayPal Sandbox.")
+    if not config:
+        raise RuntimeError("La configuration de l'abonnement PayPal n'est pas complète.")
     # Import lazily so the app does not initialize an admin client on ordinary page loads.
     import premium_access
     admin_client = premium_access.create_admin_client()
@@ -445,8 +402,8 @@ def sync_completed_subscription_transactions(
     import financial_ledger
 
     config = paypal_subscription_configuration()
-    if not config or config["mode"] != "sandbox":
-        raise RuntimeError("La synchronisation récurrente est limitée à PayPal Sandbox.")
+    if not config:
+        raise RuntimeError("La configuration de l'abonnement PayPal n'est pas complète.")
     if admin_client is None:
         raise RuntimeError("Client d'administration Supabase indisponible.")
     normalized_id = str(subscription_id or "").strip()

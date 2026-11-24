@@ -94,36 +94,57 @@ def test_checkout_configuration_does_not_require_webhook_id(monkeypatch):
     assert config["webhook_id"] == ""
 
 
-def test_live_paypal_mode_is_blocked_in_subscription_ui():
-    """The app must never expose subscription creation against PayPal Live."""
+def test_live_paypal_mode_exposes_the_verified_subscription_flow():
+    """Live uses the existing merchant plan and waits for webhook confirmation."""
     from pathlib import Path
 
     source = Path("app.py").read_text(encoding="utf-8")
-    live_guard = 'if subscription_config["mode"] != "sandbox":'
-    assert live_guard in source
-    guarded_section = source.split(live_guard, 1)[1].split(
-        '\\n# Messages de diagnostic protégés', 1
-    )[0]
-    live_branch, sandbox_branch = guarded_section.split("else:", 1)
-    assert "Préparer mon abonnement Premium" not in live_branch
-    assert 'prepare_subscription_clicked = st.button(' in sandbox_branch
-    assert 'key="prepare_paypal_subscription"' in sandbox_branch
-    assert "Préparer mon abonnement Premium" in sandbox_branch
+    assert 'is_live_subscription = subscription_config["mode"] == "live"' in source
+    assert 'S’abonner à SOW IA Premium · 9,90 €/mois' in source
+    assert 'key="prepare_paypal_subscription"' in source
+    assert "confirmation serveur par le webhook PayPal" in source
 
 
-def test_automatic_plan_creation_is_sandbox_only(monkeypatch):
+def test_live_plan_is_registered_from_existing_config_without_creating_a_plan(monkeypatch):
+    class Query:
+        def __init__(self):
+            self.payload = None
+        def upsert(self, payload, on_conflict=None):
+            self.payload = payload
+            return self
+        def execute(self):
+            return self
+    class Admin:
+        def __init__(self):
+            self.query = Query()
+        def table(self, name):
+            assert name == "sowia_paypal_catalog"
+            return self.query
+
+    monkeypatch.setattr(paypal, "paypal_subscription_configuration", lambda: {
+        "mode": "live", "plan_id": "P-LIVE123"
+    })
+    admin = Admin()
+    assert paypal.ensure_premium_plan(admin) == "P-LIVE123"
+    assert admin.query.payload["mode"] == "live"
+    assert admin.query.payload["paypal_plan_id"] == "P-LIVE123"
+    assert admin.query.payload["amount"] == "9.90"
+
+
+def test_live_plan_requires_an_existing_configured_plan_id(monkeypatch):
     monkeypatch.setattr(paypal, "paypal_subscription_configuration", lambda: {
         "mode": "live",
         "base_url": "https://api-m.paypal.com",
         "client_id": "client",
         "client_secret": "secret",
+        "plan_id": "",
     })
     try:
         paypal.ensure_premium_plan(object())
     except RuntimeError as exc:
-        assert "Sandbox" in str(exc)
+        assert "PAYPAL_PREMIUM_PLAN_ID" in str(exc)
     else:
-        raise AssertionError("Automatic plan creation must be blocked in Live")
+        raise AssertionError("Live checkout must require a pre-provisioned merchant plan")
 
 
 def test_subscription_creation_requires_a_valid_plan_id(monkeypatch):
