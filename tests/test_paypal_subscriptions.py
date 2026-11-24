@@ -131,19 +131,20 @@ def test_live_plan_is_registered_from_existing_config_without_creating_a_plan(mo
     assert admin.query.payload["amount"] == "9.90"
 
 
-def test_automatic_plan_creation_is_sandbox_only(monkeypatch):
+def test_live_plan_requires_an_existing_configured_plan_id(monkeypatch):
     monkeypatch.setattr(paypal, "paypal_subscription_configuration", lambda: {
         "mode": "live",
         "base_url": "https://api-m.paypal.com",
         "client_id": "client",
         "client_secret": "secret",
+        "plan_id": "",
     })
     try:
         paypal.ensure_premium_plan(object())
     except RuntimeError as exc:
-        assert "Sandbox" in str(exc)
+        assert "PAYPAL_PREMIUM_PLAN_ID" in str(exc)
     else:
-        raise AssertionError("Automatic plan creation must be blocked in Live")
+        raise AssertionError("Live checkout must require a pre-provisioned merchant plan")
 
 
 def test_subscription_creation_requires_a_valid_plan_id(monkeypatch):
