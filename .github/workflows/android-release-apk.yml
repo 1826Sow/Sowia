@@ -129,7 +129,7 @@ jobs:
                           ])
                           if cert.returncode != 0:
                               continue
-                          match = re.search(r"SHA256:\\s*([0-9A-Fa-f:]+)", cert.stdout)
+                          match = re.search(r"SHA256:\s*([0-9A-Fa-f:]+)", cert.stdout)
                           actual = re.sub(r":", "", match.group(1)).upper() if match else ""
                           if actual != expected:
                               continue
