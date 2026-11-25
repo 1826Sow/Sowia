@@ -42,6 +42,7 @@ from sowia_supabase_auth import (
     sign_out,
 )
 import cloud_storage
+import personal_data_export
 import paypal_payments
 import paypal_edge
 import paypal_subscriptions
@@ -8981,6 +8982,51 @@ elif page == "Paramètres":
     st.write("Modèle configuré :", MODEL)
     st.write("Clé API :", "Configurée" if API_KEY else "Non configurée")
     st.write("Stockage :", "Supabase privé" if cloud_mode else "SQLite local")
+
+    st.markdown("#### 🔐 Mes données personnelles")
+    if cloud_mode and current_user is not None and supabase_client is not None:
+        export_workspace = st.session_state.get("workspace_id", "personal")
+        st.caption(
+            "Téléchargez une copie JSON des données accessibles dans votre espace "
+            + ("Professionnel" if export_workspace == "professional" else "Personnel")
+            + ". Les mots de passe, secrets, jetons et données de paiement sont exclus."
+        )
+        if st.button("Préparer mon export de données", key="sowia_prepare_personal_data_export"):
+            try:
+                export_payload = personal_data_export.build_personal_data_export(
+                    supabase_client, current_user, export_workspace
+                )
+                st.session_state["sowia_personal_data_export_payload"] = (
+                    personal_data_export.serialize_personal_data_export(export_payload)
+                )
+                st.session_state["sowia_personal_data_export_name"] = (
+                    "sowia-export-" + export_workspace + "-"
+                    + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S") + ".json"
+                )
+                st.success("Votre export est prêt. Téléchargez-le ci-dessous.")
+            except Exception as exc:
+                st.session_state.pop("sowia_personal_data_export_payload", None)
+                st.error("Impossible de préparer l’export : " + str(exc))
+        export_payload = st.session_state.get("sowia_personal_data_export_payload")
+        if export_payload:
+            st.download_button(
+                "Télécharger mes données (JSON)",
+                data=export_payload,
+                file_name=st.session_state.get(
+                    "sowia_personal_data_export_name", "sowia-export.json"
+                ),
+                mime="application/json",
+                key="sowia_download_personal_data_export",
+                use_container_width=True,
+            )
+        st.caption(
+            "Cet export couvre les données structurées listées dans le fichier. "
+            "Les fichiers PDF/documents privés, les données détenues par des prestataires "
+            "et certaines données techniques ne sont pas inclus."
+        )
+    else:
+        st.info("Connectez-vous à votre compte SOW IA pour préparer un export de vos données.")
+
     st.markdown("#### ♿ Accessibilité")
     st.write("Les réglages de lecture vocale, de taille du texte et de contraste sont disponibles dans Assistant IA.")
     if cloud_mode and current_user is not None and st.session_state.get("sowia_accessibility_save_available", False):
