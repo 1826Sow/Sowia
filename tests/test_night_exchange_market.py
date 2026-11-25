@@ -47,6 +47,11 @@ def test_orders_match_only_when_bid_covers_ask():
     assert market.match_limit_orders("9.00", "9.50", "buyer", "seller")["match"] is False
 
 
+def test_match_price_uses_the_resting_order():
+    assert market.match_limit_orders("10.00", "9.50", "buyer", "seller", resting_side="buy")["execution_price"] == Decimal("10.0000")
+    assert market.match_limit_orders("10.00", "9.50", "buyer", "seller", resting_side="sell")["execution_price"] == Decimal("9.5000")
+
+
 def test_orders_cannot_self_trade():
     with pytest.raises(ValueError, match="auto-négociation"):
         market.match_limit_orders("10", "9", "same-user", "same-user")
