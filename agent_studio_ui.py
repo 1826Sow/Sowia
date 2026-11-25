@@ -115,10 +115,14 @@ def render(client, user, premium_active=False):
         read_workspace = st.checkbox("Lire la mémoire générale de cet espace", value=False)
         read_project = st.checkbox("Lire la mémoire du projet associé", value=False)
         write_private = st.checkbox("Écrire dans sa mémoire privée", value=True)
+        create_tool_options = [
+            name for name in tool_catalog
+            if name != "memory_write" or write_private
+        ]
         selected_tools = st.multiselect(
             "Outils autorisés pour cet agent",
-            options=list(tool_catalog),
-            default=["memory_read", "memory_write"],
+            options=create_tool_options,
+            default=[name for name in ["memory_read", "memory_write"] if name in create_tool_options],
             format_func=lambda value: f"{value} — {tool_catalog[value]}",
         )
         create = st.form_submit_button("Créer l'agent", type="primary", use_container_width=True)
@@ -204,10 +208,14 @@ def render(client, user, premium_active=False):
 
     st.markdown("**Outils autorisés pour cet agent**")
     with st.form("developer_studio_tools"):
+        editable_tool_options = [
+            name for name in tool_catalog
+            if name != "memory_write" or agent.get("can_write_private_memory")
+        ]
         enabled_tools = st.multiselect(
             "Sélectionner les outils",
-            options=list(tool_catalog),
-            default=[name for name in (agent.get("enabled_tools") or []) if name in tool_catalog],
+            options=editable_tool_options,
+            default=[name for name in (agent.get("enabled_tools") or []) if name in editable_tool_options],
             format_func=lambda value: f"{value} — {tool_catalog[value]}",
         )
         save_tools = st.form_submit_button(
