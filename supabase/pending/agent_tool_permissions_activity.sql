@@ -132,6 +132,15 @@ begin
     select * into v_usage
       from public.sowia_consume_agent_credits(p_request_id, p_action);
 
+    if v_usage.reason = 'already_recorded'
+       and not exists (
+           select 1 from public.sowia_agent_activity_events e
+            where e.user_id = v_user_id and e.request_id = p_request_id
+       ) then
+        raise exception 'Request id was already consumed outside this agent activity.'
+            using errcode = '42501';
+    end if;
+
     if v_usage.allowed then
         insert into public.sowia_agent_activity_events (
             user_id, agent_id, workspace_id, request_id, tool_name,
