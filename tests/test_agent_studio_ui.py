@@ -101,6 +101,7 @@ def test_agent_conversation_ui_persists_user_and_assistant_turn(monkeypatch):
         def divider(self): pass
         def markdown(self, *args, **kwargs): pass
         def caption(self, *args, **kwargs): pass
+        def checkbox(self, *args, **kwargs): return False
         def button(self, *args, **kwargs): return False
         def selectbox(self, label, options, **kwargs): return options[0]
         def chat_message(self, role): return Surface()
