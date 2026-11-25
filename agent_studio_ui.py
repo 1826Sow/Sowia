@@ -101,6 +101,33 @@ def _render_agent_conversation(client, user, agent, workspace):
     selected = labels[selected_label]
     conversation_id = str(selected["id"])
 
+    st.markdown("**Suppression de cette conversation**")
+    confirm_conversation_delete = st.checkbox(
+        "Je confirme la suppression définitive de cette conversation et de ses messages.",
+        key=f"developer_studio_confirm_delete_agent_conversation_{agent_id}_{conversation_id}",
+    )
+    if st.button(
+        "Supprimer cette conversation",
+        key=f"developer_studio_delete_agent_conversation_{agent_id}_{conversation_id}",
+        disabled=not confirm_conversation_delete,
+        type="secondary",
+        use_container_width=True,
+    ):
+        try:
+            from agent_data_rights import delete_agent_conversation
+
+            delete_agent_conversation(
+                client, user, agent_id, conversation_id, workspace_id=workspace
+            )
+            st.session_state.pop(
+                f"developer_studio_agent_conversation_{agent_id}", None
+            )
+            st.success("Conversation et messages associés supprimés.")
+            st.rerun()
+        except Exception as exc:
+            st.error("La conversation n'a pas été supprimée.")
+            st.caption("Diagnostic : " + type(exc).__name__)
+
     try:
         history = list_agent_messages(
             client, user, agent_id, conversation_id,
@@ -282,6 +309,55 @@ def render(client, user, premium_active=False):
     selected_label = st.selectbox("Agent à gérer", list(labels), key="developer_studio_selected_agent")
     agent = labels[selected_label]
     st.write(agent.get("description") or "Aucune mission renseignée.")
+
+    st.markdown("**Mémoire privée de cet agent**")
+    try:
+        from agent_data_rights import (
+            list_private_agent_memories,
+            delete_private_agent_memory,
+        )
+
+        private_memories = list_private_agent_memories(
+            client, user, agent["id"], workspace_id=workspace
+        )
+        if private_memories:
+            memory_labels = {
+                f'Note #{item["id"]} · {str(item.get("content") or "")[:90]}': item
+                for item in private_memories
+            }
+            selected_memory_label = st.selectbox(
+                "Note à supprimer",
+                list(memory_labels),
+                key=f"developer_studio_private_memory_{agent['id']}",
+            )
+            selected_memory = memory_labels[selected_memory_label]
+            st.caption(str(selected_memory.get("content") or "")[:500])
+            confirm_memory_delete = st.checkbox(
+                "Je confirme la suppression définitive de cette note mémoire.",
+                key=f"developer_studio_confirm_delete_memory_{agent['id']}_{selected_memory['id']}",
+            )
+            if st.button(
+                "Supprimer cette note mémoire",
+                key=f"developer_studio_delete_memory_{agent['id']}_{selected_memory['id']}",
+                disabled=not confirm_memory_delete,
+                use_container_width=True,
+            ):
+                try:
+                    delete_private_agent_memory(
+                        client, user, agent["id"], selected_memory["id"],
+                        workspace_id=workspace,
+                    )
+                    st.success("Note mémoire supprimée.")
+                    st.rerun()
+                except Exception as exc:
+                    st.error("La note mémoire n'a pas été supprimée.")
+                    st.caption("Diagnostic : " + type(exc).__name__)
+        else:
+            st.caption("Aucune note privée enregistrée pour cet agent.")
+    except Exception as exc:
+        st.warning("La mémoire privée de cet agent n'est pas accessible.")
+        st.caption("Diagnostic : " + type(exc).__name__)
+
     status_col, id_col = st.columns(2)
     status_col.metric("Statut", agent["status"])
     id_col.caption("Identifiant agent")
