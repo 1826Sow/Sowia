@@ -18,8 +18,11 @@ class Query:
         self.filters = []
         self.inserted = None
         self.updated = None
+        self.selected_fields = None
 
-    def select(self, fields): return self
+    def select(self, fields):
+        self.selected_fields = fields
+        return self
     def eq(self, key, value):
         self.filters.append((key, value))
         return self
@@ -136,10 +139,10 @@ def test_owner_can_revoke_agent_memory_permissions():
         client, SimpleNamespace(id="user-1"), "agent-1",
         can_read_project_memory=False,
     )
-    assert client.queries["sowia_agents"].updated == {
-        "can_read_project_memory": False
-    }
-    assert ("user_id", "user-1") in client.queries["sowia_agents"].filters
+    query = client.queries["sowia_agents"]
+    assert query.updated == {"can_read_project_memory": False}
+    assert query.selected_fields == "id"
+    assert ("user_id", "user-1") in query.filters
 
 
 @pytest.mark.parametrize("bad", ["yes", 1])
