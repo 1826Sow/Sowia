@@ -102,7 +102,9 @@ begin
        and a.workspace_id = p_workspace_id
        and (a.workspace_id = 'personal' or public.sowia_has_professional_access())
        and a.status = 'active';
-    if not found or (p_tool_name <> 'agent_chat' and not (p_tool_name = any(v_agent.enabled_tools))) then
+    if not found
+       or (p_tool_name <> 'agent_chat' and not (p_tool_name = any(v_agent.enabled_tools)))
+       or (p_tool_name = 'memory_write' and not v_agent.can_write_private_memory) then
         raise exception 'Agent tool is not enabled for this owner' using errcode = '42501';
     end if;
 
