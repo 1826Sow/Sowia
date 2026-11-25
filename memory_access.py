@@ -138,13 +138,17 @@ def load_agent_memory_context(
     if agent.get("can_read_workspace_memory") or agent.get("can_read_project_memory"):
         shared = cloud_storage.list_memories(client, user, workspace)
         project_id = agent.get("project_id")
+        active_project_id = None
+        if agent.get("can_read_project_memory") and project_id is not None:
+            active_project_id = _owned_project(
+                client, user_id, workspace, project_id
+            )
         for item in shared:
             if item.get("project_id") is None and agent.get("can_read_workspace_memory"):
                 authorized.append(item)
             elif (item.get("project_id") is not None
-                  and agent.get("can_read_project_memory")
-                  and project_id is not None
-                  and str(item.get("project_id")) == str(project_id)):
+                  and active_project_id is not None
+                  and str(item.get("project_id")) == str(active_project_id)):
                 authorized.append(item)
     return build_agent_memory_context(
         authorized, query=query, max_items=max_items, max_chars=max_chars
