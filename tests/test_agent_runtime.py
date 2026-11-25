@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from agent_runtime import AgentQuotaExceeded, execute_agent_action
+from agent_runtime import AgentActionAlreadyProcessed, AgentQuotaExceeded, execute_agent_action
 
 
 class FakeRpc:
@@ -157,3 +157,23 @@ def test_agent_action_rejects_missing_activity_metadata_before_debit():
             workspace_id="personal",
         )
     assert client.calls == []
+
+
+def test_already_recorded_agent_action_is_not_replayed():
+    client = FakeClient([{
+        "allowed": True,
+        "used_credits": 5,
+        "monthly_limit": 1000,
+        "remaining_credits": 995,
+        "reason": "already_recorded",
+    }])
+    calls = []
+    with pytest.raises(AgentActionAlreadyProcessed):
+        execute_agent_action(
+            client, SimpleNamespace(id="user-1"), "tool_execution",
+            str(uuid.uuid4()), lambda: calls.append("ran"),
+            agent_id="00000000-0000-0000-0000-000000000001",
+            workspace_id="personal", tool_name="memory_write",
+        )
+    assert calls == []
+    assert len(client.calls) == 1
