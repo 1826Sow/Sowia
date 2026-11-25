@@ -121,7 +121,7 @@ jobs:
         if: steps.credentials.outputs.configured == 'true'
         shell: bash
         env:
-          SOWIA_TEST_SUPABASE_URL: ${{ secrets.SOWIA_TEST_SUPABASE_URL }}
+          SOWIA_TEST_SUPABASE_URL: https://mrbmoavotzcuzvnhfjla.supabase.co
         run: |
           case "$SOWIA_TEST_SUPABASE_URL" in
             "https://mrbmoavotzcuzvnhfjla.supabase.co"|"https://mrbmoavotzcuzvnhfjla.supabase.co/")
