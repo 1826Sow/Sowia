@@ -18,7 +18,8 @@ declare
         'public.sowia_consume_agent_credits(uuid,text)'::regprocedure,
         'public.sowia_consume_agent_action_for_agent(uuid,text,uuid,text,text)'::regprocedure,
         'public.sowia_finish_agent_action_for_agent(uuid,uuid,text,text)'::regprocedure,
-        'public.sowia_get_agent_activity(uuid,integer)'::regprocedure
+        'public.sowia_get_agent_activity(uuid,integer)'::regprocedure,
+        'public.sowia_delete_my_agent_conversation(uuid,uuid,text)'::regprocedure
     ];
 begin
     foreach v_table in array v_tables loop
@@ -69,7 +70,7 @@ begin
 end
 $$;
 
--- A caller without a JWT subject must not be able to use any owner-scoped RPC.
+-- A caller without a JWT subject must not be able to use owner-scoped RPCs.
 reset role;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '', false);
@@ -78,6 +79,17 @@ begin
     begin
         perform * from public.sowia_get_agent_usage();
         raise exception 'SECURITY FAILURE: unauthenticated quota read was accepted';
+    exception when insufficient_privilege then
+        null;
+    end;
+
+    begin
+        perform public.sowia_delete_my_agent_conversation(
+            'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            'personal'
+        );
+        raise exception 'SECURITY FAILURE: unauthenticated conversation deletion was accepted';
     exception when insufficient_privilege then
         null;
     end;
