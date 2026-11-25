@@ -53,7 +53,7 @@ def _setup(monkeypatch, fake_client):
     import types
     monkeypatch.setitem(sys.modules, "memory_access", types.SimpleNamespace(
         list_agents=lambda client, user, workspace_id="personal": [
-            {"id": "agent-1", "status": "active"}
+            {"id": "agent-1", "status": "active", "enabled_tools": ["web_search", "memory_read", "memory_write"]}
         ]
     ))
     monkeypatch.setattr(orchestrator, "_provider_configs", lambda: [{
@@ -61,7 +61,7 @@ def _setup(monkeypatch, fake_client):
     }])
     monkeypatch.setattr(orchestrator, "OpenAI", lambda **kwargs: fake_client)
     monkeypatch.setattr(orchestrator, "build_system_prompt", lambda **kwargs: "system")
-    monkeypatch.setattr(orchestrator, "_tool_definitions", lambda: [{"type": "function"}])
+    monkeypatch.setattr(orchestrator, "_tool_definitions", lambda enabled_tools=None: [{"type": "function"}])
 
 
 def test_returns_final_answer_without_tools(monkeypatch):
