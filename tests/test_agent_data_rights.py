@@ -33,6 +33,13 @@ class Query:
     def execute(self): return Result(self.rows)
 
 
+class RpcQuery:
+    def __init__(self, data):
+        self.data = data
+    def execute(self):
+        return Result(self.data)
+
+
 class Client:
     def __init__(self, rows=None, rpc_data=True):
         self.rows = rows or {}
@@ -45,7 +52,7 @@ class Client:
         return q
     def rpc(self, name, params):
         self.rpc_calls.append((name, params))
-        return Result(self.rpc_data)
+        return RpcQuery(self.rpc_data)
 
 
 def test_list_private_memories_is_scoped_to_owner_agent_and_workspace():
