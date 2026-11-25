@@ -50,6 +50,7 @@ import financial_ledger
 import decision_benchmark_ui
 import sowia_prioritization
 import sowia_night_exchange
+import night_exchange_market_ui
 import sowia_global_id
 import sowia_global_directory
 import sowia_global_connect
@@ -6579,6 +6580,8 @@ elif page == "SOWIA NIGHT EXCHANGE":
             nex_metadata.get("sowia_admin") is True or nex_metadata.get("role") == "admin"
         )
         nex_tabs = ["🌐 Annuaire approuvé", "🤝 Matching SOWIA", "🏷️ Inscrire une application", "📂 Mes applications", "🌍 Horloge mondiale", "💡 Opportunités intelligentes", "☀️ Rapport matinal", "📨 Propositions"]
+        nex_market_tab_index = len(nex_tabs)
+        nex_tabs.append("📈 Bourse mondiale")
         if nex_is_admin:
             nex_tabs.extend(["🛡️ Modération", "🔐 Validation des intégrations"])
         nex_tab_views = st.tabs(nex_tabs)
@@ -7094,6 +7097,9 @@ elif page == "Bourse aux applications":
                 "Vérifiez le registre NIGHT EXCHANGE et les droits de lecture. Diagnostic : "
                 + type(market_error).__name__
             )
+
+        with nex_tab_views[nex_market_tab_index]:
+            night_exchange_market_ui.render(supabase_client, current_user)
 
 elif page == "SOW IA Business Club":
     st.subheader("🏛️ SOW IA BUSINESS CLUB")
