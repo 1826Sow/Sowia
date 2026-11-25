@@ -62,25 +62,25 @@ class Client:
 def test_create_agent_conversation_scopes_owner_agent_and_workspace():
     conversation_id = str(uuid.uuid4())
     client = Client({
-        "sowia_agents": [{"id": "agent-id"}],
+        "sowia_agents": [{"id": "11111111-1111-4111-8111-111111111111"}],
         "sowia_agent_conversations": [{
             "id": conversation_id, "title": "Nouvelle conversation",
         }],
     })
 
     result = create_agent_conversation(
-        client, SimpleNamespace(id="owner-id"), "agent-id",
+        client, SimpleNamespace(id="owner-id"), "11111111-1111-4111-8111-111111111111",
         workspace_id="personal",
     )
 
     assert result["id"] == conversation_id
     assert client.queries["sowia_agents"][0].filters == [
-        ("id", "agent-id"), ("user_id", "owner-id"),
+        ("id", "11111111-1111-4111-8111-111111111111"), ("user_id", "owner-id"),
         ("workspace_id", "personal"), ("status", "active"),
     ]
     assert client.queries["sowia_agent_conversations"][0].payload == {
         "user_id": "owner-id",
-        "agent_id": "agent-id",
+        "agent_id": "11111111-1111-4111-8111-111111111111",
         "workspace_id": "personal",
         "title": "Nouvelle conversation",
     }
