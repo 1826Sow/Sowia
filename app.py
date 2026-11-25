@@ -9003,10 +9003,17 @@ elif page == "Paramètres":
                     "sowia-export-" + export_workspace + "-"
                     + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S") + ".json"
                 )
+                st.session_state["sowia_personal_data_export_workspace"] = export_workspace
                 st.success("Votre export est prêt. Téléchargez-le ci-dessous.")
-            except Exception as exc:
+            except Exception:
                 st.session_state.pop("sowia_personal_data_export_payload", None)
-                st.error("Impossible de préparer l’export : " + str(exc))
+                st.session_state.pop("sowia_personal_data_export_name", None)
+                st.session_state.pop("sowia_personal_data_export_workspace", None)
+                st.error("Impossible de préparer l’export complet. Vérifiez l’accès à vos données et à vos documents PDF, puis réessayez.")
+        if st.session_state.get("sowia_personal_data_export_workspace") != export_workspace:
+            st.session_state.pop("sowia_personal_data_export_payload", None)
+            st.session_state.pop("sowia_personal_data_export_name", None)
+            st.session_state.pop("sowia_personal_data_export_workspace", None)
         export_payload = st.session_state.get("sowia_personal_data_export_payload")
         if export_payload:
             st.download_button(
@@ -9020,9 +9027,9 @@ elif page == "Paramètres":
                 use_container_width=True,
             )
         st.caption(
-            "Cet export couvre les données structurées listées dans le fichier. "
-            "Les fichiers PDF/documents privés, les données détenues par des prestataires "
-            "et certaines données techniques ne sont pas inclus."
+            "L’export inclut les données structurées et les PDF privés de l’espace sélectionné "
+            "(dans la limite technique de 50 Mo au total). Les données détenues par des prestataires "
+            "et certaines données techniques ne sont pas incluses."
         )
     else:
         st.info("Connectez-vous à votre compte SOW IA pour préparer un export de vos données.")

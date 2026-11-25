@@ -1,4 +1,5 @@
 import json
+import base64
 import unittest
 
 from personal_data_export import (
@@ -38,9 +39,31 @@ class FakeQuery:
         return FakeResponse([])
 
 
+class FakeBucket:
+    def __init__(self):
+        self.prefixes = []
+        self.downloaded = []
+
+    def list(self, prefix, options=None):
+        self.prefixes.append((prefix, options))
+        if prefix == "user-123/personal":
+            return [{"name": "a" * 32 + "_rapport.pdf", "created_at": "2026-11-25T10:00:00Z"}]
+        return []
+
+    def download(self, path):
+        self.downloaded.append(path)
+        return b"%PDF-1.7\ncontenu"
+
+
 class FakeClient:
     def __init__(self):
         self.calls = []
+        self.storage = self
+        self.bucket = FakeBucket()
+
+    def from_(self, bucket_name):
+        self.asserted_bucket = bucket_name
+        return self.bucket
 
     def table(self, name):
         return FakeQuery(self, name)
@@ -59,6 +82,12 @@ class PersonalDataExportTests(unittest.TestCase):
         self.assertEqual(result["workspace"], "personal")
         self.assertEqual(result["profile"]["id"], "user-123")
         self.assertEqual(len(client.calls), 10)
+        self.assertEqual(client.asserted_bucket, "sowia-files")
+        self.assertEqual(len(result["data"]["private_documents"]), 1)
+        pdf = result["data"]["private_documents"][0]
+        self.assertEqual(pdf["name"], "rapport.pdf")
+        self.assertEqual(base64.b64decode(pdf["content_base64"]), b"%PDF-1.7\ncontenu")
+        self.assertEqual(client.bucket.downloaded, ["user-123/personal/" + "a" * 32 + "_rapport.pdf"])
         for table, columns, filters, start, end in client.calls:
             self.assertIn(("user_id", "user-123"), filters)
             if table != "sowia_user_preferences":
