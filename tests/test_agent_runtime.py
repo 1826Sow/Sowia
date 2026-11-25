@@ -4,7 +4,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from agent_runtime import AgentQuotaExceeded, execute_agent_action
+from agent_runtime import (
+    AgentQuotaExceeded,
+    AgentRequestAlreadyRecorded,
+    execute_agent_action,
+)
 
 
 class FakeRpc:
@@ -73,6 +77,27 @@ def test_quota_denial_never_calls_handler():
 
     assert exc.value.usage["reason"] == "quota_exceeded"
     assert calls == []
+
+
+def test_repeated_request_id_never_runs_handler_again():
+    client = FakeClient([{
+        "allowed": True,
+        "used_credits": 5,
+        "monthly_limit": 1000,
+        "remaining_credits": 995,
+        "reason": "already_recorded",
+    }])
+    calls = []
+
+    with pytest.raises(AgentRequestAlreadyRecorded) as exc:
+        execute_agent_action(
+            client, SimpleNamespace(id="user-1"), "code_generation",
+            str(uuid.uuid4()), lambda: calls.append("ran"),
+        )
+
+    assert exc.value.usage["reason"] == "already_recorded"
+    assert calls == []
+    assert len(client.calls) == 1
 
 
 def test_handler_must_be_a_server_callable():
