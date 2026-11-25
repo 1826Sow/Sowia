@@ -8,7 +8,7 @@ _FRESHNESS_TERMS = (
     "derniere actualite", "actualites", "recemment", "cette semaine",
     "ce mois-ci", "cette annee", "maintenant", "cours actuel",
     "prix actuel", "taux actuel", "meteo", "resultats en direct",
-    "today", "right now", "currently", "latest", "breaking news",
+    "today", "right now", "currently", "latest", "current", "breaking news",
     "real time", "live results", "current price", "current rate",
     "this week", "this month", "this year", "recent news", "weather",
 )
@@ -31,4 +31,4 @@ def should_search_web(prompt):
         return False
     if any(term in query for term in _FRESHNESS_TERMS):
         return True
-    return any(pattern.search(query) for pattern in _PATTERNS)
+    return False
