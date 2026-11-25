@@ -152,9 +152,14 @@ end
 $agent_test$;
 -- Keep a separate conversation fixture for the reconnect/persistence test;
 -- the original conversation above must remain deleted after its deletion check.
+-- Conversation creation requires an active agent; pause it again afterwards.
+update public.sowia_agents set status = 'active'
+where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 insert into public.sowia_agent_conversations(id,user_id,agent_id,workspace_id,title)
 values ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','11111111-1111-4111-8111-111111111111','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','personal','Fil persistant');
 insert into public.sowia_agent_messages(conversation_id,user_id,agent_id,workspace_id,role,content)
 values ('cccccccc-cccc-4ccc-8ccc-cccccccccccc','11111111-1111-4111-8111-111111111111','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','personal','user','Message persistant');
+update public.sowia_agents set status = 'paused'
+where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 reset role;
 select 'PASS: owner-scoped agent memory and conversation deletion, paused-agent memory access and message cascade' as result;
