@@ -22,6 +22,17 @@ class AgentQuotaExceeded(PermissionError):
         )
 
 
+class AgentRequestAlreadyRecorded(PermissionError):
+    """Raised when an idempotency key was already claimed by an earlier attempt."""
+
+    def __init__(self, usage: dict):
+        self.usage = dict(usage)
+        super().__init__(
+            "Cette requête a déjà été enregistrée. "
+            "Son gestionnaire ne sera pas exécuté une seconde fois."
+        )
+
+
 def execute_agent_action(
     user_client,
     user,
@@ -36,8 +47,10 @@ def execute_agent_action(
 
     The quota is atomically consumed before the handler starts, so concurrent
     requests cannot run beyond the account limit. A retry must reuse request_id;
-    the database RPC makes that debit idempotent. An attempted action consumes
-    its published credits even if its handler later raises an exception.
+    the database RPC makes that debit idempotent. A repeated request is rejected
+    after the RPC reports 'already_recorded', preventing the handler from running
+    twice even though the original debit is not repeated. An attempted action
+    consumes its published credits even if its handler later raises an exception.
 
     `handler` must be selected by trusted server code, never by a client-provided
     import path or callable name. User identity and credit cost are derived by
@@ -49,6 +62,8 @@ def execute_agent_action(
     usage = consume_agent_action(user_client, user, action, request_id)
     if not usage["allowed"]:
         raise AgentQuotaExceeded(usage)
+    if usage.get("reason") == "already_recorded":
+        raise AgentRequestAlreadyRecorded(usage)
 
     result = handler(*args, **kwargs)
     return {"result": result, "usage": usage}
