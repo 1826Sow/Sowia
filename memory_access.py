@@ -140,9 +140,14 @@ def load_agent_memory_context(
         project_id = agent.get("project_id")
         active_project_id = None
         if agent.get("can_read_project_memory") and project_id is not None:
-            active_project_id = _owned_project(
-                client, user_id, workspace, project_id
-            )
+            try:
+                active_project_id = _owned_project(
+                    client, user_id, workspace, project_id
+                )
+            except PermissionError:
+                # A project may have been archived after agent registration.
+                # Keep the agent's private memory usable, but share no project notes.
+                active_project_id = None
         for item in shared:
             if item.get("project_id") is None and agent.get("can_read_workspace_memory"):
                 authorized.append(item)
