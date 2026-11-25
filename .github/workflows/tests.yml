@@ -98,9 +98,9 @@ jobs:
       SOWIA_TEST_SUPABASE_URL: https://mrbmoavotzcuzvnhfjla.supabase.co
       # Public publishable key from SOWIA - TEST; not a service_role or secret key.
       SOWIA_TEST_SUPABASE_ANON_KEY: sb_publishable_68ptXVsokO8riR8cgcKLxg_UaYHVa4a
-      SOWIA_TEST_USER_A_EMAIL: sowla@live.fr
+      SOWIA_TEST_USER_A_EMAIL: ${{ secrets.SOWIA_TEST_USER_A_EMAIL }}
       SOWIA_TEST_USER_A_PASSWORD: ${{ secrets.SOWIA_TEST_USER_A_PASSWORD }}
-      SOWIA_TEST_USER_B_EMAIL: sowkeys7@gmail.com
+      SOWIA_TEST_USER_B_EMAIL: ${{ secrets.SOWIA_TEST_USER_B_EMAIL }}
       SOWIA_TEST_USER_B_PASSWORD: ${{ secrets.SOWIA_TEST_USER_B_PASSWORD }}
       SOWIA_TEST_PROJECT_CONFIRMATION: ${{ secrets.SOWIA_TEST_PROJECT_CONFIRMATION }}
     steps:
