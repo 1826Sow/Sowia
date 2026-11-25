@@ -908,20 +908,34 @@ def delete_app_memory(memory_id):
     return local_delete_memory(memory_id, st.session_state.get("workspace_id", "personal"))
 
 def extract_explicit_memory_request(message):
-    """Return text only when the user explicitly asks SOW IA to remember it."""
+    """Extract a note only when the user clearly asks SOW IA to remember it.
+
+    Accept natural French and English command variants, including punctuation
+    after the command. Ordinary conversation is never silently persisted.
+    """
+    import re
+
     text = str(message or "").strip()
-    markers = (
-        "retiens que", "retiens :", "mémorise que", "memorise que",
-        "souviens-toi que", "souviens toi que", "enregistre dans ma mémoire",
-        "enregistre dans ma memoire", "enregistre durablement",
-        "remember that", "please remember",
-    )
-    lowered = text.casefold()
-    matches = [(lowered.find(marker), marker) for marker in markers if lowered.find(marker) >= 0]
-    if not matches:
+    if not text:
         return None
-    position, marker = min(matches, key=lambda item: item[0])
-    content = text[position + len(marker):].strip(" \t\r\n:;,.—-")
+    command = re.compile(
+        r"(?:"
+        r"retiens(?:[- ]bien)?(?:\s+que)?|"
+        r"m[eé]morise(?:[- ]bien)?(?:\s+que)?|"
+        r"garde(?:[- ]bien)?\s+en\s+m[eé]moire(?:\s+que)?|"
+        r"souviens[- ]toi(?:\s+bien)?(?:\s+que)?|"
+        r"n'oublie\s+pas(?:\s+que)?|"
+        r"note(?:[- ]bien)?(?:\s+que)?|"
+        r"enregistre(?:\s+durablement)?(?:\s+dans\s+(?:ma|la)\s+m[eé]moire)?(?:\s+que)?|"
+        r"remember(?:\s+that)?|please\s+remember(?:\s+that)?|"
+        r"save(?:\s+this)?\s+to\s+memory(?:\s+that)?"
+        r")\s*[:;,—-]?\s*",
+        flags=re.IGNORECASE,
+    )
+    match = command.search(text)
+    if not match:
+        return None
+    content = text[match.end():].strip(" \\t\\r\\n:;,.—-")
     if not content or len(content) > 1000:
         return None
     sensitive_markers = (
