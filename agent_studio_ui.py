@@ -34,6 +34,7 @@ def _set_agent_status(client, user, agent, workspace, status):
         .eq("user_id", str(user.id))
         .eq("workspace_id", workspace)
         .in_("status", ["active", "paused"])
+        .select("id, status")
         .execute().data or []
     )
     if not result:
