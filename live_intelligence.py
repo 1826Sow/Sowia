@@ -1,5 +1,4 @@
 """Automatic detection of questions that need fresh public information."""
-import re
 import unicodedata
 
 _FRESHNESS_TERMS = (
@@ -12,12 +11,6 @@ _FRESHNESS_TERMS = (
     "real time", "live results", "current price", "current rate",
     "this week", "this month", "this year", "recent news", "weather",
 )
-_PATTERNS = (
-    re.compile(r"\\b(?:202[5-9]|203\\d)\\b"),
-    re.compile(r"\\b(?:latest|current|live|today|now)\\b", re.I),
-    re.compile(r"\\b(?:dernier|derniere|derniers|dernieres|actuel|actuelle|actuels|actuelles)\\b", re.I),
-)
-
 
 def _normalize(value):
     normalized = unicodedata.normalize("NFKD", str(value or "").casefold())
