@@ -52,7 +52,7 @@ def delete_private_agent_memory(client, user, agent_id, memory_id, workspace_id=
     result = (client.table("sowia_agent_memory_items").delete()
         .eq("id", item_id).eq("agent_id", agent)
         .eq("user_id", owner).eq("workspace_id", workspace)
-        .execute().data or [])
+        .select("id").execute().data or [])
     if len(result) != 1:
         raise PermissionError("La note n'existe pas dans la mémoire de cet agent.")
     return True
