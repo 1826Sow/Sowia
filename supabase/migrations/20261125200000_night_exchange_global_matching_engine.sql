@@ -265,8 +265,7 @@ begin
     raise exception 'La fiche de cette application n’est plus approuvée.';
   end if;
   select * into v_config from public.sowia_nex_market_config where singleton = true;
-  insert into public.sowia_nex_wallets(user_id) values (v_uid)
-  on conflict (user_id) do nothing;
+  perform private.nex_ensure_wallet();
   select * into v_wallet from public.sowia_nex_wallets where user_id = v_uid for update;
   insert into public.sowia_nex_positions(user_id, share_class_id)
   values (v_uid, p_share_class_id) on conflict do nothing;
