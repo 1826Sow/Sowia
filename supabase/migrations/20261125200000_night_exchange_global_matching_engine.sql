@@ -69,6 +69,46 @@ create policy sowia_nex_market_config_read on public.sowia_nex_market_config
 grant select on public.sowia_nex_positions, public.sowia_nex_market_config to authenticated;
 revoke all on public.sowia_nex_revenue_ledger from anon, authenticated;
 
+-- The NIGHT EXCHANGE UI is Premium-gated; enforce the same rule at the database boundary.
+drop policy if exists sowia_nex_share_classes_public_read on public.sowia_nex_share_classes;
+create policy sowia_nex_share_classes_public_read on public.sowia_nex_share_classes
+  for select to authenticated
+  using (
+    public.sowia_has_professional_access()
+    and status='listed'
+    and exists (
+      select 1 from public.sowia_night_exchange_apps a
+      where a.id=application_id and a.status='approved'
+    )
+  );
+drop policy if exists sowia_nex_wallets_owner_read on public.sowia_nex_wallets;
+create policy sowia_nex_wallets_owner_read on public.sowia_nex_wallets
+  for select to authenticated
+  using (user_id=(select auth.uid()) and public.sowia_has_professional_access());
+drop policy if exists sowia_nex_orders_owner_read on public.sowia_nex_orders;
+create policy sowia_nex_orders_owner_read on public.sowia_nex_orders
+  for select to authenticated
+  using (user_id=(select auth.uid()) and public.sowia_has_professional_access());
+drop policy if exists sowia_nex_trades_participant_read on public.sowia_nex_trades;
+create policy sowia_nex_trades_participant_read on public.sowia_nex_trades
+  for select to authenticated
+  using (
+    public.sowia_has_professional_access()
+    and (buyer_user_id=(select auth.uid()) or seller_user_id=(select auth.uid()))
+  );
+drop policy if exists sowia_nex_positions_owner_read on public.sowia_nex_positions;
+create policy sowia_nex_positions_owner_read on public.sowia_nex_positions
+  for select to authenticated
+  using (user_id=(select auth.uid()) and public.sowia_has_professional_access());
+drop policy if exists sowia_nex_market_config_read on public.sowia_nex_market_config;
+create policy sowia_nex_market_config_read on public.sowia_nex_market_config
+  for select to authenticated
+  using (public.sowia_has_professional_access());
+drop policy if exists sowia_nex_ledger_owner_read on public.sowia_nex_ledger;
+create policy sowia_nex_ledger_owner_read on public.sowia_nex_ledger
+  for select to authenticated
+  using (user_id=(select auth.uid()) and public.sowia_has_professional_access());
+
 -- One global transaction lock intentionally serializes the first matching-engine
 -- release. This is conservative and prevents cross-symbol wallet deadlocks.
 create or replace function private.nex_ensure_wallet()
@@ -83,6 +123,9 @@ declare
   v_wallet public.sowia_nex_wallets%rowtype;
 begin
   if v_uid is null then raise exception 'Connexion requise.' using errcode = '28000'; end if;
+  if not public.sowia_has_professional_access() then
+    raise exception 'Un accès Premium actif est nécessaire pour NIGHT EXCHANGE.';
+  end if;
   with inserted as (
     insert into public.sowia_nex_wallets(user_id)
     values (v_uid)
@@ -120,6 +163,9 @@ declare
   v_id uuid;
 begin
   if v_uid is null then raise exception 'Connexion requise.' using errcode = '28000'; end if;
+  if not public.sowia_has_professional_access() then
+    raise exception 'Un accès Premium actif est nécessaire pour coter une application.';
+  end if;
   perform pg_advisory_xact_lock(hashtext('sowia_nex_matching_engine'));
   select * into v_app from public.sowia_night_exchange_apps
    where id = p_application_id for update;
@@ -190,6 +236,9 @@ declare
   v_existing_cross boolean;
 begin
   if v_uid is null then raise exception 'Connexion requise.' using errcode = '28000'; end if;
+  if not public.sowia_has_professional_access() then
+    raise exception 'Un accès Premium actif est nécessaire pour négocier.';
+  end if;
   if p_side is null or p_side not in ('buy','sell')
      or p_quantity is null or p_quantity < 1 or p_quantity > 1000000000
      or p_limit_price is null or p_limit_price <= 0 or p_limit_price > 1000000 then
@@ -463,6 +512,7 @@ as $$
   from public.sowia_nex_orders o
   join public.sowia_nex_share_classes s on s.id=o.share_class_id
   where o.share_class_id=p_share_class_id and s.status='listed'
+    and public.sowia_has_professional_access()
     and o.status in ('open','partially_filled') and o.remaining_quantity>0
   group by o.side,o.limit_price
   order by case when o.side='buy' then 0 else 1 end,
@@ -480,6 +530,7 @@ as $$
   from public.sowia_nex_trades t
   join public.sowia_nex_share_classes s on s.id=t.share_class_id
   where t.share_class_id=p_share_class_id and s.status='listed'
+    and public.sowia_has_professional_access()
   order by t.executed_at desc,t.id desc
   limit least(greatest(coalesce(p_limit,30),1),100);
 $$;
