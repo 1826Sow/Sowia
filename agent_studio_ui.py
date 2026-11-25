@@ -75,6 +75,9 @@ def _render_agent_conversation(client, user, agent, workspace):
             create_agent_conversation(
                 client, user, agent_id, workspace_id=workspace
             )
+            st.session_state.pop(
+                f"developer_studio_agent_conversation_{agent_id}", None
+            )
             st.rerun()
         except Exception as exc:
             st.error("La nouvelle conversation n'a pas été créée.")
