@@ -11,6 +11,10 @@ from collections.abc import Callable
 from agent_usage_quota import consume_agent_action, finish_agent_action
 
 
+class AgentActionAlreadyProcessed(RuntimeError):
+    """Raised when an idempotency key was already used; handlers are never replayed."""
+
+
 class AgentQuotaExceeded(PermissionError):
     """Raised when an agent action is blocked by the account's monthly quota."""
 
@@ -60,6 +64,10 @@ def execute_agent_action(
     )
     if not usage["allowed"]:
         raise AgentQuotaExceeded(usage)
+    if agent_id is not None and usage.get("reason") == "already_recorded":
+        raise AgentActionAlreadyProcessed(
+            "Cette action a déjà été enregistrée ; elle ne sera pas exécutée une seconde fois."
+        )
 
     try:
         result = handler(*args, **kwargs)
