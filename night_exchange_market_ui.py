@@ -33,6 +33,11 @@ def render(client, user):
         "SIMULATION UNIQUEMENT — NXC est un crédit virtuel sans valeur monétaire, "
         "non convertible et non remboursable. Aucun paiement ni titre réel."
     )
+    st.info(
+        "Les actions affichées sont exclusivement virtuelles : elles ne représentent "
+        "aucune part du capital d'une entreprise et ne confèrent aucun droit de propriété, "
+        "de vote, de dividende, de revenu ou de remboursement."
+    )
     if client is None or user is None or not getattr(user, "id", None):
         st.info("Connectez-vous pour accéder au marché mondial simulé.")
         return
