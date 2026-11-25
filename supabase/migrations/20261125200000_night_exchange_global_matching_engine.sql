@@ -218,7 +218,7 @@ begin
   end if;
 
   if p_side = 'buy' then
-    v_reserve := round(p_quantity * p_limit_price * (1 + v_config.fee_rate), 2);
+    v_reserve := ceil(p_limit_price * (1 + v_config.fee_rate) * 100) / 100 * p_quantity;
     if v_wallet.balance < v_reserve then raise exception 'Solde NXC disponible insuffisant.'; end if;
     update public.sowia_nex_wallets
        set balance = balance - v_reserve,
@@ -259,7 +259,7 @@ begin
       v_buy_id := v_order_id; v_sell_id := v_opp.id;
       v_buyer := v_uid; v_seller := v_opp.user_id;
       v_buy_limit := p_limit_price; v_exec_price := v_opp.limit_price;
-      v_reserved_piece := round(v_buy_limit * v_qty * (1 + v_config.fee_rate),2);
+      v_reserved_piece := ceil(v_buy_limit * (1 + v_config.fee_rate) * 100) / 100 * v_qty;
       v_gross := round(v_exec_price * v_qty,2);
       v_fee := round(v_gross * v_config.fee_rate,2);
       v_sowia := round(v_fee * v_config.sowia_fee_share,2);
@@ -287,13 +287,14 @@ begin
       update public.sowia_nex_wallets set balance = balance + v_gross, updated_at = now()
        where user_id = v_seller returning balance into v_seller_balance;
 
+      if v_gross <= 0 then raise exception 'Le montant minimal d’une transaction est 0,01 NXC.'; end if;
+      if v_gross <= 0 then raise exception 'Le montant minimal d’une transaction est 0,01 NXC.'; end if;
       insert into public.sowia_nex_trades(
         share_class_id,buy_order_id,sell_order_id,buyer_user_id,seller_user_id,
         quantity,execution_price,gross_value,total_fee,sowia_revenue,market_reserve,ecosystem_fund
       ) values (p_share_class_id,v_buy_id,v_sell_id,v_buyer,v_seller,
         v_qty,v_exec_price,v_gross,v_fee,v_sowia,v_reserve,v_ecosystem)
       returning id into v_trade_id;
-      if v_gross <= 0 then raise exception 'Le montant minimal d’une transaction est 0,01 NXC.'; end if;
       insert into public.sowia_nex_ledger(user_id,trade_id,event_type,amount,balance_after,details)
       values
        (v_buyer,v_trade_id,'buy_debit',-v_total_debit,v_buyer_balance,jsonb_build_object('quantity',v_qty,'ticker',v_share.ticker)),
@@ -330,7 +331,7 @@ begin
       v_buy_id := v_opp.id; v_sell_id := v_order_id;
       v_buyer := v_opp.user_id; v_seller := v_uid;
       v_buy_limit := v_opp.limit_price; v_exec_price := v_opp.limit_price;
-      v_reserved_piece := round(v_buy_limit * v_qty * (1 + v_config.fee_rate),2);
+      v_reserved_piece := ceil(v_buy_limit * (1 + v_config.fee_rate) * 100) / 100 * v_qty;
       v_gross := round(v_exec_price * v_qty,2);
       v_fee := round(v_gross * v_config.fee_rate,2);
       v_sowia := round(v_fee * v_config.sowia_fee_share,2);
@@ -362,7 +363,6 @@ begin
       ) values(p_share_class_id,v_buy_id,v_sell_id,v_buyer,v_seller,
         v_qty,v_exec_price,v_gross,v_fee,v_sowia,v_reserve,v_ecosystem)
       returning id into v_trade_id;
-      if v_gross <= 0 then raise exception 'Le montant minimal d’une transaction est 0,01 NXC.'; end if;
       insert into public.sowia_nex_ledger(user_id,trade_id,event_type,amount,balance_after,details)
       values (v_buyer,v_trade_id,'buy_debit',-v_total_debit,v_buyer_balance,jsonb_build_object('quantity',v_qty,'ticker',v_share.ticker));
       insert into public.sowia_nex_ledger(user_id,trade_id,event_type,amount,balance_after,details)
