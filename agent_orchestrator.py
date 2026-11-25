@@ -154,6 +154,10 @@ def run_agent_turn(
     )
     if not chat_usage["allowed"]:
         raise AgentQuotaExceeded(chat_usage)
+    if chat_usage.get("reason") == "already_recorded":
+        raise AgentOrchestrationError(
+            "Ce tour a déjà été enregistré ; il ne sera pas rejoué automatiquement."
+        )
     system_prompt = build_system_prompt(
         memories=memories, document_context=document_context, language=language
     )
