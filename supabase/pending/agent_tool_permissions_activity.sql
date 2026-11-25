@@ -32,8 +32,8 @@ create table if not exists public.sowia_agent_activity_events (
     agent_id uuid not null references public.sowia_agents(id) on delete cascade,
     workspace_id text not null check (workspace_id in ('personal', 'professional')),
     request_id uuid not null,
-    tool_name text not null check (tool_name in ('web_search', 'memory_read', 'memory_write')),
-    action text not null check (action in ('web_search', 'tool_execution')),
+    tool_name text not null check (tool_name in ('agent_chat', 'web_search', 'memory_read', 'memory_write')),
+    action text not null check (action in ('chat', 'web_search', 'tool_execution')),
     credits integer not null check (credits > 0),
     used_after integer not null check (used_after >= credits),
     status text not null default 'started'
@@ -91,7 +91,7 @@ begin
     if p_workspace_id not in ('personal', 'professional') then
         raise exception 'Invalid workspace' using errcode = '22023';
     end if;
-    if p_tool_name not in ('web_search', 'memory_read', 'memory_write') then
+    if p_tool_name not in ('agent_chat', 'web_search', 'memory_read', 'memory_write') then
         raise exception 'Unsupported agent tool' using errcode = '22023';
     end if;
 
@@ -101,11 +101,12 @@ begin
        and a.user_id = v_user_id
        and a.workspace_id = p_workspace_id
        and a.status = 'active';
-    if not found or not (p_tool_name = any(v_agent.enabled_tools)) then
+    if not found or (p_tool_name <> 'agent_chat' and not (p_tool_name = any(v_agent.enabled_tools))) then
         raise exception 'Agent tool is not enabled for this owner' using errcode = '42501';
     end if;
 
     v_expected_action := case
+        when p_tool_name = 'agent_chat' then 'chat'
         when p_tool_name = 'web_search' then 'web_search'
         else 'tool_execution'
     end;
@@ -138,7 +139,7 @@ begin
         ) values (
             v_user_id, p_agent_id, p_workspace_id, p_request_id, p_tool_name,
             p_action,
-            case p_action when 'web_search' then 3 else 2 end,
+            case p_action when 'chat' then 1 when 'web_search' then 3 else 2 end,
             v_usage.used_credits, 'started'
         )
         on conflict (user_id, request_id) do nothing;
