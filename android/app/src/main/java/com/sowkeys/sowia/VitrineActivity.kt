@@ -2,6 +2,7 @@ package com.sowkeys.sowia
 
 import android.content.Intent
 import android.os.Bundle
+import java.util.Locale
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -31,9 +32,18 @@ import androidx.compose.ui.unit.sp
 class VitrineActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val enterLabel = when (Locale.getDefault().language) {
+            "en" -> "CONTINUE"
+            "es" -> "CONTINUAR"
+            "de" -> "WEITER"
+            "it" -> "CONTINUA"
+            "pt" -> "CONTINUAR"
+            "ar" -> "متابعة"
+            else -> "VALIDER"
+        }
         setContent {
             MaterialTheme {
-                VitrineScreen {
+                VitrineScreen(enterLabel) {
                     startActivity(Intent(this, DashboardActivity::class.java))
                     finish()
                 }
@@ -43,7 +53,7 @@ class VitrineActivity : ComponentActivity() {
 }
 
 @Composable
-private fun VitrineScreen(onEnter: () -> Unit) {
+private fun VitrineScreen(enterLabel: String, onEnter: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -75,7 +85,7 @@ private fun VitrineScreen(onEnter: () -> Unit) {
                     contentColor = Color.White
                 )
             ) {
-                Text("VALIDER", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(enterLabel, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
