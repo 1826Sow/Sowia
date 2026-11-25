@@ -143,3 +143,22 @@ def test_tool_call_json_must_be_an_object(monkeypatch):
     )
     assert result == "Je ne peux pas traiter cet appel."
     assert calls == []
+
+
+def test_tool_definitions_expose_only_owner_enabled_tools():
+    names = {
+        item["function"]["name"]
+        for item in orchestrator._tool_definitions(["memory_read"])
+    }
+    assert names == {"memory_read"}
+
+
+def test_dispatch_rejects_a_tool_not_enabled_for_this_agent():
+    with pytest.raises(orchestrator.AgentOrchestrationError):
+        orchestrator._execute_tool(
+            "web_search", {"query": "test"},
+            user_client=object(), user=SimpleNamespace(id="owner"),
+            agent_id="agent-1", workspace_id="personal",
+            request_id="00000000-0000-0000-0000-000000000001",
+            enabled_tools=["memory_read"],
+        )
