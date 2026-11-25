@@ -48,6 +48,18 @@ Le site vitrine public ne présente actuellement aucun lien visible vers des men
 - politique de cookies/traceurs si des traceurs non essentiels sont utilisés ;
 - procédure de violation de données, gestion des demandes et contact de l'autorité compétente si nécessaire.
 
+### Constat complémentaire — accès, export et effacement des données
+
+Revue ciblée du code des mémoires et conversations agents effectuée le 25 novembre 2026 :
+
+- Un formateur d'export texte existe pour les notes de mémoire qui lui sont déjà fournies ; ce n'est pas, à lui seul, un export complet de toutes les données personnelles du compte.
+- Les outils de mémoire des agents exposent actuellement la lecture et l'écriture, mais pas de commande utilisateur dédiée pour supprimer une note mémoire.
+- Le stockage durable des conversations agents prévoit la création, la liste et la lecture des fils/messages. Le parcours applicatif examiné ne fournit pas de fonction de suppression de conversation ou de message ; les tables de conversations/messages ne donnent pas de droit DELETE direct au rôle authenticated.
+- Les clés étrangères prévoient une suppression en cascade des données agents/conversations/messages lors de la suppression du compte Auth ou de l'agent concerné. Cela ne démontre pas qu'un parcours de suppression du compte est disponible dans l'interface ni que toutes les sauvegardes et données détenues par les sous-traitants suivent le même délai.
+- Aucune durée de conservation fonctionnelle n'a été identifiée dans les modules examinés pour les conversations agents et les notes mémoire persistantes.
+
+**Conséquence :** ne pas considérer le droit à l'effacement, la limitation de conservation ou l'export complet comme opérationnels pour l'ensemble du compte. Avant ouverture publique, définir puis tester un parcours authentifié d'export global, de suppression sélective (note/conversation) et de suppression de compte, avec délais de propagation, sauvegardes, journaux et exceptions légales documentés. Les suppressions doivent rester strictement limitées aux données du compte demandeur et être auditées.
+
 ## 3 bis. Sous-traitants et flux techniques repérés dans le code
 
 Cette liste est une cartographie de départ fondée sur le dépôt ; elle ne prouve pas qu'un fournisseur est activé dans l'environnement de production ni ne remplace la vérification des contrats et paramètres de compte.
