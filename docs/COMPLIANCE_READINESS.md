@@ -52,13 +52,17 @@ Le site vitrine public ne présente actuellement aucun lien visible vers des men
 
 Revue ciblée du code des mémoires et conversations agents effectuée le 25 novembre 2026 :
 
-- Un formateur d'export texte existe pour les notes de mémoire qui lui sont déjà fournies ; ce n'est pas, à lui seul, un export complet de toutes les données personnelles du compte.
+- L'export JSON de l'espace sélectionné couvre les données structurées du compte, notamment conversations, messages, notes mémoire, projets, agents, préférences et données de suivi listées par le service d'export.
+- Depuis la fusion des PR #476 et #477, l'export inclut également les PDF privés du propriétaire dans l'espace sélectionné, sous forme Base64, avec contrôle d'accès, vérification de signature PDF, limite de 10 Mo par fichier et plafond de 50 Mo cumulés. Au-delà des limites, l'export complet échoue plutôt que de produire un résultat partiel.
+- L'export reste limité au périmètre applicatif explicitement listé : il n'inclut pas les données conservées directement par les sous-traitants, les secrets d'authentification/API, les identifiants de paiement ni certaines données techniques ou journaux.
 - Les outils de mémoire des agents exposent actuellement la lecture et l'écriture, mais pas de commande utilisateur dédiée pour supprimer une note mémoire.
 - Le stockage durable des conversations agents prévoit la création, la liste et la lecture des fils/messages. Le parcours applicatif examiné ne fournit pas de fonction de suppression de conversation ou de message ; les tables de conversations/messages ne donnent pas de droit DELETE direct au rôle authenticated.
 - Les clés étrangères prévoient une suppression en cascade des données agents/conversations/messages lors de la suppression du compte Auth ou de l'agent concerné. Cela ne démontre pas qu'un parcours de suppression du compte est disponible dans l'interface ni que toutes les sauvegardes et données détenues par les sous-traitants suivent le même délai.
 - Aucune durée de conservation fonctionnelle n'a été identifiée dans les modules examinés pour les conversations agents et les notes mémoire persistantes.
 
-**Conséquence :** ne pas considérer le droit à l'effacement, la limitation de conservation ou l'export complet comme opérationnels pour l'ensemble du compte. Avant ouverture publique, définir puis tester un parcours authentifié d'export global, de suppression sélective (note/conversation) et de suppression de compte, avec délais de propagation, sauvegardes, journaux et exceptions légales documentés. Les suppressions doivent rester strictement limitées aux données du compte demandeur et être auditées.
+**État après les PR #475 à #477 :** la suppression d'une conversation SOW IA standard par son propriétaire et l'export JSON des données applicatives listées (y compris les PDF privés dans les limites ci-dessus) sont implémentés. Cela ne couvre pas encore tous les parcours de suppression sélective des mémoires privées d'agents, des conversations/messages d'agents ni la suppression autonome complète du compte.
+
+**Conséquence :** ne pas considérer le droit à l'effacement ni la limitation de conservation comme entièrement opérationnels pour l'ensemble du compte. Avant ouverture publique, définir puis tester les suppressions sélectives (note mémoire, conversation/message agent) et la suppression de compte, avec délais de propagation, sauvegardes, journaux et exceptions légales documentés. Les suppressions doivent rester strictement limitées aux données du compte demandeur et être auditées.
 
 ## 3 bis. Sous-traitants et flux techniques repérés dans le code
 
