@@ -62,6 +62,11 @@ begin
 end
 $$;
 
+-- Enable web_search explicitly for this agent before testing its quota gate.
+update public.sowia_agents
+set enabled_tools = array['memory_read','web_search']::text[]
+where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
 -- Simulate near-exhausted monthly quota as the database owner, then verify web_search is blocked.
 reset role;
 update public.sowia_agent_usage_monthly
