@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from agent_usage_quota import consume_agent_action
+from agent_usage_quota import consume_agent_action, finish_agent_action
 
 
 class AgentQuotaExceeded(PermissionError):
@@ -30,6 +30,9 @@ def execute_agent_action(
     handler: Callable,
     /,
     *args,
+    agent_id=None,
+    workspace_id="personal",
+    tool_name=None,
     **kwargs,
 ):
     """Authorize and execute one server-registered agent action.
@@ -46,9 +49,26 @@ def execute_agent_action(
     if not callable(handler):
         raise TypeError("Un gestionnaire d'action serveur est requis.")
 
-    usage = consume_agent_action(user_client, user, action, request_id)
+    usage = consume_agent_action(
+        user_client, user, action, request_id,
+        agent_id=agent_id, workspace_id=workspace_id, tool_name=tool_name,
+    )
     if not usage["allowed"]:
         raise AgentQuotaExceeded(usage)
 
-    result = handler(*args, **kwargs)
+    if agent_id is not None and (workspace_id not in {"personal", "professional"} or not tool_name):
+        raise ValueError("Métadonnées d'activité agent incomplètes.")
+    try:
+        result = handler(*args, **kwargs)
+    except Exception as exc:
+        if agent_id is not None:
+            finish_agent_action(
+                user_client, user, request_id, agent_id, "failed",
+                error_code=type(exc).__name__,
+            )
+        raise
+    if agent_id is not None:
+        finish_agent_action(
+            user_client, user, request_id, agent_id, "completed"
+        )
     return {"result": result, "usage": usage}
