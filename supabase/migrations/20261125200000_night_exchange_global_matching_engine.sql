@@ -190,10 +190,13 @@ declare
   v_existing_cross boolean;
 begin
   if v_uid is null then raise exception 'Connexion requise.' using errcode = '28000'; end if;
-  if p_side not in ('buy','sell') or p_quantity < 1 or p_quantity > 1000000000
-     or p_limit_price <= 0 or p_limit_price > 1000000 then
+  if p_side is null or p_side not in ('buy','sell')
+     or p_quantity is null or p_quantity < 1 or p_quantity > 1000000000
+     or p_limit_price is null or p_limit_price <= 0 or p_limit_price > 1000000 then
     raise exception 'Ordre invalide.';
   end if;
+  p_limit_price := round(p_limit_price,4);
+  if p_limit_price <= 0 then raise exception 'Le prix doit être au moins égal à 0,0001 NXC.'; end if;
   perform pg_advisory_xact_lock(hashtext('sowia_nex_matching_engine'));
   select * into v_share from public.sowia_nex_share_classes
    where id = p_share_class_id for update;
