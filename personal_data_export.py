@@ -1,19 +1,13 @@
-"""Authenticated, owner-scoped GDPR data export for SOW IA.
-
-The exporter uses only the supplied authenticated Supabase client and explicit
-user_id/workspace filters. It never requests credentials, tokens, payment
-provider identifiers, webhook payloads, or storage objects.
-"""
+"""Authenticated, owner-scoped GDPR data export for SOW IA."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
 
-
 _ALLOWED_WORKSPACES = {"personal", "professional"}
 _PAGE_SIZE = 500
 
-# Fixed allowlist: never accept table names or columns from user input.
+# Fixed allowlist: table names and columns are never user-controlled.
 _EXPORT_TABLES = {
     "conversations": ("sowia_conversations", "id, session_id, title, created_at, updated_at"),
     "messages": ("sowia_messages", "id, session_id, role, content, created_at"),
@@ -46,11 +40,11 @@ def _fetch_owned_rows(client, table_name, columns, owner_id, workspace):
     rows = []
     offset = 0
     while True:
-        query = (client.table(table_name).select(columns)
-            .eq("user_id", owner_id))
+        query = client.table(table_name).select(columns).eq("user_id", owner_id)
         if table_name != "sowia_user_preferences":
             query = query.eq("workspace_id", workspace)
-        page = query.order("created_at", desc=False).range(
+        order_column = "updated_at" if table_name == "sowia_user_preferences" else "created_at"
+        page = query.order(order_column, desc=False).range(
             offset, offset + _PAGE_SIZE - 1
         ).execute().data or []
         rows.extend(page)
@@ -61,26 +55,22 @@ def _fetch_owned_rows(client, table_name, columns, owner_id, workspace):
 
 
 def build_personal_data_export(client, user, workspace_id="personal"):
-    """Return a JSON-ready export containing only this user's selected workspace."""
+    """Build a JSON-ready export for the authenticated owner and workspace."""
     owner_id = _owner_id(user)
     workspace = _workspace_id(workspace_id)
-    data = {}
-    for key, (table_name, columns) in _EXPORT_TABLES.items():
-        data[key] = _fetch_owned_rows(
-            client, table_name, columns, owner_id, workspace
-        )
-
-    # Do not expose auth tokens, provider IDs, password hashes, or payment secrets.
-    profile = {
-        "id": owner_id,
-        "email": str(getattr(user, "email", "") or ""),
+    data = {
+        key: _fetch_owned_rows(client, table, columns, owner_id, workspace)
+        for key, (table, columns) in _EXPORT_TABLES.items()
     }
     return {
         "format": "sowia-personal-data-export",
         "version": 1,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "workspace": workspace,
-        "profile": profile,
+        "profile": {
+            "id": owner_id,
+            "email": str(getattr(user, "email", "") or ""),
+        },
         "data": data,
         "excluded": [
             "passwords_and_authentication_tokens",
