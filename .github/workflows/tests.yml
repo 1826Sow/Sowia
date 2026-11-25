@@ -96,7 +96,8 @@ jobs:
     env:
       # Hard-pinned to the dedicated test project; never sourced from a secret.
       SOWIA_TEST_SUPABASE_URL: https://mrbmoavotzcuzvnhfjla.supabase.co
-      SOWIA_TEST_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_TEST_SUPABASE_ANON_KEY }}
+      # Public publishable key from SOWIA - TEST; not a service_role or secret key.
+      SOWIA_TEST_SUPABASE_ANON_KEY: sb_publishable_68ptXVsokO8riR8cgcKLxg_UaYHVa4a
       SOWIA_TEST_USER_A_EMAIL: ${{ secrets.SOWIA_TEST_USER_A_EMAIL }}
       SOWIA_TEST_USER_A_PASSWORD: ${{ secrets.SOWIA_TEST_USER_A_PASSWORD }}
       SOWIA_TEST_USER_B_EMAIL: ${{ secrets.SOWIA_TEST_USER_B_EMAIL }}
