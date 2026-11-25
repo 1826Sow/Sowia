@@ -16,25 +16,23 @@ Ce document distingue les contrôles vérifiés dans le dépôt et la base de pr
 
 **Règle de lancement :** ne pas activer d'argent réel, de conversion, de titres transférables, de dividendes monétaires, de droits de vote ou de droits économiques sans analyse juridique préalable dans chaque territoire ciblé et autorisations réglementaires nécessaires.
 
-## 2. Contrôles techniques observés
+## 2. Contrôles techniques observés en production
 
-### Vérifié
-- Authentification obligatoire sur l'application de production.
+### Vérifié le 25 novembre 2026
+- Authentification obligatoire sur l'application de production (connexion utilisateur précédemment confirmée).
 - Tables NIGHT EXCHANGE protégées par RLS.
-- Pas de privilège d'exécution anon sur les RPC de marché auditées.
-- Les RPC financières vérifient l'utilisateur authentifié et les droits Premium.
-- Les tables de revenus internes n'ont pas de politique de lecture client.
-- Les fonctions privilégiées d'agents et de modération auditées contiennent des contrôles d'identité, de propriétaire ou de rôle administrateur.
-- La fonction de transition des plans d'action utilisait un search_path non vide ; migration de durcissement préparée dans cette branche.
+- Les privilèges SQL clients sur les tables financières ont été réduits : les rôles anon/authenticated n'ont plus d'écriture directe sur les tables de marché ; les lectures authentifiées prévues restent soumises à RLS.
+- Les RPC de marché auditées refusent l'exécution au rôle anon et contrôlent l'utilisateur authentifié et les droits requis.
+- Les tables internes de revenus, d'activité et de quotas sont inaccessibles directement aux rôles anon et authenticated ; les sept tables signalées « RLS enabled, no policy » ont RLS activé et aucun privilège client direct de lecture/écriture.
+- La fonction interne `sowia_consume_agent_credits(uuid,text)` n'est plus exécutable par PUBLIC, anon ou authenticated. Le point d'entrée authentifié `sowia_consume_agent_action_for_agent` reste disponible.
+- Les huit fonctions SECURITY DEFINER encore exécutables par authenticated ont été inspectées individuellement : leurs définitions vérifiées contiennent des contrôles d'identité, de propriétaire, de rôle administrateur ou d'accès Premium selon leur fonction.
+- `sowia_action_transition(uuid,text,text)` utilise désormais `search_path=pg_catalog`.
 
-### En cours
-- Réduction des privilèges SQL clients par défaut sur les tables financières NIGHT EXCHANGE : retrait des écritures directes anon/authenticated et rétablissement des seules lectures authentifiées prévues par RLS.
-- Vérification CI et revue de la migration de durcissement avant toute application en production.
-
-### Alertes Supabase à traiter
-- Protection contre les mots de passe compromis désactivée. La documentation du projet indique que l'option Supabase correspondante dépend d'un forfait supérieur ; ne pas prétendre qu'elle est active.
-- Linter signale des tables RLS sans politique. Certaines sont volontairement privées et sans accès client direct (dont le registre interne des revenus NIGHT EXCHANGE et des événements/quota d'agents). Chaque table doit être classée explicitement comme « lecture client interdite » ou recevoir une politique propriétaire appropriée.
-- Linter signale des fonctions SECURITY DEFINER accessibles aux utilisateurs authentifiés. Les fonctions examinées appliquent des contrôles d'identité, de propriétaire ou d'administrateur ; elles doivent rester couvertes par des tests d'autorisation négatifs et une revue régulière.
+### Alertes encore ouvertes
+- Supabase signale huit fonctions SECURITY DEFINER exécutables par authenticated. Cette alerte ne prouve pas à elle seule une faille : ces RPC sont des points d'entrée utilisés par l'application. Elles doivent rester couvertes par des tests d'autorisation négatifs et une revue régulière ; ne pas révoquer leurs droits en bloc sans remplacer les parcours applicatifs.
+- Protection contre les mots de passe compromis désactivée. Ne pas prétendre qu'elle est active ; vérifier les possibilités de configuration du projet et les contraintes de forfait avant toute décision.
+- Supabase signale sept tables RLS sans politique. L'inspection des privilèges confirme qu'elles ne sont pas directement accessibles aux rôles anon/authenticated ; elles sont conçues comme tables internes. Conserver cette absence d'accès client tant qu'aucun besoin applicatif explicite et validé ne justifie une politique.
+- Les tests RLS utilisant les comptes de test Supabase ont précédemment échoué avec `invalid_credentials`. Cela empêche de considérer la validation multi-comptes de bout en bout comme terminée ; les secrets GitHub ne doivent pas être modifiés dans le cadre de cet audit.
 
 ## 3. Informations juridiques et RGPD manquantes avant ouverture publique
 
