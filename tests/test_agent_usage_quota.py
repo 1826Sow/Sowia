@@ -104,3 +104,41 @@ def test_missing_rpc_result_fails_closed():
         consume_agent_action(
             client, SimpleNamespace(id="user-1"), "chat", str(uuid.uuid4())
         )
+
+
+def test_agent_action_uses_owner_scoped_agent_activity_rpc():
+    request_id = str(uuid.uuid4())
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    client = FakeClient([{
+        "allowed": True,
+        "used_credits": 1,
+        "monthly_limit": 1000,
+        "remaining_credits": 999,
+        "reason": "quota_available",
+    }])
+    result = consume_agent_action(
+        client, SimpleNamespace(id="user-1"), "chat", request_id,
+        agent_id=agent_id, workspace_id="personal", tool_name="agent_chat",
+    )
+    assert result["allowed"] is True
+    assert client.calls == [(
+        "sowia_consume_agent_action_for_agent",
+        {
+            "p_request_id": request_id,
+            "p_action": "chat",
+            "p_agent_id": agent_id,
+            "p_workspace_id": "personal",
+            "p_tool_name": "agent_chat",
+        },
+    )]
+
+
+def test_agent_action_rejects_tool_action_mismatch_before_rpc():
+    client = FakeClient([])
+    with pytest.raises(ValueError):
+        consume_agent_action(
+            client, SimpleNamespace(id="user-1"), "chat", str(uuid.uuid4()),
+            agent_id="00000000-0000-0000-0000-000000000001",
+            workspace_id="personal", tool_name="web_search",
+        )
+    assert client.calls == []
