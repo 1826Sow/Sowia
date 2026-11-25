@@ -1,4 +1,4 @@
-"Owner-facing Developer Studio for SOW IA agents.
+"""Owner-facing Developer Studio for SOW IA agents.
 
 The UI delegates ownership and memory authorization to memory_access and RLS.
 It exposes only the reviewed static agent tool registry; no arbitrary code or
