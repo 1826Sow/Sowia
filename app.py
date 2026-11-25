@@ -2424,6 +2424,43 @@ elif page == "Assistant IA":
                             active_workspace_id
                         ] = selected_session_id
                         st.rerun()
+                    delete_confirm_key = (
+                        f"sowia_delete_conversation_confirm_{current_user.id}_"
+                        f"{active_workspace_id}_{selected_session_id}"
+                    )
+                    confirm_delete = st.checkbox(
+                        "Je confirme la suppression définitive de cette conversation et de ses messages",
+                        key=delete_confirm_key,
+                    )
+                    if st.button(
+                        "Supprimer cette conversation",
+                        key=f"sowia_delete_conversation_{current_user.id}_{active_workspace_id}_{selected_session_id}",
+                        disabled=not confirm_delete,
+                        use_container_width=True,
+                    ):
+                        try:
+                            cloud_storage.delete_conversation(
+                                supabase_client, current_user, selected_session_id,
+                                active_workspace_id,
+                            )
+                            st.session_state.pop(
+                                f"sowia_conversation_selector_{current_user.id}_{active_workspace_id}",
+                                None,
+                            )
+                            st.session_state.pop(delete_confirm_key, None)
+                            if selected_session_id == current_session_id:
+                                replacement = cloud_storage.create_conversation(
+                                    supabase_client, current_user, active_workspace_id,
+                                    title="Nouvelle conversation",
+                                )
+                                st.session_state.session_id = replacement["session_id"]
+                                st.session_state.setdefault("sowia_workspace_session_ids", {})[
+                                    active_workspace_id
+                                ] = replacement["session_id"]
+                            st.rerun()
+                        except Exception as delete_error:
+                            st.error("La suppression de la conversation n'a pas été confirmée.")
+                            st.caption("Diagnostic technique : " + type(delete_error).__name__)
                 else:
                     st.info("Aucune conversation ne correspond à cette recherche.")
             with conversation_cols[1]:
