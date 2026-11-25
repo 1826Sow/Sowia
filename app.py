@@ -2760,86 +2760,86 @@ elif page == "Assistant IA":
                     render_accessible_message("assistant", memory_reply)
                     st.caption("Diagnostic : " + type(memory_error).__name__)
             else:
-            # A cloud message must be persisted before invoking the AI. This avoids
-            # presenting a reply for a turn that cannot be recovered from history.
-            try:
-                save_app_message("user", prompt)
-                if not conversation_history and cloud_mode and current_user is not None:
-                    try:
-                        cloud_storage.touch_conversation(
-                            supabase_client, current_user, st.session_state.session_id,
-                            st.session_state.get("workspace_id", "personal"),
-                            title=prompt[:100].strip() or "Nouvelle conversation",
-                        )
-                    except Exception:
-                        pass
-            except Exception as save_error:
-                # The callback already cleared the visible input. Restore the
-                # original draft on the next rerun instead of losing user text.
-                safe_code = str(getattr(save_error, "code", "") or "").strip()[:80]
-                diagnostic = type(save_error).__name__
-                if safe_code:
-                    diagnostic += f" · code {safe_code}"
-                st.session_state["sowia_chat_prompt_restore"] = prompt
-                st.session_state["sowia_chat_save_error"] = diagnostic
-                st.rerun()
-            else:
-                render_accessible_message("user", prompt)
-                request_history = conversation_history + [{"role": "user", "content": prompt}]
-                with st.chat_message("assistant"):
-                    try:
-                        web_sources = []
-                        web_context = None
-                        if use_web_search or should_search_web(prompt):
-                            if should_search_web(prompt) and not use_web_search:
-                                st.caption(translate_ui("Recherche Web activée automatiquement pour vérifier les informations récentes.", language))
-                            try:
-                                from web_context import build_web_context, format_web_source_link, prepare_web_sources
-                                with st.spinner(translate_ui("Recherche de sources publiques…", language)):
-                                    web_sources = prepare_web_sources(search_web(prompt, max_results=5))
-                                web_context = build_web_context(web_sources)
-                                if not web_sources:
-                                    st.info(translate_ui("Aucune source exploitable n'a été trouvée. La réponse sera générée sans recherche Web.", language))
-                            except (RuntimeError, ValueError):
-                                st.warning(translate_ui("La recherche Web n'a pas abouti ; la conversation continue sans sources en ligne.", language))
-                        reply = answer(
-                            request_history,
-                            memories=select_relevant_memories(
-                                memories, query=prompt
-                            ),
-                            language=language,
-                            web_context=web_context,
-                        )
-                        if web_sources:
-                            reply += "\n\n**" + translate_ui("Sources consultées", language) + ":**\n" + "\n".join(
-                                format_web_source_link(source)
-                                for source in web_sources
-                            )
-                        st.markdown(reply)
+                # A cloud message must be persisted before invoking the AI. This avoids
+                # presenting a reply for a turn that cannot be recovered from history.
+                try:
+                    save_app_message("user", prompt)
+                    if not conversation_history and cloud_mode and current_user is not None:
                         try:
-                            save_app_message("assistant", reply)
-                        except Exception as save_error:
-                            pending_responses = st.session_state.setdefault(
-                                "sowia_pending_assistant_responses", {}
+                            cloud_storage.touch_conversation(
+                                supabase_client, current_user, st.session_state.session_id,
+                                st.session_state.get("workspace_id", "personal"),
+                                title=prompt[:100].strip() or "Nouvelle conversation",
                             )
-                            pending_responses[str(st.session_state.session_id)] = reply
-                            st.warning(
-                                "La réponse est affichée et conservée dans cette conversation, "
-                                "mais son enregistrement dans l’historique a échoué. "
-                                "Vous pourrez réessayer sans relancer la demande. Diagnostic : "
-                                + type(save_error).__name__
+                        except Exception:
+                            pass
+                except Exception as save_error:
+                    # The callback already cleared the visible input. Restore the
+                    # original draft on the next rerun instead of losing user text.
+                    safe_code = str(getattr(save_error, "code", "") or "").strip()[:80]
+                    diagnostic = type(save_error).__name__
+                    if safe_code:
+                        diagnostic += f" · code {safe_code}"
+                    st.session_state["sowia_chat_prompt_restore"] = prompt
+                    st.session_state["sowia_chat_save_error"] = diagnostic
+                    st.rerun()
+                else:
+                    render_accessible_message("user", prompt)
+                    request_history = conversation_history + [{"role": "user", "content": prompt}]
+                    with st.chat_message("assistant"):
+                        try:
+                            web_sources = []
+                            web_context = None
+                            if use_web_search or should_search_web(prompt):
+                                if should_search_web(prompt) and not use_web_search:
+                                    st.caption(translate_ui("Recherche Web activée automatiquement pour vérifier les informations récentes.", language))
+                                try:
+                                    from web_context import build_web_context, format_web_source_link, prepare_web_sources
+                                    with st.spinner(translate_ui("Recherche de sources publiques…", language)):
+                                        web_sources = prepare_web_sources(search_web(prompt, max_results=5))
+                                    web_context = build_web_context(web_sources)
+                                    if not web_sources:
+                                        st.info(translate_ui("Aucune source exploitable n'a été trouvée. La réponse sera générée sans recherche Web.", language))
+                                except (RuntimeError, ValueError):
+                                    st.warning(translate_ui("La recherche Web n'a pas abouti ; la conversation continue sans sources en ligne.", language))
+                            reply = answer(
+                                request_history,
+                                memories=select_relevant_memories(
+                                    memories, query=prompt
+                                ),
+                                language=language,
+                                web_context=web_context,
                             )
-                    except Exception as exc:
-                        error_text = str(exc)
-                        if "429" in error_text or "insufficient_quota" in error_text or "quota" in error_text.lower():
-                            st.warning("Le service IA est temporairement indisponible : le crédit API du fournisseur IA est épuisé ou le quota est atteint. Vous pouvez continuer à créer et télécharger des PDF sans utiliser l'IA.")
-                        elif "401" in error_text or "invalid_api_key" in error_text:
-                            st.error("La clé API du fournisseur IA n'est pas reconnue. Vérifiez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit.")
-                        else:
-                            st.error(
-                                "Une erreur inattendue est survenue pendant la réponse de l'assistant. "
-                                "Réessayez dans quelques instants."
-                            )
+                            if web_sources:
+                                reply += "\n\n**" + translate_ui("Sources consultées", language) + ":**\n" + "\n".join(
+                                    format_web_source_link(source)
+                                    for source in web_sources
+                                )
+                            st.markdown(reply)
+                            try:
+                                save_app_message("assistant", reply)
+                            except Exception as save_error:
+                                pending_responses = st.session_state.setdefault(
+                                    "sowia_pending_assistant_responses", {}
+                                )
+                                pending_responses[str(st.session_state.session_id)] = reply
+                                st.warning(
+                                    "La réponse est affichée et conservée dans cette conversation, "
+                                    "mais son enregistrement dans l’historique a échoué. "
+                                    "Vous pourrez réessayer sans relancer la demande. Diagnostic : "
+                                    + type(save_error).__name__
+                                )
+                        except Exception as exc:
+                            error_text = str(exc)
+                            if "429" in error_text or "insufficient_quota" in error_text or "quota" in error_text.lower():
+                                st.warning("Le service IA est temporairement indisponible : le crédit API du fournisseur IA est épuisé ou le quota est atteint. Vous pouvez continuer à créer et télécharger des PDF sans utiliser l'IA.")
+                            elif "401" in error_text or "invalid_api_key" in error_text:
+                                st.error("La clé API du fournisseur IA n'est pas reconnue. Vérifiez GROQ_API_KEY ou OPENAI_API_KEY dans les secrets Streamlit.")
+                            else:
+                                st.error(
+                                    "Une erreur inattendue est survenue pendant la réponse de l'assistant. "
+                                    "Réessayez dans quelques instants."
+                                )
     active_clear_session_id = str(st.session_state.session_id)
     pending_clear_session_id = st.session_state.get("sowia_confirm_clear_conversation")
     if pending_clear_session_id and pending_clear_session_id != active_clear_session_id:
