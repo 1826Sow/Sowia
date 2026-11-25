@@ -22,6 +22,10 @@ class FakeQuery:
         self.filters.append(("in", key, values))
         return self
 
+    def select(self, fields):
+        self.selected_fields = fields
+        return self
+
     def execute(self):
         return SimpleNamespace(data=self.rows)
 
@@ -44,6 +48,7 @@ def test_set_agent_status_scopes_update_to_owner_and_workspace():
 
     assert result["status"] == "paused"
     assert client.query.payload == {"status": "paused"}
+    assert client.query.selected_fields == "id, status"
     assert ("eq", "id", "agent-1") in client.query.filters
     assert ("eq", "user_id", "owner-1") in client.query.filters
     assert ("eq", "workspace_id", "personal") in client.query.filters
