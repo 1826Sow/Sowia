@@ -44,8 +44,8 @@ class FakeBucket:
         self.prefixes = []
         self.downloaded = []
 
-    def list(self, prefix):
-        self.prefixes.append(prefix)
+    def list(self, prefix, options=None):
+        self.prefixes.append((prefix, options))
         if prefix == "user-123/personal":
             return [{"name": "a" * 32 + "_rapport.pdf", "created_at": "2026-11-25T10:00:00Z"}]
         return []
