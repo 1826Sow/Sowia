@@ -2662,7 +2662,14 @@ elif page == "Assistant IA":
         if memory_command is not None:
             render_accessible_message("user", prompt)
             try:
-                command_memories = get_app_memories()
+                command_memories = [
+                    item for item in get_app_memories()
+                    if item.get("project_id") is None
+                    or (
+                        active_memory_project_id is not None
+                        and str(item.get("project_id")) == str(active_memory_project_id)
+                    )
+                ]
                 if memory_command["action"] == "recall":
                     matches = find_memory_matches(command_memories, memory_command["query"])
                     if matches:
