@@ -130,6 +130,22 @@ def touch_conversation(client, user, session_id, workspace_id="personal", title=
         .eq("session_id", identifier).execute())
 
 
+def delete_conversation(client, user, session_id, workspace_id="personal"):
+    """Delete one complete owner-scoped conversation through a guarded database RPC."""
+    identifier = _session_id(session_id)
+    owner_id = _user_id(user)
+    workspace = _workspace_id(workspace_id)
+    response = client.rpc(
+        "sowia_delete_my_conversation",
+        {"p_session_id": identifier, "p_workspace_id": workspace},
+    ).execute()
+    if response.data is not True:
+        raise PermissionError(
+            "Cette conversation n'existe pas dans votre espace ou sa suppression n'a pas été confirmée."
+        )
+    return True
+
+
 def list_memories(client, user, workspace_id="personal"):
     return (client.table("sowia_memory_items").select("id, content, created_at, project_id")
         .eq("user_id", _user_id(user)).eq("workspace_id", _workspace_id(workspace_id))
