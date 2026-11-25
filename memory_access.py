@@ -182,7 +182,7 @@ def update_agent_memory_permissions(
     result = (client.table("sowia_agents").update(changes)
         .eq("id", str(agent_id)).eq("user_id", user_id)
         .eq("workspace_id", workspace).eq("status", "active")
-        .execute().data or [])
+        .select("id").execute().data or [])
     if not result:
         raise PermissionError("Agent is not available to this authenticated user.")
     return result
