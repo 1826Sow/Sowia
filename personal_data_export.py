@@ -59,9 +59,37 @@ def _fetch_owned_rows(client, table_name, columns, owner_id, workspace):
     return rows
 
 
+def _list_private_pdf_objects(client, owner_id, workspace):
+    """List PDFs in the owner's workspace with an explicit bounded page size."""
+    bucket = client.storage.from_(document_storage.BUCKET_NAME)
+    prefixes = [owner_id]
+    if workspace == "personal":
+        prefixes.append(owner_id + "/personal")
+    else:
+        prefixes = [owner_id + "/professional"]
+    documents = []
+    seen = set()
+    for prefix in prefixes:
+        items = bucket.list(prefix, {"limit": 1000, "offset": 0}) or []
+        if len(items) >= 1000:
+            raise RuntimeError("Votre espace contient au moins 1 000 fichiers. Export interrompu pour éviter un export incomplet.")
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "")
+            if not name.lower().endswith(".pdf") or "/" in name or "\\\\" in name:
+                continue
+            path = prefix + "/" + name
+            if path in seen:
+                continue
+            seen.add(path)
+            documents.append({**item, "name": name, "path": path})
+    return documents
+
+
 def _export_private_documents(client, user, workspace):
     """Include only PDFs listed under this authenticated owner's selected workspace."""
-    documents = document_storage.list_documents(client, user, workspace)
+    documents = _list_private_pdf_objects(client, _owner_id(user), workspace)
     exported = []
     total_bytes = 0
     owner_prefix = _owner_id(user) + "/"
