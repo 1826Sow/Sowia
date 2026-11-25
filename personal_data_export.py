@@ -3,6 +3,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import base64
+
+import document_storage
+
+_MAX_DOCUMENT_EXPORT_BYTES = 50 * 1024 * 1024
 
 _ALLOWED_WORKSPACES = {"personal", "professional"}
 _PAGE_SIZE = 500
@@ -54,14 +59,47 @@ def _fetch_owned_rows(client, table_name, columns, owner_id, workspace):
     return rows
 
 
+def _export_private_documents(client, user, workspace):
+    """Include only PDFs listed under this authenticated owner's selected workspace."""
+    documents = document_storage.list_documents(client, user, workspace)
+    exported = []
+    total_bytes = 0
+    owner_prefix = _owner_id(user) + "/"
+    for item in documents:
+        path = item.get("path") if isinstance(item, dict) else None
+        name = item.get("name") if isinstance(item, dict) else None
+        if not isinstance(path, str) or not isinstance(name, str) or not name.lower().endswith(".pdf"):
+            continue
+        if not path.startswith(owner_prefix):
+            raise PermissionError("Un document hors de votre compte a été détecté.")
+        payload = bytes(document_storage.download_document(client, user, path, workspace))
+        if not payload:
+            raise RuntimeError("Un document PDF est vide ou n'a pas pu être lu.")
+        if len(payload) > document_storage.MAX_DOCUMENT_BYTES:
+            raise RuntimeError("Un document dépasse la limite autorisée de 10 Mo.")
+        total_bytes += len(payload)
+        if total_bytes > _MAX_DOCUMENT_EXPORT_BYTES:
+            raise RuntimeError("Le volume total des PDF dépasse 50 Mo. Aucun export partiel n'a été préparé.")
+        exported.append({
+            "name": document_storage.display_document_name(name),
+            "path": path,
+            "created_at": item.get("created_at"),
+            "content_type": "application/pdf",
+            "size_bytes": len(payload),
+            "content_base64": base64.b64encode(payload).decode("ascii"),
+        })
+    return exported
+
+
 def build_personal_data_export(client, user, workspace_id="personal"):
-    """Build a JSON-ready export for the authenticated owner and workspace."""
+    """Build a JSON-ready export for the authenticated owner, including private PDFs."""
     owner_id = _owner_id(user)
     workspace = _workspace_id(workspace_id)
     data = {
         key: _fetch_owned_rows(client, table, columns, owner_id, workspace)
         for key, (table, columns) in _EXPORT_TABLES.items()
     }
+    data["private_documents"] = _export_private_documents(client, user, workspace)
     return {
         "format": "sowia-personal-data-export",
         "version": 1,
@@ -76,7 +114,6 @@ def build_personal_data_export(client, user, workspace_id="personal"):
             "passwords_and_authentication_tokens",
             "api_keys_and_secrets",
             "payment_provider_credentials_and_webhook_payloads",
-            "private_storage_file_contents",
             "third_party_data_not_controlled_by_sow_ia",
         ],
     }
