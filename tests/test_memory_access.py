@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 import cloud_storage
-from memory_access import load_agent_memory_context, load_developer_agent_memory
+from memory_access import load_developer_agent_memory
 
 
 class Query:
@@ -49,7 +49,7 @@ def test_agent_gets_general_and_selected_project_memory_only(monkeypatch):
     ]
     monkeypatch.setattr(cloud_storage, "list_memories", lambda *args: records)
     client = Client([{"id": 12}])
-    result = load_agent_memory_context(
+    result = load_developer_agent_memory(
         client, SimpleNamespace(id="user-1"), "professional", 12, "API développeur"
     )
     assert result == ["Projet alpha : API développeur."]
@@ -105,7 +105,7 @@ def test_metadata_is_not_exposed_to_agent_prompt(monkeypatch):
         "tags": ["confidentiel"],
     }]
     monkeypatch.setattr(cloud_storage, "list_memories", lambda *args: records)
-    result = load_agent_memory_context(
+    result = load_developer_agent_memory(
         Client([]), SimpleNamespace(id="user-1"), query="permissions API"
     )
     assert result == ["Le guide explique les permissions API."]
