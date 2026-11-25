@@ -6,7 +6,6 @@ external transaction execution is offered here.
 """
 from __future__ import annotations
 
-import uuid
 import streamlit as st
 
 
@@ -42,8 +41,125 @@ def _set_agent_status(client, user, agent, workspace, status):
     return result[0]
 
 
+def _render_agent_conversation(client, user, agent, workspace):
+    """Render a durable per-agent conversation selector and transcript."""
+    from agent_conversation_store import (
+        create_agent_conversation,
+        list_agent_conversations,
+        list_agent_messages,
+        save_agent_message,
+    )
+
+    st.divider()
+    st.markdown("#### Conversations de cet agent")
+    st.caption(
+        "Les messages sont enregistrés dans Supabase et rechargés à chaque ouverture. "
+        "Chaque conversation reste isolée par propriétaire, espace et agent."
+    )
+    agent_id = str(agent["id"])
+    try:
+        conversations = list_agent_conversations(
+            client, user, agent_id, workspace_id=workspace, limit=50
+        )
+    except Exception as exc:
+        st.error("Les conversations de cet agent ne sont pas accessibles.")
+        st.caption("Diagnostic : " + type(exc).__name__)
+        return
+
+    if st.button(
+        "＋ Nouvelle conversation",
+        key=f"developer_studio_new_agent_conversation_{agent_id}",
+        use_container_width=True,
+    ):
+        try:
+            create_agent_conversation(
+                client, user, agent_id, workspace_id=workspace
+            )
+            st.session_state.pop(
+                f"developer_studio_agent_conversation_{agent_id}", None
+            )
+            st.rerun()
+        except Exception as exc:
+            st.error("La nouvelle conversation n'a pas été créée.")
+            st.caption("Diagnostic : " + type(exc).__name__)
+        return
+
+    if not conversations:
+        st.info("Aucune conversation enregistrée. Créez-en une pour commencer.")
+        return
+
+    labels = {
+        f'{item.get("title") or "Conversation"} · {str(item["id"])[:8]}': item
+        for item in conversations
+    }
+    selected_label = st.selectbox(
+        "Conversation",
+        list(labels),
+        key=f"developer_studio_agent_conversation_{agent_id}",
+    )
+    selected = labels[selected_label]
+    conversation_id = str(selected["id"])
+
+    try:
+        history = list_agent_messages(
+            client, user, agent_id, conversation_id,
+            workspace_id=workspace, limit=40,
+        )
+    except Exception as exc:
+        st.error("L'historique de cette conversation n'a pas pu être chargé.")
+        st.caption("Diagnostic : " + type(exc).__name__)
+        return
+
+    for message in history:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+
+    prompt = st.chat_input(
+        f"Écrire à {agent.get('name') or 'cet agent'}…",
+        key=f"developer_studio_agent_chat_{agent_id}_{conversation_id}",
+        max_chars=4000,
+    )
+    if not prompt or not prompt.strip():
+        return
+
+    clean_prompt = prompt.strip()
+    try:
+        from agent_orchestrator import run_agent_turn
+
+        save_agent_message(
+            client, user, agent_id, conversation_id, "user", clean_prompt,
+            workspace_id=workspace,
+        )
+        with st.spinner("L'agent prépare sa réponse…"):
+            updated_history = list_agent_messages(
+                client, user, agent_id, conversation_id,
+                workspace_id=workspace, limit=20,
+            )
+            response = run_agent_turn(
+                updated_history,
+                user_client=client,
+                user=user,
+                agent_id=agent_id,
+                workspace_id=workspace,
+                language=st.session_state.get("sowia_language", "Français"),
+            )
+            save_agent_message(
+                client, user, agent_id, conversation_id, "assistant", response,
+                workspace_id=workspace,
+            )
+        st.rerun()
+    except Exception as exc:
+        st.error("L'agent n'a pas pu terminer cette demande.")
+        st.caption(
+            "Votre message a été conservé dans l'historique. Diagnostic : "
+            + type(exc).__name__
+        )
+
+
+
 def render(client, user, premium_active=False):
     """Render the authenticated owner's agent creation and supervision page."""
+    st.image("assets/developer_studio_banner.svg", use_container_width=True)
     st.subheader("🧑‍💻 Developer Studio")
     st.caption(
         "Créez vos agents IA, définissez leurs droits mémoire et contrôlez leur activité. "
@@ -268,27 +384,6 @@ def render(client, user, premium_active=False):
                 st.caption("Diagnostic : " + type(exc).__name__)
 
     if agent["status"] == "active":
-        st.divider()
-        st.markdown("#### Tester cet agent")
-        prompt_key = f"developer_studio_prompt_{agent['id']}"
-        with st.form("developer_studio_agent_test"):
-            prompt = st.text_area("Votre instruction", key=prompt_key, max_chars=4000)
-            send = st.form_submit_button("Envoyer à l'agent", type="primary", use_container_width=True)
-        if send:
-            if not prompt.strip():
-                st.warning("Saisissez une instruction avant l'envoi.")
-            else:
-                try:
-                    from agent_orchestrator import run_agent_turn
-                    answer = run_agent_turn(
-                        [{"role": "user", "content": prompt.strip()}],
-                        user_client=client, user=user, agent_id=agent["id"],
-                        workspace_id=workspace,
-                    )
-                    st.markdown("**Réponse de l'agent**")
-                    st.write(answer)
-                except Exception as exc:
-                    st.error("L'agent n'a pas pu terminer cette demande.")
-                    st.caption("Diagnostic : " + type(exc).__name__)
+        _render_agent_conversation(client, user, agent, workspace)
     else:
         st.info("Cet agent est suspendu : il ne peut pas exécuter de tâche.")
