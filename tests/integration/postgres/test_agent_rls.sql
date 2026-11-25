@@ -122,7 +122,7 @@ begin
 end
 $$;
 -- Owner B must not be able to delete owner A's conversation through the SECURITY DEFINER RPC.
-do $
+do $agent_test$
 begin
   if public.sowia_delete_my_agent_conversation(
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -132,20 +132,20 @@ begin
     raise exception 'DELETE SECURITY FAILURE: owner B deleted owner A conversation';
   end if;
 end
-$;
+$agent_test$;
 
 -- Owner A retains read/delete access to private memories when the agent is paused.
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
 update public.sowia_agents set status = 'paused'
 where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-do $
+do $agent_test$
 begin
   if (select count(*) from public.sowia_agent_memory_items
       where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') <> 1 then
     raise exception 'MEMORY ACCESS FAILURE: owner cannot read private memory for paused agent';
   end if;
 end
-$;
+$agent_test$;
 
 delete from public.sowia_agent_memory_items
 where id = (
@@ -153,17 +153,17 @@ where id = (
   where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
   limit 1
 );
-do $
+do $agent_test$
 begin
   if exists (select 1 from public.sowia_agent_memory_items
              where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') then
     raise exception 'DELETE FAILURE: owner could not delete paused agent memory';
   end if;
 end
-$;
+$agent_test$;
 
 -- Owner A can delete the conversation; its messages must cascade.
-do $
+do $agent_test$
 begin
   if not public.sowia_delete_my_agent_conversation(
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -173,8 +173,8 @@ begin
     raise exception 'DELETE FAILURE: owner could not delete own conversation';
   end if;
 end
-$;
-do $
+$agent_test$;
+do $agent_test$
 begin
   if exists (select 1 from public.sowia_agent_conversations
              where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') then
@@ -185,6 +185,6 @@ begin
     raise exception 'CASCADE FAILURE: conversation messages were not deleted';
   end if;
 end
-$;
+$agent_test$;
 reset role;
 select 'PASS: owner-scoped agent memory and conversation deletion, paused-agent memory access and message cascade' as result;
