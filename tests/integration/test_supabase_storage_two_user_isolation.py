@@ -65,7 +65,17 @@ class StorageTestSession:
             timeout=20,
             allow_redirects=False,
         )
-        response.raise_for_status()
+        if not response.ok:
+            try:
+                error = response.json()
+            except ValueError:
+                error = {}
+            safe_code = error.get("error_code") or error.get("code") or "unknown_auth_error"
+            safe_message = error.get("msg") or error.get("message") or error.get("error_description") or "No safe error detail returned"
+            raise RuntimeError(
+                f"Supabase test-account authentication failed (HTTP {response.status_code}; "
+                f"code={safe_code}; message={safe_message})"
+            )
         payload = response.json()
         self.user_id = payload["user"]["id"]
         self.headers = {
