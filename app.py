@@ -2741,8 +2741,9 @@ elif page == "Assistant IA":
                                 web_context = build_web_context(web_sources)
                                 if not web_sources:
                                     st.info(translate_ui("Aucune source exploitable n'a été trouvée. La réponse sera générée sans recherche Web.", language))
-                            except (RuntimeError, ValueError):
-                                st.warning(translate_ui("La recherche Web n'a pas abouti ; la conversation continue sans sources en ligne.", language))
+                            except Exception:
+                                # A search-provider failure must never block the AI-only reply.
+                                st.warning(translate_ui("La recherche Web n'a pas abouti ; la réponse IA continue sans sources en ligne.", language))
                         reply = answer(
                             request_history,
                             memories=select_relevant_memories(
