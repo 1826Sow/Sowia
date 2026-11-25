@@ -935,7 +935,7 @@ def extract_explicit_memory_request(message):
     match = command.search(text)
     if not match:
         return None
-    content = text[match.end():].strip(" \\t\\r\\n:;,.—-")
+    content = text[match.end():].strip().strip(":;,.—-")
     if not content or len(content) > 1000:
         return None
     sensitive_markers = (
