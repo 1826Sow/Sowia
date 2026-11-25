@@ -76,24 +76,27 @@ def calculate_fee_split(gross_value, fee_rate="0.02",
     }
 
 
-def match_limit_orders(buy_limit, sell_limit, buyer_id, seller_id):
+def match_limit_orders(buy_limit, sell_limit, buyer_id, seller_id, resting_side="sell"):
     """Return a price-time-neutral match decision for two compatible limit orders.
 
-    Execution price follows the resting (older) order and must be chosen by the
-    caller using creation timestamps. This helper validates price compatibility
-    and prevents self-trading; it never persists or settles a trade.
+    Execution price follows the resting (older) order. The caller supplies
+    resting_side after comparing creation timestamps. This helper validates
+    compatibility and prevents self-trading; it never persists or settles.
     """
     buy = _decimal(buy_limit, "Limite d'achat")
     sell = _decimal(sell_limit, "Limite de vente")
     if buy <= 0 or sell <= 0:
         raise ValueError("Les limites de prix doivent être positives.")
+    if resting_side not in {"buy", "sell"}:
+        raise ValueError("Côté de l'ordre au carnet invalide.")
     if not buyer_id or not seller_id:
         raise ValueError("Les deux investisseurs doivent être identifiés.")
     if str(buyer_id) == str(seller_id):
         raise ValueError("L'auto-négociation est interdite.")
     if buy < sell:
         return {"match": False, "reason": "price_mismatch", "execution_price": None}
-    return {"match": True, "reason": None, "execution_price": sell.quantize(PRICE_TICK)}
+    resting_price = buy if resting_side == "buy" else sell
+    return {"match": True, "reason": None, "execution_price": resting_price.quantize(PRICE_TICK)}
 
 
 def calculate_market_cap(last_price, total_shares):
