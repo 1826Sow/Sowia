@@ -2726,10 +2726,16 @@ elif page == "Assistant IA":
                     try:
                         web_sources = []
                         web_context = None
-                        if use_web_search:
+                        from live_intelligence import should_search_web
+                        automatic_web_search = should_search_web(prompt)
+                        if use_web_search or automatic_web_search:
                             try:
                                 from web_context import build_web_context, format_web_source_link, prepare_web_sources
-                                with st.spinner(translate_ui("Recherche de sources publiques…", language)):
+                                search_status = (
+                                    "Recherche de sources récentes…" if automatic_web_search and not use_web_search
+                                    else translate_ui("Recherche de sources publiques…", language)
+                                )
+                                with st.spinner(search_status):
                                     web_sources = prepare_web_sources(search_web(prompt, max_results=5))
                                 web_context = build_web_context(web_sources)
                                 if not web_sources:
