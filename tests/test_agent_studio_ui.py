@@ -64,3 +64,12 @@ def test_set_agent_status_requires_confirmed_update():
 
     with pytest.raises(PermissionError):
         _set_agent_status(client, user, {"id": "agent-1"}, "personal", "paused")
+
+
+
+def test_agent_chat_does_not_bypass_the_authorized_memory_read_tool():
+    from pathlib import Path
+
+    source = Path("agent_studio_ui.py").read_text(encoding="utf-8")
+    assert "load_agent_memory_context" not in source
+    assert "run_agent_turn(" in source
