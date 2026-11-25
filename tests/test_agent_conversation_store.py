@@ -168,7 +168,7 @@ def test_save_agent_message_rejects_oversized_content_before_database_write():
     with pytest.raises(ValueError):
         save_agent_message(
             client, SimpleNamespace(id="owner-id"), str(uuid.uuid4()),
-            str(uuid.uuid4()), "user", "x" * 12001,
+            str(uuid.uuid4()), "user", "x" * 24001,
         )
     assert client.queries == {}
 
