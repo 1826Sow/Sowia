@@ -159,6 +159,7 @@ def _render_agent_conversation(client, user, agent, workspace):
 
 def render(client, user, premium_active=False):
     """Render the authenticated owner's agent creation and supervision page."""
+    st.image("assets/developer_studio_banner.svg", use_container_width=True)
     st.subheader("🧑‍💻 Developer Studio")
     st.caption(
         "Créez vos agents IA, définissez leurs droits mémoire et contrôlez leur activité. "
