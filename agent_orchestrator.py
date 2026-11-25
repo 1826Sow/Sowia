@@ -50,8 +50,12 @@ def _provider_configs():
     return unique
 
 
-def _tool_definitions():
-    schemas = list_agent_tools() + list_agent_memory_tools()
+def _tool_definitions(enabled_tools=None):
+    allowed = set(enabled_tools or [])
+    schemas = [
+        item for item in (list_agent_tools() + list_agent_memory_tools())
+        if item["name"] in allowed
+    ]
     return [
         {
             "type": "function",
@@ -78,18 +82,28 @@ def _assert_owned_active_agent(user_client, user, agent_id, workspace_id):
     from memory_access import list_agents
 
     agents = list_agents(user_client, user, workspace_id=workspace_id)
-    if not any(
-        str(item.get("id")) == str(agent_id) and item.get("status") == "active"
-        for item in agents
-    ):
+    agent = next((
+        item for item in agents
+        if str(item.get("id")) == str(agent_id) and item.get("status") == "active"
+    ), None)
+    if agent is None:
         raise PermissionError("Cet agent n’est pas actif ou n’appartient pas à ce compte.")
+    enabled = agent.get("enabled_tools")
+    if not isinstance(enabled, list) or not set(enabled) <= {
+        "web_search", "memory_read", "memory_write"
+    }:
+        raise PermissionError("La liste des outils autorisés de cet agent est invalide.")
+    return agent
 
 
 def _execute_tool(name, arguments, *, user_client, user, agent_id,
-                  workspace_id, request_id):
+                  workspace_id, request_id, enabled_tools):
+    if name not in set(enabled_tools):
+        raise AgentOrchestrationError("Cet outil n'est pas autorisé pour cet agent.")
     if name == "web_search":
         return execute_registered_agent_tool(
-            user_client, user, name, request_id, arguments
+            user_client, user, name, request_id, arguments,
+            agent_id=agent_id, workspace_id=workspace_id,
         )
     if name in {"memory_read", "memory_write"}:
         return execute_registered_agent_memory_tool(
@@ -127,7 +141,8 @@ def run_agent_turn(
     except (ValueError, TypeError, AttributeError):
         raise ValueError("Identifiant de tour invalide.") from None
 
-    _assert_owned_active_agent(user_client, user, agent_id, workspace_id)
+    agent = _assert_owned_active_agent(user_client, user, agent_id, workspace_id)
+    enabled_tools = agent["enabled_tools"]
     providers = _provider_configs()
     if not providers:
         raise AgentOrchestrationError("Aucun fournisseur IA n'est configuré.")
@@ -142,7 +157,7 @@ def run_agent_turn(
         "avant toute action sensible ou transaction."
     )
     conversation = [dict(item) for item in messages]
-    tools = _tool_definitions()
+    tools = _tool_definitions(enabled_tools)
     last_error = None
 
     for provider in providers:
@@ -183,6 +198,7 @@ def run_agent_turn(
                                 name, arguments, user_client=user_client, user=user,
                                 agent_id=agent_id, workspace_id=workspace_id,
                                 request_id=call_request_id,
+                                enabled_tools=enabled_tools,
                             )
                         except Exception as exc:
                             # Never expose stack traces, SQL details or credentials to the model.
