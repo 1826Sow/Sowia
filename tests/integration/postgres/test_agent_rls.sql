@@ -115,6 +115,18 @@ begin
   end if;
 end
 $agent_test$;
+-- Owner B must not be able to delete a private memory belonging to owner A.
+select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false);
+delete from public.sowia_agent_memory_items
+where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
+do $agent_test$
+begin
+  if (select count(*) from public.sowia_agent_memory_items where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') <> 1 then
+    raise exception 'DELETE SECURITY FAILURE: owner B deleted owner A private memory';
+  end if;
+end
+$agent_test$;
 delete from public.sowia_agent_memory_items where id = (
   select id from public.sowia_agent_memory_items where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' limit 1
 );
