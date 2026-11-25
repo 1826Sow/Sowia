@@ -19,6 +19,8 @@ from agent_tools import list_agent_tools, execute_registered_agent_tool
 from agent_memory_tools import (
     list_agent_memory_tools, execute_registered_agent_memory_tool,
 )
+from agent_usage_quota import consume_agent_action, finish_agent_action
+from agent_runtime import AgentQuotaExceeded
 
 MAX_TOOL_ROUNDS = 4
 MAX_TOOL_ARGUMENT_CHARS = 6000
@@ -146,6 +148,12 @@ def run_agent_turn(
     providers = _provider_configs()
     if not providers:
         raise AgentOrchestrationError("Aucun fournisseur IA n'est configuré.")
+    chat_usage = consume_agent_action(
+        user_client, user, "chat", turn_id,
+        agent_id=agent_id, workspace_id=workspace_id, tool_name="agent_chat",
+    )
+    if not chat_usage["allowed"]:
+        raise AgentQuotaExceeded(chat_usage)
     system_prompt = build_system_prompt(
         memories=memories, document_context=document_context, language=language
     )
@@ -174,7 +182,11 @@ def run_agent_turn(
                 message = response.choices[0].message
                 calls = list(message.tool_calls or [])
                 if not calls:
-                    return message.content or ""
+                    answer = message.content or ""
+                    finish_agent_action(
+                        user_client, user, turn_id, agent_id, "completed"
+                    )
+                    return answer
                 conversation.append(message.model_dump(exclude_none=True))
                 if round_index >= max_tool_rounds:
                     raise AgentOrchestrationError(
@@ -209,7 +221,11 @@ def run_agent_turn(
                         "content": _bounded_json(result),
                     })
             raise AgentOrchestrationError("Le tour agent n'a pas produit de réponse finale.")
-        except AgentOrchestrationError:
+        except AgentOrchestrationError as exc:
+            finish_agent_action(
+                user_client, user, turn_id, agent_id, "failed",
+                error_code=type(exc).__name__,
+            )
             raise
         except Exception as exc:
             last_error = exc
@@ -220,4 +236,8 @@ def run_agent_turn(
                     "Le fournisseur IA a échoué après une action agent ; relancez avec un nouvel échange."
                 ) from exc
             continue
+    finish_agent_action(
+        user_client, user, turn_id, agent_id, "failed",
+        error_code=type(last_error).__name__ if last_error else "AgentOrchestrationError",
+    )
     raise AgentOrchestrationError("Aucun fournisseur IA n'a pu terminer le tour agent.") from last_error
