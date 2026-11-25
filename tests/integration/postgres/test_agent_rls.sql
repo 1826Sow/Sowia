@@ -125,6 +125,14 @@ begin
   end if;
 end
 $agent_test$;
+-- Restore a fresh private memory after the deletion assertion so the separate
+-- reconnect/persistence phase can verify that surviving memory is durable.
+update public.sowia_agents set status = 'active'
+where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+insert into public.sowia_agent_memory_items(agent_id,user_id,workspace_id,content)
+values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','11111111-1111-4111-8111-111111111111','personal','Mémoire privée A');
+update public.sowia_agents set status = 'paused'
+where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 do $agent_test$
 begin
   if not public.sowia_delete_my_agent_conversation('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','personal') then
