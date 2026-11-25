@@ -78,6 +78,8 @@ def register_agent(
     tools = set(_DEFAULT_AGENT_TOOLS if enabled_tools is None else enabled_tools)
     if not tools <= _ALLOWED_AGENT_TOOLS:
         raise ValueError("Agent tool selection contains an unsupported tool.")
+    if "memory_write" in tools and not can_write_private_memory:
+        raise ValueError("L'outil memory_write nécessite l'autorisation de mémoire privée.")
     rows = (client.table("sowia_agents").insert({
         "user_id": user_id,
         "workspace_id": workspace,
@@ -204,6 +206,14 @@ def update_agent_tools(client, user, agent_id, workspace_id="personal", enabled_
     tools = set(enabled_tools)
     if not tools <= _ALLOWED_AGENT_TOOLS:
         raise ValueError("Agent tool selection contains an unsupported tool.")
+    owned = (client.table("sowia_agents").select("can_write_private_memory")
+        .eq("id", str(agent_id)).eq("user_id", user_id)
+        .eq("workspace_id", workspace).eq("status", "active")
+        .limit(1).execute().data or [])
+    if len(owned) != 1:
+        raise PermissionError("Agent is not available to this authenticated user.")
+    if "memory_write" in tools and not owned[0].get("can_write_private_memory"):
+        raise ValueError("L'outil memory_write nécessite l'autorisation de mémoire privée.")
     result = (client.table("sowia_agents").update({
         "enabled_tools": sorted(tools),
     }).eq("id", str(agent_id)).eq("user_id", user_id)
