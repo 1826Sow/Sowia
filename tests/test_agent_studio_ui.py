@@ -144,7 +144,7 @@ def test_agent_conversation_ui_persists_user_and_assistant_turn(monkeypatch):
     else:
         pytest.fail("The UI should rerun after persisting the assistant response.")
 
-    assert events[0] == ("save", "user", "  Reprendre le projet  ")
+    assert events[0] == ("save", "user", "Reprendre le projet")
     assert events[1][0] == "run"
     assert events[1][1][-1] == {"role": "user", "content": "Reprendre le projet"}
     assert events[1][2]["agent_id"] == agent_id
