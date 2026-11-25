@@ -65,7 +65,7 @@ def consume_agent_action(user_client, user, action, request_id, *, agent_id=None
     if agent_id is not None:
         if workspace_id not in {"personal", "professional"}:
             raise EconomyError("Espace agent invalide.")
-        if tool_name not in {"web_search", "memory_read", "memory_write"}:
+        if tool_name not in {"agent_chat", "web_search", "memory_read", "memory_write"}:
             raise EconomyError("Outil agent invalide.")
         rpc_name = "sowia_consume_agent_action_for_agent"
         rpc_args = {
