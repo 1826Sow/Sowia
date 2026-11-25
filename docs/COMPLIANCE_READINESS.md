@@ -50,6 +50,20 @@ Le site vitrine public ne présente actuellement aucun lien visible vers des men
 - politique de cookies/traceurs si des traceurs non essentiels sont utilisés ;
 - procédure de violation de données, gestion des demandes et contact de l'autorité compétente si nécessaire.
 
+## 3 bis. Sous-traitants et flux techniques repérés dans le code
+
+Cette liste est une cartographie de départ fondée sur le dépôt ; elle ne prouve pas qu'un fournisseur est activé dans l'environnement de production ni ne remplace la vérification des contrats et paramètres de compte.
+
+- **Hébergement de l'application :** Render, service déclaré en région Frankfurt dans `render.yaml`.
+- **Authentification, base de données et stockage documentaire :** Supabase.
+- **Inférence IA :** intégrations OpenAI et Groq présentes ; le fournisseur effectivement utilisé dépend de la configuration runtime.
+- **Recherche web :** intégrations Tavily et DuckDuckGo présentes ; l'utilisation de Tavily dépend de la configuration.
+- **Abonnements :** intégration PayPal présente avec configuration Sandbox/Live ; le mode effectif doit être vérifié dans l'environnement sans consulter ni modifier les secrets.
+- **Voix :** la transcription utilise la reconnaissance vocale du navigateur ; le navigateur peut transmettre l'audio à son propre service de reconnaissance, comme l'interface l'indique déjà à l'utilisateur.
+- **Connexion GitHub :** le code prévoit le fournisseur OAuth GitHub via Supabase ; son activation réelle doit être vérifiée dans la configuration du fournisseur.
+
+Pour chaque fournisseur réellement activé, consigner l'entité contractante, le rôle RGPD, le lieu de traitement, les sous-traitants ultérieurs, les transferts hors EEE, les garanties contractuelles, les durées et les catégories de données transmises. La CNIL rappelle qu'un contrat de sous-traitance conforme à l'article 28 et une maîtrise de la chaîne de sous-traitance sont nécessaires lorsque le fournisseur agit comme sous-traitant.
+
 ## 4. Plateforme et marketplace — analyse réglementaire à faire
 
 - Déterminer si NIGHT EXCHANGE reste un outil de démonstration/jeu fermé ou permet ultérieurement des contrats entre professionnels et consommateurs.
