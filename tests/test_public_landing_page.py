@@ -5,7 +5,7 @@ import unittest
 
 
 PAGE = Path(__file__).resolve().parents[1] / "public-site" / "index.html"
-APP_URL = "https://fm5aczcvvj5jgkhpxwqtcr.streamlit.app/"
+APP_URL = "https://sowia.onrender.com"
 
 
 class LandingPageParser(HTMLParser):
