@@ -89,7 +89,7 @@ def test_agent_context_only_reads_shared_memory_when_granted(monkeypatch):
     assert result == ["Note privée agent"]
 
 
-def test_agent_context_reads_only_explicitly_granted_project(monkeypatch):
+def test_agent_context_reads_only_explicitly_granted_active_project(monkeypatch):
     client = Client({
         "sowia_agents": [{
             "id": "agent-1", "project_id": 42,
@@ -97,6 +97,7 @@ def test_agent_context_reads_only_explicitly_granted_project(monkeypatch):
             "can_read_project_memory": True, "status": "active",
         }],
         "sowia_agent_memory_items": [{"content": "Note privée agent"}],
+        "sowia_projects": [{"id": 42}],
     })
     monkeypatch.setattr(cloud_storage, "list_memories", lambda *args: [
         {"content": "Projet autorisé", "project_id": 42},
@@ -107,6 +108,26 @@ def test_agent_context_reads_only_explicitly_granted_project(monkeypatch):
         client, SimpleNamespace(id="user-1"), "agent-1"
     )
     assert result == ["Note privée agent", "Projet autorisé"]
+    assert ("user_id", "user-1") in client.queries["sowia_projects"].filters
+
+
+def test_archived_project_memory_is_not_shared_to_agent(monkeypatch):
+    client = Client({
+        "sowia_agents": [{
+            "id": "agent-1", "project_id": 42,
+            "can_read_workspace_memory": False,
+            "can_read_project_memory": True, "status": "active",
+        }],
+        "sowia_agent_memory_items": [{"content": "Note privée agent"}],
+        "sowia_projects": [],
+    })
+    monkeypatch.setattr(cloud_storage, "list_memories", lambda *args: [
+        {"content": "Projet archivé", "project_id": 42},
+    ])
+    result = load_agent_memory_context(
+        client, SimpleNamespace(id="user-1"), "agent-1"
+    )
+    assert result == ["Note privée agent"]
 
 
 def test_owner_can_revoke_agent_memory_permissions():
@@ -121,10 +142,8 @@ def test_owner_can_revoke_agent_memory_permissions():
     assert ("user_id", "user-1") in client.queries["sowia_agents"].filters
 
 
-@pytest.mark.parametrize("bad", ["yes", 1, None])
-def test_permissions_are_boolean_or_omitted(bad):
-    if bad is None:
-        return
+@pytest.mark.parametrize("bad", ["yes", 1])
+def test_permissions_must_be_boolean(bad):
     with pytest.raises(ValueError):
         update_agent_memory_permissions(
             Client({}), SimpleNamespace(id="user-1"), "agent-1",
