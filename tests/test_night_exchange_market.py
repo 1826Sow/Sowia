@@ -59,3 +59,48 @@ def test_orders_cannot_self_trade():
 
 def test_market_cap_is_derived_from_last_price_and_total_shares():
     assert market.calculate_market_cap("4.25", 1000) == Decimal("4250.00")
+
+
+def _order(order_id, user_id, price, quantity, created_at):
+    return {
+        "id": order_id, "user_id": user_id, "limit_price": price,
+        "remaining_quantity": quantity, "created_at": created_at,
+    }
+
+
+def test_order_book_uses_price_time_priority_and_partial_fills():
+    buys = [
+        _order("b-low", "buyer-a", "9.50", 10, "2026-01-01T10:00:00Z"),
+        _order("b-high", "buyer-b", "10.00", 3, "2026-01-01T10:01:00Z"),
+    ]
+    sells = [
+        _order("s-first", "seller-a", "9.00", 2, "2026-01-01T09:00:00Z"),
+        _order("s-second", "seller-b", "9.25", 5, "2026-01-01T09:30:00Z"),
+    ]
+    fills = market.build_order_book_matches(buys, sells)
+    assert [(f["buy_order_id"], f["sell_order_id"], f["quantity"]) for f in fills] == [
+        ("b-high", "s-first", 2),
+        ("b-high", "s-second", 1),
+        ("b-low", "s-second", 4),
+    ]
+
+
+def test_order_book_execution_price_uses_older_resting_order():
+    buys = [_order("b1", "buyer", "12", 1, "2026-01-01T10:00:00Z")]
+    sells = [_order("s1", "seller", "10", 1, "2026-01-01T10:01:00Z")]
+    fill = market.build_order_book_matches(buys, sells)[0]
+    assert fill["execution_price"] == Decimal("12.0000")
+    assert fill["resting_side"] == "buy"
+
+
+def test_order_book_rejects_self_trade():
+    buys = [_order("b1", "same", "12", 1, "2026-01-01T10:00:00Z")]
+    sells = [_order("s1", "same", "10", 1, "2026-01-01T10:01:00Z")]
+    with pytest.raises(ValueError, match="auto-négociation"):
+        market.build_order_book_matches(buys, sells)
+
+
+def test_order_book_does_not_match_when_bid_is_below_ask():
+    buys = [_order("b1", "buyer", "9", 5, "2026-01-01T10:00:00Z")]
+    sells = [_order("s1", "seller", "10", 5, "2026-01-01T10:01:00Z")]
+    assert market.build_order_book_matches(buys, sells) == []
