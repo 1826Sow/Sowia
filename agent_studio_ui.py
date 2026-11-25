@@ -55,8 +55,9 @@ def render(client, user, premium_active=False):
 
     from memory_access import (
         list_agents, register_agent, update_agent_memory_permissions,
+        update_agent_tools,
     )
-    from agent_usage_quota import get_agent_usage
+    from agent_usage_quota import get_agent_usage, get_agent_activity
     from agent_tools import list_agent_tools
     from agent_memory_tools import list_agent_memory_tools
 
@@ -83,8 +84,11 @@ def render(client, user, premium_active=False):
         st.caption("Diagnostic : " + type(exc).__name__)
 
     st.markdown("#### Outils disponibles")
-    tool_names = [item["name"] for item in list_agent_tools() + list_agent_memory_tools()]
-    st.write(" · ".join(tool_names))
+    tool_catalog = {
+        item["name"]: item["description"]
+        for item in list_agent_tools() + list_agent_memory_tools()
+    }
+    st.write(" · ".join(f"{name} — {description}" for name, description in tool_catalog.items()))
     st.caption(
         "Les outils sont limités à la recherche Web et à la mémoire autorisée. "
         "L'exécution de code arbitraire, les achats et les paiements ne sont pas autorisés."
@@ -111,6 +115,12 @@ def render(client, user, premium_active=False):
         read_workspace = st.checkbox("Lire la mémoire générale de cet espace", value=False)
         read_project = st.checkbox("Lire la mémoire du projet associé", value=False)
         write_private = st.checkbox("Écrire dans sa mémoire privée", value=True)
+        selected_tools = st.multiselect(
+            "Outils autorisés pour cet agent",
+            options=list(tool_catalog),
+            default=["memory_read", "memory_write"],
+            format_func=lambda value: f"{value} — {tool_catalog[value]}",
+        )
         create = st.form_submit_button("Créer l'agent", type="primary", use_container_width=True)
     if create:
         try:
@@ -123,6 +133,7 @@ def render(client, user, premium_active=False):
                 can_read_workspace_memory=read_workspace,
                 can_read_project_memory=read_project,
                 can_write_private_memory=write_private,
+                enabled_tools=selected_tools,
             )
             st.success(f'Agent « {created["name"]} » créé et enregistré.')
             st.rerun()
@@ -190,6 +201,50 @@ def render(client, user, premium_active=False):
         except Exception as exc:
             st.error("Les autorisations n'ont pas été modifiées.")
             st.caption("Diagnostic : " + type(exc).__name__)
+
+    st.markdown("**Outils autorisés pour cet agent**")
+    with st.form("developer_studio_tools"):
+        enabled_tools = st.multiselect(
+            "Sélectionner les outils",
+            options=list(tool_catalog),
+            default=[name for name in (agent.get("enabled_tools") or []) if name in tool_catalog],
+            format_func=lambda value: f"{value} — {tool_catalog[value]}",
+        )
+        save_tools = st.form_submit_button(
+            "Enregistrer les outils", disabled=agent["status"] != "active"
+        )
+    if save_tools:
+        try:
+            update_agent_tools(
+                client, user, agent["id"], workspace_id=workspace,
+                enabled_tools=enabled_tools,
+            )
+            st.success("Liste des outils autorisés mise à jour.")
+            st.rerun()
+        except Exception as exc:
+            st.error("La liste des outils n'a pas été modifiée.")
+            st.caption("Diagnostic : " + type(exc).__name__)
+
+    st.markdown("#### Consommation et historique de cet agent")
+    try:
+        activity = get_agent_activity(client, user, agent["id"], limit=20)
+        usage_cols = st.columns(2)
+        usage_cols[0].metric("Crédits consommés par cet agent", activity["total_credits"])
+        usage_cols[1].metric("Actions enregistrées", activity["total_actions"])
+        if activity["events"]:
+            history_rows = [{
+                "Date": row.get("created_at"),
+                "Outil": row.get("tool_name"),
+                "Crédits": row.get("credits"),
+                "État": row.get("status"),
+                "Code": row.get("error_code") or "—",
+            } for row in activity["events"]]
+            st.dataframe(history_rows, use_container_width=True, hide_index=True)
+        else:
+            st.caption("Aucune tâche enregistrée pour cet agent.")
+    except Exception as exc:
+        st.info("L'historique sera disponible après application de la migration d'activité agent.")
+        st.caption("Diagnostic : " + type(exc).__name__)
 
     action_col, _ = st.columns([1, 2])
     if agent["status"] in {"active", "paused"}:
