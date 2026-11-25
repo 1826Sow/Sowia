@@ -56,9 +56,14 @@ class FakeQuery:
 class FakeClient:
     def __init__(self):
         self.tables = {}
+        self.rpc_calls = []
 
     def table(self, name):
         return self.tables.setdefault(name, FakeQuery())
+
+    def rpc(self, name, params):
+        self.rpc_calls.append((name, params))
+        return SimpleNamespace(execute=lambda: SimpleNamespace(data=True))
 
 
 def test_create_conversation_is_scoped_to_owner_and_workspace():
@@ -585,3 +590,41 @@ def test_clearing_cloud_conversation_never_targets_persistent_memory_table():
     assert ("user_id", "user-123") in filters
     assert ("session_id", "session-to-delete") in filters
     assert ("workspace_id", "personal") in filters
+
+
+def test_delete_conversation_uses_owner_authenticated_rpc_and_validated_workspace():
+    client = FakeClient()
+    assert cloud_storage.delete_conversation(
+        client, User(), "session-private", "professional"
+    ) is True
+    assert client.rpc_calls == [(
+        "sowia_delete_my_conversation",
+        {"p_session_id": "session-private", "p_workspace_id": "professional"},
+    )]
+
+
+def test_delete_conversation_rejects_missing_user_before_rpc():
+    class Client:
+        def rpc(self, *_args, **_kwargs):
+            raise AssertionError("RPC must not be called without an authenticated user")
+
+    with pytest.raises(PermissionError, match="Connexion requise"):
+        cloud_storage.delete_conversation(Client(), None, "session-private")
+
+
+def test_delete_conversation_rejects_invalid_workspace_before_rpc():
+    class Client:
+        def rpc(self, *_args, **_kwargs):
+            raise AssertionError("RPC must not be called for an invalid workspace")
+
+    with pytest.raises(ValueError, match="Espace de travail invalide"):
+        cloud_storage.delete_conversation(Client(), User(), "session-private", "shared")
+
+
+def test_delete_conversation_requires_database_confirmation():
+    class RpcClient:
+        def rpc(self, *_args, **_kwargs):
+            return SimpleNamespace(execute=lambda: SimpleNamespace(data=False))
+
+    with pytest.raises(PermissionError, match="suppression n'a pas été confirmée"):
+        cloud_storage.delete_conversation(RpcClient(), User(), "session-private")
