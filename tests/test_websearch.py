@@ -92,3 +92,23 @@ def test_should_search_web_for_fresh_information(query):
 ])
 def test_should_not_search_web_for_stable_or_writing_requests(query):
     assert websearch.should_search_web(query) is False
+
+@pytest.mark.parametrize("query", [
+    "SOW IA, cherche sur Internet les sources officielles",
+    "Peux-tu trouver des liens officiels sur le web ?",
+    "Consulte des sources en ligne pour cette information",
+    "Qui est le président actuel en 2026 ?",
+    "Est-ce que ce service est toujours disponible ?",
+    "Je veux la navigation Internet sur ce sujet",
+])
+def test_should_search_web_for_explicit_browsing_and_current_facts(query):
+    assert websearch.should_search_web(query) is True
+
+
+@pytest.mark.parametrize("query", [
+    "Explique simplement ce qu'est une API",
+    "Rédige un message de remerciement",
+    "Aide-moi à organiser mon projet",
+])
+def test_should_keep_simple_requests_on_the_fast_ai_path(query):
+    assert websearch.should_search_web(query) is False
