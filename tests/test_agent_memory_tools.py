@@ -53,12 +53,12 @@ def test_memory_read_is_quota_gated_and_uses_scoped_memory_api(monkeypatch):
     client = Client()
     result = execute_registered_agent_memory_tool(
         client, SimpleNamespace(id="owner-1"), "memory_read", str(uuid.uuid4()),
-        "agent-1", "professional", {"query": "API", "max_items": 5},
+        "00000000-0000-0000-0000-000000000001", "professional", {"query": "API", "max_items": 5},
     )
     assert result["result"] == ["secret note"]
-    assert calls[0][0] == "agent-1"
+    assert calls[0][0] == "00000000-0000-0000-0000-000000000001"
     assert calls[0][1]["workspace_id"] == "professional"
-    assert client.calls[0][0] == "sowia_consume_agent_credits"
+    assert client.calls[0][0] == "sowia_consume_agent_action_for_agent"
 
 
 def test_memory_write_is_quota_gated_and_passes_only_bounded_content(monkeypatch):
@@ -69,10 +69,10 @@ def test_memory_write_is_quota_gated_and_passes_only_bounded_content(monkeypatch
     client = Client()
     result = execute_registered_agent_memory_tool(
         client, SimpleNamespace(id="owner-1"), "memory_write", str(uuid.uuid4()),
-        "agent-1", "personal", {"content": "  conserver cette API  "},
+        "00000000-0000-0000-0000-000000000001", "personal", {"content": "  conserver cette API  "},
     )
     assert result["result"] == [{"id": 9}]
-    assert calls == [("agent-1", "conserver cette API", {"workspace_id": "personal"})]
+    assert calls == [("00000000-0000-0000-0000-000000000001", "conserver cette API", {"workspace_id": "personal"})]
 
 
 def test_quota_denial_prevents_memory_access(monkeypatch):
@@ -84,7 +84,7 @@ def test_quota_denial_prevents_memory_access(monkeypatch):
     with pytest.raises(AgentQuotaExceeded):
         execute_registered_agent_memory_tool(
             client, SimpleNamespace(id="owner-1"), "memory_read", str(uuid.uuid4()),
-            "agent-1", arguments={"query": "anything"},
+            "00000000-0000-0000-0000-000000000001", arguments={"query": "anything"},
         )
     assert calls == []
 
@@ -104,7 +104,7 @@ def test_invalid_memory_requests_fail_before_quota_or_database(name, args):
     with pytest.raises(AgentMemoryToolError):
         execute_registered_agent_memory_tool(
             client, SimpleNamespace(id="owner-1"), name, str(uuid.uuid4()),
-            "agent-1", arguments=args,
+            "00000000-0000-0000-0000-000000000001", arguments=args,
         )
     assert client.calls == []
 
@@ -114,6 +114,6 @@ def test_invalid_workspace_is_rejected():
     with pytest.raises(AgentMemoryToolError):
         execute_registered_agent_memory_tool(
             client, SimpleNamespace(id="owner-1"), "memory_read", str(uuid.uuid4()),
-            "agent-1", "shared", {"query": "ok"},
+            "00000000-0000-0000-0000-000000000001", "shared", {"query": "ok"},
         )
     assert client.calls == []
