@@ -45,3 +45,13 @@ def test_unavailable_project_context_clears_stale_active_project_selection():
         "memories = get_app_memories()", 1
     )[0]
     assert 'st.session_state["sowia_active_memory_project_id"] = None' in failure_branch
+
+def test_natural_memory_commands_use_only_general_and_active_project_notes():
+    source = (ROOT / "app.py").read_text(encoding="utf-8")
+    command_block = source.split(
+        "memory_command = parse_memory_command(prompt)", 1
+    )[1].split("else:", 1)[0]
+    assert "command_memories = [" in command_block
+    assert 'item.get("project_id") is None' in command_block
+    assert "active_memory_project_id is not None" in command_block
+    assert 'str(item.get("project_id")) == str(active_memory_project_id)' in command_block
