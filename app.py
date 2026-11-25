@@ -561,27 +561,32 @@ if cloud_mode:
             '<div class="hero"><h1>SOW IA</h1><p>' + html.escape(translate_ui("Votre espace personnel sécurisé.", language)) + '</p></div>',
             unsafe_allow_html=True,
         )
+        landing_copy = {
+            "platform": translate_ui("PLATEFORME INTELLIGENTE · VISION INTERNATIONALE", language),
+            "intro": translate_ui("Explorez SOW IA : un espace numérique qui réunit assistance par intelligence artificielle, aide à la décision, outils documentaires et espaces dédiés aux projets et aux échanges.", language),
+            "modules": translate_ui("Découvrez notamment l’Assistant IA, les outils PDF et le Laboratoire PDF, SOWIA GLOBAL INTELLIGENCE, GLOBAL PORTFOLIO CONTROL, Night Exchange et Final Tech.", language),
+            "account": translate_ui("Créez votre compte ou connectez-vous pour accéder à votre espace personnel sécurisé. Certaines fonctionnalités et certains services peuvent nécessiter un abonnement Premium.", language),
+            "assistant_title": translate_ui("ASSISTANT IA", language),
+            "assistant_text": translate_ui("Un espace de dialogue et d’aide à la réflexion.", language),
+            "documents_title": translate_ui("OUTILS DOCUMENTAIRES", language),
+            "documents_text": translate_ui("Import, lecture et conversion de documents PDF et d’images.", language),
+            "vision_title": translate_ui("VISION INTERNATIONALE", language),
+            "vision_text": translate_ui("Des espaces dédiés à l’intelligence globale, aux projets et aux échanges.", language),
+        }
         st.markdown(
-            """
-            <section class="partner-intro">
-              <h3>PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</h3>
-              <p><strong>Explorez SOW IA :</strong> un espace numérique qui réunit assistance par intelligence artificielle,
-              aide à la décision, outils documentaires et espaces dédiés aux projets et aux échanges.</p>
-              <p>Découvrez notamment l’Assistant IA, les outils PDF et le Laboratoire PDF,
-              SOWIA GLOBAL INTELLIGENCE, GLOBAL PORTFOLIO CONTROL, Night Exchange et Final Tech.</p>
-              <p>Créez votre compte ou connectez-vous pour accéder à votre espace personnel sécurisé.
-              Certaines fonctionnalités et certains services peuvent nécessiter un abonnement Premium.</p>
-            </section>
-            <div class="trust-row">
-              <div class="trust-item"><strong>ASSISTANT IA</strong><span>Un espace de dialogue et d’aide à la réflexion.</span></div>
-              <div class="trust-item"><strong>OUTILS DOCUMENTAIRES</strong><span>Import, lecture et conversion de documents PDF et d’images.</span></div>
-              <div class="trust-item"><strong>VISION INTERNATIONALE</strong><span>Des espaces dédiés à l’intelligence globale, aux projets et aux échanges.</span></div>
-            </div>
-            """,
+            '<section class="partner-intro"><h3>' + html.escape(landing_copy["platform"]) + '</h3>'
+            + '<p><strong>' + html.escape(landing_copy["intro"]) + '</strong></p>'
+            + '<p>' + html.escape(landing_copy["modules"]) + '</p>'
+            + '<p>' + html.escape(landing_copy["account"]) + '</p></section>'
+            + '<div class="trust-row">'
+            + '<div class="trust-item"><strong>' + html.escape(landing_copy["assistant_title"]) + '</strong><span>' + html.escape(landing_copy["assistant_text"]) + '</span></div>'
+            + '<div class="trust-item"><strong>' + html.escape(landing_copy["documents_title"]) + '</strong><span>' + html.escape(landing_copy["documents_text"]) + '</span></div>'
+            + '<div class="trust-item"><strong>' + html.escape(landing_copy["vision_title"]) + '</strong><span>' + html.escape(landing_copy["vision_text"]) + '</span></div>'
+            + '</div>',
             unsafe_allow_html=True,
         )
         st.subheader(translate_ui("Connexion à SOW IA", language))
-        st.write("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA : utilisez votre mot de passe ou demandez un lien sécurisé à usage unique. Aucun compte GitHub n’est nécessaire.")
+        st.write(translate_ui("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA : utilisez votre mot de passe ou demandez un lien sécurisé à usage unique. Aucun compte GitHub n’est nécessaire.", language))
         callback_code_present = bool(st.query_params.get("code") or st.query_params.get("token_hash"))
         callback_error = str(st.query_params.get("error", "")).strip()
         callback_error_description = str(st.query_params.get("error_description", "")).strip()
