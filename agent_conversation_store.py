@@ -102,7 +102,7 @@ def list_agent_messages(
     safe_limit = min(max(int(limit), 1), 100)
     rows = (
         client.table("sowia_agent_messages")
-        .select("role, content, created_at")
+        .select("role, content")
         .eq("user_id", owner)
         .eq("agent_id", agent)
         .eq("workspace_id", workspace)
@@ -126,8 +126,8 @@ def save_agent_message(
     if role not in _ALLOWED_ROLES:
         raise ValueError("Rôle de message invalide.")
     cleaned = str(content or "").strip()
-    if not cleaned or len(cleaned) > 12000:
-        raise ValueError("Le message doit contenir entre 1 et 12 000 caractères.")
+    if not cleaned or len(cleaned) > 24000:
+        raise ValueError("Le message doit contenir entre 1 et 24 000 caractères.")
     _assert_active_agent(client, owner, agent, workspace)
     thread = (
         client.table("sowia_agent_conversations")
