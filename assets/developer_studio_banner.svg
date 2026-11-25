@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 788" role="img" aria-labelledby="title desc">
+<title id="title">SOW IA — Developer Studio</title>
+<desc id="desc">Bannière futuriste bleu nuit et cyan avec un globe terrestre lumineux, des orbites dorées et les outils du Developer Studio. Aucun personnage.</desc>
+<defs>
+ <radialGradient id="bg"><stop stop-color="#073d91"/><stop offset=".58" stop-color="#031b50"/><stop offset="1" stop-color="#010824"/></radialGradient>
+ <radialGradient id="earth" cx="36%" cy="28%"><stop stop-color="#e7fbff"/><stop offset=".18" stop-color="#58d8ff"/><stop offset=".52" stop-color="#0872df"/><stop offset="1" stop-color="#031a59"/></radialGradient>
+ <linearGradient id="cyan"><stop stop-color="#a8f7ff"/><stop offset=".45" stop-color="#10cfff"/><stop offset="1" stop-color="#0874ff"/></linearGradient>
+ <linearGradient id="gold"><stop stop-color="#fff4ad"/><stop offset=".5" stop-color="#ffbf27"/><stop offset="1" stop-color="#d97800"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <clipPath id="earthClip"><circle cx="300" cy="320" r="245"/></clipPath>
+</defs>
+<rect width="1400" height="788" fill="url(#bg)"/>
+<g opacity=".55" fill="#9cecff"><circle cx="70" cy="90" r="2"/><circle cx="780" cy="72" r="2"/><circle cx="1290" cy="160" r="2"/><circle cx="690" cy="650" r="2"/><circle cx="1170" cy="610" r="2"/><circle cx="950" cy="180" r="1.5"/><circle cx="520" cy="55" r="1.5"/></g>
+<g filter="url(#glow)" fill="none" stroke="url(#cyan)" opacity=".95"><ellipse cx="300" cy="320" rx="300" ry="92" transform="rotate(-24 300 320)" stroke-width="5"/><ellipse cx="300" cy="320" rx="300" ry="92" transform="rotate(25 300 320)" stroke-width="3"/></g>
+<circle cx="300" cy="320" r="245" fill="url(#earth)" stroke="#77eaff" stroke-width="5" filter="url(#glow)"/>
+<g clip-path="url(#earthClip)" fill="none" stroke="#8beaff" opacity=".28"><ellipse cx="300" cy="320" rx="110" ry="245"/><ellipse cx="300" cy="320" rx="190" ry="245"/><path d="M55 320h490M80 220h440M80 420h440M120 130h360M120 510h360" stroke-width="2"/></g>
+<g clip-path="url(#earthClip)" fill="#b9e8ce" opacity=".9"><path d="M170 125l65-27 53 18 24 40-27 27-9 43-45 19-28 55-42-9-24-54-39-22 8-54 42-36z"/><path d="M292 285l56-25 43 26 19 50-28 50-7 78-36 74-27-33-10-88-35-55z"/><path d="M390 150l60-18 51 35-13 40-49 14-26-29z"/></g>
+<g fill="none" stroke="url(#gold)" stroke-width="7" filter="url(#glow)"><ellipse cx="300" cy="320" rx="285" ry="75" transform="rotate(-31 300 320)"/></g>
+<g font-family="Arial,Helvetica,sans-serif" fill="#f3fbff">
+ <text x="620" y="220" font-size="132" font-weight="800" letter-spacing="8">SOW <tspan fill="#12d9ff">IA</tspan></text>
+ <rect x="620" y="258" width="700" height="112" rx="28" fill="#03143c" stroke="#19cfff" stroke-width="4" filter="url(#glow)"/>
+ <text x="970" y="335" text-anchor="middle" font-size="68" font-weight="700">Developer <tspan fill="#12d9ff">Studio</tspan></text>
+ <text x="970" y="425" text-anchor="middle" font-size="31" fill="#c9f8ff">Créez · Configurez · Utilisez vos agents IA</text>
+</g>
+<g font-family="Arial,Helvetica,sans-serif" text-anchor="middle" filter="url(#glow)">
+ <g fill="#061a4b" stroke="#11cfff" stroke-width="3">
+  <rect x="45" y="520" width="245" height="150" rx="24"/><rect x="315" y="520" width="245" height="150" rx="24"/><rect x="585" y="520" width="245" height="150" rx="24"/><rect x="855" y="520" width="245" height="150" rx="24"/><rect x="1125" y="520" width="230" height="150" rx="24"/>
+ </g>
+ <g fill="#eafaff" font-size="24" font-weight="700"><text x="167" y="585">⌘ Développez</text><text x="167" y="622">vos agents</text><text x="437" y="585">⚙ Configurez</text><text x="437" y="622">vos outils</text><text x="707" y="585">◉ Mémoire</text><text x="707" y="622">persistante</text><text x="977" y="585">↗ Boostez votre</text><text x="977" y="622">productivité</text><text x="1240" y="585">▤ Accédez à</text><text x="1240" y="622">vos projets</text></g>
+</g>
+<path d="M0 710Q340 650 700 710T1400 700V788H0Z" fill="#020c2c" opacity=".9"/><path d="M0 710Q340 650 700 710T1400 700" fill="none" stroke="url(#cyan)" stroke-width="6" filter="url(#glow)"/>
+<text x="70" y="755" fill="#eafaff" font-family="Arial,Helvetica,sans-serif" font-size="30" font-style="italic">Votre espace créatif pour une IA plus puissante</text>
+<text x="1110" y="745" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="25" font-weight="700">SOW IA</text>
+<text x="1110" y="773" fill="#b9efff" font-family="Arial,Helvetica,sans-serif" font-size="14">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</text>
+</svg>
