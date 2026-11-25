@@ -61,6 +61,10 @@ def _setup(monkeypatch, fake_client):
     }])
     monkeypatch.setattr(orchestrator, "OpenAI", lambda **kwargs: fake_client)
     monkeypatch.setattr(orchestrator, "build_system_prompt", lambda **kwargs: "system")
+    monkeypatch.setattr(orchestrator, "consume_agent_action", lambda *a, **k: {
+        "allowed": True, "reason": "quota_available"
+    })
+    monkeypatch.setattr(orchestrator, "finish_agent_action", lambda *a, **k: True)
     monkeypatch.setattr(orchestrator, "_tool_definitions", lambda enabled_tools=None: [{"type": "function"}])
 
 
