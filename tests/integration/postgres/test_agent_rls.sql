@@ -4,6 +4,7 @@
 \ir ../../../supabase/migrations/20261125153000_sowia_agent_usage_quota.sql
 \ir ../../../supabase/migrations/20261125160000_sowia_agent_tool_permissions_activity.sql
 \ir ../../../supabase/migrations/20261125170000_sowia_agent_conversation_history.sql
+\ir ../../../supabase/migrations/20261125240000_sowia_agent_data_deletion.sql
 
 -- Owner A creates an agent, memory, conversation, message and initial quota event.
 set role authenticated;
@@ -120,5 +121,66 @@ begin
   end;
 end
 $$;
+-- Owner B must not be able to delete owner A's conversation through the SECURITY DEFINER RPC.
+do $
+begin
+  if public.sowia_delete_my_agent_conversation(
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      'personal'
+  ) then
+    raise exception 'DELETE SECURITY FAILURE: owner B deleted owner A conversation';
+  end if;
+end
+$;
+
+-- Owner A retains read/delete access to private memories when the agent is paused.
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
+update public.sowia_agents set status = 'paused'
+where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+do $
+begin
+  if (select count(*) from public.sowia_agent_memory_items
+      where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') <> 1 then
+    raise exception 'MEMORY ACCESS FAILURE: owner cannot read private memory for paused agent';
+  end if;
+end
+$;
+
+delete from public.sowia_agent_memory_items
+where id = (
+  select id from public.sowia_agent_memory_items
+  where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  limit 1
+);
+do $
+begin
+  if exists (select 1 from public.sowia_agent_memory_items
+             where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') then
+    raise exception 'DELETE FAILURE: owner could not delete paused agent memory';
+  end if;
+end
+$;
+
+-- Owner A can delete the conversation; its messages must cascade.
+if (!public.sowia_delete_my_agent_conversation(
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    'personal'
+)) then
+  raise exception 'DELETE FAILURE: owner could not delete own conversation';
+end if;
+do $
+begin
+  if exists (select 1 from public.sowia_agent_conversations
+             where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') then
+    raise exception 'DELETE FAILURE: conversation remains after owner deletion';
+  end if;
+  if exists (select 1 from public.sowia_agent_messages
+             where conversation_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') then
+    raise exception 'CASCADE FAILURE: conversation messages were not deleted';
+  end if;
+end
+$;
 reset role;
-select 'PASS: migrations, owner isolation, tool permissions, quota enforcement and activity tracking' as result;
+select 'PASS: owner-scoped agent memory and conversation deletion, paused-agent memory access and message cascade' as result;
