@@ -60,6 +60,7 @@ import project_registry_ui
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from memory_engine import select_relevant_memories
+from memory_commands import parse_memory_command, find_memory_matches, find_exact_memory_matches
 from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
 from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_authenticated_session_state, logout_authenticated_session
 
@@ -2655,47 +2656,110 @@ elif page == "Assistant IA":
     )
     prompt = st.session_state.pop("sowia_pending_chat_prompt", None)
     if prompt:
-        # Explicit memory commands use the existing account-scoped storage layer.
-        # Never claim persistence unless the Supabase insert and read-back succeed.
-        explicit_memory = extract_explicit_memory_request(prompt)
-        if explicit_memory is not None:
+        # Explicit recall/forget commands operate only on the active user's
+        # already-authorized memory records. Deletion requires one exact match.
+        memory_command = parse_memory_command(prompt)
+        if memory_command is not None:
             render_accessible_message("user", prompt)
             try:
-                if not cloud_mode or current_user is None:
-                    raise RuntimeError("Connexion Supabase requise pour une mémoire persistante.")
-                inserted_memory = add_app_memory(
-                    explicit_memory,
-                    project_id=st.session_state.get("sowia_active_memory_project_id"),
-                )
-                if not inserted_memory:
-                    raise RuntimeError("Supabase n'a retourné aucune ligne enregistrée.")
-                saved_memories = get_app_memories()
-                if not any(
-                    item.get("content") == explicit_memory
-                    and str(item.get("project_id") or "") == str(st.session_state.get("sowia_active_memory_project_id") or "")
-                    for item in saved_memories
-                ):
-                    raise RuntimeError("La note a été écrite mais sa relecture de vérification a échoué.")
-                memory_reply = "C'est enregistré dans votre mémoire SOW IA sur votre compte Supabase. J'ai vérifié que la note peut être relue. Vous pourrez la retrouver dans « Ma mémoire » et la réutiliser dans une nouvelle conversation."
+                command_memories = get_app_memories()
+                if memory_command["action"] == "recall":
+                    matches = find_memory_matches(command_memories, memory_command["query"])
+                    if matches:
+                        memory_reply = translate_ui(
+                            "Voici les informations retrouvées dans votre mémoire :",
+                            language,
+                        ) + "\n\n" + "\n".join(
+                            f"• {str(item.get('content') or '').strip()}" for item in matches[:5]
+                        )
+                        if len(matches) > 5:
+                            memory_reply += "\n\n" + translate_ui(
+                                "D'autres résultats existent ; seuls les cinq premiers sont affichés.",
+                                language,
+                            )
+                    else:
+                        memory_reply = translate_ui(
+                            "Je n'ai trouvé aucune note correspondant à cette recherche dans votre mémoire.",
+                            language,
+                        )
+                else:
+                    matches = find_exact_memory_matches(command_memories, memory_command["query"])
+                    if len(matches) == 1 and matches[0].get("id") is not None:
+                        target_id = str(matches[0]["id"])
+                        delete_app_memory(target_id)
+                        remaining = get_app_memories()
+                        if any(str(item.get("id")) == target_id for item in remaining):
+                            raise RuntimeError("La suppression n'a pas pu être vérifiée.")
+                        memory_reply = translate_ui(
+                            "La note correspondante a été supprimée de votre mémoire. Les autres notes sont conservées.",
+                            language,
+                        )
+                    elif len(matches) > 1:
+                        memory_reply = translate_ui(
+                            "Plusieurs notes correspondent à cette demande. Aucune n'a été supprimée. Précisez une expression plus distinctive.",
+                            language,
+                        )
+                    else:
+                        memory_reply = translate_ui(
+                            "Aucune note unique ne correspond à cette demande ; rien n'a été supprimé.",
+                            language,
+                        )
                 render_accessible_message("assistant", memory_reply)
                 try:
                     save_app_message("user", prompt)
                     save_app_message("assistant", memory_reply)
                 except Exception:
-                    st.caption("La mémoire a bien été vérifiée ; l'historique de cette conversation n'a pas pu être entièrement enregistré.")
+                    st.caption(translate_ui(
+                        "La commande mémoire a été traitée, mais son échange n'a pas pu être entièrement ajouté à l'historique.",
+                        language,
+                    ))
             except Exception as memory_error:
-                memory_reply = (
-                    "Je n'ai pas pu confirmer l'enregistrement persistant. "
-                    "Aucune confirmation de sauvegarde ne peut être donnée. "
-                    "Diagnostic : " + type(memory_error).__name__
+                memory_reply = translate_ui(
+                    "Je n'ai pas pu vérifier l'exécution de cette commande mémoire. Aucune réussite n'est annoncée.",
+                    language,
                 )
                 render_accessible_message("assistant", memory_reply)
-                try:
-                    save_app_message("user", prompt)
-                    save_app_message("assistant", memory_reply)
-                except Exception:
-                    pass
+                st.caption("Diagnostic : " + type(memory_error).__name__)
         else:
+            # Explicit memory saves remain separate from recall/forget commands.
+            explicit_memory = extract_explicit_memory_request(prompt)
+            if explicit_memory is not None:
+                render_accessible_message("user", prompt)
+                try:
+                    inserted_memory = add_app_memory(
+                        explicit_memory,
+                        project_id=st.session_state.get("sowia_active_memory_project_id"),
+                    )
+                    if not inserted_memory:
+                        raise RuntimeError("Aucune ligne mémoire n'a été retournée.")
+                    saved_memories = get_app_memories()
+                    if not any(
+                        item.get("content") == explicit_memory
+                        and str(item.get("project_id") or "") == str(st.session_state.get("sowia_active_memory_project_id") or "")
+                        for item in saved_memories
+                    ):
+                        raise RuntimeError("La relecture de vérification a échoué.")
+                    memory_reply = translate_ui(
+                        "C'est enregistré dans votre mémoire SOW IA. J'ai vérifié que la note peut être relue.",
+                        language,
+                    )
+                    render_accessible_message("assistant", memory_reply)
+                    try:
+                        save_app_message("user", prompt)
+                        save_app_message("assistant", memory_reply)
+                    except Exception:
+                        st.caption(translate_ui(
+                            "La mémoire est enregistrée ; l'historique de cette conversation n'a pas pu être entièrement enregistré.",
+                            language,
+                        ))
+                except Exception as memory_error:
+                    memory_reply = translate_ui(
+                        "Je n'ai pas pu confirmer l'enregistrement persistant. Aucune confirmation de sauvegarde ne peut être donnée.",
+                        language,
+                    )
+                    render_accessible_message("assistant", memory_reply)
+                    st.caption("Diagnostic : " + type(memory_error).__name__)
+            else:
             # A cloud message must be persisted before invoking the AI. This avoids
             # presenting a reply for a turn that cannot be recovered from history.
             try:
