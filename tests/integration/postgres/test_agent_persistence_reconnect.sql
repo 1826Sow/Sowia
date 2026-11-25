@@ -10,10 +10,10 @@ begin
   if (select count(*) from public.sowia_agent_memory_items where content = 'Mémoire privée A') <> 1 then
     raise exception 'PERSISTENCE FAILURE: private memory missing after reconnect';
   end if;
-  if (select count(*) from public.sowia_agent_conversations where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') <> 1 then
+  if (select count(*) from public.sowia_agent_conversations where id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc') <> 1 then
     raise exception 'PERSISTENCE FAILURE: conversation missing after reconnect';
   end if;
-  if (select count(*) from public.sowia_agent_messages where conversation_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') <> 1 then
+  if (select count(*) from public.sowia_agent_messages where conversation_id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc') <> 1 then
     raise exception 'PERSISTENCE FAILURE: message missing after reconnect';
   end if;
 end
