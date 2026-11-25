@@ -161,6 +161,7 @@ declare
   v_position public.sowia_nex_positions%rowtype;
   v_config public.sowia_nex_market_config%rowtype;
   v_order_id uuid;
+  v_trade_id uuid;
   v_remaining bigint;
   v_opp record;
   v_buy_id uuid;
@@ -290,21 +291,18 @@ begin
         share_class_id,buy_order_id,sell_order_id,buyer_user_id,seller_user_id,
         quantity,execution_price,gross_value,total_fee,sowia_revenue,market_reserve,ecosystem_fund
       ) values (p_share_class_id,v_buy_id,v_sell_id,v_buyer,v_seller,
-        v_qty,v_exec_price,v_gross,v_fee,v_sowia,v_reserve,v_ecosystem);
+        v_qty,v_exec_price,v_gross,v_fee,v_sowia,v_reserve,v_ecosystem)
+      returning id into v_trade_id;
+      if v_gross <= 0 then raise exception 'Le montant minimal d’une transaction est 0,01 NXC.'; end if;
       insert into public.sowia_nex_ledger(user_id,trade_id,event_type,amount,balance_after,details)
       values
-       (v_buyer, (select max(id) from public.sowia_nex_trades where buy_order_id=v_buy_id and sell_order_id=v_sell_id),
-        'buy_debit',-v_total_debit,v_buyer_balance,jsonb_build_object('quantity',v_qty,'ticker',v_share.ticker)),
-       (v_seller,(select max(id) from public.sowia_nex_trades where buy_order_id=v_buy_id and sell_order_id=v_sell_id),
-        'sell_credit',v_gross,v_seller_balance,jsonb_build_object('quantity',v_qty,'ticker',v_share.ticker));
+       (v_buyer,v_trade_id,'buy_debit',-v_total_debit,v_buyer_balance,jsonb_build_object('quantity',v_qty,'ticker',v_share.ticker)),
+       (v_seller,v_trade_id,'sell_credit',v_gross,v_seller_balance,jsonb_build_object('quantity',v_qty,'ticker',v_share.ticker));
       insert into public.sowia_nex_revenue_ledger(trade_id,account_code,amount)
-      select t.id, x.account_code, x.amount
-        from public.sowia_nex_trades t
-        cross join (values ('sowia_commission'::text,v_sowia),
-                           ('market_reserve'::text,v_reserve),
-                           ('ecosystem_fund'::text,v_ecosystem)) x(account_code,amount)
-       where t.buy_order_id=v_buy_id and t.sell_order_id=v_sell_id
-       order by t.id desc limit 3;
+      values
+       (v_trade_id,'sowia_commission',v_sowia),
+       (v_trade_id,'market_reserve',v_reserve),
+       (v_trade_id,'ecosystem_fund',v_ecosystem);
 
       v_remaining := v_remaining - v_qty;
       update public.sowia_nex_orders set remaining_quantity=remaining_quantity-v_qty,
@@ -362,21 +360,18 @@ begin
         share_class_id,buy_order_id,sell_order_id,buyer_user_id,seller_user_id,
         quantity,execution_price,gross_value,total_fee,sowia_revenue,market_reserve,ecosystem_fund
       ) values(p_share_class_id,v_buy_id,v_sell_id,v_buyer,v_seller,
-        v_qty,v_exec_price,v_gross,v_fee,v_sowia,v_reserve,v_ecosystem);
+        v_qty,v_exec_price,v_gross,v_fee,v_sowia,v_reserve,v_ecosystem)
+      returning id into v_trade_id;
+      if v_gross <= 0 then raise exception 'Le montant minimal d’une transaction est 0,01 NXC.'; end if;
       insert into public.sowia_nex_ledger(user_id,trade_id,event_type,amount,balance_after,details)
-      select v_buyer,t.id,'buy_debit',-v_total_debit,v_buyer_balance,jsonb_build_object('quantity',v_qty,'ticker',v_share.ticker)
-       from public.sowia_nex_trades t where t.buy_order_id=v_buy_id and t.sell_order_id=v_sell_id order by t.id desc limit 1;
+      values (v_buyer,v_trade_id,'buy_debit',-v_total_debit,v_buyer_balance,jsonb_build_object('quantity',v_qty,'ticker',v_share.ticker));
       insert into public.sowia_nex_ledger(user_id,trade_id,event_type,amount,balance_after,details)
-      select v_seller,t.id,'sell_credit',v_gross,v_seller_balance,jsonb_build_object('quantity',v_qty,'ticker',v_share.ticker)
-       from public.sowia_nex_trades t where t.buy_order_id=v_buy_id and t.sell_order_id=v_sell_id order by t.id desc limit 1;
+      values (v_seller,v_trade_id,'sell_credit',v_gross,v_seller_balance,jsonb_build_object('quantity',v_qty,'ticker',v_share.ticker));
       insert into public.sowia_nex_revenue_ledger(trade_id,account_code,amount)
-      select t.id,x.account_code,x.amount
-       from public.sowia_nex_trades t
-       cross join (values ('sowia_commission'::text,v_sowia),
-                          ('market_reserve'::text,v_reserve),
-                          ('ecosystem_fund'::text,v_ecosystem)) x(account_code,amount)
-       where t.buy_order_id=v_buy_id and t.sell_order_id=v_sell_id
-       order by t.id desc limit 3;
+      values
+       (v_trade_id,'sowia_commission',v_sowia),
+       (v_trade_id,'market_reserve',v_reserve),
+       (v_trade_id,'ecosystem_fund',v_ecosystem);
 
       v_remaining:=v_remaining-v_qty;
       update public.sowia_nex_orders set remaining_quantity=remaining_quantity-v_qty,
