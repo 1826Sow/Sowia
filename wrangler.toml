@@ -1,0 +1,7 @@
+name = "sowia"
+compatibility_date = "2026-11-25"
+workers_dev = true
+keep_vars = true
+
+[assets]
+directory = "./public-site"
