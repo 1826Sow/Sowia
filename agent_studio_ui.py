@@ -14,7 +14,7 @@ def _load_projects(client, user, workspace):
     user_id = str(getattr(user, "id", "") or "")
     rows = (
         client.table("sowia_projects")
-        .select("id, name, title")
+        .select("id, title")
         .eq("user_id", user_id)
         .eq("workspace_id", workspace)
         .is_("archived_at", "null")
@@ -114,6 +114,8 @@ def render(client, user, premium_active=False):
         create = st.form_submit_button("Créer l'agent", type="primary", use_container_width=True)
     if create:
         try:
+            if read_project and project_labels[project_label] is None:
+                raise ValueError("Choisissez un projet pour autoriser sa mémoire.")
             created = register_agent(
                 client, user, name, workspace_id=workspace,
                 project_id=project_labels[project_label],
