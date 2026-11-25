@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+import uuid
 
 
 def _rows(response):
@@ -69,7 +70,6 @@ def render(client, user):
         st.caption("Diagnostic : " + type(exc).__name__)
         return
 
-    app_by_id = {str(item["id"]): item for item in approved_apps}
     for item in listings:
         try:
             app_rows = _rows(
@@ -144,6 +144,7 @@ def render(client, user):
 
             st.divider()
             st.markdown("#### Passer un ordre à cours limité")
+            order_request_id = st.session_state.setdefault("nex_global_order_request_id", str(uuid.uuid4()))
             with st.form("nex_global_limit_order", clear_on_submit=True):
                 side_label = st.radio("Sens", ["Acheter", "Vendre"], horizontal=True)
                 quantity = st.number_input("Quantité d'actions virtuelles", min_value=1, max_value=1000000, value=1, step=1)
@@ -159,7 +160,9 @@ def render(client, user):
                         "p_side": "buy" if side_label == "Acheter" else "sell",
                         "p_quantity": int(quantity),
                         "p_limit_price": str(limit_price),
+                        "p_client_order_id": order_request_id,
                     })
+                    st.session_state.pop("nex_global_order_request_id", None)
                     st.success("Ordre enregistré. Les exécutions éventuelles sont comptabilisées dans le portefeuille virtuel.")
                     st.rerun()
                 except Exception as exc:
