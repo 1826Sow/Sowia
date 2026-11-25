@@ -55,6 +55,39 @@ create table if not exists public.sowia_nex_revenue_ledger (
 create index if not exists sowia_nex_revenue_ledger_account_time_idx
   on public.sowia_nex_revenue_ledger(account_code, created_at desc);
 
+-- Execution and accounting history is append-only, including for privileged API roles.
+create or replace function private.nex_reject_immutable_change()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  raise exception 'Le registre NIGHT EXCHANGE est immuable.';
+end;
+$$;
+revoke all on function private.nex_reject_immutable_change() from public, anon, authenticated;
+drop trigger if exists sowia_nex_trades_immutable_rows on public.sowia_nex_trades;
+create trigger sowia_nex_trades_immutable_rows
+  before update or delete on public.sowia_nex_trades
+  for each row execute function private.nex_reject_immutable_change();
+drop trigger if exists sowia_nex_ledger_immutable_rows on public.sowia_nex_ledger;
+create trigger sowia_nex_ledger_immutable_rows
+  before update or delete on public.sowia_nex_ledger
+  for each row execute function private.nex_reject_immutable_change();
+drop trigger if exists sowia_nex_revenue_ledger_immutable_rows on public.sowia_nex_revenue_ledger;
+create trigger sowia_nex_revenue_ledger_immutable_rows
+  before update or delete on public.sowia_nex_revenue_ledger
+  for each row execute function private.nex_reject_immutable_change();
+drop trigger if exists sowia_nex_trades_no_truncate on public.sowia_nex_trades;
+create trigger sowia_nex_trades_no_truncate before truncate on public.sowia_nex_trades
+  for each statement execute function private.nex_reject_immutable_change();
+drop trigger if exists sowia_nex_ledger_no_truncate on public.sowia_nex_ledger;
+create trigger sowia_nex_ledger_no_truncate before truncate on public.sowia_nex_ledger
+  for each statement execute function private.nex_reject_immutable_change();
+drop trigger if exists sowia_nex_revenue_ledger_no_truncate on public.sowia_nex_revenue_ledger;
+create trigger sowia_nex_revenue_ledger_no_truncate before truncate on public.sowia_nex_revenue_ledger
+  for each statement execute function private.nex_reject_immutable_change();
+
 alter table public.sowia_nex_positions enable row level security;
 alter table public.sowia_nex_market_config enable row level security;
 alter table public.sowia_nex_revenue_ledger enable row level security;
