@@ -15,11 +15,10 @@ Les tests d'intégration vérifient les politiques RLS réellement appliquées a
    - `supabase_storage_policies.sql` (création du bucket privé `sowia-files` et règles d'accès PDF).
 
    La migration de sécurisation exige que `sowia_entitlements` expose les colonnes `user_id`, `status` et `provider`. Si la colonne `plan` existe, elle vérifie également `plan = 'premium'` ; sinon, elle suit le schéma de base du dépôt, où le droit Premium est représenté par un entitlement PayPal actif. Elle accorde uniquement SELECT à `authenticated` ; la politique RLS propriétaire de cette table doit rester active. Si le module récurrent est installé, `sowia_subscriptions` doit également conserver RLS activé et sa politique SELECT limitée à `auth.uid() = user_id`.
-4. Dans les paramètres API du projet de test, récupérer l'URL du projet et la clé publique **anon/publishable**. Ne pas utiliser la clé `service_role` ou une clé secrète.
-5. Fournir les sept variables ci-dessous uniquement dans l'environnement d'exécution sécurisé :
+4. Dans les paramètres API du projet de test, récupérer uniquement la clé publique **anon/publishable**. L'URL du projet est verrouillée directement dans le workflow sur `https://mrbmoavotzcuzvnhfjla.supabase.co` ; elle ne dépend d'aucun secret. Ne pas utiliser la clé `service_role` ou une clé secrète.
+5. Fournir les six variables ci-dessous uniquement dans l'environnement d'exécution sécurisé :
 
 ```text
-SOWIA_TEST_SUPABASE_URL
 SOWIA_TEST_SUPABASE_ANON_KEY
 SOWIA_TEST_USER_A_EMAIL
 SOWIA_TEST_USER_A_PASSWORD
@@ -28,7 +27,7 @@ SOWIA_TEST_USER_B_PASSWORD
 SOWIA_TEST_PROJECT_CONFIRMATION
 ```
 
-Pour `SOWIA_TEST_PROJECT_CONFIRMATION`, utiliser exactement la valeur `I_CONFIRM_THIS_IS_A_DEDICATED_SOWIA_TEST_PROJECT` uniquement après avoir vérifié l'URL et le projet Supabase de test. Cette confirmation supplémentaire est obligatoire : sans elle, aucun appel réseau de test n'est effectué. Les scripts n'acceptent qu'une URL de projet hébergé au format HTTPS `https://<projet>.supabase.co`, sans identifiants, port, chemin, paramètres ni fragment. Les redirections HTTP sont désactivées pour empêcher le transfert involontaire des clés ou jetons vers une autre destination.
+Pour `SOWIA_TEST_PROJECT_CONFIRMATION`, utiliser exactement la valeur `I_CONFIRM_THIS_IS_A_DEDICATED_SOWIA_TEST_PROJECT` uniquement après avoir vérifié le projet Supabase de test. Cette confirmation supplémentaire est obligatoire : sans elle, aucun appel réseau de test n'est effectué. L'URL de destination est codée explicitement dans le workflow vers le seul projet de test ; les redirections HTTP sont désactivées pour empêcher le transfert involontaire des clés ou jetons vers une autre destination.
 
 Ne jamais utiliser les comptes de production, ni inscrire les secrets dans Git, les journaux CI ou une capture d'écran. Le projet de test doit rester distinct de l'application SOW IA en production.
 
@@ -44,11 +43,11 @@ pytest -q tests/integration/test_supabase_two_user_isolation.py tests/integratio
 
 **Statut actuel :** le job `supabase-rls-integration` est activé uniquement sur les événements `push` de confiance vers `main` ou `security/professional-access-gate`. Il reste volontairement ignoré sur les événements `pull_request`, afin de ne jamais exposer les secrets à du code proposé. Avant tout test réseau, le workflow exige les sept secrets dédiés et vérifie que l'URL est exactement `https://mrbmoavotzcuzvnhfjla.supabase.co` (projet `SOWIA - TEST`). Toute autre URL, notamment celle du projet de production `qegcopordeqjiechmbhg`, est refusée. Un job ignoré ou une configuration absente ne vaut pas validation RLS : seule une exécution réelle réussie avec les deux comptes dédiés constitue une validation.
 
-Dans GitHub, ouvrir **Settings → Secrets and variables → Actions**, puis créer les sept secrets portant exactement les noms listés plus haut. Leurs valeurs doivent provenir exclusivement du projet Supabase de test et des deux comptes dédiés.
+Dans GitHub, ouvrir **Settings → Secrets and variables → Actions**, puis créer les six secrets portant exactement les noms listés plus haut. Leurs valeurs doivent provenir exclusivement du projet Supabase de test et des deux comptes dédiés.
 
 **Protection des secrets :** le job des tests RLS réels est conditionné aux événements `push` sur `main` ou sur la branche de sécurité examinée `security/professional-access-gate`. Il ne reçoit jamais de secret pendant les événements `pull_request`, où le code proposé peut être non fiable. Les tests automatisés ordinaires continuent de s'exécuter sur les PR sans secrets. Le résultat du job RLS sur un événement `pull_request` est donc volontairement `skipped` ; la validation réelle exige un push fiable sur l'une des deux branches autorisées et les sept secrets correctement configurés.
 
-Si l'une des six valeurs d'accès ou la confirmation dédiée manque ou est incorrecte, le job indique explicitement que les tests réels sont ignorés ; il ne prétend jamais avoir validé la RLS. Ne jamais renseigner les identifiants d'un compte réel ni ceux du projet de production.
+Si l'une des six valeurs (clé publique, comptes A et B, et confirmation dédiée) manque ou est incorrecte, le job indique explicitement que les tests réels sont ignorés ; il ne prétend jamais avoir validé la RLS. Ne jamais renseigner les identifiants d'un compte réel ni ceux du projet de production.
 
 Avec les sept variables, les sessions authentifiées A et B vérifient pour chaque table que le compte A peut lire ses propres lignes, que le compte B ne peut pas les lire, qu'il ne peut pas insérer une ligne au nom de A et qu'il ne peut pas supprimer la ligne de A. Les lignes témoins des tables messages et mémoire sont supprimées par le compte A dans un bloc `finally`. Le test `sowia_projects` vérifie également l'isolation propriétaire, le refus d'une insertion usurpant un autre propriétaire, le refus d'une modification inter-compte. Comme la table projets n'accorde volontairement aucun droit DELETE, sa ligne synthétique est archivée en fin de test ; elle peut être supprimée manuellement depuis le SQL Editor du projet de test après vérification.
 
