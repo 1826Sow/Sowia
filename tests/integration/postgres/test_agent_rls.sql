@@ -163,13 +163,17 @@ end
 $;
 
 -- Owner A can delete the conversation; its messages must cascade.
-if (!public.sowia_delete_my_agent_conversation(
-    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-    'personal'
-)) then
-  raise exception 'DELETE FAILURE: owner could not delete own conversation';
-end if;
+do $
+begin
+  if not public.sowia_delete_my_agent_conversation(
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      'personal'
+  ) then
+    raise exception 'DELETE FAILURE: owner could not delete own conversation';
+  end if;
+end
+$;
 do $
 begin
   if exists (select 1 from public.sowia_agent_conversations
