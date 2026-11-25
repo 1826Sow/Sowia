@@ -100,6 +100,7 @@ begin
      where a.id = p_agent_id
        and a.user_id = v_user_id
        and a.workspace_id = p_workspace_id
+       and (a.workspace_id = 'personal' or public.sowia_has_professional_access())
        and a.status = 'active';
     if not found or (p_tool_name <> 'agent_chat' and not (p_tool_name = any(v_agent.enabled_tools))) then
         raise exception 'Agent tool is not enabled for this owner' using errcode = '42501';
@@ -198,7 +199,12 @@ begin
      where user_id = v_user_id
        and agent_id = p_agent_id
        and request_id = p_request_id
-       and status = 'started';
+       and status = 'started'
+       and exists (
+           select 1 from public.sowia_agents a
+            where a.id = p_agent_id and a.user_id = v_user_id
+              and (a.workspace_id = 'personal' or public.sowia_has_professional_access())
+       );
 
     return found;
 end;
@@ -237,6 +243,7 @@ begin
     if not exists (
         select 1 from public.sowia_agents a
          where a.id = p_agent_id and a.user_id = v_user_id
+           and (a.workspace_id = 'personal' or public.sowia_has_professional_access())
     ) then
         raise exception 'Agent not found' using errcode = '42501';
     end if;
