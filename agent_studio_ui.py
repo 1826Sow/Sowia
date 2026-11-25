@@ -1,4 +1,4 @@
-"""Owner-facing Developer Studio for SOW IA agents.
+"Owner-facing Developer Studio for SOW IA agents.
 
 The UI delegates ownership and memory authorization to memory_access and RLS.
 It exposes only the reviewed static agent tool registry; no arbitrary code or
@@ -6,7 +6,6 @@ external transaction execution is offered here.
 """
 from __future__ import annotations
 
-import uuid
 import streamlit as st
 
 
@@ -40,6 +39,62 @@ def _set_agent_status(client, user, agent, workspace, status):
     if not result:
         raise PermissionError("La modification de cet agent n'a pas été confirmée.")
     return result[0]
+
+
+def _render_agent_conversation(client, user, agent, workspace):
+    """Render a per-agent chat with authorized durable memory retrieval."""
+    st.divider()
+    st.markdown("#### Conversation avec cet agent")
+    st.caption(
+        "La conversation reste disponible pendant cette session. À chaque demande, "
+        "l'agent recharge sa mémoire persistante autorisée."
+    )
+    owner_id = str(getattr(user, "id", "") or "")
+    agent_id = str(agent["id"])
+    history_key = f"sowia_agent_chat:{owner_id}:{agent_id}"
+    history = st.session_state.setdefault(history_key, [])
+
+    for message in history:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+
+    prompt = st.chat_input(
+        f"Écrire à {agent.get('name') or 'cet agent'}…",
+        key=f"developer_studio_chat_input_{agent_id}",
+        max_chars=4000,
+    )
+    if not prompt or not prompt.strip():
+        return
+
+    clean_prompt = prompt.strip()
+    history.append({"role": "user", "content": clean_prompt})
+    # Bound the in-session transcript; durable notes are retrieved separately.
+    history[:] = history[-24:]
+
+    try:
+        from memory_access import load_agent_memory_context
+        from agent_orchestrator import run_agent_turn
+
+        memories = load_agent_memory_context(
+            client, user, agent_id, workspace_id=workspace,
+            query=clean_prompt, max_items=20, max_chars=8000,
+        )
+        with st.spinner("L'agent prépare sa réponse…"):
+            response = run_agent_turn(
+                history[-20:],
+                user_client=client,
+                user=user,
+                agent_id=agent_id,
+                workspace_id=workspace,
+                memories=memories,
+                language=st.session_state.get("sowia_language", "Français"),
+            )
+        history.append({"role": "assistant", "content": response})
+        history[:] = history[-24:]
+        st.rerun()
+    except Exception as exc:
+        st.error("L'agent n'a pas pu terminer cette demande.")
+        st.caption("Diagnostic : " + type(exc).__name__)
 
 
 def render(client, user, premium_active=False):
@@ -268,27 +323,6 @@ def render(client, user, premium_active=False):
                 st.caption("Diagnostic : " + type(exc).__name__)
 
     if agent["status"] == "active":
-        st.divider()
-        st.markdown("#### Tester cet agent")
-        prompt_key = f"developer_studio_prompt_{agent['id']}"
-        with st.form("developer_studio_agent_test"):
-            prompt = st.text_area("Votre instruction", key=prompt_key, max_chars=4000)
-            send = st.form_submit_button("Envoyer à l'agent", type="primary", use_container_width=True)
-        if send:
-            if not prompt.strip():
-                st.warning("Saisissez une instruction avant l'envoi.")
-            else:
-                try:
-                    from agent_orchestrator import run_agent_turn
-                    answer = run_agent_turn(
-                        [{"role": "user", "content": prompt.strip()}],
-                        user_client=client, user=user, agent_id=agent["id"],
-                        workspace_id=workspace,
-                    )
-                    st.markdown("**Réponse de l'agent**")
-                    st.write(answer)
-                except Exception as exc:
-                    st.error("L'agent n'a pas pu terminer cette demande.")
-                    st.caption("Diagnostic : " + type(exc).__name__)
+        _render_agent_conversation(client, user, agent, workspace)
     else:
         st.info("Cet agent est suspendu : il ne peut pas exécuter de tâche.")
