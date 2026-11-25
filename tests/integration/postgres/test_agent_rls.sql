@@ -5,6 +5,7 @@
 \ir ../../../supabase/migrations/20261125160000_sowia_agent_tool_permissions_activity.sql
 \ir ../../../supabase/migrations/20261125170000_sowia_agent_conversation_history.sql
 \ir ../../../supabase/migrations/20261125240000_sowia_agent_data_deletion.sql
+\ir ../../../supabase/migrations/20261125250000_sowia_agent_memory_owner_read_when_inactive.sql
 
 -- Owner A creates an agent, memory, conversation, message and initial quota event.
 set role authenticated;
@@ -30,8 +31,7 @@ begin
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','personal','memory_write'
     );
     raise exception 'PERMISSION FAILURE: disabled memory_write was accepted';
-  exception when insufficient_privilege then
-    null;
+  exception when insufficient_privilege then null;
   end;
 end
 $$;
@@ -52,26 +52,18 @@ begin
   if not public.sowia_finish_agent_action_for_agent(
     'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','completed',null
-  ) then
-    raise exception 'ACTIVITY FAILURE: could not finish agent action';
-  end if;
-  if (select count(*) from public.sowia_get_agent_activity(
-      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',20
-    ) where status = 'completed' and tool_name = 'memory_write') <> 1 then
+  ) then raise exception 'ACTIVITY FAILURE: could not finish agent action'; end if;
+  if (select count(*) from public.sowia_get_agent_activity('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',20)
+      where status = 'completed' and tool_name = 'memory_write') <> 1 then
     raise exception 'ACTIVITY FAILURE: completed memory_write not visible to owner';
   end if;
 end
 $$;
 
--- Enable web_search explicitly for this agent before testing its quota gate.
-update public.sowia_agents
-set enabled_tools = array['memory_read','web_search']::text[]
+update public.sowia_agents set enabled_tools = array['memory_read','web_search']::text[]
 where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-
--- Simulate near-exhausted monthly quota as the database owner, then verify web_search is blocked.
 reset role;
-update public.sowia_agent_usage_monthly
-set credits_used = 999
+update public.sowia_agent_usage_monthly set credits_used = 999
 where user_id = '11111111-1111-4111-8111-111111111111'
   and month_start = (date_trunc('month', now() at time zone 'UTC'))::date;
 set role authenticated;
@@ -82,106 +74,70 @@ begin
     'ffffffff-ffff-4fff-8fff-ffffffffffff','web_search',
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','personal','web_search'
   );
-  if v_result.allowed or v_result.reason <> 'quota_exceeded'
-     or v_result.remaining_credits <> 1 then
+  if v_result.allowed or v_result.reason <> 'quota_exceeded' or v_result.remaining_credits <> 1 then
     raise exception 'QUOTA FAILURE: web_search was not blocked at 999/1000 credits';
   end if;
 end
 $$;
 
--- Switch JWT subject to owner B. RLS must hide A's rows and reject forged inserts.
 select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false);
 do $$
 begin
-  if (select count(*) from public.sowia_agents) <> 0 then
-    raise exception 'RLS FAILURE: owner B can read owner A agents';
-  end if;
-  if (select count(*) from public.sowia_agent_memory_items) <> 0 then
-    raise exception 'RLS FAILURE: owner B can read owner A memories';
-  end if;
-  if (select count(*) from public.sowia_agent_conversations) <> 0 then
-    raise exception 'RLS FAILURE: owner B can read owner A conversations';
-  end if;
-  if (select count(*) from public.sowia_agent_messages) <> 0 then
-    raise exception 'RLS FAILURE: owner B can read owner A messages';
-  end if;
+  if (select count(*) from public.sowia_agents) <> 0 then raise exception 'RLS FAILURE: owner B can read owner A agents'; end if;
+  if (select count(*) from public.sowia_agent_memory_items) <> 0 then raise exception 'RLS FAILURE: owner B can read owner A memories'; end if;
+  if (select count(*) from public.sowia_agent_conversations) <> 0 then raise exception 'RLS FAILURE: owner B can read owner A conversations'; end if;
+  if (select count(*) from public.sowia_agent_messages) <> 0 then raise exception 'RLS FAILURE: owner B can read owner A messages'; end if;
   begin
-    insert into public.sowia_agents(user_id,workspace_id,name)
-    values ('11111111-1111-4111-8111-111111111111','personal','Forged agent');
+    insert into public.sowia_agents(user_id,workspace_id,name) values ('11111111-1111-4111-8111-111111111111','personal','Forged agent');
     raise exception 'RLS FAILURE: owner B inserted an agent for owner A';
-  exception when insufficient_privilege then
-    null;
-  end;
+  exception when insufficient_privilege then null; end;
   begin
     insert into public.sowia_agent_messages(conversation_id,user_id,agent_id,workspace_id,role,content)
     values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','11111111-1111-4111-8111-111111111111','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','personal','assistant','Forged');
     raise exception 'RLS FAILURE: owner B inserted a message into owner A conversation';
-  exception when insufficient_privilege then
-    null;
-  end;
+  exception when insufficient_privilege then null; end;
 end
 $$;
--- Owner B must not be able to delete owner A's conversation through the SECURITY DEFINER RPC.
 do $agent_test$
 begin
-  if public.sowia_delete_my_agent_conversation(
-      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-      'personal'
-  ) then
+  if public.sowia_delete_my_agent_conversation('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','personal') then
     raise exception 'DELETE SECURITY FAILURE: owner B deleted owner A conversation';
   end if;
 end
 $agent_test$;
 
--- Owner A retains read/delete access to private memories when the agent is paused.
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
-update public.sowia_agents set status = 'paused'
-where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+update public.sowia_agents set status = 'paused' where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 do $agent_test$
 begin
-  if (select count(*) from public.sowia_agent_memory_items
-      where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') <> 1 then
+  if (select count(*) from public.sowia_agent_memory_items where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') <> 1 then
     raise exception 'MEMORY ACCESS FAILURE: owner cannot read private memory for paused agent';
   end if;
 end
 $agent_test$;
-
-delete from public.sowia_agent_memory_items
-where id = (
-  select id from public.sowia_agent_memory_items
-  where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
-  limit 1
+delete from public.sowia_agent_memory_items where id = (
+  select id from public.sowia_agent_memory_items where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' limit 1
 );
 do $agent_test$
 begin
-  if exists (select 1 from public.sowia_agent_memory_items
-             where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') then
+  if exists (select 1 from public.sowia_agent_memory_items where agent_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') then
     raise exception 'DELETE FAILURE: owner could not delete paused agent memory';
   end if;
 end
 $agent_test$;
-
--- Owner A can delete the conversation; its messages must cascade.
 do $agent_test$
 begin
-  if not public.sowia_delete_my_agent_conversation(
-      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-      'personal'
-  ) then
+  if not public.sowia_delete_my_agent_conversation('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','personal') then
     raise exception 'DELETE FAILURE: owner could not delete own conversation';
   end if;
 end
 $agent_test$;
 do $agent_test$
 begin
-  if exists (select 1 from public.sowia_agent_conversations
-             where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') then
+  if exists (select 1 from public.sowia_agent_conversations where id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') then
     raise exception 'DELETE FAILURE: conversation remains after owner deletion';
   end if;
-  if exists (select 1 from public.sowia_agent_messages
-             where conversation_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') then
+  if exists (select 1 from public.sowia_agent_messages where conversation_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') then
     raise exception 'CASCADE FAILURE: conversation messages were not deleted';
   end if;
 end
