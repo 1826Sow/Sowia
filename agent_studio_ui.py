@@ -156,20 +156,27 @@ def render(client, user, premium_active=False):
     id_col.code(str(agent["id"]))
 
     st.markdown("**Droits mémoire de cet agent**")
+    if agent["status"] != "active":
+        st.caption("Réactivez l'agent pour modifier ses autorisations mémoire.")
     with st.form("developer_studio_permissions"):
         can_workspace = st.checkbox(
             "Lire la mémoire générale",
             value=bool(agent.get("can_read_workspace_memory")),
+            disabled=agent["status"] != "active",
         )
         can_project = st.checkbox(
             "Lire la mémoire du projet",
             value=bool(agent.get("can_read_project_memory")),
+            disabled=agent["status"] != "active",
         )
         can_private = st.checkbox(
             "Écrire dans sa mémoire privée",
             value=bool(agent.get("can_write_private_memory")),
+            disabled=agent["status"] != "active",
         )
-        save_permissions = st.form_submit_button("Enregistrer les autorisations")
+        save_permissions = st.form_submit_button(
+            "Enregistrer les autorisations", disabled=agent["status"] != "active"
+        )
     if save_permissions:
         try:
             update_agent_memory_permissions(
