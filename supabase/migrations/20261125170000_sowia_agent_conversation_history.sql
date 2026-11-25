@@ -85,7 +85,7 @@ create table if not exists public.sowia_agent_messages (
     agent_id uuid not null references public.sowia_agents(id) on delete cascade,
     workspace_id text not null check (workspace_id in ('personal', 'professional')),
     role text not null check (role in ('user', 'assistant')),
-    content text not null check (char_length(content) between 1 and 12000),
+    content text not null check (char_length(content) between 1 and 24000),
     created_at timestamptz not null default now(),
     constraint sowia_agent_messages_conversation_scope_fk
         foreign key (conversation_id, user_id, agent_id, workspace_id)
