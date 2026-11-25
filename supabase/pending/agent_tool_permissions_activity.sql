@@ -23,6 +23,9 @@ begin
 end;
 $$;
 
+create unique index if not exists sowia_agents_id_owner_workspace_uidx
+    on public.sowia_agents (id, user_id, workspace_id);
+
 create table if not exists public.sowia_agent_activity_events (
     id bigint generated always as identity primary key,
     user_id uuid not null references auth.users(id) on delete cascade,
