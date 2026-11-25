@@ -497,7 +497,7 @@ create or replace function public.sowia_nex_submit_limit_order(
   p_client_order_id uuid default gen_random_uuid()
 )
 returns uuid language sql security invoker set search_path=''
-as $ select private.nex_submit_limit_order($1,$2,$3,$4,$5); $;
+as $$ select private.nex_submit_limit_order($1,$2,$3,$4,$5); $$;
 create or replace function public.sowia_nex_cancel_order(p_order_id uuid)
 returns boolean language sql security invoker set search_path=''
 as $$ select private.nex_cancel_order($1); $$;
