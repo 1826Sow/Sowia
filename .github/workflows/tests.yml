@@ -89,10 +89,8 @@ jobs:
     name: Supabase real-account RLS tests
     timeout-minutes: 15
     # Never expose Supabase test credentials to code from a pull request.
-    # Secrets are never exposed to pull_request code. Live tests run only on
-    # trusted pushes to main or this reviewed security branch.
-    # Run only on trusted pushes. PR code never receives test credentials.
-    # The job itself verifies the exact dedicated SOWIA - TEST project URL before any network test.
+    # Live tests run only on trusted pushes to main or the reviewed security branch.
+    # The job verifies the exact dedicated SOWIA - TEST project URL before network tests.
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/security/professional-access-gate')
     runs-on: ubuntu-latest
     env:
