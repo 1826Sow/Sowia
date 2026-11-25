@@ -124,7 +124,6 @@ def _render_agent_conversation(client, user, agent, workspace):
 
     clean_prompt = prompt.strip()
     try:
-        from memory_access import load_agent_memory_context
         from agent_orchestrator import run_agent_turn
 
         save_agent_message(
@@ -136,17 +135,12 @@ def _render_agent_conversation(client, user, agent, workspace):
                 client, user, agent_id, conversation_id,
                 workspace_id=workspace, limit=20,
             )
-            memories = load_agent_memory_context(
-                client, user, agent_id, workspace_id=workspace,
-                query=clean_prompt, max_items=20, max_chars=8000,
-            )
             response = run_agent_turn(
                 updated_history,
                 user_client=client,
                 user=user,
                 agent_id=agent_id,
                 workspace_id=workspace,
-                memories=memories,
                 language=st.session_state.get("sowia_language", "Français"),
             )
             save_agent_message(
