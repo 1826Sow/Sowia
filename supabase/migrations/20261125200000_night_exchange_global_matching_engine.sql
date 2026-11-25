@@ -280,15 +280,13 @@ begin
       on conflict (user_id, share_class_id) do update
         set quantity = public.sowia_nex_positions.quantity + excluded.quantity, updated_at = now();
 
+      if v_gross <= 0 then raise exception 'Le montant minimal d’une transaction est 0,01 NXC.'; end if;
       update public.sowia_nex_wallets set
         reserved_balance = reserved_balance - v_reserved_piece,
         balance = balance + v_reserved_piece - v_total_debit, updated_at = now()
        where user_id = v_buyer returning balance into v_buyer_balance;
       update public.sowia_nex_wallets set balance = balance + v_gross, updated_at = now()
        where user_id = v_seller returning balance into v_seller_balance;
-
-      if v_gross <= 0 then raise exception 'Le montant minimal d’une transaction est 0,01 NXC.'; end if;
-      if v_gross <= 0 then raise exception 'Le montant minimal d’une transaction est 0,01 NXC.'; end if;
       insert into public.sowia_nex_trades(
         share_class_id,buy_order_id,sell_order_id,buyer_user_id,seller_user_id,
         quantity,execution_price,gross_value,total_fee,sowia_revenue,market_reserve,ecosystem_fund
@@ -340,6 +338,7 @@ begin
       v_total_debit := v_gross + v_fee;
 
       select * into v_wallet from public.sowia_nex_wallets where user_id = v_buyer for update;
+      if v_gross <= 0 then raise exception 'Le montant minimal d’une transaction est 0,01 NXC.'; end if;
       update public.sowia_nex_wallets set
         reserved_balance=reserved_balance-v_reserved_piece,
         balance=balance+v_reserved_piece-v_total_debit, updated_at=now()
