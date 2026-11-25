@@ -67,11 +67,23 @@ def consume_agent_action(user_client, user, action, request_id, *, agent_id=None
             raise EconomyError("Espace agent invalide.")
         if tool_name not in {"agent_chat", "web_search", "memory_read", "memory_write"}:
             raise EconomyError("Outil agent invalide.")
+        try:
+            normalized_agent_id = str(uuid.UUID(str(agent_id)))
+        except (ValueError, TypeError, AttributeError):
+            raise EconomyError("Identifiant d'agent invalide.") from None
+        expected_action = {
+            "agent_chat": "chat",
+            "web_search": "web_search",
+            "memory_read": "tool_execution",
+            "memory_write": "tool_execution",
+        }[tool_name]
+        if normalized_action != expected_action:
+            raise EconomyError("Outil et action de quota incompatibles.")
         rpc_name = "sowia_consume_agent_action_for_agent"
         rpc_args = {
             "p_request_id": normalized_request_id,
             "p_action": normalized_action,
-            "p_agent_id": str(agent_id),
+            "p_agent_id": normalized_agent_id,
             "p_workspace_id": workspace_id,
             "p_tool_name": tool_name,
         }
