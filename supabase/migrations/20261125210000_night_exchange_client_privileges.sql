@@ -25,6 +25,11 @@ grant select on table
   public.sowia_nex_market_config
 to authenticated;
 
+-- Keep the audited workflow transition function independent of caller-controlled
+-- schemas. All application objects it references are explicitly schema-qualified.
+alter function public.sowia_action_transition(uuid, text, text)
+  set search_path = '';
+
 -- No direct client access to the internal SOW IA revenue allocation ledger.
 -- RLS policies remain the row-level boundary for all SELECT grants.
 commit;
