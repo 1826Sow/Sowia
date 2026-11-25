@@ -71,3 +71,24 @@ def test_search_web_hides_transport_error_details(monkeypatch):
     with pytest.raises(RuntimeError, match="momentanément indisponible") as error:
         websearch.search_web("actualité")
     assert "private transport detail" not in str(error.value)
+
+
+@pytest.mark.parametrize("query", [
+    "Quelles sont les dernières actualités de l'IA ?",
+    "Quel est le prix actuel de ce service ?",
+    "Quelle est la météo aujourd'hui ?",
+    "Find the latest version available right now",
+    "Donne-moi les résultats en direct",
+    "Cherche en ligne les dernières informations",
+])
+def test_should_search_web_for_fresh_information(query):
+    assert websearch.should_search_web(query) is True
+
+
+@pytest.mark.parametrize("query", [
+    "Explique-moi le fonctionnement d'un réseau neuronal",
+    "Aide-moi à rédiger une lettre professionnelle",
+    "Comment fonctionne une base de données relationnelle ?",
+])
+def test_should_not_search_web_for_stable_or_writing_requests(query):
+    assert websearch.should_search_web(query) is False
