@@ -57,6 +57,7 @@ import sowia_global_messenger
 import sowia_global_alerts
 import sowia_business_card
 import project_registry_ui
+import agent_studio_ui
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from memory_engine import select_relevant_memories
@@ -935,6 +936,7 @@ NAV_GROUPS = {
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents",
     ],
+    "🧑‍💻 Développement & agents": ["Developer Studio"],
     "📚 Échanges & projets": [
         "Mes échanges & projets", "Historique",
     ],
@@ -4336,6 +4338,13 @@ elif page == "Historique":
     for item in items:
         with st.chat_message(item["role"]):
             st.write(item["content"])
+
+elif page == "Developer Studio":
+    agent_studio_ui.render(
+        supabase_client if cloud_mode else None,
+        current_user if cloud_mode else None,
+        premium_active=premium_active,
+    )
 
 elif page == "Économie SOW IA":
     import sowia_economy
