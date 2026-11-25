@@ -73,8 +73,8 @@ def _export_private_documents(client, user, workspace):
         if not path.startswith(owner_prefix):
             raise PermissionError("Un document hors de votre compte a été détecté.")
         payload = bytes(document_storage.download_document(client, user, path, workspace))
-        if not payload:
-            raise RuntimeError("Un document PDF est vide ou n'a pas pu être lu.")
+        if not payload or b"%PDF-" not in payload[:1024]:
+            raise RuntimeError("Un document stocké n'est pas un PDF lisible.")
         if len(payload) > document_storage.MAX_DOCUMENT_BYTES:
             raise RuntimeError("Un document dépasse la limite autorisée de 10 Mo.")
         total_bytes += len(payload)
