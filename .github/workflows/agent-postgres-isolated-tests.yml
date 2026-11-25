@@ -40,8 +40,13 @@ jobs:
           PGPASSWORD: local-test-only
         run: |
           psql -h localhost -U postgres -d sowia_agent_test -v ON_ERROR_STOP=1 -f tests/integration/postgres/bootstrap_supabase_compat.sql
-      - name: Apply all four agent migrations and test RLS with two owners
+      - name: Apply migrations and test owner isolation, permissions, quotas and activity
         env:
           PGPASSWORD: local-test-only
         run: |
           psql -h localhost -U postgres -d sowia_agent_test -v ON_ERROR_STOP=1 -f tests/integration/postgres/test_agent_rls.sql
+      - name: Reconnect and verify durable memory and conversation history
+        env:
+          PGPASSWORD: local-test-only
+        run: |
+          psql -h localhost -U postgres -d sowia_agent_test -v ON_ERROR_STOP=1 -f tests/integration/postgres/test_agent_persistence_reconnect.sql
