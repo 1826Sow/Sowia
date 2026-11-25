@@ -24,7 +24,7 @@ from image_pdf_tools import images_to_pdf, pdf_to_images_zip
 from document_context import select_relevant_pdf_context
 from io import BytesIO
 from direct_pdf_upload import create_signed_pdf_upload, render_direct_pdf_upload
-from websearch import search_web
+from websearch import search_web, should_search_web
 from sowia_supabase_auth import (
     authenticated_user,
     browser_storage_id,
@@ -2726,7 +2726,9 @@ elif page == "Assistant IA":
                     try:
                         web_sources = []
                         web_context = None
-                        if use_web_search:
+                        if use_web_search or should_search_web(prompt):
+                            if should_search_web(prompt) and not use_web_search:
+                                st.caption(translate_ui("Recherche Web activée automatiquement pour vérifier les informations récentes.", language))
                             try:
                                 from web_context import build_web_context, format_web_source_link, prepare_web_sources
                                 with st.spinner(translate_ui("Recherche de sources publiques…", language)):
