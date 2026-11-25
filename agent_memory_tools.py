@@ -117,4 +117,5 @@ def execute_registered_agent_memory_tool(
 
     return execute_agent_action(
         user_client, user, "tool_execution", request_id, handler,
+        agent_id=str(agent_id), workspace_id=workspace, tool_name=name,
     )

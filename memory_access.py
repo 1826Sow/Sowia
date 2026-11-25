@@ -4,6 +4,8 @@ from __future__ import annotations
 from memory_engine import build_agent_memory_context
 
 _ALLOWED_WORKSPACES = {"personal", "professional"}
+_ALLOWED_AGENT_TOOLS = {"web_search", "memory_read", "memory_write"}
+_DEFAULT_AGENT_TOOLS = {"memory_read", "memory_write"}
 
 
 def _identity(user, workspace_id):
@@ -58,6 +60,7 @@ def register_agent(
     client, user, name, workspace_id="personal", project_id=None,
     description="", can_read_workspace_memory=False,
     can_read_project_memory=False, can_write_private_memory=True,
+    enabled_tools=None,
 ):
     """Create an owner-controlled agent with explicit memory permissions."""
     user_id, workspace = _identity(user, workspace_id)
@@ -72,6 +75,11 @@ def register_agent(
     )
     if not all(isinstance(value, bool) for value in permissions):
         raise ValueError("Agent memory permissions must be boolean.")
+    tools = set(_DEFAULT_AGENT_TOOLS if enabled_tools is None else enabled_tools)
+    if not tools <= _ALLOWED_AGENT_TOOLS:
+        raise ValueError("Agent tool selection contains an unsupported tool.")
+    if "memory_write" in tools and not can_write_private_memory:
+        raise ValueError("L'outil memory_write nécessite l'autorisation de mémoire privée.")
     rows = (client.table("sowia_agents").insert({
         "user_id": user_id,
         "workspace_id": workspace,
@@ -81,7 +89,8 @@ def register_agent(
         "can_read_workspace_memory": can_read_workspace_memory,
         "can_read_project_memory": can_read_project_memory,
         "can_write_private_memory": can_write_private_memory,
-    }).select("id, name, workspace_id, project_id, status, can_read_workspace_memory, can_read_project_memory, can_write_private_memory").execute().data or [])
+        "enabled_tools": sorted(tools),
+    }).select("id, name, workspace_id, project_id, status, can_read_workspace_memory, can_read_project_memory, can_write_private_memory, enabled_tools").execute().data or [])
     if len(rows) != 1:
         raise RuntimeError("SOW IA did not confirm agent creation.")
     return rows[0]
@@ -90,7 +99,7 @@ def register_agent(
 def list_agents(client, user, workspace_id="personal"):
     user_id, workspace = _identity(user, workspace_id)
     return (client.table("sowia_agents")
-        .select("id, name, description, workspace_id, project_id, status, can_read_workspace_memory, can_read_project_memory, can_write_private_memory")
+        .select("id, name, description, workspace_id, project_id, status, can_read_workspace_memory, can_read_project_memory, can_write_private_memory, enabled_tools")
         .eq("user_id", user_id).eq("workspace_id", workspace)
         .order("created_at", desc=True).limit(100).execute().data or [])
 
@@ -181,6 +190,33 @@ def update_agent_memory_permissions(
         raise ValueError("At least one permission must be specified.")
     result = (client.table("sowia_agents").update(changes)
         .eq("id", str(agent_id)).eq("user_id", user_id)
+        .eq("workspace_id", workspace).eq("status", "active")
+        .execute().data or [])
+    if not result:
+        raise PermissionError("Agent is not available to this authenticated user.")
+    return result
+
+
+
+def update_agent_tools(client, user, agent_id, workspace_id="personal", enabled_tools=None):
+    """Update an owner's active agent allowlist; never accept arbitrary tool names."""
+    user_id, workspace = _identity(user, workspace_id)
+    if not isinstance(enabled_tools, (list, tuple, set)):
+        raise ValueError("Agent tools must be supplied as a list.")
+    tools = set(enabled_tools)
+    if not tools <= _ALLOWED_AGENT_TOOLS:
+        raise ValueError("Agent tool selection contains an unsupported tool.")
+    owned = (client.table("sowia_agents").select("can_write_private_memory")
+        .eq("id", str(agent_id)).eq("user_id", user_id)
+        .eq("workspace_id", workspace).eq("status", "active")
+        .limit(1).execute().data or [])
+    if len(owned) != 1:
+        raise PermissionError("Agent is not available to this authenticated user.")
+    if "memory_write" in tools and not owned[0].get("can_write_private_memory"):
+        raise ValueError("L'outil memory_write nécessite l'autorisation de mémoire privée.")
+    result = (client.table("sowia_agents").update({
+        "enabled_tools": sorted(tools),
+    }).eq("id", str(agent_id)).eq("user_id", user_id)
         .eq("workspace_id", workspace).eq("status", "active")
         .execute().data or [])
     if not result:

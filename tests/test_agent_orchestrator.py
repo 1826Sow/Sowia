@@ -53,7 +53,7 @@ def _setup(monkeypatch, fake_client):
     import types
     monkeypatch.setitem(sys.modules, "memory_access", types.SimpleNamespace(
         list_agents=lambda client, user, workspace_id="personal": [
-            {"id": "agent-1", "status": "active"}
+            {"id": "agent-1", "status": "active", "enabled_tools": ["web_search", "memory_read", "memory_write"]}
         ]
     ))
     monkeypatch.setattr(orchestrator, "_provider_configs", lambda: [{
@@ -61,7 +61,11 @@ def _setup(monkeypatch, fake_client):
     }])
     monkeypatch.setattr(orchestrator, "OpenAI", lambda **kwargs: fake_client)
     monkeypatch.setattr(orchestrator, "build_system_prompt", lambda **kwargs: "system")
-    monkeypatch.setattr(orchestrator, "_tool_definitions", lambda: [{"type": "function"}])
+    monkeypatch.setattr(orchestrator, "consume_agent_action", lambda *a, **k: {
+        "allowed": True, "reason": "quota_available"
+    })
+    monkeypatch.setattr(orchestrator, "finish_agent_action", lambda *a, **k: True)
+    monkeypatch.setattr(orchestrator, "_tool_definitions", lambda enabled_tools=None: [{"type": "function"}])
 
 
 def test_returns_final_answer_without_tools(monkeypatch):
@@ -143,3 +147,22 @@ def test_tool_call_json_must_be_an_object(monkeypatch):
     )
     assert result == "Je ne peux pas traiter cet appel."
     assert calls == []
+
+
+def test_tool_definitions_expose_only_owner_enabled_tools():
+    names = {
+        item["function"]["name"]
+        for item in orchestrator._tool_definitions(["memory_read"])
+    }
+    assert names == {"memory_read"}
+
+
+def test_dispatch_rejects_a_tool_not_enabled_for_this_agent():
+    with pytest.raises(orchestrator.AgentOrchestrationError):
+        orchestrator._execute_tool(
+            "web_search", {"query": "test"},
+            user_client=object(), user=SimpleNamespace(id="owner"),
+            agent_id="agent-1", workspace_id="personal",
+            request_id="00000000-0000-0000-0000-000000000001",
+            enabled_tools=["memory_read"],
+        )
