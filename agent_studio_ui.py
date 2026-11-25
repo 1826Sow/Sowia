@@ -42,17 +42,70 @@ def _set_agent_status(client, user, agent, workspace, status):
 
 
 def _render_agent_conversation(client, user, agent, workspace):
-    """Render a per-agent chat with authorized durable memory retrieval."""
-    st.divider()
-    st.markdown("#### Conversation avec cet agent")
-    st.caption(
-        "La conversation reste disponible pendant cette session. À chaque demande, "
-        "l'agent recharge sa mémoire persistante autorisée."
+    """Render a durable per-agent conversation selector and transcript."""
+    from agent_conversation_store import (
+        create_agent_conversation,
+        list_agent_conversations,
+        list_agent_messages,
+        save_agent_message,
     )
-    owner_id = str(getattr(user, "id", "") or "")
+
+    st.divider()
+    st.markdown("#### Conversations de cet agent")
+    st.caption(
+        "Les messages sont enregistrés dans Supabase et rechargés à chaque ouverture. "
+        "Chaque conversation reste isolée par propriétaire, espace et agent."
+    )
     agent_id = str(agent["id"])
-    history_key = f"sowia_agent_chat:{owner_id}:{agent_id}"
-    history = st.session_state.setdefault(history_key, [])
+    try:
+        conversations = list_agent_conversations(
+            client, user, agent_id, workspace_id=workspace, limit=50
+        )
+    except Exception as exc:
+        st.error("Les conversations de cet agent ne sont pas accessibles.")
+        st.caption("Diagnostic : " + type(exc).__name__)
+        return
+
+    if st.button(
+        "＋ Nouvelle conversation",
+        key=f"developer_studio_new_agent_conversation_{agent_id}",
+        use_container_width=True,
+    ):
+        try:
+            create_agent_conversation(
+                client, user, agent_id, workspace_id=workspace
+            )
+            st.rerun()
+        except Exception as exc:
+            st.error("La nouvelle conversation n'a pas été créée.")
+            st.caption("Diagnostic : " + type(exc).__name__)
+        return
+
+    if not conversations:
+        st.info("Aucune conversation enregistrée. Créez-en une pour commencer.")
+        return
+
+    labels = {
+        f'{item.get("title") or "Conversation"} · {str(item["id"])[:8]}': item
+        for item in conversations
+    }
+    selected_label = st.selectbox(
+        "Conversation",
+        list(labels),
+        key=f"developer_studio_agent_conversation_{agent_id}",
+    )
+    selected = labels[selected_label]
+    conversation_id = str(selected["id"])
+
+    try:
+        history = list_agent_messages(
+            client, user, agent_id, conversation_id,
+            workspace_id=workspace, limit=40,
+        )
+    except Exception as exc:
+        st.error("L'historique de cette conversation n'a pas pu être chargé.")
+        st.caption("Diagnostic : " + type(exc).__name__)
+        return
 
     for message in history:
         with st.chat_message(message["role"]):
@@ -60,28 +113,32 @@ def _render_agent_conversation(client, user, agent, workspace):
 
     prompt = st.chat_input(
         f"Écrire à {agent.get('name') or 'cet agent'}…",
-        key=f"developer_studio_chat_input_{agent_id}",
+        key=f"developer_studio_agent_chat_{agent_id}_{conversation_id}",
         max_chars=4000,
     )
     if not prompt or not prompt.strip():
         return
 
     clean_prompt = prompt.strip()
-    history.append({"role": "user", "content": clean_prompt})
-    # Bound the in-session transcript; durable notes are retrieved separately.
-    history[:] = history[-24:]
-
     try:
         from memory_access import load_agent_memory_context
         from agent_orchestrator import run_agent_turn
 
-        memories = load_agent_memory_context(
-            client, user, agent_id, workspace_id=workspace,
-            query=clean_prompt, max_items=20, max_chars=8000,
+        save_agent_message(
+            client, user, agent_id, conversation_id, "user", clean_prompt,
+            workspace_id=workspace,
         )
         with st.spinner("L'agent prépare sa réponse…"):
+            updated_history = list_agent_messages(
+                client, user, agent_id, conversation_id,
+                workspace_id=workspace, limit=20,
+            )
+            memories = load_agent_memory_context(
+                client, user, agent_id, workspace_id=workspace,
+                query=clean_prompt, max_items=20, max_chars=8000,
+            )
             response = run_agent_turn(
-                history[-20:],
+                updated_history,
                 user_client=client,
                 user=user,
                 agent_id=agent_id,
@@ -89,12 +146,18 @@ def _render_agent_conversation(client, user, agent, workspace):
                 memories=memories,
                 language=st.session_state.get("sowia_language", "Français"),
             )
-        history.append({"role": "assistant", "content": response})
-        history[:] = history[-24:]
+            save_agent_message(
+                client, user, agent_id, conversation_id, "assistant", response,
+                workspace_id=workspace,
+            )
         st.rerun()
     except Exception as exc:
         st.error("L'agent n'a pas pu terminer cette demande.")
-        st.caption("Diagnostic : " + type(exc).__name__)
+        st.caption(
+            "Votre message a été conservé dans l'historique. Diagnostic : "
+            + type(exc).__name__
+        )
+
 
 
 def render(client, user, premium_active=False):
