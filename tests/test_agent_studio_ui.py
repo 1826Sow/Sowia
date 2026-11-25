@@ -86,6 +86,9 @@ def test_agent_conversation_ui_persists_user_and_assistant_turn(monkeypatch):
         def __exit__(self, *args):
             return False
 
+    class RerunSignal(BaseException):
+        pass
+
     class FakeStreamlit:
         def __init__(self):
             self.session_state = {"sowia_language": "Français"}
@@ -99,7 +102,7 @@ def test_agent_conversation_ui_persists_user_and_assistant_turn(monkeypatch):
         def write(self, *args, **kwargs): pass
         def chat_input(self, *args, **kwargs): return "  Reprendre le projet  "
         def spinner(self, *args, **kwargs): return Surface()
-        def rerun(self): raise RuntimeError("STREAMLIT_RERUN")
+        def rerun(self): raise RerunSignal("STREAMLIT_RERUN")
 
     fake_st = FakeStreamlit()
     monkeypatch.setattr(agent_studio_ui, "st", fake_st)
@@ -136,7 +139,7 @@ def test_agent_conversation_ui_persists_user_and_assistant_turn(monkeypatch):
             object(), types.SimpleNamespace(id="owner-1"),
             {"id": agent_id, "name": "Agent test"}, "personal",
         )
-    except RuntimeError as exc:
+    except RerunSignal as exc:
         assert str(exc) == "STREAMLIT_RERUN"
     else:
         pytest.fail("The UI should rerun after persisting the assistant response.")
