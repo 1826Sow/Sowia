@@ -48,6 +48,11 @@ def execute_agent_action(
     """
     if not callable(handler):
         raise TypeError("Un gestionnaire d'action serveur est requis.")
+    if agent_id is not None and (
+        workspace_id not in {"personal", "professional"}
+        or tool_name not in {"web_search", "memory_read", "memory_write"}
+    ):
+        raise ValueError("Métadonnées d'activité agent incomplètes.")
 
     usage = consume_agent_action(
         user_client, user, action, request_id,
@@ -56,8 +61,6 @@ def execute_agent_action(
     if not usage["allowed"]:
         raise AgentQuotaExceeded(usage)
 
-    if agent_id is not None and (workspace_id not in {"personal", "professional"} or not tool_name):
-        raise ValueError("Métadonnées d'activité agent incomplètes.")
     try:
         result = handler(*args, **kwargs)
     except Exception as exc:
