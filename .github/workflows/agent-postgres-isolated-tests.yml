@@ -1,0 +1,57 @@
+name: SOW IA isolated agent PostgreSQL tests
+
+on:
+  push:
+    branches: ["feat/**"]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-postgres:
+    name: Apply agent migrations and verify owner isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: sowia_agent_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: local-test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sowia_agent_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+      - name: Prepare isolated Supabase-compatible test objects
+        env:
+          PGPASSWORD: local-test-only
+        run: |
+          psql -h localhost -U postgres -d sowia_agent_test -v ON_ERROR_STOP=1 -f tests/integration/postgres/bootstrap_supabase_compat.sql
+      - name: Apply migrations and test owner isolation, permissions, quotas and activity
+        env:
+          PGPASSWORD: local-test-only
+        run: |
+          psql -h localhost -U postgres -d sowia_agent_test -v ON_ERROR_STOP=1 -f tests/integration/postgres/test_agent_rls.sql
+      - name: Verify agent RLS, RPC privileges and anonymous access contract
+        env:
+          PGPASSWORD: local-test-only
+        run: |
+          psql -h localhost -U postgres -d sowia_agent_test -v ON_ERROR_STOP=1 -f tests/integration/postgres/test_agent_security_contract.sql
+      - name: Reconnect and verify durable memory and conversation history
+        env:
+          PGPASSWORD: local-test-only
+        run: |
+          psql -h localhost -U postgres -d sowia_agent_test -v ON_ERROR_STOP=1 -f tests/integration/postgres/test_agent_persistence_reconnect.sql

@@ -57,6 +57,7 @@ import sowia_global_messenger
 import sowia_global_alerts
 import sowia_business_card
 import project_registry_ui
+import agent_studio_ui
 from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
 from memory_export import format_memory_export
 from memory_engine import select_relevant_memories
@@ -935,6 +936,7 @@ NAV_GROUPS = {
         "Hub SOWIA", "Accueil", "Assistant IA", "Ma mémoire", "Recherche Web",
         "Analyse PDF", "Créer un PDF", "Mes documents",
     ],
+    "🧑‍💻 Développement & agents": ["Developer Studio"],
     "📚 Échanges & projets": [
         "Mes échanges & projets", "Historique",
     ],
@@ -960,7 +962,7 @@ NAV_GROUPS = {
         "Finance & investissements", "Revenus & paiements",
     ],
     "💳 Abonnements & compte": [
-        "Abonnement",
+        "Économie SOW IA", "Abonnement",
     ],
     "🛡️ Administration & assistance": [
         "Centre de notifications", "SOWIA CONTROL CENTER", "Paramètres", "Aide",
@@ -4336,6 +4338,78 @@ elif page == "Historique":
     for item in items:
         with st.chat_message(item["role"]):
             st.write(item["content"])
+
+elif page == "Developer Studio":
+    agent_studio_ui.render(
+        supabase_client if cloud_mode else None,
+        current_user if cloud_mode else None,
+        premium_active=premium_active,
+    )
+
+elif page == "Économie SOW IA":
+    import sowia_economy
+
+    st.subheader("💶 Économie SOW IA")
+    st.caption("Tarifs, crédits des agents IA et règles de la bourse aux applications.")
+    st.info(
+        "Cette page présente le modèle économique. Les compteurs persistants et les "
+        "paiements supplémentaires ne sont pas encore activés ; aucun prélèvement "
+        "automatique n'est effectué par cette page."
+    )
+    economy_catalog = sowia_economy.plan_catalog()
+    free_plan = economy_catalog["free"]
+    premium_plan = economy_catalog["premium"]
+    economy_cols = st.columns(2)
+    with economy_cols[0]:
+        st.markdown("#### 🌱 Offre gratuite")
+        st.metric("Prix", "0 €")
+        st.write("Accès de base à SOW IA.")
+        st.write(f"Quota agent proposé : **{free_plan['agent_credits_per_month']:,} crédits/mois**.")
+        st.caption("Quota partagé entre les agents du compte. Au-delà, les actions sont bloquées sans facturation automatique.")
+    st.markdown("#### 📊 Compteur mensuel du compte")
+    if not cloud_mode or current_user is None:
+        st.caption("Connectez-vous pour consulter le compteur de crédits de votre compte.")
+    else:
+        try:
+            import agent_usage_quota
+            usage = agent_usage_quota.get_agent_usage(supabase_client, current_user)
+        except Exception:
+            st.caption("Compteur persistant préparé ; il sera visible après installation de la structure sécurisée Supabase.")
+        else:
+            usage_cols = st.columns(3)
+            usage_cols[0].metric("Crédits consommés", f"{usage['used_credits']:,}")
+            usage_cols[1].metric("Crédits restants", f"{usage['remaining_credits']:,}")
+            usage_cols[2].metric("Plafond mensuel", f"{usage['monthly_limit']:,}")
+            st.progress(
+                min(1.0, usage["used_credits"] / max(1, usage["monthly_limit"])),
+                text=f"Période commencée le {usage['month_start']}",
+            )
+    with economy_cols[1]:
+        st.markdown("#### 👑 SOW IA Premium")
+        st.metric("Prix affiché", f"{premium_plan['price_eur']:.2f} €")
+        st.write("Abonnement mensuel à 9,90 € pour l'accès Professionnel selon le parcours existant.")
+        st.caption("Le parcours PayPal existant gère cet abonnement mensuel ; la rubrique Abonnement affiche son état.")
+    st.divider()
+    st.markdown("#### 🤖 Consommation des agents IA")
+    st.caption("Barème initial en crédits — il mesure la consommation, pas un prix en euros par action.")
+    credit_rows = [
+        ("Conversation agent", "chat"),
+        ("Recherche Web", "web_search"),
+        ("Génération de code", "code_generation"),
+        ("Analyse de fichier", "file_analysis"),
+        ("Exécution d'outil", "tool_execution"),
+    ]
+    for label, action in credit_rows:
+        st.write(f"**{label}** : {sowia_economy.action_credit_cost(action)} crédit(s)")
+    st.caption("Les crédits supplémentaires ne sont pas vendus automatiquement. Un plafond de dépense devra être choisi avant toute facturation à l'usage.")
+    st.divider()
+    st.markdown("#### 🌙 NIGHT EXCHANGE · Bourse aux applications")
+    st.write("Les ventes et échanges d'applications pourront générer une commission SOW IA.")
+    st.warning("Le taux de commission reste à approuver. Aucune commission n'est calculée ou prélevée tant que ce taux n'est pas défini.")
+    st.markdown("#### 🔒 État des paiements")
+    st.write("Paiements réels déclenchés depuis cette page : **aucun**.")
+    st.write("Activation du paiement à l'usage : **désactivée**.")
+    st.write("Activation des commissions Night Exchange : **désactivée**.")
 
 elif page == "Abonnement":
     st.subheader(translate_ui("👑 Abonnement Premium", language))
