@@ -109,3 +109,51 @@ def test_missing_authenticated_user_fails_before_handler():
         )
     assert client.calls == []
     assert calls == []
+
+
+def test_agent_action_records_agent_attribution_and_completion():
+    client = _allowed_client()
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    request_id = str(uuid.uuid4())
+    result = execute_agent_action(
+        client, SimpleNamespace(id="user-1"), "web_search",
+        request_id, lambda: "found",
+        agent_id=agent_id, workspace_id="personal", tool_name="web_search",
+    )
+    assert result["result"] == "found"
+    assert client.calls[0][0] == "sowia_consume_agent_action_for_agent"
+    assert client.calls[0][1]["p_agent_id"] == agent_id
+    assert client.calls[0][1]["p_tool_name"] == "web_search"
+    assert client.calls[1][0] == "sowia_finish_agent_action_for_agent"
+    assert client.calls[1][1]["p_status"] == "completed"
+
+
+def test_agent_action_records_failure_without_leaking_error_message():
+    client = _allowed_client()
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    request_id = str(uuid.uuid4())
+
+    def fail():
+        raise RuntimeError("sensitive provider details")
+
+    with pytest.raises(RuntimeError, match="sensitive provider details"):
+        execute_agent_action(
+            client, SimpleNamespace(id="user-1"), "tool_execution",
+            request_id, fail,
+            agent_id=agent_id, workspace_id="personal", tool_name="memory_read",
+        )
+    assert client.calls[1][0] == "sowia_finish_agent_action_for_agent"
+    assert client.calls[1][1]["p_status"] == "failed"
+    assert client.calls[1][1]["p_error_code"] == "RuntimeError"
+
+
+def test_agent_action_rejects_missing_activity_metadata_before_debit():
+    client = _allowed_client()
+    with pytest.raises(ValueError):
+        execute_agent_action(
+            client, SimpleNamespace(id="user-1"), "tool_execution",
+            str(uuid.uuid4()), lambda: "no",
+            agent_id="00000000-0000-0000-0000-000000000001",
+            workspace_id="personal",
+        )
+    assert client.calls == []
