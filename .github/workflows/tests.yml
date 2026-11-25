@@ -94,7 +94,8 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/security/professional-access-gate')
     runs-on: ubuntu-latest
     env:
-      SOWIA_TEST_SUPABASE_URL: ${{ secrets.SOWIA_TEST_SUPABASE_URL }}
+      # Hard-pinned to the dedicated test project; never sourced from a secret.
+      SOWIA_TEST_SUPABASE_URL: https://mrbmoavotzcuzvnhfjla.supabase.co
       SOWIA_TEST_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_TEST_SUPABASE_ANON_KEY }}
       SOWIA_TEST_USER_A_EMAIL: ${{ secrets.SOWIA_TEST_USER_A_EMAIL }}
       SOWIA_TEST_USER_A_PASSWORD: ${{ secrets.SOWIA_TEST_USER_A_PASSWORD }}
@@ -106,8 +107,7 @@ jobs:
         id: credentials
         shell: bash
         run: |
-          if [[ -n "$SOWIA_TEST_SUPABASE_URL" &&
-                -n "$SOWIA_TEST_SUPABASE_ANON_KEY" &&
+          if [[ -n "$SOWIA_TEST_SUPABASE_ANON_KEY" &&
                 -n "$SOWIA_TEST_USER_A_EMAIL" &&
                 -n "$SOWIA_TEST_USER_A_PASSWORD" &&
                 -n "$SOWIA_TEST_USER_B_EMAIL" &&
