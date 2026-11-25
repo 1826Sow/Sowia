@@ -44,6 +44,28 @@ def _free_search(cleaned_query, max_results):
     return normalized
 
 
+def should_search_web(query):
+    """Detect requests that need fresh public information at answer time.
+
+    Manual web-search selection remains supported; this helper only opts
+    freshness-sensitive prompts into the existing bounded search pipeline.
+    """
+    import re
+    import unicodedata
+
+    text = unicodedata.normalize("NFKD", str(query or "").casefold())
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    patterns = (
+        r"\b(?:aujourd'hui|maintenant|actuellement|en ce moment|en direct|temps reel)\b",
+        r"\b(?:dernier(?:e|es|s)?|recent(?:e|es|s)?|actualite(?:s)?|a jour)\b",
+        r"\b(?:latest|current|today|right now|live|real[ -]?time|breaking news)\b",
+        r"\b(?:prix|tarif(?:s)?|cours|taux|meteo|weather|bourse|stock market)\b",
+        r"\b(?:election(?:s)?|score(?:s)?|resultat(?:s)?|disponibilite|open now)\b",
+        r"\b(?:sur internet|sur le web|recherche web|cherche en ligne|rechercher en ligne)\b",
+    )
+    return any(re.search(pattern, text) for pattern in patterns)
+
+
 def search_web(query, max_results=5):
     """Search the web with Tavily or a no-key public-search fallback."""
     cleaned_query = str(query or "").strip()
