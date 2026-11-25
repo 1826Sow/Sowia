@@ -107,14 +107,20 @@ def test_agent_conversation_ui_persists_user_and_assistant_turn(monkeypatch):
     conversation_id = "22222222-2222-4222-8222-222222222222"
     agent_id = "11111111-1111-4111-8111-111111111111"
 
+    message_reads = {"count": 0}
+    def list_messages(*args, **kwargs):
+        message_reads["count"] += 1
+        history = [{"role": "user", "content": "Ancien message"}]
+        if message_reads["count"] > 1:
+            history.append({"role": "user", "content": "Reprendre le projet"})
+        return history
+
     store = types.SimpleNamespace(
         create_agent_conversation=lambda *a, **k: None,
         list_agent_conversations=lambda *a, **k: [{
             "id": conversation_id, "title": "Fil de travail",
         }],
-        list_agent_messages=lambda *a, **k: [
-            {"role": "user", "content": "Ancien message"},
-        ],
+        list_agent_messages=list_messages,
         save_agent_message=lambda *a, **k: events.append(("save", a[4], a[5])),
     )
     def run_turn(messages, **kwargs):
@@ -137,7 +143,7 @@ def test_agent_conversation_ui_persists_user_and_assistant_turn(monkeypatch):
 
     assert events[0] == ("save", "user", "  Reprendre le projet  ")
     assert events[1][0] == "run"
-    assert events[1][1][-1] == {"role": "user", "content": "Ancien message"}
+    assert events[1][1][-1] == {"role": "user", "content": "Reprendre le projet"}
     assert events[1][2]["agent_id"] == agent_id
     assert events[1][2]["workspace_id"] == "personal"
     assert events[1][2]["language"] == "Français"
