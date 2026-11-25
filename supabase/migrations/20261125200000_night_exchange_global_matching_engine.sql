@@ -9,6 +9,7 @@ alter table public.sowia_nex_wallets
   check (reserved_balance >= 0);
 
 alter table public.sowia_nex_orders
+  add column if not exists client_order_id uuid not null default gen_random_uuid(),
   add column if not exists reserved_cash numeric(18,2) not null default 0
   check (reserved_cash >= 0),
   add column if not exists reserved_shares bigint not null default 0
@@ -25,6 +26,9 @@ create table if not exists public.sowia_nex_positions (
   updated_at timestamptz not null default now(),
   primary key (user_id, share_class_id)
 );
+create unique index if not exists sowia_nex_orders_client_key_idx
+  on public.sowia_nex_orders(user_id, client_order_id);
+
 create index if not exists sowia_nex_positions_share_idx
   on public.sowia_nex_positions(share_class_id, user_id);
 
@@ -147,7 +151,8 @@ end;
 $$;
 
 create or replace function private.nex_submit_limit_order(
-  p_share_class_id uuid, p_side text, p_quantity bigint, p_limit_price numeric
+  p_share_class_id uuid, p_side text, p_quantity bigint, p_limit_price numeric,
+  p_client_order_id uuid
 )
 returns uuid
 language plpgsql
@@ -161,6 +166,7 @@ declare
   v_position public.sowia_nex_positions%rowtype;
   v_config public.sowia_nex_market_config%rowtype;
   v_order_id uuid;
+  v_existing_order public.sowia_nex_orders%rowtype;
   v_trade_id uuid;
   v_remaining bigint;
   v_opp record;
@@ -192,6 +198,16 @@ begin
   select * into v_share from public.sowia_nex_share_classes
    where id = p_share_class_id for update;
   if not found or v_share.status <> 'listed' then raise exception 'Cette valeur n’est pas cotée.'; end if;
+  if p_client_order_id is null then raise exception 'Clé d’idempotence obligatoire.'; end if;
+  select * into v_existing_order from public.sowia_nex_orders
+   where user_id=v_uid and client_order_id=p_client_order_id;
+  if found then
+    if v_existing_order.share_class_id=p_share_class_id and v_existing_order.side=p_side
+       and v_existing_order.quantity=p_quantity and v_existing_order.limit_price=round(p_limit_price,4) then
+      return v_existing_order.id;
+    end if;
+    raise exception 'Cette clé d’ordre a déjà été utilisée avec des paramètres différents.';
+  end if;
   if not exists (select 1 from public.sowia_night_exchange_apps a
                  where a.id = v_share.application_id and a.status = 'approved') then
     raise exception 'La fiche de cette application n’est plus approuvée.';
@@ -236,12 +252,13 @@ begin
 
   insert into public.sowia_nex_orders(
     user_id, share_class_id, side, quantity, remaining_quantity,
-    limit_price, status, reserved_cash, reserved_shares
+    limit_price, status, reserved_cash, reserved_shares, client_order_id
   ) values (
     v_uid, p_share_class_id, p_side, p_quantity, p_quantity,
     round(p_limit_price,4), 'open',
     case when p_side = 'buy' then v_reserve else 0 end,
-    case when p_side = 'sell' then p_quantity else 0 end
+    case when p_side = 'sell' then p_quantity else 0 end,
+    p_client_order_id
   ) returning id into v_order_id;
   v_remaining := p_quantity;
 
@@ -473,10 +490,11 @@ create or replace function public.sowia_nex_issue_shares(
 returns uuid language sql security invoker set search_path=''
 as $$ select private.nex_issue_shares($1,$2,$3,$4,$5); $$;
 create or replace function public.sowia_nex_submit_limit_order(
-  p_share_class_id uuid,p_side text,p_quantity bigint,p_limit_price numeric
+  p_share_class_id uuid,p_side text,p_quantity bigint,p_limit_price numeric,
+  p_client_order_id uuid default gen_random_uuid()
 )
 returns uuid language sql security invoker set search_path=''
-as $$ select private.nex_submit_limit_order($1,$2,$3,$4); $$;
+as $ select private.nex_submit_limit_order($1,$2,$3,$4,$5); $;
 create or replace function public.sowia_nex_cancel_order(p_order_id uuid)
 returns boolean language sql security invoker set search_path=''
 as $$ select private.nex_cancel_order($1); $$;
@@ -491,26 +509,26 @@ as $$ select * from private.nex_get_market_tape($1,$2); $$;
 
 revoke all on function private.nex_ensure_wallet() from public, anon;
 revoke all on function private.nex_issue_shares(uuid,text,bigint,bigint,numeric) from public, anon;
-revoke all on function private.nex_submit_limit_order(uuid,text,bigint,numeric) from public, anon;
+revoke all on function private.nex_submit_limit_order(uuid,text,bigint,numeric,uuid) from public, anon;
 revoke all on function private.nex_cancel_order(uuid) from public, anon;
 revoke all on function private.nex_get_order_book(uuid) from public, anon;
 revoke all on function private.nex_get_market_tape(uuid,integer) from public, anon;
 grant execute on function private.nex_ensure_wallet() to authenticated;
 grant execute on function private.nex_issue_shares(uuid,text,bigint,bigint,numeric) to authenticated;
-grant execute on function private.nex_submit_limit_order(uuid,text,bigint,numeric) to authenticated;
+grant execute on function private.nex_submit_limit_order(uuid,text,bigint,numeric,uuid) to authenticated;
 grant execute on function private.nex_cancel_order(uuid) to authenticated;
 grant execute on function private.nex_get_order_book(uuid) to authenticated;
 grant execute on function private.nex_get_market_tape(uuid,integer) to authenticated;
 
 revoke all on function public.sowia_nex_ensure_wallet() from public, anon;
 revoke all on function public.sowia_nex_issue_shares(uuid,text,bigint,bigint,numeric) from public, anon;
-revoke all on function public.sowia_nex_submit_limit_order(uuid,text,bigint,numeric) from public, anon;
+revoke all on function public.sowia_nex_submit_limit_order(uuid,text,bigint,numeric,uuid) from public, anon;
 revoke all on function public.sowia_nex_cancel_order(uuid) from public, anon;
 revoke all on function public.sowia_nex_get_order_book(uuid) from public, anon;
 revoke all on function public.sowia_nex_get_market_tape(uuid,integer) from public, anon;
 grant execute on function public.sowia_nex_ensure_wallet() to authenticated;
 grant execute on function public.sowia_nex_issue_shares(uuid,text,bigint,bigint,numeric) to authenticated;
-grant execute on function public.sowia_nex_submit_limit_order(uuid,text,bigint,numeric) to authenticated;
+grant execute on function public.sowia_nex_submit_limit_order(uuid,text,bigint,numeric,uuid) to authenticated;
 grant execute on function public.sowia_nex_cancel_order(uuid) to authenticated;
 grant execute on function public.sowia_nex_get_order_book(uuid) to authenticated;
 grant execute on function public.sowia_nex_get_market_tape(uuid,integer) to authenticated;
