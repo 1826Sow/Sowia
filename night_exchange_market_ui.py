@@ -65,20 +65,19 @@ def render(client, user):
             .eq("user_id", str(user.id)).eq("status", "approved")
             .order("app_name").limit(200).execute()
         )
+        public_apps = _rows(
+            client.table("sowia_night_exchange_apps")
+            .select("id,app_name,country")
+            .eq("status", "approved").order("app_name").limit(500).execute()
+        )
     except Exception as exc:
         st.error("Le registre de cotation mondiale est momentanément inaccessible.")
         st.caption("Diagnostic : " + type(exc).__name__)
         return
 
+    public_app_by_id = {str(item["id"]): item for item in public_apps}
     for item in listings:
-        try:
-            app_rows = _rows(
-                client.table("sowia_night_exchange_apps")
-                .select("app_name,country").eq("id", item["application_id"]).limit(1).execute()
-            )
-            app = app_rows[0] if app_rows else {}
-        except Exception:
-            app = {}
+        app = public_app_by_id.get(str(item["application_id"]), {})
         item["_app_name"] = app.get("app_name") or "Application approuvée"
         item["_country"] = app.get("country") or "International"
 
