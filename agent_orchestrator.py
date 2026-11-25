@@ -148,16 +148,6 @@ def run_agent_turn(
     providers = _provider_configs()
     if not providers:
         raise AgentOrchestrationError("Aucun fournisseur IA n'est configuré.")
-    chat_usage = consume_agent_action(
-        user_client, user, "chat", turn_id,
-        agent_id=agent_id, workspace_id=workspace_id, tool_name="agent_chat",
-    )
-    if not chat_usage["allowed"]:
-        raise AgentQuotaExceeded(chat_usage)
-    if chat_usage.get("reason") == "already_recorded":
-        raise AgentOrchestrationError(
-            "Ce tour a déjà été enregistré ; il ne sera pas rejoué automatiquement."
-        )
     system_prompt = build_system_prompt(
         memories=memories, document_context=document_context, language=language
     )
@@ -170,6 +160,16 @@ def run_agent_turn(
     )
     conversation = [dict(item) for item in messages]
     tools = _tool_definitions(enabled_tools)
+    chat_usage = consume_agent_action(
+        user_client, user, "chat", turn_id,
+        agent_id=agent_id, workspace_id=workspace_id, tool_name="agent_chat",
+    )
+    if not chat_usage["allowed"]:
+        raise AgentQuotaExceeded(chat_usage)
+    if chat_usage.get("reason") == "already_recorded":
+        raise AgentOrchestrationError(
+            "Ce tour a déjà été enregistré ; il ne sera pas rejoué automatiquement."
+        )
     last_error = None
 
     for provider in providers:
