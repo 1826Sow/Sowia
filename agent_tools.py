@@ -65,7 +65,8 @@ def list_agent_tools():
 
 
 def execute_registered_agent_tool(
-    user_client, user, tool_name: str, request_id: str, arguments: dict
+    user_client, user, tool_name: str, request_id: str, arguments: dict,
+    *, agent_id=None, workspace_id="personal",
 ):
     """Validate, debit and execute one allowlisted agent tool.
 
@@ -100,4 +101,7 @@ def execute_registered_agent_tool(
         definition["handler"],
         query.strip(),
         max_results=max_results,
+        agent_id=agent_id,
+        workspace_id=workspace_id,
+        tool_name=name if agent_id is not None else None,
     )
