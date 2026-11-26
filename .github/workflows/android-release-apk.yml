@@ -164,11 +164,11 @@ jobs:
 
           keystore, store_type, store_password, alias, key_password, source = selected
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
-              env.write(f"ANDROID_KEYSTORE_PATH={keystore}\\n")
-              env.write(f"ANDROID_KEYSTORE_TYPE={store_type}\\n")
-              env.write(f"ANDROID_KEYSTORE_PASSWORD={store_password}\\n")
-              env.write(f"ANDROID_KEY_ALIAS={alias}\\n")
-              env.write(f"ANDROID_KEY_PASSWORD={key_password}\\n")
+              env.write(f"ANDROID_KEYSTORE_PATH={keystore}\n")
+              env.write(f"ANDROID_KEYSTORE_TYPE={store_type}\n")
+              env.write(f"ANDROID_KEYSTORE_PASSWORD={store_password}\n")
+              env.write(f"ANDROID_KEY_ALIAS={alias}\n")
+              env.write(f"ANDROID_KEY_PASSWORD={key_password}\n")
           print(
               "Original registered SOW IA upload certificate and private-key access verified. "
               f"Existing credential set selected: {source}. No secret or signing key was modified."
