@@ -1,0 +1,38 @@
+name: SOW IA browser smoke test
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/sowia-render-browser-smoke.yml"
+      - ".github/scripts/sowia-browser-smoke.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Playwright
+        run: npm install --no-save playwright
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test actual browser rendering
+        run: node .github/scripts/sowia-browser-smoke.mjs
+        env:
+          RENDER_URL: https://sowia.onrender.com/
+          STREAMLIT_URL: https://fm5aczcvvj5jgkhpxwqtcr.streamlit.app/
+      - name: Save screenshots and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sowia-browser-diagnostics
+          path: artifacts/
+          if-no-files-found: warn
