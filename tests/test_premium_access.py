@@ -139,3 +139,29 @@ def test_premium_guard_returns_active_entitlement():
 def test_premium_guard_requires_authenticated_user():
     with pytest.raises(PermissionError, match="Connexion requise"):
         premium_access.require_active_entitlement(Client(), None)
+
+
+def test_cancelled_subscription_keeps_access_until_paid_period_ends():
+    from datetime import datetime, timedelta, timezone
+
+    paid_through = (datetime.now(timezone.utc) + timedelta(days=3)).isoformat()
+    cancelled = {
+        "provider": "paypal",
+        "status": "cancelled",
+        "paypal_access_blocked": False,
+        "next_billing_time": paid_through,
+    }
+    assert premium_access.get_active_subscription(Client(cancelled), User()) == cancelled
+
+
+def test_cancelled_subscription_denies_access_after_paid_period_ends():
+    from datetime import datetime, timedelta, timezone
+
+    paid_through = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    cancelled = {
+        "provider": "paypal",
+        "status": "cancelled",
+        "paypal_access_blocked": False,
+        "next_billing_time": paid_through,
+    }
+    assert premium_access.get_active_subscription(Client(cancelled), User()) is None

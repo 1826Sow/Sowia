@@ -107,7 +107,6 @@ def get_active_subscription(user_client, user):
                 "amount, currency, paypal_access_blocked, next_billing_time, updated_at"
             )
             .eq("user_id", str(user_id))
-            .eq("status", "active")
             .eq("paypal_access_blocked", False)
             .maybe_single()
             .execute()
@@ -117,7 +116,25 @@ def get_active_subscription(user_client, user):
         raise
     print("[SOWIA_BOOT] stage:premium_subscription:complete", flush=True)
     data = getattr(result, "data", None)
-    return data if data and data.get("provider") == "paypal" else None
+    if not data or data.get("provider") != "paypal":
+        return None
+    status = str(data.get("status") or "").lower()
+    if status == "active":
+        return data
+    # A cancelled subscription can still have a paid-through period.
+    # Trust only the PayPal-reconciled next billing boundary stored by webhook.
+    if status == "cancelled":
+        try:
+            paid_through = datetime.fromisoformat(
+                str(data.get("next_billing_time") or "").replace("Z", "+00:00")
+            )
+        except (TypeError, ValueError):
+            return None
+        if paid_through.tzinfo is None:
+            paid_through = paid_through.replace(tzinfo=timezone.utc)
+        if paid_through > datetime.now(timezone.utc):
+            return data
+    return None
 
 
 def require_active_entitlement(user_client, user):
