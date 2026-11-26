@@ -10,6 +10,7 @@ import base64
 import hashlib
 import json
 import re
+import secrets
 import sqlite3
 import time
 from pathlib import Path
@@ -143,57 +144,75 @@ def browser_storage_id():
     """
     import streamlit as st
 
-    component = st.components.v2.component(
-        name="sowia_browser_scope",
-        html='<span aria-hidden="true"></span>',
-        js="""
-        const STORAGE_KEY = "sowia.browser_scope.v1";
-        function newBrowserId() {
-            const bytes = new Uint8Array(32);
-            crypto.getRandomValues(bytes);
-            let binary = "";
-            for (const byte of bytes) binary += String.fromCharCode(byte);
-            return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-        }
-        export default function({ data, setStateValue }) {
-            let browserId = null;
-            try {
-                browserId = window.localStorage.getItem(STORAGE_KEY);
-                if (!browserId || !/^[A-Za-z0-9_-]{40,64}$/.test(browserId)) {
-                    browserId = newBrowserId();
-                    window.localStorage.setItem(STORAGE_KEY, browserId);
+    def session_fallback():
+        # Embedded browsers may block localStorage or fail to initialize the
+        # component. Keep a cryptographically random scope in this Streamlit
+        # session so the login UI can render and PKCE stays session-isolated.
+        fallback_key = "_sowia_browser_scope_session_fallback"
+        fallback_id = st.session_state.get(fallback_key)
+        if not isinstance(fallback_id, str) or not re.fullmatch(
+            r"[A-Za-z0-9_-]{40,64}", fallback_id
+        ):
+            fallback_id = secrets.token_urlsafe(32)
+            st.session_state[fallback_key] = fallback_id
+        return fallback_id
+
+    try:
+        component = st.components.v2.component(
+            name="sowia_browser_scope",
+            html='<span aria-hidden="true"></span>',
+            js="""
+            const STORAGE_KEY = "sowia.browser_scope.v1";
+            function newBrowserId() {
+                const bytes = new Uint8Array(32);
+                crypto.getRandomValues(bytes);
+                let binary = "";
+                for (const byte of bytes) binary += String.fromCharCode(byte);
+                return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+            }
+            export default function({ data, setStateValue }) {
+                let browserId = null;
+                try {
+                    browserId = window.localStorage.getItem(STORAGE_KEY);
+                    if (!browserId || !/^[A-Za-z0-9_-]{40,64}$/.test(browserId)) {
+                        browserId = newBrowserId();
+                        window.localStorage.setItem(STORAGE_KEY, browserId);
+                    }
+                } catch (error) {
+                    setStateValue("storage_error", "Le stockage sécurisé du navigateur est indisponible.");
+                    return;
                 }
-            } catch (error) {
-                setStateValue("storage_error", "Le stockage sécurisé du navigateur est indisponible.");
-                return;
+                if (data?.browser_id !== browserId) {
+                    setStateValue("browser_id", browserId);
+                }
             }
-            if (data?.browser_id !== browserId) {
-                setStateValue("browser_id", browserId);
-            }
-        }
-        """,
-    )
-    key = "sowia_browser_scope"
-    previous = st.session_state.get(key)
-    known_id = _component_state_value(previous, "browser_id") if previous is not None else None
-    result = component(
-        data={"browser_id": known_id},
-        default={"browser_id": None, "storage_error": None},
-        on_browser_id_change=lambda: None,
-        on_storage_error_change=lambda: None,
-        key=key,
-        width="content",
-        height=1,
-    )
-    browser_id = _component_state_value(result, "browser_id")
-    storage_error = _component_state_value(result, "storage_error")
-    if storage_error:
-        raise RuntimeError(str(storage_error))
-    if not isinstance(browser_id, str) or not re.fullmatch(
-        r"[A-Za-z0-9_-]{40,64}", browser_id
-    ):
-        return None
-    return browser_id
+            """,
+        )
+        key = "sowia_browser_scope"
+        previous = st.session_state.get(key)
+        known_id = _component_state_value(previous, "browser_id") if previous is not None else None
+        result = component(
+            data={"browser_id": known_id},
+            default={"browser_id": None, "storage_error": None},
+            on_browser_id_change=lambda: None,
+            on_storage_error_change=lambda: None,
+            key=key,
+            width="content",
+            height=1,
+        )
+        browser_id = _component_state_value(result, "browser_id")
+        storage_error = _component_state_value(result, "storage_error")
+        if storage_error:
+            return session_fallback()
+        if not isinstance(browser_id, str) or not re.fullmatch(
+            r"[A-Za-z0-9_-]{40,64}", browser_id
+        ):
+            return session_fallback()
+        return browser_id
+    except Exception:
+        # Component initialization must never prevent the pre-login UI from
+        # rendering. The session fallback preserves per-session PKCE isolation.
+        return session_fallback()
 
 
 def _browser_storage_id(browser_id):
