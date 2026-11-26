@@ -1,6 +1,9 @@
 name: SOW IA browser smoke test
 
 on:
+  push:
+    branches:
+      - diagnostics/render-browser-smoke-20261126
   pull_request:
     paths:
       - ".github/workflows/sowia-render-browser-smoke.yml"
