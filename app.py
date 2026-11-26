@@ -390,6 +390,7 @@ language = "Français"
 
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
 # Fail closed by default on hosted deployments; local development must opt out explicitly.
+SOWIA_ALLOWED_EMAILS = frozenset({"sowkeys7@gmail.com", "sowla@live.fr"})
 auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "true")).strip().lower() in {"1", "true", "yes"}
 supabase_enabled = configuration_ready()
 if auth_required and not supabase_enabled:
@@ -547,6 +548,19 @@ if cloud_mode:
         current_user = None
         supabase_client = None
 
+    if current_user is not None:
+        authenticated_email = str(getattr(current_user, "email", "") or "").strip().lower()
+        if authenticated_email not in SOWIA_ALLOWED_EMAILS:
+            try:
+                sign_out(supabase_client)
+            except Exception:
+                pass
+            clear_authenticated_session_state(st.session_state)
+            clear_private_session_state(st.session_state)
+            st.session_state.pop("sowia_authenticated_user_id", None)
+            st.error("Accès refusé : seuls les comptes SOW IA autorisés peuvent accéder à cette application.")
+            st.stop()
+
     if current_user is None:
         # The language picker must be available before both registration and sign-in.
         # Keep this choice in the browser session; the account preference can take over after login.
@@ -648,6 +662,8 @@ if cloud_mode:
                         or "." not in candidate_signup_email.rsplit("@", 1)[-1]
                     ):
                         st.error(translate_ui("Saisissez une adresse e-mail valide.", language))
+                    elif candidate_signup_email not in SOWIA_ALLOWED_EMAILS:
+                        st.error("Cette adresse n'est pas autorisée à créer un compte SOW IA.")
                     elif len(signup_password or "") < 8:
                         st.error(translate_ui("Le mot de passe doit contenir au moins 8 caractères.", language))
                     elif signup_password != signup_password_confirm:
