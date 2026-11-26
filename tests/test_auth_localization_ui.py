@@ -36,9 +36,17 @@ def test_prelogin_instructions_and_errors_are_translated_in_all_supported_langua
 
 def test_prelogin_static_auth_copy_uses_the_selected_language():
     source = Path("app.py").read_text(encoding="utf-8")
-    assert "Après avoir confirmé votre adresse e-mail" in source
-    assert 'translate_ui(\n                "Après avoir confirmé votre adresse e-mail' in source
-    assert 'translate_ui("Votre adresse e-mail n\'est pas encore confirmée.' in source
-    assert 'translate_ui("Saisissez l\'adresse e-mail déjà associée' in source
-    assert 'translate_ui("Si cette adresse correspond à un compte SOW IA' in source
-    assert 'translate_ui("Continuer avec GitHub", language)' in source
+    phrases = (
+        "Après avoir confirmé votre adresse e-mail",
+        "Votre adresse e-mail n'est pas encore confirmée.",
+        "Saisissez l'adresse e-mail déjà associée",
+        "Si cette adresse correspond à un compte SOW IA",
+        "Continuer avec GitHub",
+        "Motif communiqué par le fournisseur : ",
+        "Diagnostic de retour : ",
+        "Diagnostic technique (sans identifiants) : ",
+    )
+    for phrase in phrases:
+        position = source.find(phrase)
+        assert position >= 0, phrase
+        assert "translate_ui(" in source[max(0, position - 300):position], phrase
