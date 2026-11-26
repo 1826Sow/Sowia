@@ -16,15 +16,17 @@ def test_password_login_uses_mobile_friendly_button_outside_streamlit_form():
     assert 'st.form_submit_button(' not in login_block
 
 
-def test_android_webview_supports_pdf_document_picker_and_keeps_system_back():
+def test_android_webview_opens_selectable_documents_and_keeps_system_back():
     source = Path(
         "android/app/src/main/java/com/sowkeys/sowia/DashboardActivity.kt"
     ).read_text(encoding="utf-8")
 
-    assert "ActivityResultContracts.OpenDocument()" in source
+    assert "Intent(Intent.ACTION_OPEN_DOCUMENT)" in source
+    assert "Intent.CATEGORY_OPENABLE" in source
+    assert 'type = "*/*"' in source
     assert "override fun onShowFileChooser(" in source
-    assert 'listOf("application/pdf")' in source
     assert "pendingFileChooser?.onReceiveValue(null)" in source
+    assert "takePersistableUriPermission" in source
     assert "onBackPressedDispatcher.addCallback" in source
     assert ".st-key-sowia_navigation_back button" in source
 
