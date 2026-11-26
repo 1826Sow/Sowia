@@ -25,16 +25,22 @@ def get_entitlement(user_client, user):
     user_id = getattr(user, "id", None)
     if not user_id:
         raise PermissionError("Connexion requise.")
-    result = (
-        user_client.table("sowia_entitlements")
-        .select("plan, status, provider, paypal_order_id, amount, currency, paypal_access_blocked, updated_at")
-        .eq("user_id", str(user_id))
-        .eq("plan", "premium")
-        .eq("provider", "paypal")
-        .eq("paypal_access_blocked", False)
-        .maybe_single()
-        .execute()
-    )
+    print("[SOWIA_BOOT] stage:premium_entitlement:start", flush=True)
+    try:
+        result = (
+            user_client.table("sowia_entitlements")
+            .select("plan, status, provider, paypal_order_id, amount, currency, paypal_access_blocked, updated_at")
+            .eq("user_id", str(user_id))
+            .eq("plan", "premium")
+            .eq("provider", "paypal")
+            .eq("paypal_access_blocked", False)
+            .maybe_single()
+            .execute()
+        )
+    except Exception as exc:
+        print(f"[SOWIA_BOOT] stage:premium_entitlement:error type={type(exc).__name__}", flush=True)
+        raise
+    print("[SOWIA_BOOT] stage:premium_entitlement:complete", flush=True)
     data = getattr(result, "data", None)
     return data if data and data.get("status") == "active" and data.get("paypal_access_blocked") is False else None
 
@@ -92,18 +98,24 @@ def get_active_subscription(user_client, user):
     user_id = getattr(user, "id", None)
     if not user_id:
         raise PermissionError("Connexion requise.")
-    result = (
-        user_client.table("sowia_subscriptions")
-        .select(
-            "status, provider, paypal_subscription_id, paypal_plan_id, "
-            "amount, currency, paypal_access_blocked, next_billing_time, updated_at"
+    print("[SOWIA_BOOT] stage:premium_subscription:start", flush=True)
+    try:
+        result = (
+            user_client.table("sowia_subscriptions")
+            .select(
+                "status, provider, paypal_subscription_id, paypal_plan_id, "
+                "amount, currency, paypal_access_blocked, next_billing_time, updated_at"
+            )
+            .eq("user_id", str(user_id))
+            .eq("status", "active")
+            .eq("paypal_access_blocked", False)
+            .maybe_single()
+            .execute()
         )
-        .eq("user_id", str(user_id))
-        .eq("status", "active")
-        .eq("paypal_access_blocked", False)
-        .maybe_single()
-        .execute()
-    )
+    except Exception as exc:
+        print(f"[SOWIA_BOOT] stage:premium_subscription:error type={type(exc).__name__}", flush=True)
+        raise
+    print("[SOWIA_BOOT] stage:premium_subscription:complete", flush=True)
     data = getattr(result, "data", None)
     return data if data and data.get("provider") == "paypal" else None
 
