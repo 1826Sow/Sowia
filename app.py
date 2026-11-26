@@ -594,12 +594,12 @@ if cloud_mode:
         callback_error = str(st.query_params.get("error", "")).strip()
         callback_error_description = str(st.query_params.get("error_description", "")).strip()
         st.caption(
-            "Diagnostic de retour : "
-            + ("retour de connexion reçu" if callback_code_present else "aucun retour de connexion reçu")
-            + (f" · erreur de connexion : {callback_error}" if callback_error else "")
+            translate_ui("Diagnostic de retour : ", language)
+            + (translate_ui("retour de connexion reçu", language) if callback_code_present else translate_ui("aucun retour de connexion reçu", language))
+            + (f" · {translate_ui('erreur de connexion : ', language)}{callback_error}" if callback_error else "")
         )
         if callback_error_description:
-            st.warning("Motif communiqué par le fournisseur : " + callback_error_description[:300])
+            st.warning(translate_ui("Motif communiqué par le fournisseur : ", language) + callback_error_description[:300])
         # Resolve the exact HTTPS callback independently of either login provider.
         from urllib.parse import urlsplit, urlunsplit
         current_app_url = str(getattr(st.context, "url", "") or "").strip()
@@ -705,7 +705,7 @@ if cloud_mode:
                         or candidate_password_email.endswith("@")
                         or "." not in candidate_password_email.rsplit("@", 1)[-1]
                     ):
-                        st.error("Saisissez une adresse e-mail valide.")
+                        st.error(translate_ui("Saisissez une adresse e-mail valide.", language))
                     elif not password_login_secret:
                         st.error(translate_ui("Saisissez votre mot de passe.", language))
                     else:
@@ -844,9 +844,9 @@ if cloud_mode and current_user is not None:
                 "Le paiement n'a pas pu être confirmé. Aucun accès Premium "
                 "n'a été accordé automatiquement."
             )
-            st.caption("Diagnostic technique (sans identifiants) : " + type(exc).__name__)
+            st.caption(translate_ui("Diagnostic technique (sans identifiants) : ", language) + type(exc).__name__)
     if st.query_params.get("paypal") == "cancel":
-        st.info("Le paiement a été annulé. Aucun montant n'a été confirmé par SOW IA.")
+        st.info(translate_ui("Le paiement a été annulé. Aucun montant n'a été confirmé par SOW IA.", language))
         st.query_params.clear()
     if st.query_params.get("subscription_id"):
         # Treat the browser parameter only as an identifier. Re-fetch and validate
