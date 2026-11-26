@@ -264,14 +264,20 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
     }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) scope.launch {
-            val current = auth.currentSession()
-            if (current == null) {
-                status = "Connectez-vous avant d'importer un PDF."
-            } else {
+        if (uri == null) {
+            // OpenDocument can return null when Android cancels the picker or
+            // the document provider fails to hand the selected URI back.
+            // Always surface this state instead of silently returning to the
+            // library with no explanation.
+            status = "Aucun fichier PDF n'a été transmis par le sélecteur Android. Réessayez."
+            busy = false
+        } else {
+            status = "Fichier reçu. Vérification et import sécurisé…"
+            scope.launch {
                 busy = true
-                status = "Import sécurisé du PDF…"
                 try {
+                    val current = auth.currentSession()
+                        ?: error("Session expirée. Reconnectez-vous avant d'importer un PDF.")
                     val name = storage.upload(uri, current, workspace)
                     refresh()
                     status = "PDF importé : " + name
