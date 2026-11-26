@@ -49,6 +49,26 @@ def _sowia_startup_trace(frame, event, arg):
 _sowia_sys.setprofile(_sowia_startup_trace)
 print("[SOWIA_BOOT] diagnostic tracing enabled (180s; no secrets recorded)", flush=True)
 
+# Record only source line numbers in the authentication bootstrap. This fills
+# the gap left by function profiling when an exception occurs between calls.
+def _sowia_app_line_trace(frame, event, arg):
+    if _sowia_time.monotonic() - _SOWIA_TRACE_STARTED > _SOWIA_TRACE_WINDOW_SECONDS:
+        _sowia_sys.settrace(None)
+        return None
+    if event == "line" and frame.f_code.co_filename.endswith("/app.py"):
+        line_number = frame.f_lineno
+        if 430 <= line_number <= 570:
+            print(f"[SOWIA_BOOT] app:line {line_number}", flush=True)
+    return _sowia_app_line_trace
+
+_sowia_sys.settrace(_sowia_app_line_trace)
+_sowia_frame = _sowia_sys._getframe()
+while _sowia_frame is not None and not _sowia_frame.f_code.co_filename.endswith("/app.py"):
+    _sowia_frame = _sowia_frame.f_back
+if _sowia_frame is not None:
+    _sowia_frame.f_trace = _sowia_app_line_trace
+
+
 
 # Public client key for the dedicated SOW IA Supabase project. This is a
 # publishable key (safe to ship in public clients), never a server secret.
