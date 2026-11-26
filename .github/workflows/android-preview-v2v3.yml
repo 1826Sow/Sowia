@@ -142,7 +142,7 @@ jobs:
           echo "Preview APK passed v2/v3 signature verification and package ID validation."
 
       - name: Upload verified preview APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sowia-android-preview-v2v3
           path: release-output/*

@@ -63,7 +63,7 @@ jobs:
           echo "Both APKs built and package IDs verified. The side-by-side APK uses a distinct application ID."
 
       - name: Upload temporary workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sowia-android-private-test-apks
           path: release-output/*
