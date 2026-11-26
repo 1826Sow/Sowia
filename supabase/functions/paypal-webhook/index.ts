@@ -353,13 +353,18 @@ Deno.serve(async (request: Request) => {
     const paymentAmount = lastPayment.amount || {};
     const paypalStatus = String(subscription.status || "UNKNOWN").toUpperCase();
     const blockedEvent = [
-      "BILLING.SUBSCRIPTION.CANCELLED",
       "BILLING.SUBSCRIPTION.SUSPENDED",
       "BILLING.SUBSCRIPTION.EXPIRED",
       "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
       "PAYMENT.SALE.REFUNDED",
       "PAYMENT.SALE.REVERSED",
     ].includes(eventType);
+    // A cancellation stops renewal, not the already-paid service period.
+    // Keep access only while PayPal confirms a future next billing boundary.
+    const paidThroughTime = billing.next_billing_time || billing.final_payment_time || null;
+    const cancellationStillPaid = eventType === "BILLING.SUBSCRIPTION.CANCELLED" &&
+      Boolean(paidThroughTime) &&
+      Date.parse(String(paidThroughTime)) > Date.now();
     const recoveryEvent = [
       "BILLING.SUBSCRIPTION.ACTIVATED",
       "PAYMENT.SALE.COMPLETED",
@@ -394,8 +399,11 @@ Deno.serve(async (request: Request) => {
     const existingBlockRows = await existingBlockResponse.json();
     const hasBlockLedgerEntry = Array.isArray(existingBlockRows) &&
       existingBlockRows.length > 0;
-    const accessBlocked = paypalStatus !== "ACTIVE" || blockedEvent ||
-      (!recoveryEvent && (previouslyBlocked || hasBlockLedgerEntry));
+    const accessBlocked = (
+      (paypalStatus !== "ACTIVE" && !cancellationStillPaid) ||
+      blockedEvent ||
+      (!recoveryEvent && !cancellationStillPaid && (previouslyBlocked || hasBlockLedgerEntry))
+    );
     const payload = {
       user_id: userId,
       provider: "paypal",
@@ -405,7 +413,7 @@ Deno.serve(async (request: Request) => {
       paypal_access_blocked: accessBlocked,
       currency: paymentAmount.currency_code || null,
       amount: paymentAmount.value || null,
-      next_billing_time: billing.next_billing_time || null,
+      next_billing_time: paidThroughTime,
       last_payment_at: lastPayment.time || null,
       updated_at: new Date().toISOString(),
     };

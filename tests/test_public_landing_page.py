@@ -5,7 +5,7 @@ import unittest
 
 
 PAGE = Path(__file__).resolve().parents[1] / "public-site" / "index.html"
-APP_URL = "https://sowia.sowla.workers.dev/app.html"
+APP_URL = "https://fm5aczcvvj5jgkhpxwqtcr.streamlit.app/"
 
 
 class LandingPageParser(HTMLParser):
@@ -52,7 +52,7 @@ class PublicLandingPageTests(unittest.TestCase):
     def test_ids_are_unique(self):
         self.assertEqual(len(self.parser.ids), len(set(self.parser.ids)))
 
-    def test_application_links_use_branded_startup_screen(self):
+    def test_application_links_use_current_streamlit_application(self):
         app_links = [href for href in self.parser.links if href.startswith("https://")]
         self.assertGreaterEqual(app_links.count(APP_URL), 2)
         self.assertIn('rel="noopener noreferrer"', self.source)
