@@ -427,6 +427,12 @@ language = "Français"
 
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
 # Fail closed by default on hosted deployments; local development must opt out explicitly.
+# End the boot shell before any authentication guard can stop the run.
+# This ensures configuration and browser-initialization messages remain visible.
+if _sowia_boot_placeholder is not None:
+    _sowia_boot_placeholder.empty()
+st.session_state["sowia_boot_completed"] = True
+
 auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "true")).strip().lower() in {"1", "true", "yes"}
 supabase_enabled = configuration_ready()
 if auth_required and not supabase_enabled:
@@ -583,10 +589,6 @@ if cloud_mode:
         cloud_mode = False
         current_user = None
         supabase_client = None
-
-    if _sowia_boot_placeholder is not None:
-        _sowia_boot_placeholder.empty()
-    st.session_state["sowia_boot_completed"] = True
 
     if current_user is None:
         # The language picker must be available before both registration and sign-in.
