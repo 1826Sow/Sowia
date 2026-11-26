@@ -3,6 +3,44 @@ import uuid
 import html
 from datetime import datetime, timezone, timedelta
 import streamlit as st
+
+# Render a lightweight branded shell before importing the full application.
+# This gives the browser visible feedback while the larger SOW IA modules load.
+st.set_page_config(page_title="SOW IA", page_icon="assets/sowia-brain-icon.svg", layout="wide")
+_sowia_boot_placeholder = None
+if not st.session_state.get("sowia_boot_completed", False):
+    _sowia_boot_placeholder = st.empty()
+    _sowia_boot_placeholder.markdown(
+        """
+        <style>
+        @keyframes sowia-boot-spin { to { transform: rotate(360deg); } }
+        .sowia-boot-screen {
+          min-height: 66vh; display: flex; align-items: center; justify-content: center;
+          padding: 2rem; border: 1px solid rgba(0,220,235,.30); border-radius: 22px;
+          background: radial-gradient(circle at 85% 12%, rgba(0,210,230,.16), transparent 34%),
+                      linear-gradient(145deg, #071426, #102b49);
+          color: #eff9ff; text-align: center;
+        }
+        .sowia-boot-title { font-size: clamp(2.2rem, 6vw, 3.2rem); font-weight: 850; letter-spacing: -.04em; }
+        .sowia-boot-spinner {
+          width: 38px; height: 38px; margin: 1.5rem auto;
+          border: 3px solid rgba(117,242,255,.22); border-top-color: #22d8e8;
+          border-radius: 50%; animation: sowia-boot-spin .9s linear infinite;
+        }
+        .sowia-boot-subtitle { color: #b9d7e8; font-size: .95rem; }
+        </style>
+        <div class="sowia-boot-screen">
+          <div>
+            <div class="sowia-boot-title">SOW IA</div>
+            <div class="sowia-boot-subtitle">Votre espace intelligent se prépare…</div>
+            <div class="sowia-boot-spinner"></div>
+            <div class="sowia-boot-subtitle">Initialisation sécurisée · Chargement des services</div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 from settings import get_setting
 from i18n import LANGUAGES as SOWIA_LANGUAGES, translate as translate_ui
 from i18n_streamlit import install_streamlit_localization
@@ -92,7 +130,6 @@ def reset_signed_pdf_upload(prefix):
     st.session_state[prefix + "_pdf_upload_nonce"] = str(uuid.uuid4())
 
 
-st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-brain-icon.svg", layout="wide")
 st.markdown(
     """<style>
     :root { color-scheme: dark; }
@@ -546,6 +583,10 @@ if cloud_mode:
         cloud_mode = False
         current_user = None
         supabase_client = None
+
+    if _sowia_boot_placeholder is not None:
+        _sowia_boot_placeholder.empty()
+    st.session_state["sowia_boot_completed"] = True
 
     if current_user is None:
         # The language picker must be available before both registration and sign-in.
