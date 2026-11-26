@@ -58,6 +58,12 @@ st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-brain-icon.svg",
 st.markdown(
     """<style>
     :root { color-scheme: dark; }
+    /* Restore a real viewport height for Streamlit's root containers.
+       Without this, Streamlit 1.67 can leave #root/.stApp at 0px while
+       stMain still contains the page, producing white-on-white blank screens. */
+    html, body { min-height: 100vh !important; height: auto !important; background: #071426 !important; }
+    #root, #root > div, .stApp { min-height: 100vh !important; height: auto !important; }
+    [data-testid="stAppViewContainer"], [data-testid="stMain"] { min-height: 100vh !important; height: auto !important; }
     /* Keep Streamlit's native viewport and scroll container behavior intact. */
     .stApp { position: relative !important; }
     header[data-testid="stHeader"] {
