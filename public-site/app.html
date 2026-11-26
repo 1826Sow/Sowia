@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071329">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Ouverture de SOW IA</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:#071329;color:#f3f6ff}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at 50% 20%,rgba(55,160,194,.2),transparent 42%),linear-gradient(160deg,#071329,#0c2040)}
+    main{width:min(100%,520px);text-align:center;padding:38px 28px;border:1px solid rgba(115,228,242,.24);border-radius:24px;background:rgba(9,27,52,.84);box-shadow:0 24px 70px rgba(0,0,0,.32)}
+    .mark{width:62px;height:62px;margin:0 auto 20px;display:grid;place-items:center;border:1px solid rgba(115,228,242,.55);border-radius:19px;background:linear-gradient(145deg,rgba(115,228,242,.18),rgba(166,154,255,.2));color:#8cecff;font-size:32px}
+    h1{margin:0;font-size:clamp(2rem,7vw,2.7rem);letter-spacing:.13em}
+    .eyebrow{margin:9px 0 28px;color:#8cecff;font-size:.72rem;font-weight:800;letter-spacing:.18em}
+    .spinner{width:42px;height:42px;margin:0 auto 20px;border:3px solid rgba(140,236,255,.18);border-top-color:#8cecff;border-radius:50%;animation:spin .9s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    p{margin:0;color:#d4e1f3;line-height:1.6}
+    #detail{margin-top:10px;color:#91a9ca;font-size:.9rem}
+    .track{height:4px;margin:25px 0 0;overflow:hidden;border-radius:10px;background:rgba(255,255,255,.08)}
+    .track span{display:block;width:35%;height:100%;border-radius:10px;background:linear-gradient(90deg,#61d7eb,#a69aff);animation:travel 1.8s ease-in-out infinite}
+    @keyframes travel{0%{transform:translateX(-110%)}100%{transform:translateX(310%)}}
+    .fallback{display:inline-block;margin-top:24px;color:#8cecff;font-size:.9rem;text-underline-offset:4px}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:2.5s!important}}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark" aria-hidden="true">✧</div>
+    <h1>SOW IA</h1>
+    <div class="eyebrow">PLATEFORME INTELLIGENTE · VISION INTERNATIONALE</div>
+    <div class="spinner" role="status" aria-label="Chargement"></div>
+    <p id="status">Préparation de votre espace de travail…</p>
+    <p id="detail">La première ouverture après une période d’inactivité peut prendre jusqu’à une minute.</p>
+    <div class="track" aria-hidden="true"><span></span></div>
+    <a class="fallback" href="https://sowia.onrender.com">Ouvrir directement l’application</a>
+  </main>
+  <script>
+    const appUrl = "https://sowia.onrender.com" + window.location.search + window.location.hash;
+    const statusText = document.getElementById("status");
+    const detailText = document.getElementById("detail");
+    const startedAt = Date.now();
+    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+    async function waitForApp() {
+      while (true) {
+        try {
+          const response = await fetch("/wake", {cache:"no-store", credentials:"omit"});
+          if (response.ok) {
+            const result = await response.json();
+            if (result.ready === true) {
+              statusText.textContent = "Votre espace est prêt. Ouverture…";
+              detailText.textContent = "Connexion sécurisée à SOW IA.";
+              window.location.replace(appUrl);
+              return;
+            }
+          }
+        } catch (_) {
+          // A temporary network error is retried without exposing a blank page.
+        }
+        const seconds = Math.floor((Date.now() - startedAt) / 1000);
+        if (seconds >= 45) {
+          statusText.textContent = "SOW IA termine son démarrage…";
+          detailText.textContent = "Merci de patienter encore quelques instants. Votre espace et vos données restent inchangés.";
+        } else {
+          detailText.textContent = "Connexion au serveur sécurisé · " + seconds + " s";
+        }
+        await wait(3000);
+      }
+    }
+    waitForApp();
+  </script>
+</body>
+</html>
