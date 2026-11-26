@@ -19,6 +19,10 @@ Consulter le [guide de l’espace Professionnel](docs/GUIDE_ESPACE_PROFESSIONNEL
 - Recherche web optionnelle via Tavily
 - Configuration Docker et tests automatisés
 
+## Adresse principale de SOW IA
+
+L'adresse publique principale actuellement retenue est : https://fm5aczcvvj5jgkhpxwqtcr.streamlit.app/ (Streamlit Community Cloud). Render reste une instance secondaire et ne doit pas être présenté comme l'adresse principale tant que son affichage n'est pas validé.
+
 ## Déploiement public (Streamlit Community Cloud)
 
 1. Connecter le dépôt GitHub `1826Sow/Sowia` à Streamlit Community Cloud.
