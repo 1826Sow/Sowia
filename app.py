@@ -371,20 +371,25 @@ if auth_required and not supabase_enabled:
 # Supabase ne doit être utilisé que si l'authentification obligatoire est activée.
 # Sinon, SOW IA reste accessible en mode local sans bloquer sur GitHub OAuth.
 cloud_mode = supabase_enabled and auth_required
+email_login_only = str(get_setting("SOWIA_EMAIL_LOGIN_ONLY", "true")).strip().lower() in {"1", "true", "yes"}
 current_user = None
 supabase_client = None
 if cloud_mode:
     auth_stage = "initialisation du client Supabase"
     try:
         if "sowia_supabase_client" not in st.session_state:
-            # Streamlit Cloud WebSocket requests may not expose browser cookies.
-            # Obtain a persistent random browser scope through a v2 component.
-            browser_id = browser_storage_id()
-            if not browser_id:
-                st.info("Initialisation sécurisée du navigateur…")
-                st.stop()
-            # Keep this PKCE client in this browser session; never use a global cache.
-            st.session_state.sowia_supabase_client = create_user_client(browser_id)
+            if email_login_only:
+                # The production login is email/password + Supabase email links.
+                # It uses per-session token storage and does not need the browser-
+                # scoped PKCE component used exclusively by the optional GitHub OAuth.
+                st.session_state.sowia_supabase_client = create_email_user_client()
+            else:
+                # GitHub OAuth uses PKCE and needs a persistent browser scope.
+                browser_id = browser_storage_id()
+                if not browser_id:
+                    st.info("Initialisation sécurisée du navigateur…")
+                    st.stop()
+                st.session_state.sowia_supabase_client = create_user_client(browser_id)
         supabase_client = st.session_state.sowia_supabase_client
 
         auth_stage = "lecture du retour de connexion par e-mail"
