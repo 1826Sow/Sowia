@@ -13,13 +13,13 @@ def test_branded_boot_screen_is_rendered_before_heavy_application_imports():
     assert "Initialisation sécurisée · Chargement des services" in source
 
 
-def test_boot_screen_is_removed_only_after_authentication_initialization():
+def test_boot_screen_is_removed_before_authentication_guards_can_stop_the_run():
     source = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
 
     clear_boot = source.index("_sowia_boot_placeholder.empty()")
-    auth_language_picker = source.index(
-        "# The language picker must be available before both registration and sign-in."
+    auth_guard = source.index(
+        'auth_required = str(get_setting("SOWIA_REQUIRE_AUTH"'
     )
 
-    assert clear_boot < auth_language_picker
+    assert clear_boot < auth_guard
     assert 'st.session_state["sowia_boot_completed"] = True' in source
