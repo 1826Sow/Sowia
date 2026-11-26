@@ -3,6 +3,13 @@ import uuid
 import html
 from datetime import datetime, timezone, timedelta
 import streamlit as st
+
+# Render an immediate, visible startup state before loading optional modules or
+# contacting remote services. This prevents a blank viewport during slow startup.
+st.set_page_config(page_title="SOW IA", page_icon="assets/sowia-brain-icon.svg", layout="wide")
+_sowia_boot_status = st.empty()
+_sowia_boot_status.info("SOW IA démarre… Initialisation des services sécurisés.")
+
 from settings import get_setting
 from i18n import LANGUAGES as SOWIA_LANGUAGES, translate as translate_ui
 from i18n_streamlit import install_streamlit_localization
@@ -92,7 +99,6 @@ def reset_signed_pdf_upload(prefix):
     st.session_state[prefix + "_pdf_upload_nonce"] = str(uuid.uuid4())
 
 
-st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-brain-icon.svg", layout="wide")
 st.markdown(
     """<style>
     :root { color-scheme: dark; }
@@ -548,6 +554,7 @@ if cloud_mode:
         supabase_client = None
 
     if current_user is None:
+        _sowia_boot_status.empty()
         # The language picker must be available before both registration and sign-in.
         # Keep this choice in the browser session; the account preference can take over after login.
         pre_auth_language = st.session_state.get("sowia_pre_auth_language", "Français")
@@ -1109,6 +1116,8 @@ if cloud_mode and current_user is not None:
         }
 else:
     st.session_state.pop("sowia_premium_status_cache", None)
+
+_sowia_boot_status.empty()
 
 with st.sidebar:
     st.image("assets/sowia-globe-brand.svg", use_container_width=True)
