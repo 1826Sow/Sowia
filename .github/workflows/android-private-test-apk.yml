@@ -1,5 +1,6 @@
 name: SOW IA Android private test APK
-# Builds the current Android app, verifies its package, and publishes a clearly labelled test release.
+# Builds both Android identities from the same PDF-picker fix.
+# The legacy applicationId allows side-by-side testing without replacing the installed app.
 
 on:
   workflow_dispatch:
@@ -15,7 +16,7 @@ permissions:
 
 jobs:
   build-test-apk:
-    name: Build and publish Android test APK
+    name: Build and publish Android test APKs
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,37 +33,39 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
-      - name: Build current Android debug APK
-        run: gradle -p android :app:assembleCurrentDebug
+      - name: Build both Android debug APKs
+        run: gradle -p android :app:assembleCurrentDebug :app:assembleLegacyDebug
 
-      - name: Verify package and APK
+      - name: Verify packages and APKs
         shell: bash
         run: |
           set -euo pipefail
-          APK="$(find android/app/build/outputs/apk -type f -path '*/current/debug/*.apk' -print -quit)"
-          if [[ -z "$APK" ]]; then
-            echo "::error::Current-flavor debug APK was not produced."
-            exit 1
-          fi
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           if [[ -z "$AAPT" ]]; then
             echo "::error::Android aapt tool is unavailable."
             exit 1
           fi
-          PACKAGE_ID="$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
-          if [[ "$PACKAGE_ID" != "com.sowkeys.sowia" ]]; then
-            echo "::error::Unexpected Android application ID: $PACKAGE_ID"
-            exit 1
-          fi
+
+          CURRENT_APK="$(find android/app/build/outputs/apk -type f -path '*/current/debug/*.apk' -print -quit)"
+          LEGACY_APK="$(find android/app/build/outputs/apk -type f -path '*/legacy/debug/*.apk' -print -quit)"
+          [[ -n "$CURRENT_APK" ]] || { echo "::error::Current APK missing."; exit 1; }
+          [[ -n "$LEGACY_APK" ]] || { echo "::error::Legacy APK missing."; exit 1; }
+
+          CURRENT_ID="$("$AAPT" dump badging "$CURRENT_APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
+          LEGACY_ID="$("$AAPT" dump badging "$LEGACY_APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
+          [[ "$CURRENT_ID" == "com.sowkeys.sowia" ]] || { echo "::error::Unexpected current package: $CURRENT_ID"; exit 1; }
+          [[ "$LEGACY_ID" == "com.sowkeys.sowia.parallel" ]] || { echo "::error::Unexpected side-by-side package: $LEGACY_ID"; exit 1; }
+
           mkdir -p release-output
-          cp "$APK" release-output/SOW-IA-Android-TEST.apk
-          sha256sum release-output/SOW-IA-Android-TEST.apk | tee release-output/SHA256SUMS.txt
-          echo "Debug APK package ID verified. This is a test build, not a Play Store release."
+          cp "$CURRENT_APK" release-output/SOW-IA-Android-TEST-UPDATE.apk
+          cp "$LEGACY_APK" release-output/SOW-IA-Android-TEST-SIDEBY-SIDE.apk
+          sha256sum release-output/*.apk | tee release-output/SHA256SUMS.txt
+          echo "Both APKs built and package IDs verified. The side-by-side APK uses a distinct application ID."
 
       - name: Upload temporary workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sowia-android-private-test-apk
+          name: sowia-android-private-test-apks
           path: release-output/*
           if-no-files-found: error
           retention-days: 14
@@ -73,13 +76,11 @@ jobs:
         run: |
           set -euo pipefail
           TAG="sowia-android-test"
-          TITLE="SOW IA Android — version de test"
-          NOTES="Version Android de test distribuée gratuitement. Cette compilation utilise une signature de débogage et peut nécessiter la désinstallation d'une version signée différemment. Ce n'est pas une publication Google Play."
+          TITLE="SOW IA Android — versions de test"
+          NOTES="Deux APK de test gratuits : UPDATE conserve le package com.sowkeys.sowia mais sa signature debug ne remplace pas une installation signée différemment. SIDEBY-SIDE utilise le package distinct com.sowkeys.sowia.parallel pour tester sans remplacer l'application principale. Ce ne sont pas des publications Google Play."
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" release-output/SOW-IA-Android-TEST.apk release-output/SHA256SUMS.txt --clobber
+            gh release upload "$TAG" release-output/SOW-IA-Android-TEST-UPDATE.apk release-output/SOW-IA-Android-TEST-SIDEBY-SIDE.apk release-output/SHA256SUMS.txt --clobber
             gh release edit "$TAG" --title "$TITLE" --notes "$NOTES" --prerelease
           else
-            gh release create "$TAG" release-output/SOW-IA-Android-TEST.apk release-output/SHA256SUMS.txt --title "$TITLE" --notes "$NOTES" --prerelease
+            gh release create "$TAG" release-output/SOW-IA-Android-TEST-UPDATE.apk release-output/SOW-IA-Android-TEST-SIDEBY-SIDE.apk release-output/SHA256SUMS.txt --title "$TITLE" --notes "$NOTES" --prerelease
           fi
-
-# The stable public asset URL remains the same when the test APK is rebuilt.
