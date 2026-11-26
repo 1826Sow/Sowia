@@ -320,7 +320,10 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
                 ) { Text("Ouvrir Compte & paramètres") }
             } else {
                 Button(
-                    onClick = { picker.launch(arrayOf("application/pdf")) },
+                    onClick = {
+                        status = "Ouverture du sélecteur de fichiers PDF…"
+                        picker.launch(arrayOf("application/pdf"))
+                    },
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = PdfCyan, contentColor = PdfNavy),
