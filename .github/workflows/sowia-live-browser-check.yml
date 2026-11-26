@@ -27,73 +27,56 @@ jobs:
           npm init -y
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Open both SOW IA addresses and inspect actual paint
+      - name: Test original render and temporary CSS height repair
         run: |
           mkdir -p artifacts
           cat > browser-check.mjs <<'NODE'
           import { chromium } from "playwright";
           import fs from "node:fs/promises";
           const browser = await chromium.launch({ headless: true });
-          const result = {};
-          async function check(name, url, expectedText, timeout) {
-            const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-            const errors = { console: [], page: [], failedRequests: [], badResponses: [] };
-            page.on("console", m => { if (m.type() === "error") errors.console.push(m.text()); });
-            page.on("pageerror", e => errors.page.push(String(e)));
-            page.on("requestfailed", r => errors.failedRequests.push({ url: r.url(), error: r.failure()?.errorText || "unknown" }));
-            page.on("response", r => { if (r.status() >= 400) errors.badResponses.push({ status: r.status(), url: r.url() }); });
-            let navigationError = null;
-            try {
-              await page.goto(url, { waitUntil: "domcontentloaded", timeout });
-              if (expectedText) await page.getByText(expectedText, { exact: false }).first().waitFor({ state: "visible", timeout: 90000 });
-              else await page.waitForTimeout(15000);
-              await page.waitForTimeout(3000);
-            } catch (e) { navigationError = String(e); }
-            const body = await page.locator("body").innerText().catch(() => "");
-            const paint = await page.evaluate(() => {
-              const pick = (selector) => {
-                const el = document.querySelector(selector);
-                if (!el) return null;
-                const s = getComputedStyle(el);
-                const r = el.getBoundingClientRect();
-                return { text: (el.innerText || "").slice(0, 180), display: s.display, visibility: s.visibility, opacity: s.opacity, color: s.color, backgroundColor: s.backgroundColor, backgroundImage: s.backgroundImage, width: r.width, height: r.height, x: r.x, y: r.y };
-              };
-              return {
-                readyState: document.readyState,
-                fontsStatus: document.fonts?.status,
-                body: pick("body"), root: pick("#root"), stApp: pick(".stApp"),
-                appView: pick('[data-testid="stAppViewContainer"]'),
-                main: pick('[data-testid="stMain"]'),
-                mainBlock: pick('[data-testid="stMainBlockContainer"]'),
-                heading: pick("h1"), paragraph: pick("p"),
-                stylesheets: [...document.styleSheets].map(s => s.href || "inline").slice(0, 40)
-              };
-            }).catch(e => ({ error: String(e) }));
-            const data = { url, title: await page.title().catch(() => ""), navigationError, expectedTextVisible: expectedText ? body.includes(expectedText) : null, bodyPreview: body.slice(0, 3000), paint, errors };
-            await page.screenshot({ path: `artifacts/${name}.png`, fullPage: true }).catch(() => {});
-            await fs.writeFile(`artifacts/${name}.json`, JSON.stringify(data, null, 2));
-            await page.close();
-            return data;
-          }
+          const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+          const errors = { console: [], page: [], failedRequests: [], badResponses: [] };
+          page.on("console", m => { if (m.type() === "error") errors.console.push(m.text()); });
+          page.on("pageerror", e => errors.page.push(String(e)));
+          page.on("requestfailed", r => errors.failedRequests.push({ url: r.url(), error: r.failure()?.errorText || "unknown" }));
+          page.on("response", r => { if (r.status() >= 400) errors.badResponses.push({ status: r.status(), url: r.url() }); });
+          const measure = async () => page.evaluate(() => {
+            const pick = (selector) => {
+              const el = document.querySelector(selector);
+              if (!el) return null;
+              const s = getComputedStyle(el), r = el.getBoundingClientRect();
+              return { display:s.display, position:s.position, visibility:s.visibility, opacity:s.opacity, height:s.height, minHeight:s.minHeight, color:s.color, backgroundColor:s.backgroundColor, backgroundImage:s.backgroundImage, rect:{x:r.x,y:r.y,width:r.width,height:r.height}, text:(el.innerText||"").slice(0,120) };
+            };
+            return { readyState:document.readyState, body:pick("body"), root:pick("#root"), stApp:pick(".stApp"), appView:pick('[data-testid="stAppViewContainer"]'), main:pick('[data-testid="stMain"]'), mainBlock:pick('[data-testid="stMainBlockContainer"]'), heading:pick("h1"), stylesheets:[...document.styleSheets].map(s=>s.href||"inline").slice(0,30) };
+          });
+          let navigationError = null;
           try {
-            result.render = await check("render", "https://sowia.onrender.com/", "Connexion à SOW IA", 120000);
-            result.streamlitCloud = await check("streamlit-cloud", "https://fm5aczcvvj5jgkhpxwqtcr.streamlit.app/", null, 60000);
-            console.log("SOWIA_BROWSER_RESULT=" + JSON.stringify(result, null, 2));
-            if (!result.render.expectedTextVisible) {
-              console.error("ÉCHEC: le formulaire de connexion SOW IA ne s'affiche pas sur Render.");
-              process.exitCode = 1;
-            } else {
-              console.log("SOW IA: texte de connexion trouvé; styles calculés et capture enregistrés pour vérifier le rendu visuel.");
-            }
-          } finally {
-            await browser.close();
-          }
+            await page.goto("https://sowia.onrender.com/", { waitUntil:"domcontentloaded", timeout:120000 });
+            await page.getByText("Connexion à SOW IA", { exact:false }).first().waitFor({ state:"visible", timeout:90000 });
+            await page.waitForTimeout(3000);
+          } catch(e) { navigationError=String(e); }
+          const beforeText=await page.locator("body").innerText().catch(()=>"");
+          const before=await measure().catch(e=>({error:String(e)}));
+          await page.screenshot({path:"artifacts/render-before-css-test.png",fullPage:true}).catch(()=>{});
+          await page.addStyleTag({content:`
+            html, body { min-height:100vh !important; height:auto !important; background:#071426 !important; }
+            #root, #root > div, .stApp { min-height:100vh !important; height:auto !important; }
+            [data-testid="stAppViewContainer"], [data-testid="stMain"] { min-height:100vh !important; height:auto !important; }
+          `}).catch(()=>{});
+          await page.waitForTimeout(1500);
+          const after=await measure().catch(e=>({error:String(e)}));
+          await page.screenshot({path:"artifacts/render-after-css-test.png",fullPage:true}).catch(()=>{});
+          const data={url:"https://sowia.onrender.com/",title:await page.title().catch(()=>""),navigationError,loginTextFound:beforeText.includes("Connexion à SOW IA"),bodyPreview:beforeText.slice(0,2500),before,after,errors};
+          await fs.writeFile("artifacts/render-css-test.json",JSON.stringify(data,null,2));
+          console.log("SOWIA_CSS_TEST="+JSON.stringify(data,null,2));
+          await page.close();
+          await browser.close();
           NODE
           node browser-check.mjs
-      - name: Upload screenshots and browser diagnostics
+      - name: Upload screenshots and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sowia-live-browser-check
+          name: sowia-css-height-test
           path: artifacts/
           if-no-files-found: warn
