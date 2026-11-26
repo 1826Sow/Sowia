@@ -2,6 +2,7 @@ package com.sowkeys.sowia
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
@@ -26,18 +27,34 @@ import androidx.activity.result.contract.ActivityResultContracts
  */
 class DashboardActivity : ComponentActivity() {
     private lateinit var webView: WebView
-    private lateinit var pdfPickerLauncher: ActivityResultLauncher<Array<String>>
+    private lateinit var pdfPickerLauncher: ActivityResultLauncher<Intent>
     private var pendingFileChooser: ValueCallback<Array<Uri>>? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Streamlit's st.file_uploader uses the WebView file chooser callback.
-        // Without this bridge, tapping the PDF picker appears to do nothing on Android.
-        pdfPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        // Keep the original result Intent so the URI read grant can be persisted.
+        // WebView/Chromium reads the content URI after it is handed back to Streamlit.
+        pdfPickerLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
             val callback = pendingFileChooser
             pendingFileChooser = null
+            val resultIntent = result.data
+            val uri = if (result.resultCode == RESULT_OK) resultIntent?.data else null
+
+            if (uri != null && resultIntent != null) {
+                val grantedFlags = resultIntent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION
+                if (grantedFlags != 0) {
+                    try {
+                        contentResolver.takePersistableUriPermission(uri, grantedFlags)
+                    } catch (_: SecurityException) {
+                        // Some document providers grant only temporary read access.
+                        // Preserve the URI callback; WebView can still try that grant.
+                    }
+                }
+            }
             callback?.onReceiveValue(uri?.let { arrayOf(it) })
         }
 
@@ -63,7 +80,7 @@ class DashboardActivity : ComponentActivity() {
                 }
 
                 override fun onShowFileChooser(
-                    view: WebView?,
+                    view: WebView?, 
                     filePathCallback: ValueCallback<Array<Uri>>?,
                     fileChooserParams: FileChooserParams?,
                 ): Boolean {
@@ -81,10 +98,26 @@ class DashboardActivity : ComponentActivity() {
                         .distinct()
                         .ifEmpty { listOf("application/pdf") }
 
+                    val pickerIntent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = if (mimeTypes.size == 1) mimeTypes.first() else "*/*"
+                        if (mimeTypes.size > 1) {
+                            putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes.toTypedArray())
+                        }
+                        addFlags(
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                        )
+                    }
+
                     return try {
-                        pdfPickerLauncher.launch(mimeTypes.toTypedArray())
+                        pdfPickerLauncher.launch(pickerIntent)
                         true
                     } catch (_: ActivityNotFoundException) {
+                        pendingFileChooser = null
+                        filePathCallback.onReceiveValue(null)
+                        false
+                    } catch (_: SecurityException) {
                         pendingFileChooser = null
                         filePathCallback.onReceiveValue(null)
                         false
