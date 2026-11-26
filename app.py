@@ -422,12 +422,18 @@ if cloud_mode:
         if "sowia_supabase_client" not in st.session_state:
             # Streamlit Cloud WebSocket requests may not expose browser cookies.
             # Obtain a persistent random browser scope through a v2 component.
+            _sowia_boot_status.info("SOW IA démarre… Préparation du navigateur sécurisé.")
+            print("[SOWIA_BOOT] stage:browser_storage:start", flush=True)
             browser_id = browser_storage_id()
+            print("[SOWIA_BOOT] stage:browser_storage:complete", flush=True)
             if not browser_id:
-                st.info("Initialisation sécurisée du navigateur…")
+                _sowia_boot_status.warning("Initialisation sécurisée du navigateur en attente. Rechargez la page pour réessayer.")
                 st.stop()
             # Keep this PKCE client in this browser session; never use a global cache.
+            _sowia_boot_status.info("SOW IA démarre… Connexion aux services sécurisés.")
+            print("[SOWIA_BOOT] stage:supabase_client:start", flush=True)
             created_supabase_client = create_user_client(browser_id)
+            print("[SOWIA_BOOT] stage:supabase_client:complete", flush=True)
             print("[SOWIA_BOOT] client:created", flush=True)
             try:
                 st.session_state["sowia_supabase_client"] = created_supabase_client
@@ -440,8 +446,11 @@ if cloud_mode:
             print("[SOWIA_BOOT] client:stored", flush=True)
         supabase_client = st.session_state.sowia_supabase_client
 
+        _sowia_boot_status.info("SOW IA démarre… Vérification de la session sécurisée.")
         auth_stage = "lecture du retour de connexion par e-mail"
+        print("[SOWIA_BOOT] stage:email_callback:start", flush=True)
         email_tokens = read_email_auth_fragment()
+        print("[SOWIA_BOOT] stage:email_callback:complete", flush=True)
         if email_tokens and email_tokens.get("token_hash"):
             # Handle Supabase ConfirmationURL callbacks that deliver token_hash
             # in either the query string or the URL fragment.
@@ -480,7 +489,9 @@ if cloud_mode:
             st.rerun()
 
         auth_stage = "vérification de la session Supabase"
+        print("[SOWIA_BOOT] stage:authenticated_user:start", flush=True)
         current_user = authenticated_user(supabase_client)
+        print("[SOWIA_BOOT] stage:authenticated_user:complete", flush=True)
         expected_email = str(
             st.session_state.get("sowia_email_login_pending", "") or ""
         ).strip().lower()
