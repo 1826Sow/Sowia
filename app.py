@@ -427,11 +427,15 @@ language = "Français"
 
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
 # Fail closed by default on hosted deployments; local development must opt out explicitly.
-# End the boot shell before any authentication guard can stop the run.
-# This ensures configuration and browser-initialization messages remain visible.
-if _sowia_boot_placeholder is not None:
-    _sowia_boot_placeholder.empty()
-st.session_state["sowia_boot_completed"] = True
+# Keep the branded boot shell visible while the application services and
+# secure authentication client initialize. It is cleared at the first point
+# where the login/workspace UI (or a useful diagnostic) can be rendered.
+
+def _sowia_finish_boot():
+    if _sowia_boot_placeholder is not None:
+        _sowia_boot_placeholder.empty()
+    st.session_state["sowia_boot_completed"] = True
+
 
 auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "true")).strip().lower() in {"1", "true", "yes"}
 supabase_enabled = configuration_ready()
@@ -441,6 +445,7 @@ if auth_required and not supabase_enabled:
         missing_supabase_settings.append("SUPABASE_URL")
     if not str(get_setting("SUPABASE_ANON_KEY", "")).strip():
         missing_supabase_settings.append("SUPABASE_ANON_KEY (ou son alias public SOWIA_SUPABASE_PUBLISHABLE_KEY)")
+    _sowia_finish_boot()
     st.error("SOW IA reste en mode protégé : la configuration Supabase n'est pas entièrement détectée.")
     if missing_supabase_settings:
         st.warning("Paramètre(s) non détecté(s) par l'application : " + " ; ".join(missing_supabase_settings) + ".")
@@ -461,6 +466,7 @@ if cloud_mode:
             # Obtain a persistent random browser scope through a v2 component.
             browser_id = browser_storage_id()
             if not browser_id:
+                _sowia_finish_boot()
                 st.info("Initialisation sécurisée du navigateur…")
                 st.stop()
             # Keep this PKCE client in this browser session; never use a global cache.
@@ -521,6 +527,7 @@ if cloud_mode:
                 except Exception:
                     pass
                 clear_authenticated_session_state(st.session_state)
+                _sowia_finish_boot()
                 st.error(
                     "Connexion refusée : le compte authentifié ne correspond pas "
                     "à l'adresse e-mail qui a demandé le lien. Recommencez avec "
@@ -570,6 +577,7 @@ if cloud_mode:
         clear_private_session_state(st.session_state)
         st.session_state.pop("sowia_authenticated_user_id", None)
         if auth_required:
+            _sowia_finish_boot()
             # Keep diagnostics useful without rendering raw exception text or
             # tracebacks, which may contain credentials, OAuth codes or tokens.
             st.error(
@@ -590,6 +598,7 @@ if cloud_mode:
         current_user = None
         supabase_client = None
 
+    _sowia_finish_boot()
     if current_user is None:
         # The language picker must be available before both registration and sign-in.
         # Keep this choice in the browser session; the account preference can take over after login.
