@@ -36,7 +36,8 @@ def test_prelogin_instructions_and_errors_are_translated_in_all_supported_langua
 
 def test_prelogin_static_auth_copy_uses_the_selected_language():
     source = Path("app.py").read_text(encoding="utf-8")
-    assert 'translate_ui("Après avoir confirmé votre adresse e-mail' in source
+    assert "Après avoir confirmé votre adresse e-mail" in source
+    assert 'translate_ui(\n                "Après avoir confirmé votre adresse e-mail' in source
     assert 'translate_ui("Votre adresse e-mail n\'est pas encore confirmée.' in source
     assert 'translate_ui("Saisissez l\'adresse e-mail déjà associée' in source
     assert 'translate_ui("Si cette adresse correspond à un compte SOW IA' in source
