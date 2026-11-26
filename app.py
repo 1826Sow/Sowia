@@ -575,13 +575,17 @@ if cloud_mode:
         current_user = None
         supabase_client = None
 
+    print(f"[SOWIA_BOOT] stage:auth_block:complete user_present={current_user is not None}", flush=True)
     if current_user is None:
+        print("[SOWIA_BOOT] stage:preauth:begin", flush=True)
         _sowia_boot_status.empty()
+        print("[SOWIA_BOOT] stage:preauth:status_cleared", flush=True)
         # The language picker must be available before both registration and sign-in.
         # Keep this choice in the browser session; the account preference can take over after login.
         pre_auth_language = st.session_state.get("sowia_pre_auth_language", "Français")
         if pre_auth_language not in SOWIA_LANGUAGES:
             pre_auth_language = "Français"
+        print("[SOWIA_BOOT] stage:preauth:language_select:start", flush=True)
         language = st.selectbox(
             "🌐 Langue / Language",
             SOWIA_LANGUAGES,
@@ -589,6 +593,7 @@ if cloud_mode:
             key="sowia_pre_auth_language",
             help=translate_ui("Choisissez votre langue avant de vous inscrire ou de vous connecter", pre_auth_language),
         )
+        print("[SOWIA_BOOT] stage:preauth:language_select:complete", flush=True)
         st.markdown(
             '<div class="hero"><h1>SOW IA</h1><p>' + html.escape(translate_ui("Votre espace personnel sécurisé.", language)) + '</p></div>',
             unsafe_allow_html=True,
@@ -617,6 +622,7 @@ if cloud_mode:
             + '</div>',
             unsafe_allow_html=True,
         )
+        print("[SOWIA_BOOT] stage:preauth:landing_cards:complete", flush=True)
         st.subheader(translate_ui("Connexion à SOW IA", language))
         st.write(translate_ui("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA : utilisez votre mot de passe ou demandez un lien sécurisé à usage unique. Aucun compte GitHub n’est nécessaire.", language))
         callback_code_present = bool(st.query_params.get("code") or st.query_params.get("token_hash"))
@@ -851,6 +857,7 @@ if cloud_mode:
                     language,
                 )
                 )
+        print("[SOWIA_BOOT] stage:preauth:stop", flush=True)
         st.stop()
 
 
