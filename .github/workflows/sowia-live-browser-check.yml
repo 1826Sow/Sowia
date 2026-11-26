@@ -1,0 +1,79 @@
+name: SOW IA live browser verification
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/sowia-live-browser-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install browser test tools
+        run: |
+          npm init -y
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Open both SOW IA addresses in a real browser
+        run: |
+          mkdir -p artifacts
+          cat > browser-check.mjs <<'NODE'
+          import { chromium } from "playwright";
+          import fs from "node:fs/promises";
+          const browser = await chromium.launch({ headless: true });
+          const result = {};
+          async function check(name, url, expectedText, timeout) {
+            const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+            const errors = { console: [], page: [], failedRequests: [], badResponses: [] };
+            page.on("console", m => { if (m.type() === "error") errors.console.push(m.text()); });
+            page.on("pageerror", e => errors.page.push(String(e)));
+            page.on("requestfailed", r => errors.failedRequests.push({ url: r.url(), error: r.failure()?.errorText || "unknown" }));
+            page.on("response", r => { if (r.status() >= 400) errors.badResponses.push({ status: r.status(), url: r.url() }); });
+            let navigationError = null;
+            try {
+              await page.goto(url, { waitUntil: "domcontentloaded", timeout });
+              if (expectedText) await page.getByText(expectedText, { exact: false }).first().waitFor({ state: "visible", timeout });
+              else await page.waitForTimeout(15000);
+            } catch (e) { navigationError = String(e); }
+            const body = await page.locator("body").innerText().catch(() => "");
+            const data = { url, title: await page.title().catch(() => ""), navigationError, expectedTextVisible: expectedText ? body.includes(expectedText) : null, bodyPreview: body.slice(0, 3000), errors };
+            await page.screenshot({ path: `artifacts/${name}.png`, fullPage: true }).catch(() => {});
+            await fs.writeFile(`artifacts/${name}.json`, JSON.stringify(data, null, 2));
+            await page.close();
+            return data;
+          }
+          try {
+            result.render = await check("render", "https://sowia.onrender.com/", "Connexion à SOW IA", 240000);
+            result.streamlitCloud = await check("streamlit-cloud", "https://fm5aczcvvj5jgkhpxwqtcr.streamlit.app/", null, 60000);
+            console.log("SOWIA_BROWSER_RESULT=" + JSON.stringify(result, null, 2));
+            if (!result.render.expectedTextVisible) {
+              console.error("ÉCHEC: le formulaire de connexion SOW IA ne s'affiche pas sur Render.");
+              process.exitCode = 1;
+            } else {
+              console.log("SUCCÈS: le formulaire de connexion SOW IA est visible sur Render.");
+            }
+          } finally {
+            await browser.close();
+          }
+          NODE
+          node browser-check.mjs
+      - name: Upload screenshots and browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sowia-live-browser-check
+          path: artifacts/
+          if-no-files-found: warn
