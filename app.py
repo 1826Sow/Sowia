@@ -3,44 +3,6 @@ import uuid
 import html
 from datetime import datetime, timezone, timedelta
 import streamlit as st
-
-# Render a lightweight branded shell before importing the full application.
-# This gives the browser visible feedback while the larger SOW IA modules load.
-st.set_page_config(page_title="SOW IA", page_icon="assets/sowia-brain-icon.svg", layout="wide")
-_sowia_boot_placeholder = None
-if not st.session_state.get("sowia_boot_completed", False):
-    _sowia_boot_placeholder = st.empty()
-    _sowia_boot_placeholder.markdown(
-        """
-        <style>
-        @keyframes sowia-boot-spin { to { transform: rotate(360deg); } }
-        .sowia-boot-screen {
-          min-height: 66vh; display: flex; align-items: center; justify-content: center;
-          padding: 2rem; border: 1px solid rgba(0,220,235,.30); border-radius: 22px;
-          background: radial-gradient(circle at 85% 12%, rgba(0,210,230,.16), transparent 34%),
-                      linear-gradient(145deg, #071426, #102b49);
-          color: #eff9ff; text-align: center;
-        }
-        .sowia-boot-title { font-size: clamp(2.2rem, 6vw, 3.2rem); font-weight: 850; letter-spacing: -.04em; }
-        .sowia-boot-spinner {
-          width: 38px; height: 38px; margin: 1.5rem auto;
-          border: 3px solid rgba(117,242,255,.22); border-top-color: #22d8e8;
-          border-radius: 50%; animation: sowia-boot-spin .9s linear infinite;
-        }
-        .sowia-boot-subtitle { color: #b9d7e8; font-size: .95rem; }
-        </style>
-        <div class="sowia-boot-screen">
-          <div>
-            <div class="sowia-boot-title">SOW IA</div>
-            <div class="sowia-boot-subtitle">Votre espace intelligent se prépare…</div>
-            <div class="sowia-boot-spinner"></div>
-            <div class="sowia-boot-subtitle">Initialisation sécurisée · Chargement des services</div>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
 from settings import get_setting
 from i18n import LANGUAGES as SOWIA_LANGUAGES, translate as translate_ui
 from i18n_streamlit import install_streamlit_localization
@@ -130,6 +92,7 @@ def reset_signed_pdf_upload(prefix):
     st.session_state[prefix + "_pdf_upload_nonce"] = str(uuid.uuid4())
 
 
+st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-brain-icon.svg", layout="wide")
 st.markdown(
     """<style>
     :root { color-scheme: dark; }
@@ -427,16 +390,6 @@ language = "Français"
 
 # A hosted public deployment must set SOWIA_REQUIRE_AUTH=true.
 # Fail closed by default on hosted deployments; local development must opt out explicitly.
-# Keep the branded boot shell visible while the application services and
-# secure authentication client initialize. It is cleared at the first point
-# where the login/workspace UI (or a useful diagnostic) can be rendered.
-
-def _sowia_finish_boot():
-    if _sowia_boot_placeholder is not None:
-        _sowia_boot_placeholder.empty()
-    st.session_state["sowia_boot_completed"] = True
-
-
 auth_required = str(get_setting("SOWIA_REQUIRE_AUTH", "true")).strip().lower() in {"1", "true", "yes"}
 supabase_enabled = configuration_ready()
 if auth_required and not supabase_enabled:
@@ -445,7 +398,6 @@ if auth_required and not supabase_enabled:
         missing_supabase_settings.append("SUPABASE_URL")
     if not str(get_setting("SUPABASE_ANON_KEY", "")).strip():
         missing_supabase_settings.append("SUPABASE_ANON_KEY (ou son alias public SOWIA_SUPABASE_PUBLISHABLE_KEY)")
-    _sowia_finish_boot()
     st.error("SOW IA reste en mode protégé : la configuration Supabase n'est pas entièrement détectée.")
     if missing_supabase_settings:
         st.warning("Paramètre(s) non détecté(s) par l'application : " + " ; ".join(missing_supabase_settings) + ".")
@@ -466,7 +418,6 @@ if cloud_mode:
             # Obtain a persistent random browser scope through a v2 component.
             browser_id = browser_storage_id()
             if not browser_id:
-                _sowia_finish_boot()
                 st.info("Initialisation sécurisée du navigateur…")
                 st.stop()
             # Keep this PKCE client in this browser session; never use a global cache.
@@ -527,7 +478,6 @@ if cloud_mode:
                 except Exception:
                     pass
                 clear_authenticated_session_state(st.session_state)
-                _sowia_finish_boot()
                 st.error(
                     "Connexion refusée : le compte authentifié ne correspond pas "
                     "à l'adresse e-mail qui a demandé le lien. Recommencez avec "
@@ -577,7 +527,6 @@ if cloud_mode:
         clear_private_session_state(st.session_state)
         st.session_state.pop("sowia_authenticated_user_id", None)
         if auth_required:
-            _sowia_finish_boot()
             # Keep diagnostics useful without rendering raw exception text or
             # tracebacks, which may contain credentials, OAuth codes or tokens.
             st.error(
@@ -598,7 +547,6 @@ if cloud_mode:
         current_user = None
         supabase_client = None
 
-    _sowia_finish_boot()
     if current_user is None:
         # The language picker must be available before both registration and sign-in.
         # Keep this choice in the browser session; the account preference can take over after login.
