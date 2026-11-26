@@ -520,6 +520,7 @@ if cloud_mode:
                 )
                 st.session_state["sowia_conversation_owner_id"] = authenticated_user_id
     except Exception as exc:
+        print(f"[SOWIA_BOOT] auth:exception stage={auth_stage!r} type={type(exc).__name__}", flush=True)
         # Keep the application usable if the optional Supabase connection is
         # unavailable. Never bypass authentication when the deployment
         # explicitly requires it.
