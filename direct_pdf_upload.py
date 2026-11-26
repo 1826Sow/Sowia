@@ -39,7 +39,9 @@ def render_direct_pdf_upload(signed_url, api_key=None, key="sowia_pdf_upload"):
     del api_key  # A signed upload URL is itself the temporary authorization.
     selected = st.file_uploader(
         "Choisir un fichier PDF depuis votre téléphone",
-        type=["pdf"],
+        # Do not let browser/Android MIME filtering disable PDF rows in the picker.
+        # The server below strictly validates extension, size, and PDF signature.
+        type=None,
         accept_multiple_files=False,
         key=key + "_file",
         help="PDF uniquement · 10 Mo maximum.",
