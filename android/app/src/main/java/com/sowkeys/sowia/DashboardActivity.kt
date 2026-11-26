@@ -2,6 +2,7 @@ package com.sowkeys.sowia
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
@@ -26,18 +27,34 @@ import androidx.activity.result.contract.ActivityResultContracts
  */
 class DashboardActivity : ComponentActivity() {
     private lateinit var webView: WebView
-    private lateinit var pdfPickerLauncher: ActivityResultLauncher<Array<String>>
+    private lateinit var pdfPickerLauncher: ActivityResultLauncher<Intent>
     private var pendingFileChooser: ValueCallback<Array<Uri>>? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Streamlit's st.file_uploader uses the WebView file chooser callback.
-        // Without this bridge, tapping the PDF picker appears to do nothing on Android.
-        pdfPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        // Keep the original result Intent so the URI read grant can be persisted.
+        // WebView/Chromium reads the content URI after it is handed back to Streamlit.
+        pdfPickerLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
             val callback = pendingFileChooser
             pendingFileChooser = null
+            val resultIntent = result.data
+            val uri = if (result.resultCode == RESULT_OK) resultIntent?.data else null
+
+            if (uri != null && resultIntent != null) {
+                val grantedFlags = resultIntent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION
+                if (grantedFlags != 0) {
+                    try {
+                        contentResolver.takePersistableUriPermission(uri, grantedFlags)
+                    } catch (_: SecurityException) {
+                        // Some document providers grant only temporary read access.
+                        // Preserve the URI callback; WebView can still try that grant.
+                    }
+                }
+            }
             callback?.onReceiveValue(uri?.let { arrayOf(it) })
         }
 
@@ -63,7 +80,7 @@ class DashboardActivity : ComponentActivity() {
                 }
 
                 override fun onShowFileChooser(
-                    view: WebView?,
+                    view: WebView?, 
                     filePathCallback: ValueCallback<Array<Uri>>?,
                     fileChooserParams: FileChooserParams?,
                 ): Boolean {
@@ -73,18 +90,28 @@ class DashboardActivity : ComponentActivity() {
                     pendingFileChooser?.onReceiveValue(null)
                     pendingFileChooser = filePathCallback
 
-                    val mimeTypes = fileChooserParams?.acceptTypes
-                        .orEmpty()
-                        .flatMap { it.split(",") }
-                        .map { it.trim() }
-                        .filter { it.contains("/") }
-                        .distinct()
-                        .ifEmpty { listOf("application/pdf") }
+                    // Some Android document providers report PDFs with a generic or
+                    // inconsistent MIME type. A strict application/pdf filter can make
+                    // visible PDF rows appear disabled or unselectable. Let the provider
+                    // show selectable documents; Streamlit validates PDF extension and
+                    // file signature before accepting the upload.
+                    val pickerIntent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "*/*"
+                        addFlags(
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                        )
+                    }
 
                     return try {
-                        pdfPickerLauncher.launch(mimeTypes.toTypedArray())
+                        pdfPickerLauncher.launch(pickerIntent)
                         true
                     } catch (_: ActivityNotFoundException) {
+                        pendingFileChooser = null
+                        filePathCallback.onReceiveValue(null)
+                        false
+                    } catch (_: SecurityException) {
                         pendingFileChooser = null
                         filePathCallback.onReceiveValue(null)
                         false
