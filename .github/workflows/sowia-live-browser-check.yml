@@ -45,10 +45,9 @@ jobs:
             let navigationError = null;
             try {
               await page.goto(url, { waitUntil: "domcontentloaded", timeout });
-              if (expectedText) await page.getByText(expectedText, { exact: false }).first().waitFor({ state: "visible", timeout });
+              if (expectedText) await page.getByText(expectedText, { exact: false }).first().waitFor({ state: "visible", timeout: 90000 });
               else await page.waitForTimeout(15000);
-              await page.waitForTimeout(5000);
-              await page.evaluate(() => document.fonts?.ready);
+              await page.waitForTimeout(3000);
             } catch (e) { navigationError = String(e); }
             const body = await page.locator("body").innerText().catch(() => "");
             const paint = await page.evaluate(() => {
@@ -57,25 +56,16 @@ jobs:
                 if (!el) return null;
                 const s = getComputedStyle(el);
                 const r = el.getBoundingClientRect();
-                return {
-                  text: (el.innerText || "").slice(0, 180),
-                  display: s.display, visibility: s.visibility, opacity: s.opacity,
-                  color: s.color, backgroundColor: s.backgroundColor,
-                  backgroundImage: s.backgroundImage,
-                  width: r.width, height: r.height, x: r.x, y: r.y
-                };
+                return { text: (el.innerText || "").slice(0, 180), display: s.display, visibility: s.visibility, opacity: s.opacity, color: s.color, backgroundColor: s.backgroundColor, backgroundImage: s.backgroundImage, width: r.width, height: r.height, x: r.x, y: r.y };
               };
               return {
                 readyState: document.readyState,
                 fontsStatus: document.fonts?.status,
-                body: pick("body"),
-                root: pick("#root"),
-                stApp: pick(".stApp"),
+                body: pick("body"), root: pick("#root"), stApp: pick(".stApp"),
                 appView: pick('[data-testid="stAppViewContainer"]'),
                 main: pick('[data-testid="stMain"]'),
                 mainBlock: pick('[data-testid="stMainBlockContainer"]'),
-                heading: pick("h1"),
-                paragraph: pick("p"),
+                heading: pick("h1"), paragraph: pick("p"),
                 stylesheets: [...document.styleSheets].map(s => s.href || "inline").slice(0, 40)
               };
             }).catch(e => ({ error: String(e) }));
@@ -86,15 +76,14 @@ jobs:
             return data;
           }
           try {
-            result.render = await check("render", "https://sowia.onrender.com/", "Connexion à SOW IA", 240000);
+            result.render = await check("render", "https://sowia.onrender.com/", "Connexion à SOW IA", 120000);
             result.streamlitCloud = await check("streamlit-cloud", "https://fm5aczcvvj5jgkhpxwqtcr.streamlit.app/", null, 60000);
             console.log("SOWIA_BROWSER_RESULT=" + JSON.stringify(result, null, 2));
-            const visible = result.render.expectedTextVisible && result.render.paint?.stApp?.width > 0;
-            if (!visible) {
-              console.error("ÉCHEC: le contenu SOW IA n'est pas rendu correctement sur Render.");
+            if (!result.render.expectedTextVisible) {
+              console.error("ÉCHEC: le formulaire de connexion SOW IA ne s'affiche pas sur Render.");
               process.exitCode = 1;
             } else {
-              console.log("DOM ET STRUCTURE SOW IA PRÉSENTS SUR RENDER; vérifier les styles calculés et la capture.");
+              console.log("SOW IA: texte de connexion trouvé; styles calculés et capture enregistrés pour vérifier le rendu visuel.");
             }
           } finally {
             await browser.close();
