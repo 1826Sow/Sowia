@@ -427,7 +427,17 @@ if cloud_mode:
                 st.info("Initialisation sécurisée du navigateur…")
                 st.stop()
             # Keep this PKCE client in this browser session; never use a global cache.
-            st.session_state.sowia_supabase_client = create_user_client(browser_id)
+            created_supabase_client = create_user_client(browser_id)
+            print("[SOWIA_BOOT] client:created", flush=True)
+            try:
+                st.session_state["sowia_supabase_client"] = created_supabase_client
+            except Exception as storage_exc:
+                print(
+                    f"[SOWIA_BOOT] client:session_store_error type={type(storage_exc).__name__}",
+                    flush=True,
+                )
+                raise
+            print("[SOWIA_BOOT] client:stored", flush=True)
         supabase_client = st.session_state.sowia_supabase_client
 
         auth_stage = "lecture du retour de connexion par e-mail"
