@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - ".github/workflows/sowia-live-browser-check.yml"
+      - "app.py"
   workflow_dispatch:
 
 permissions:
