@@ -3,13 +3,6 @@ import uuid
 import html
 from datetime import datetime, timezone, timedelta
 import streamlit as st
-
-# Render an immediate, visible startup state before loading optional modules or
-# contacting remote services. This prevents a blank viewport during slow startup.
-st.set_page_config(page_title="SOW IA", page_icon="assets/sowia-brain-icon.svg", layout="wide")
-_sowia_boot_status = st.empty()
-_sowia_boot_status.info("SOW IA démarre… Initialisation des services sécurisés.")
-
 from settings import get_setting
 from i18n import LANGUAGES as SOWIA_LANGUAGES, translate as translate_ui
 from i18n_streamlit import install_streamlit_localization
@@ -99,6 +92,7 @@ def reset_signed_pdf_upload(prefix):
     st.session_state[prefix + "_pdf_upload_nonce"] = str(uuid.uuid4())
 
 
+st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-brain-icon.svg", layout="wide")
 st.markdown(
     """<style>
     :root { color-scheme: dark; }
@@ -422,35 +416,16 @@ if cloud_mode:
         if "sowia_supabase_client" not in st.session_state:
             # Streamlit Cloud WebSocket requests may not expose browser cookies.
             # Obtain a persistent random browser scope through a v2 component.
-            _sowia_boot_status.info("SOW IA démarre… Préparation du navigateur sécurisé.")
-            print("[SOWIA_BOOT] stage:browser_storage:start", flush=True)
             browser_id = browser_storage_id()
-            print("[SOWIA_BOOT] stage:browser_storage:complete", flush=True)
             if not browser_id:
-                _sowia_boot_status.warning("Initialisation sécurisée du navigateur en attente. Rechargez la page pour réessayer.")
+                st.info("Initialisation sécurisée du navigateur…")
                 st.stop()
             # Keep this PKCE client in this browser session; never use a global cache.
-            _sowia_boot_status.info("SOW IA démarre… Connexion aux services sécurisés.")
-            print("[SOWIA_BOOT] stage:supabase_client:start", flush=True)
-            created_supabase_client = create_user_client(browser_id)
-            print("[SOWIA_BOOT] stage:supabase_client:complete", flush=True)
-            print("[SOWIA_BOOT] client:created", flush=True)
-            try:
-                st.session_state["sowia_supabase_client"] = created_supabase_client
-            except Exception as storage_exc:
-                print(
-                    f"[SOWIA_BOOT] client:session_store_error type={type(storage_exc).__name__}",
-                    flush=True,
-                )
-                raise
-            print("[SOWIA_BOOT] client:stored", flush=True)
+            st.session_state.sowia_supabase_client = create_user_client(browser_id)
         supabase_client = st.session_state.sowia_supabase_client
 
-        _sowia_boot_status.info("SOW IA démarre… Vérification de la session sécurisée.")
         auth_stage = "lecture du retour de connexion par e-mail"
-        print("[SOWIA_BOOT] stage:email_callback:start", flush=True)
         email_tokens = read_email_auth_fragment()
-        print("[SOWIA_BOOT] stage:email_callback:complete", flush=True)
         if email_tokens and email_tokens.get("token_hash"):
             # Handle Supabase ConfirmationURL callbacks that deliver token_hash
             # in either the query string or the URL fragment.
@@ -489,9 +464,7 @@ if cloud_mode:
             st.rerun()
 
         auth_stage = "vérification de la session Supabase"
-        print("[SOWIA_BOOT] stage:authenticated_user:start", flush=True)
         current_user = authenticated_user(supabase_client)
-        print("[SOWIA_BOOT] stage:authenticated_user:complete", flush=True)
         expected_email = str(
             st.session_state.get("sowia_email_login_pending", "") or ""
         ).strip().lower()
@@ -541,7 +514,6 @@ if cloud_mode:
                 )
                 st.session_state["sowia_conversation_owner_id"] = authenticated_user_id
     except Exception as exc:
-        print(f"[SOWIA_BOOT] auth:exception stage={auth_stage!r} type={type(exc).__name__}", flush=True)
         # Keep the application usable if the optional Supabase connection is
         # unavailable. Never bypass authentication when the deployment
         # explicitly requires it.
@@ -575,17 +547,12 @@ if cloud_mode:
         current_user = None
         supabase_client = None
 
-    print(f"[SOWIA_BOOT] stage:auth_block:complete user_present={current_user is not None}", flush=True)
     if current_user is None:
-        print("[SOWIA_BOOT] stage:preauth:begin", flush=True)
-        _sowia_boot_status.empty()
-        print("[SOWIA_BOOT] stage:preauth:status_cleared", flush=True)
         # The language picker must be available before both registration and sign-in.
         # Keep this choice in the browser session; the account preference can take over after login.
         pre_auth_language = st.session_state.get("sowia_pre_auth_language", "Français")
         if pre_auth_language not in SOWIA_LANGUAGES:
             pre_auth_language = "Français"
-        print("[SOWIA_BOOT] stage:preauth:language_select:start", flush=True)
         language = st.selectbox(
             "🌐 Langue / Language",
             SOWIA_LANGUAGES,
@@ -593,7 +560,6 @@ if cloud_mode:
             key="sowia_pre_auth_language",
             help=translate_ui("Choisissez votre langue avant de vous inscrire ou de vous connecter", pre_auth_language),
         )
-        print("[SOWIA_BOOT] stage:preauth:language_select:complete", flush=True)
         st.markdown(
             '<div class="hero"><h1>SOW IA</h1><p>' + html.escape(translate_ui("Votre espace personnel sécurisé.", language)) + '</p></div>',
             unsafe_allow_html=True,
@@ -622,7 +588,6 @@ if cloud_mode:
             + '</div>',
             unsafe_allow_html=True,
         )
-        print("[SOWIA_BOOT] stage:preauth:landing_cards:complete", flush=True)
         st.subheader(translate_ui("Connexion à SOW IA", language))
         st.write(translate_ui("Connectez-vous avec l’adresse e-mail déjà associée à votre compte SOW IA : utilisez votre mot de passe ou demandez un lien sécurisé à usage unique. Aucun compte GitHub n’est nécessaire.", language))
         callback_code_present = bool(st.query_params.get("code") or st.query_params.get("token_hash"))
@@ -857,7 +822,6 @@ if cloud_mode:
                     language,
                 )
                 )
-        print("[SOWIA_BOOT] stage:preauth:stop", flush=True)
         st.stop()
 
 
@@ -1145,8 +1109,6 @@ if cloud_mode and current_user is not None:
         }
 else:
     st.session_state.pop("sowia_premium_status_cache", None)
-
-_sowia_boot_status.empty()
 
 with st.sidebar:
     st.image("assets/sowia-globe-brand.svg", use_container_width=True)
