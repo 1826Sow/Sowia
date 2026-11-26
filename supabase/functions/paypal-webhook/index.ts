@@ -361,9 +361,10 @@ Deno.serve(async (request: Request) => {
     ].includes(eventType);
     // A cancellation stops renewal, not the already-paid service period.
     // Keep access only while PayPal confirms a future next billing boundary.
+    const paidThroughTime = billing.next_billing_time || billing.final_payment_time || null;
     const cancellationStillPaid = eventType === "BILLING.SUBSCRIPTION.CANCELLED" &&
-      Boolean(billing.next_billing_time) &&
-      Date.parse(String(billing.next_billing_time)) > Date.now();
+      Boolean(paidThroughTime) &&
+      Date.parse(String(paidThroughTime)) > Date.now();
     const recoveryEvent = [
       "BILLING.SUBSCRIPTION.ACTIVATED",
       "PAYMENT.SALE.COMPLETED",
@@ -412,7 +413,7 @@ Deno.serve(async (request: Request) => {
       paypal_access_blocked: accessBlocked,
       currency: paymentAmount.currency_code || null,
       amount: paymentAmount.value || null,
-      next_billing_time: billing.next_billing_time || null,
+      next_billing_time: paidThroughTime,
       last_payment_at: lastPayment.time || null,
       updated_at: new Date().toISOString(),
     };
