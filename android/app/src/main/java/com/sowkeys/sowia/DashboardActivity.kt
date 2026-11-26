@@ -90,20 +90,14 @@ class DashboardActivity : ComponentActivity() {
                     pendingFileChooser?.onReceiveValue(null)
                     pendingFileChooser = filePathCallback
 
-                    val mimeTypes = fileChooserParams?.acceptTypes
-                        .orEmpty()
-                        .flatMap { it.split(",") }
-                        .map { it.trim() }
-                        .filter { it.contains("/") }
-                        .distinct()
-                        .ifEmpty { listOf("application/pdf") }
-
+                    // Some Android document providers report PDFs with a generic or
+                    // inconsistent MIME type. A strict application/pdf filter can make
+                    // visible PDF rows appear disabled or unselectable. Let the provider
+                    // show selectable documents; Streamlit validates PDF extension and
+                    // file signature before accepting the upload.
                     val pickerIntent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                         addCategory(Intent.CATEGORY_OPENABLE)
-                        type = if (mimeTypes.size == 1) mimeTypes.first() else "*/*"
-                        if (mimeTypes.size > 1) {
-                            putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes.toTypedArray())
-                        }
+                        type = "*/*"
                         addFlags(
                             Intent.FLAG_GRANT_READ_URI_PERMISSION or
                                 Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
