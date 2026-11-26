@@ -87,6 +87,10 @@ st.markdown(
     .stApp { background: radial-gradient(circle at 85% 0%, rgba(0,210,230,.10), transparent 30%), linear-gradient(180deg, #071426 0%, #0a1b31 58%, #0c2038 100%) !important; color: #e8f3ff !important; }
     [data-testid="stAppViewContainer"], [data-testid="stMain"] { background: transparent !important; color: #e8f3ff !important; }
     [data-testid="stMainBlockContainer"] { max-width: 1240px; padding-top: 1.2rem; padding-bottom: 3.2rem; }
+    @media (max-width: 760px) {
+      /* Reserve space for the mobile sidebar toggle so it never covers page titles. */
+      [data-testid="stMainBlockContainer"] { padding-top: 4.8rem !important; }
+    }
     section[data-testid="stSidebar"] { background: linear-gradient(180deg, #08172b 0%, #0b2038 100%) !important; border-right: 1px solid rgba(0,214,230,.24) !important; }
     section[data-testid="stSidebar"] * { color: #d8e9f8 !important; }
     section[data-testid="stSidebar"] [data-testid="stRadio"] label { border-radius: 11px; padding: .38rem .55rem; }
