@@ -1,7 +1,6 @@
 """SOW IA — application web Streamlit."""
 import uuid
 import html
-from datetime import datetime, timezone, timedelta
 import streamlit as st
 from settings import get_setting
 from i18n import LANGUAGES as SOWIA_LANGUAGES, translate as translate_ui
@@ -9,22 +8,8 @@ from i18n_streamlit import install_streamlit_localization
 
 install_streamlit_localization(st, translate_ui, lambda: st.session_state.get("sowia_language", "Français"))
 
-from config import APP_NAME, API_KEY, MODEL
-from assistant import answer
-from storage import (
-    add_memory as local_add_memory,
-    clear_history as local_clear_history,
-    delete_memory as local_delete_memory,
-    get_history as local_get_history,
-    get_memories as local_get_memories,
-    save_message as local_save_message,
-)
-from documents import extract_pdf_text
-from image_pdf_tools import images_to_pdf, pdf_to_images_zip
-from document_context import select_relevant_pdf_context
-from io import BytesIO
-from direct_pdf_upload import create_signed_pdf_upload, render_direct_pdf_upload
-from websearch import search_web, should_search_web
+# Keep only the lightweight configuration and authentication dependencies before login.
+from config import APP_NAME
 from sowia_supabase_auth import (
     authenticated_user,
     browser_storage_id,
@@ -41,29 +26,6 @@ from sowia_supabase_auth import (
     read_email_auth_fragment,
     sign_out,
 )
-import cloud_storage
-import personal_data_export
-import paypal_payments
-import paypal_edge
-import paypal_subscriptions
-import premium_access
-import financial_ledger
-import decision_benchmark_ui
-import sowia_prioritization
-import sowia_night_exchange
-import night_exchange_market_ui
-import sowia_global_id
-import sowia_global_directory
-import sowia_global_connect
-import sowia_global_messenger
-import sowia_global_alerts
-import sowia_business_card
-import project_registry_ui
-import agent_studio_ui
-from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
-from memory_export import format_memory_export
-from memory_engine import select_relevant_memories
-from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
 from session_security import clear_private_session_state, clear_workspace_session_state, clear_stale_document_delete_confirmation, clear_authenticated_session_state, logout_authenticated_session
 
 def handle_logout(action="logout"):
@@ -839,6 +801,50 @@ if cloud_mode:
                 )
                 )
         st.stop()
+
+
+# Load feature modules only after authentication. The public login screen must not
+# wait for PDF, AI, payments, portfolio and marketplace modules to import.
+from datetime import datetime, timezone, timedelta
+from config import API_KEY, MODEL
+from assistant import answer
+from storage import (
+    add_memory as local_add_memory,
+    clear_history as local_clear_history,
+    delete_memory as local_delete_memory,
+    get_history as local_get_history,
+    get_memories as local_get_memories,
+    save_message as local_save_message,
+)
+from documents import extract_pdf_text
+from image_pdf_tools import images_to_pdf, pdf_to_images_zip
+from document_context import select_relevant_pdf_context
+from io import BytesIO
+from direct_pdf_upload import create_signed_pdf_upload, render_direct_pdf_upload
+from websearch import search_web, should_search_web
+import cloud_storage
+import personal_data_export
+import paypal_payments
+import paypal_edge
+import paypal_subscriptions
+import premium_access
+import financial_ledger
+import decision_benchmark_ui
+import sowia_prioritization
+import sowia_night_exchange
+import night_exchange_market_ui
+import sowia_global_id
+import sowia_global_directory
+import sowia_global_connect
+import sowia_global_messenger
+import sowia_global_alerts
+import sowia_business_card
+import project_registry_ui
+import agent_studio_ui
+from document_templates import PROFESSIONAL_TEMPLATE_NAMES, get_professional_template
+from memory_export import format_memory_export
+from memory_engine import select_relevant_memories
+from document_storage import upload_document, list_documents, download_document, delete_document, filter_documents, display_document_name, document_upload_label
 
 
 # PayPal returns the buyer with an order ID in ?token=...
