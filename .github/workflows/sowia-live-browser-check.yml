@@ -28,7 +28,7 @@ jobs:
           npm init -y
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Test original render and temporary CSS height repair
+      - name: Verify the deployed SOW IA page without browser-side fixes
         run: |
           mkdir -p artifacts
           cat > browser-check.mjs <<'NODE'
@@ -41,43 +41,35 @@ jobs:
           page.on("pageerror", e => errors.page.push(String(e)));
           page.on("requestfailed", r => errors.failedRequests.push({ url: r.url(), error: r.failure()?.errorText || "unknown" }));
           page.on("response", r => { if (r.status() >= 400) errors.badResponses.push({ status: r.status(), url: r.url() }); });
-          const measure = async () => page.evaluate(() => {
-            const pick = (selector) => {
-              const el = document.querySelector(selector);
-              if (!el) return null;
-              const s = getComputedStyle(el), r = el.getBoundingClientRect();
-              return { display:s.display, position:s.position, visibility:s.visibility, opacity:s.opacity, height:s.height, minHeight:s.minHeight, color:s.color, backgroundColor:s.backgroundColor, backgroundImage:s.backgroundImage, rect:{x:r.x,y:r.y,width:r.width,height:r.height}, text:(el.innerText||"").slice(0,120) };
-            };
-            return { readyState:document.readyState, body:pick("body"), root:pick("#root"), stApp:pick(".stApp"), appView:pick('[data-testid="stAppViewContainer"]'), main:pick('[data-testid="stMain"]'), mainBlock:pick('[data-testid="stMainBlockContainer"]'), heading:pick("h1"), stylesheets:[...document.styleSheets].map(s=>s.href||"inline").slice(0,30) };
-          });
           let navigationError = null;
           try {
-            await page.goto("https://sowia.onrender.com/", { waitUntil:"domcontentloaded", timeout:120000 });
-            await page.getByText("Connexion à SOW IA", { exact:false }).first().waitFor({ state:"visible", timeout:90000 });
+            await page.goto("https://sowia.onrender.com/", { waitUntil: "domcontentloaded", timeout: 120000 });
+            await page.getByText("Connexion à SOW IA", { exact: false }).first().waitFor({ state: "visible", timeout: 90000 });
             await page.waitForTimeout(3000);
-          } catch(e) { navigationError=String(e); }
-          const beforeText=await page.locator("body").innerText().catch(()=>"");
-          const before=await measure().catch(e=>({error:String(e)}));
-          await page.screenshot({path:"artifacts/render-before-css-test.png",fullPage:true}).catch(()=>{});
-          await page.addStyleTag({content:`
-            html, body { min-height:100vh !important; height:auto !important; background:#071426 !important; }
-            #root, #root > div, .stApp { min-height:100vh !important; height:auto !important; }
-            [data-testid="stAppViewContainer"], [data-testid="stMain"] { min-height:100vh !important; height:auto !important; }
-          `}).catch(()=>{});
-          await page.waitForTimeout(1500);
-          const after=await measure().catch(e=>({error:String(e)}));
-          await page.screenshot({path:"artifacts/render-after-css-test.png",fullPage:true}).catch(()=>{});
-          const data={url:"https://sowia.onrender.com/",title:await page.title().catch(()=>""),navigationError,loginTextFound:beforeText.includes("Connexion à SOW IA"),bodyPreview:beforeText.slice(0,2500),before,after,errors};
-          await fs.writeFile("artifacts/render-css-test.json",JSON.stringify(data,null,2));
-          console.log("SOWIA_CSS_TEST="+JSON.stringify(data,null,2));
-          await page.close();
+          } catch (e) { navigationError = String(e); }
+          const body = await page.locator("body").innerText().catch(() => "");
+          const state = await page.evaluate(() => {
+            const measure = s => {
+              const e=document.querySelector(s); if(!e)return null;
+              const c=getComputedStyle(e),r=e.getBoundingClientRect();
+              return {height:r.height,minHeight:c.minHeight,display:c.display,visibility:c.visibility,opacity:c.opacity,background:c.backgroundColor};
+            };
+            return {body:measure("body"),root:measure("#root"),stApp:measure(".stApp"),appView:measure('[data-testid="stAppViewContainer"]'),main:measure('[data-testid="stMain"]'),visibleInputs:[...document.querySelectorAll("input")].filter(e=>e.getBoundingClientRect().width>0&&e.getBoundingClientRect().height>0).length};
+          }).catch(e=>({error:String(e)}));
+          const result={url:"https://sowia.onrender.com/",title:await page.title().catch(()=>""),navigationError,loginTextVisible:body.includes("Connexion à SOW IA"),bodyPreview:body.slice(0,2500),state,errors};
+          await page.screenshot({path:"artifacts/sowia-render-live.png",fullPage:true}).catch(()=>{});
+          await fs.writeFile("artifacts/sowia-render-live.json",JSON.stringify(result,null,2));
+          console.log("SOWIA_LIVE_RESULT="+JSON.stringify(result,null,2));
+          const ok=result.loginTextVisible && state.root?.height>0 && state.stApp?.height>0 && state.visibleInputs>=2 && errors.badResponses.every(x=>x.status<500);
+          if(!ok){console.error("ÉCHEC: le rendu réel de SOW IA reste incomplet.");process.exitCode=1;}
+          else console.log("SUCCÈS: SOW IA affiche son écran de connexion et ses champs dans un navigateur réel, sans correctif injecté.");
           await browser.close();
           NODE
           node browser-check.mjs
-      - name: Upload screenshots and diagnostics
+      - name: Upload screenshot and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sowia-css-height-test
+          name: sowia-render-live-verification
           path: artifacts/
           if-no-files-found: warn
