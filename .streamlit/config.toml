@@ -1,2 +1,9 @@
 [client]
 toolbarMode = "viewer"
+
+[browser]
+serverAddress = "sowia.onrender.com"
+
+[server]
+enableCORS = true
+enableXsrfProtection = true
