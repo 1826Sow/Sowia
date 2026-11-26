@@ -96,8 +96,8 @@ st.set_page_config(page_title=APP_NAME, page_icon="assets/sowia-brain-icon.svg",
 st.markdown(
     """<style>
     :root { color-scheme: dark; }
-    /* Blend Streamlit's native top controls into SOW IA and let them scroll with the app. */
-    .stApp, [data-testid="stAppViewContainer"] { position: relative !important; }
+    /* Keep Streamlit's native viewport and scroll container behavior intact. */
+    .stApp { position: relative !important; }
     header[data-testid="stHeader"] {
       position: absolute !important;
       top: 0 !important;
