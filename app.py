@@ -3987,99 +3987,69 @@ elif page == "Analyse PDF":
     if not cloud_mode or current_user is None:
         st.warning("Connectez-vous à votre espace sécurisé pour envoyer un PDF.")
     else:
-        upload_path = st.session_state.get("analysis_signed_upload_path")
-        upload_token = st.session_state.get("analysis_signed_upload_token")
-        if not upload_path or not upload_token:
+        upload_result = render_direct_pdf_upload(
+            supabase_client,
+            current_user,
+            st.session_state.get("workspace_id", "personal"),
+            key="analysis_direct_pdf_upload_" + st.session_state.get("analysis_pdf_upload_nonce", "session"),
+        )
+        upload_error = getattr(upload_result, "upload_error", None)
+        if upload_error:
+            st.error("Échec du transfert PDF : " + str(upload_error)[:240])
+            st.button(
+                "Réessayer l'import PDF",
+                key="analysis_pdf_upload_retry",
+                on_click=reset_signed_pdf_upload,
+                args=("analysis",),
+                use_container_width=True,
+            )
+        if getattr(upload_result, "uploaded", False):
+            temporary_path = getattr(upload_result, "file_path", None)
             try:
-                upload_path, upload_token = create_signed_pdf_upload(
+                if not temporary_path:
+                    raise RuntimeError("Chemin temporaire du PDF absent.")
+                verified_bytes = download_document(
                     supabase_client,
                     current_user,
+                    temporary_path,
                     st.session_state.get("workspace_id", "personal"),
                 )
-                st.session_state["analysis_signed_upload_path"] = upload_path
-                st.session_state["analysis_signed_upload_token"] = upload_token
+                st.session_state["analysis_pdf_bytes"] = verified_bytes
+                st.session_state["analysis_pdf_size"] = len(verified_bytes)
+                st.session_state.pdf_text = extract_pdf_text(BytesIO(verified_bytes))
+                st.session_state["analysis_pdf_name"] = getattr(upload_result, "file_name", None) or "document.pdf"
+                st.success("PDF transmis et conservé dans le Laboratoire PDF.")
+                delete_document(
+                    supabase_client,
+                    current_user,
+                    temporary_path,
+                    st.session_state.get("workspace_id", "personal"),
+                )
                 st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
                 st.rerun()
             except Exception as exc:
-                st.error("Impossible de préparer le transfert sécurisé. Vérifiez la connexion Supabase puis réessayez.")
-                st.caption("Diagnostic : " + type(exc).__name__)
-        else:
-            upload_result = render_direct_pdf_upload(
-                upload_token,
-                get_setting("SUPABASE_ANON_KEY"),
-                key="analysis_direct_pdf_upload_" + st.session_state.get("analysis_pdf_upload_nonce", "session"),
-                client=supabase_client,
-                path=upload_path,
-            )
-            upload_error = getattr(upload_result, "upload_error", None)
-            if upload_error:
-                st.error("Échec du transfert PDF : " + str(upload_error)[:240])
-                st.button(
-                    "Réessayer l'import PDF",
-                    key="analysis_pdf_upload_retry",
-                    on_click=reset_signed_pdf_upload,
-                    args=("analysis",),
-                    use_container_width=True,
-                )
-            if getattr(upload_result, "uploaded", False):
-                temporary_path = upload_path
-                try:
-                    verified_bytes = download_document(
-                        supabase_client,
-                        current_user,
-                        temporary_path,
-                        st.session_state.get("workspace_id", "personal"),
-                    )
-                    st.session_state["analysis_pdf_bytes"] = verified_bytes
-                    st.session_state["analysis_pdf_size"] = len(verified_bytes)
-                    st.session_state.pdf_text = extract_pdf_text(BytesIO(verified_bytes))
-                    st.session_state["analysis_pdf_name"] = getattr(upload_result, "file_name", None) or "document.pdf"
-                    st.success("PDF transmis et conservé dans le Laboratoire PDF.")
-                    delete_document(
-                        supabase_client,
-                        current_user,
-                        temporary_path,
-                        st.session_state.get("workspace_id", "personal"),
-                    )
-                    st.session_state.pop("analysis_signed_upload_path", None)
-                    st.session_state.pop("analysis_signed_upload_token", None)
-                    st.session_state.pop("analysis_signed_upload_url", None)
-                    st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
-                    st.rerun()
-                except Exception as exc:
-                    # Best-effort cleanup: failed downloads/extractions must not
-                    # leave temporary PDFs in the user's private Storage folder.
-                    cleanup_error = None
+                cleanup_error = None
+                if temporary_path:
                     try:
                         delete_document(
-                            supabase_client,
-                            current_user,
-                            temporary_path,
+                            supabase_client, current_user, temporary_path,
                             st.session_state.get("workspace_id", "personal"),
                         )
                     except Exception:
                         cleanup_error = True
-
-                    st.session_state.pop("analysis_signed_upload_path", None)
-                    st.session_state.pop("analysis_signed_upload_token", None)
-                    st.session_state.pop("analysis_signed_upload_url", None)
-                    st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
-                    st.error("Le PDF a été transmis, mais sa vérification ou sa lecture a échoué. Préparez un nouvel envoi et réessayez.")
-                    if cleanup_error:
-                        st.warning(
-                            "Le fichier temporaire n'a pas pu être supprimé automatiquement. "
-                            "Un nettoyage sera nécessaire dans le stockage Supabase."
-                        )
-            if st.button("Préparer un nouvel envoi PDF", key="reset_analysis_pdf_upload"):
-                st.session_state.pop("analysis_signed_upload_path", None)
-                st.session_state.pop("analysis_signed_upload_token", None)
-                st.session_state.pop("analysis_signed_upload_url", None)
-                st.session_state.pop("analysis_pdf_bytes", None)
-                st.session_state.pop("analysis_pdf_size", None)
-                st.session_state.pop("analysis_pdf_name", None)
-                st.session_state.pdf_text = ""
                 st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
-                st.rerun()
+                st.error("Le PDF a été transmis, mais sa vérification ou sa lecture a échoué. Code : " + type(exc).__name__)
+                if cleanup_error:
+                    st.warning("Le fichier temporaire n'a pas pu être supprimé automatiquement.")
+        if st.button("Préparer un nouvel envoi PDF", key="reset_analysis_pdf_upload"):
+            st.session_state.pop("analysis_pdf_bytes", None)
+            st.session_state.pop("analysis_pdf_size", None)
+            st.session_state.pop("analysis_pdf_name", None)
+            st.session_state.pop("analysis_direct_pdf_upload_uploaded_fingerprint", None)
+            st.session_state.pop("analysis_direct_pdf_upload_uploaded_path", None)
+            st.session_state.pdf_text = ""
+            st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
+            st.rerun()
 
     if st.session_state.get("analysis_pdf_bytes"):
         with st.container(border=True):
@@ -4268,77 +4238,60 @@ elif page == "Mes documents":
         st.warning("Connectez-vous avec votre compte pour utiliser le stockage documentaire privé.")
     else:
         st.caption("Vos PDF sont conservés dans un espace privé Supabase, séparé de celui des autres utilisateurs. Taille maximale : 10 Mo par fichier.")
-        # Android-friendly direct upload: the browser sends the selected file to
-        # a short-lived Supabase signed URL, avoiding Streamlit's file uploader.
-        upload_path = st.session_state.get("documents_signed_upload_path")
-        signed_url = st.session_state.get("documents_signed_upload_url")
-        if not upload_path or not signed_url:
+        # Browser-native file selection; the signed token is created only after selection.
+        upload_result = render_direct_pdf_upload(
+            supabase_client,
+            current_user,
+            st.session_state.get("workspace_id", "personal"),
+            key="documents_direct_pdf_upload_" + st.session_state.get("documents_pdf_upload_nonce", "session"),
+        )
+        upload_error = getattr(upload_result, "upload_error", None)
+        if upload_error:
+            st.error("Échec du transfert PDF : " + str(upload_error)[:240])
+            st.button(
+                "Réessayer l'import PDF",
+                key="documents_pdf_upload_retry",
+                on_click=reset_signed_pdf_upload,
+                args=("documents",),
+                use_container_width=True,
+            )
+        if getattr(upload_result, "uploaded", False):
+            temporary_path = getattr(upload_result, "file_path", None)
             try:
-                upload_path, signed_url = create_signed_pdf_upload(
+                if not temporary_path:
+                    raise RuntimeError("Chemin temporaire du PDF absent.")
+                temporary_bytes = download_document(
                     supabase_client,
                     current_user,
+                    temporary_path,
                     st.session_state.get("workspace_id", "personal"),
                 )
-                st.session_state["documents_signed_upload_path"] = upload_path
-                st.session_state["documents_signed_upload_url"] = signed_url
-                st.session_state["documents_pdf_upload_nonce"] = str(uuid.uuid4())
-                st.rerun()
-            except Exception as exc:
-                st.error("Impossible de préparer le transfert sécurisé. Vérifiez la connexion Supabase puis réessayez.")
-                st.caption("Diagnostic : " + type(exc).__name__)
-        else:
-            upload_result = render_direct_pdf_upload(
-                signed_url,
-                get_setting("SUPABASE_ANON_KEY"),
-                key="documents_direct_pdf_upload_" + st.session_state.get("documents_pdf_upload_nonce", "session"),
-                client=supabase_client,
-                path=upload_path,
-            )
-            upload_error = getattr(upload_result, "upload_error", None)
-            if upload_error:
-                st.error("Échec du transfert PDF : " + str(upload_error)[:240])
-                st.button(
-                    "Réessayer l'import PDF",
-                    key="documents_pdf_upload_retry",
-                    on_click=reset_signed_pdf_upload,
-                    args=("documents",),
-                    use_container_width=True,
+                upload_document(
+                    supabase_client,
+                    current_user,
+                    getattr(upload_result, "file_name", None) or "document.pdf",
+                    temporary_bytes,
+                    st.session_state.get("workspace_id", "personal"),
                 )
-            if getattr(upload_result, "uploaded", False):
-                try:
-                    temporary_bytes = download_document(
-                        supabase_client,
-                        current_user,
-                        upload_path,
-                        st.session_state.get("workspace_id", "personal"),
-                    )
-                    upload_document(
-                        supabase_client,
-                        current_user,
-                        getattr(upload_result, "file_name", None) or "document.pdf",
-                        temporary_bytes,
-                        st.session_state.get("workspace_id", "personal"),
-                    )
-                    delete_document(
-                        supabase_client,
-                        current_user,
-                        upload_path,
-                        st.session_state.get("workspace_id", "personal"),
-                    )
-                    st.session_state.pop("documents_signed_upload_path", None)
-                    st.session_state.pop("documents_signed_upload_url", None)
-                    st.session_state["documents_pdf_upload_nonce"] = str(uuid.uuid4())
-                    st.session_state["document_upload_notice"] = "Document enregistré dans votre espace privé."
-                    st.rerun()
-                except (ValueError, PermissionError) as exc:
-                    st.error(str(exc))
-                except Exception as exc:
-                    st.error("Le transfert a été reçu, mais l'enregistrement n'a pas pu être confirmé. Code : " + type(exc).__name__)
-            if st.button("Annuler / recommencer", key="reset_documents_pdf_upload"):
-                st.session_state.pop("documents_signed_upload_path", None)
-                st.session_state.pop("documents_signed_upload_url", None)
+                delete_document(
+                    supabase_client,
+                    current_user,
+                    temporary_path,
+                    st.session_state.get("workspace_id", "personal"),
+                )
                 st.session_state["documents_pdf_upload_nonce"] = str(uuid.uuid4())
+                st.session_state["document_upload_notice"] = "Document enregistré dans votre espace privé."
                 st.rerun()
+            except (ValueError, PermissionError) as exc:
+                st.error(str(exc))
+            except Exception as exc:
+                st.error("Le transfert a été reçu, mais l'enregistrement n'a pas pu être confirmé. Code : " + type(exc).__name__)
+        if st.button("Annuler / recommencer", key="reset_documents_pdf_upload"):
+            st.session_state.pop("documents_direct_pdf_upload_uploaded_fingerprint", None)
+            st.session_state.pop("documents_direct_pdf_upload_uploaded_path", None)
+            st.session_state["documents_pdf_upload_nonce"] = str(uuid.uuid4())
+            st.rerun()
+
         st.divider()
         st.markdown("#### Mes fichiers")
         try:
