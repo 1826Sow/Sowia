@@ -1,13 +1,16 @@
 package com.sowkeys.sowia
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.webkit.CookieManager
+import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -28,11 +31,31 @@ import androidx.activity.result.contract.ActivityResultContracts
 class DashboardActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private lateinit var pdfPickerLauncher: ActivityResultLauncher<Intent>
+    private lateinit var microphonePermissionLauncher: ActivityResultLauncher<String>
     private var pendingFileChooser: ValueCallback<Array<Uri>>? = null
+    private var pendingWebPermissionRequest: PermissionRequest? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        microphonePermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            val request = pendingWebPermissionRequest
+            pendingWebPermissionRequest = null
+            val currentHost = runCatching { Uri.parse(webView.url).host }.getOrNull()
+            if (
+                granted &&
+                request != null &&
+                isTrustedDashboardOrigin(request.origin) &&
+                currentHost == request.origin.host
+            ) {
+                request.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
+            } else {
+                request?.deny()
+            }
+        }
 
         // Keep the original result Intent so the URI read grant can be persisted.
         // WebView/Chromium reads the content URI after it is handed back to Streamlit.
@@ -94,6 +117,38 @@ class DashboardActivity : ComponentActivity() {
             webChromeClient = object : WebChromeClient() {
                 override fun onProgressChanged(view: WebView?, newProgress: Int) {
                     progress.visibility = if (newProgress >= 100) View.GONE else View.VISIBLE
+                }
+
+                override fun onPermissionRequest(request: PermissionRequest?) {
+                    val permissionRequest = request ?: return
+                    runOnUiThread {
+                        val resources = permissionRequest.resources
+                        val audioOnly = resources.size == 1 &&
+                            resources[0] == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                        if (!isTrustedDashboardOrigin(permissionRequest.origin) || !audioOnly) {
+                            permissionRequest.deny()
+                            return@runOnUiThread
+                        }
+
+                        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                            PackageManager.PERMISSION_GRANTED
+                        ) {
+                            permissionRequest.grant(
+                                arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE)
+                            )
+                            return@runOnUiThread
+                        }
+
+                        pendingWebPermissionRequest?.deny()
+                        pendingWebPermissionRequest = permissionRequest
+                        microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                }
+
+                override fun onPermissionRequestCanceled(request: PermissionRequest?) {
+                    if (pendingWebPermissionRequest === request) {
+                        pendingWebPermissionRequest = null
+                    }
                 }
 
                 override fun onShowFileChooser(
@@ -210,6 +265,8 @@ class DashboardActivity : ComponentActivity() {
     override fun onDestroy() {
         pendingFileChooser?.onReceiveValue(null)
         pendingFileChooser = null
+        pendingWebPermissionRequest?.deny()
+        pendingWebPermissionRequest = null
         webView.stopLoading()
         webView.webChromeClient = null
         webView.webViewClient = WebViewClient()
@@ -217,7 +274,11 @@ class DashboardActivity : ComponentActivity() {
         super.onDestroy()
     }
 
+    private fun isTrustedDashboardOrigin(origin: Uri): Boolean =
+        origin.scheme == "https" && origin.host == DASHBOARD_HOST
+
     private companion object {
         const val DASHBOARD_URL = "https://fm5aczcvvj5jgkhpxwqtcr.streamlit.app/"
+        const val DASHBOARD_HOST = "fm5aczcvvj5jgkhpxwqtcr.streamlit.app"
     }
 }
