@@ -157,7 +157,7 @@ def test_pdf_over_10_mb_is_rejected_before_network_upload(monkeypatch):
     result = uploader.render_direct_pdf_upload("https://storage.example/upload")
 
     assert result.uploaded is False
-    assert "10 Mo" in result.upload_error
+    assert "Taille PDF invalide" in result.upload_error
 
 
 def test_missing_signed_url_is_reported_without_network_upload(monkeypatch):
