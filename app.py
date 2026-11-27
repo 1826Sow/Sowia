@@ -4073,7 +4073,7 @@ elif page == "Analyse PDF":
             if st.button("Préparer un nouvel envoi PDF", key="reset_analysis_pdf_upload"):
                 st.session_state.pop("analysis_signed_upload_path", None)
                 st.session_state.pop("analysis_signed_upload_token", None)
-                    st.session_state.pop("analysis_signed_upload_url", None)
+                st.session_state.pop("analysis_signed_upload_url", None)
                 st.session_state.pop("analysis_pdf_bytes", None)
                 st.session_state.pop("analysis_pdf_size", None)
                 st.session_state.pop("analysis_pdf_name", None)
