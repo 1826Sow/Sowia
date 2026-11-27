@@ -27,11 +27,20 @@ def render_direct_pdf_upload(
     """Receive the browser upload first, then create and use its signed token."""
     widget_key = key + "_file"
     captured_key = key + "_captured_file"
+    def capture_selected_file():
+        uploaded = st.session_state.get(widget_key)
+        if uploaded is not None:
+            st.session_state[captured_key] = {
+                "name": str(getattr(uploaded, "name", "") or "document.pdf"),
+                "payload": uploaded.getvalue(),
+            }
+
     selected = st.file_uploader(
         "Choisir un fichier PDF depuis votre téléphone",
         type=None,
         accept_multiple_files=False,
         key=widget_key,
+        on_change=capture_selected_file,
         help="PDF uniquement · 10 Mo maximum.",
         max_upload_size=10,
     )
