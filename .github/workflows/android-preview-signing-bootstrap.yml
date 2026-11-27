@@ -53,7 +53,7 @@ jobs:
           echo "Preview keystore generated and verified. Base64 file is ready as a workflow artifact."
 
       - name: Upload Base64 secret value
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sowia-preview-signing-bootstrap
           path: ${{ runner.temp }}/ANDROID_DEBUG_KEYSTORE_BASE64.txt
