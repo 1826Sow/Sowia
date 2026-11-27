@@ -1,5 +1,5 @@
 name: SOW IA Android private test APK
-# Builds both Android identities from the same PDF-picker fix.
+# Builds both Android identities from the latest main source, including the PDF picker fixes.
 # The legacy applicationId allows side-by-side testing without replacing the installed app.
 
 on:
@@ -33,7 +33,42 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
+      - name: Validate public Supabase build configuration
+        env:
+          SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
+          SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
+          SOWIA_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_SUPABASE_ANON_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, json, os
+          from urllib.parse import urlparse
+          u = urlparse(os.environ.get("SOWIA_SUPABASE_URL", "").strip())
+          k = (os.environ.get("SOWIA_SUPABASE_PUBLISHABLE_KEY", "").strip()
+               or os.environ.get("SOWIA_SUPABASE_ANON_KEY", "").strip())
+          if u.scheme != "https" or u.hostname != "qegcopordeqjiechmbhg.supabase.co" or u.path not in ("", "/") or u.query or u.fragment:
+              raise SystemExit("Missing or invalid Supabase project URL.")
+          if not k:
+              raise SystemExit("Missing Supabase public/anon key.")
+          if k.startswith("sb_secret_"):
+              raise SystemExit("A server secret key cannot be embedded in the APK.")
+          if k.count(".") == 2:
+              try:
+                  part = k.split(".")[1]
+                  claims = json.loads(base64.urlsafe_b64decode(part + "=" * (-len(part) % 4)))
+              except Exception:
+                  claims = {}
+              if isinstance(claims, dict) and claims.get("role") == "service_role":
+                  raise SystemExit("A service_role key cannot be embedded in the APK.")
+          print("Supabase public build configuration validated.")
+          PY
+
       - name: Build both Android debug APKs
+        env:
+          SOWIA_SUPABASE_URL: ${{ secrets.SOWIA_SUPABASE_URL }}
+          SOWIA_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SOWIA_SUPABASE_PUBLISHABLE_KEY }}
+          SOWIA_SUPABASE_ANON_KEY: ${{ secrets.SOWIA_SUPABASE_ANON_KEY }}
         run: gradle -p android :app:assembleCurrentDebug :app:assembleLegacyDebug
 
       - name: Verify packages and APKs
