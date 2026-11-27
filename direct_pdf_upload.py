@@ -1,4 +1,4 @@
-""""Reliable Android-compatible PDF upload through Streamlit's native file picker.
+"""Reliable Android-compatible PDF upload through Streamlit's native file picker.
 
 The file is selected by the browser, transferred to the Streamlit backend, then
 sent to a short-lived Supabase signed upload URL using the official Storage SDK.
