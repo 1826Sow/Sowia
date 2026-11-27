@@ -152,7 +152,7 @@ def test_captured_file_survives_widget_rerun(monkeypatch):
 
 
 def test_no_selection_does_not_attempt_upload(monkeypatch):
-    fake_st = FakeStreamlit()
+    fake_st = FakeStreamlit(submitted=False)
     monkeypatch.setattr(uploader, "st", fake_st)
     result = uploader.render_direct_pdf_upload(FakeClient(), FakeUser())
     assert result.uploaded is False
