@@ -1,13 +1,14 @@
 """Reliable Android-compatible PDF upload through Streamlit's native file picker.
 
 The file is selected by the browser, transferred to the Streamlit backend, then
-sent to a short-lived Supabase signed upload URL. No service-role key is exposed.
+sent to a short-lived Supabase signed upload URL using the official Storage SDK.
+No service-role key is exposed.
 """
 from types import SimpleNamespace
 from uuid import uuid4
+from urllib.parse import parse_qs, urlsplit
 import hashlib
 
-import requests
 import streamlit as st
 
 from document_storage import BUCKET_NAME, _workspace, _user_prefix
@@ -22,21 +23,29 @@ def create_signed_pdf_upload(client, user, workspace_id="personal"):
     path = f"{prefix}/{workspace}/analyse_{uuid4().hex}.pdf"
     response = client.storage.from_(BUCKET_NAME).create_signed_upload_url(path)
     if isinstance(response, dict):
-        signed_url = response.get("signed_url") or response.get("signedUrl")
+        signed_url = response.get("signed_url") or response.get("signedUrl") or response.get("signedURL")
     else:
-        signed_url = getattr(response, "signed_url", None) or getattr(response, "signedUrl", None)
+        signed_url = (
+            getattr(response, "signed_url", None)
+            or getattr(response, "signedUrl", None)
+            or getattr(response, "signedURL", None)
+        )
     if not isinstance(signed_url, str) or not signed_url.startswith("https://"):
         raise RuntimeError("Autorisation temporaire Supabase invalide.")
     return path, signed_url
 
 
-def render_direct_pdf_upload(signed_url, api_key=None, key="sowia_pdf_upload"):
-    """Render a native Android-friendly picker and upload via the signed URL.
+def render_direct_pdf_upload(
+    signed_url, api_key=None, key="sowia_pdf_upload", *, client=None, path=None
+):
+    """Render a native Android-friendly picker and upload through Supabase Storage.
 
     Streamlit's native uploader handles Android document-provider intents more
     consistently than a custom JavaScript file input embedded in a component.
+    The upload uses Supabase Python's upload_to_signed_url implementation so
+    the multipart body, headers and signed-token handling match the SDK contract.
     """
-    del api_key  # A signed upload URL is itself the temporary authorization.
+    del api_key  # The authenticated SDK client and one-time signed token authorize the upload.
     widget_key = key + "_file"
     captured_key = key + "_captured_file"
 
@@ -70,6 +79,7 @@ def render_direct_pdf_upload(signed_url, api_key=None, key="sowia_pdf_upload"):
             return SimpleNamespace(uploaded=False, file_name=None, file_size=None, upload_error=None)
         filename = str(captured.get("name") or "document.pdf")
         payload = captured["payload"]
+
     if not filename.lower().endswith(".pdf"):
         st.error("Seuls les fichiers PDF sont acceptés.")
         return SimpleNamespace(uploaded=False, file_name=filename, file_size=len(payload), upload_error="Format non PDF.")
@@ -87,30 +97,33 @@ def render_direct_pdf_upload(signed_url, api_key=None, key="sowia_pdf_upload"):
         st.session_state.pop(captured_key, None)
         return SimpleNamespace(uploaded=True, file_name=filename, file_size=len(payload), upload_error=None)
 
-    if not isinstance(signed_url, str) or not signed_url.startswith("https://"):
-        error = "Lien temporaire Supabase absent ou invalide. Préparez un nouvel envoi."
+    parsed_url = urlsplit(signed_url) if isinstance(signed_url, str) else None
+    token_values = parse_qs(parsed_url.query).get("token", []) if parsed_url and parsed_url.scheme == "https" else []
+    token = token_values[0] if len(token_values) == 1 else None
+    if not token or client is None or not isinstance(path, str) or not path:
+        error = "Autorisation temporaire Supabase incomplète. Préparez un nouvel envoi."
         st.error(error)
         return SimpleNamespace(uploaded=False, file_name=filename, file_size=len(payload), upload_error=error)
 
     try:
         with st.spinner("Transfert sécurisé du PDF vers Supabase…"):
-            response = requests.put(
-                signed_url,
-                data=payload,
-                headers={
-                    "Content-Type": "application/pdf",
-                    "x-upsert": "false",
-                    "cache-control": "max-age=3600",
+            client.storage.from_(BUCKET_NAME).upload_to_signed_url(
+                path,
+                token,
+                payload,
+                file_options={
+                    "content-type": "application/pdf",
+                    "cache-control": "3600",
                 },
-                timeout=(15, 120),
             )
-            response.raise_for_status()
         st.session_state[uploaded_fingerprint_key] = fingerprint
         st.session_state.pop(captured_key, None)
         st.success("PDF transmis. Vérification et lecture par SOW IA…")
         return SimpleNamespace(uploaded=True, file_name=filename, file_size=len(payload), upload_error=None)
-    except requests.RequestException as exc:
-        detail = getattr(getattr(exc, "response", None), "text", "") or str(exc)
-        error = ("Transfert Supabase refusé : " + detail)[:240]
+    except Exception as exc:
+        # Keep the error useful without ever displaying the signed URL or token.
+        detail = str(getattr(exc, "message", "") or str(exc)).strip()
+        detail = " ".join(detail.split())[:180]
+        error = "Transfert Supabase refusé : " + (detail or type(exc).__name__)
         st.error(error)
         return SimpleNamespace(uploaded=False, file_name=filename, file_size=len(payload), upload_error=error)

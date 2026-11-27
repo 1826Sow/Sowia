@@ -4008,6 +4008,8 @@ elif page == "Analyse PDF":
                 signed_url,
                 get_setting("SUPABASE_ANON_KEY"),
                 key="analysis_direct_pdf_upload_" + st.session_state.get("analysis_pdf_upload_nonce", "session"),
+                client=supabase_client,
+                path=upload_path,
             )
             upload_error = getattr(upload_result, "upload_error", None)
             if upload_error:
@@ -4286,6 +4288,8 @@ elif page == "Mes documents":
                 signed_url,
                 get_setting("SUPABASE_ANON_KEY"),
                 key="documents_direct_pdf_upload_" + st.session_state.get("documents_pdf_upload_nonce", "session"),
+                client=supabase_client,
+                path=upload_path,
             )
             upload_error = getattr(upload_result, "upload_error", None)
             if upload_error:
