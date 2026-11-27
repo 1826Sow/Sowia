@@ -240,16 +240,37 @@ st.markdown(
       color: #75f2ff !important;
       border-bottom-color: #22d8e8 !important;
     }
+    /* PDF/image upload cards: force a visible dark dropzone and a readable action. */
+    .stApp [data-testid="stFileUploader"],
     .stApp [data-testid="stFileUploader"] section,
-    .stApp [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"] {
-      background-color: #102943 !important;
-      border-color: rgba(0,220,235,.48) !important;
+    .stApp [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"],
+    .stApp [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"] > div {
+      background: #102943 !important;
+      border: 1px solid rgba(0,220,235,.65) !important;
       color: #eff9ff !important;
+      opacity: 1 !important;
     }
     .stApp [data-testid="stFileUploader"] p,
     .stApp [data-testid="stFileUploader"] small,
-    .stApp [data-testid="stFileUploader"] span {
-      color: #e8f3ff !important;
+    .stApp [data-testid="stFileUploader"] span,
+    .stApp [data-testid="stFileUploader"] label,
+    .stApp [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"] * {
+      color: #eff9ff !important;
+      -webkit-text-fill-color: #eff9ff !important;
+      opacity: 1 !important;
+    }
+    .stApp [data-testid="stFileUploader"] button {
+      background: #dff8ff !important;
+      border: 1px solid #22d8e8 !important;
+      color: #07304a !important;
+      -webkit-text-fill-color: #07304a !important;
+      font-weight: 800 !important;
+      min-height: 44px !important;
+      opacity: 1 !important;
+    }
+    .stApp [data-testid="stFileUploader"] button * {
+      color: #07304a !important;
+      -webkit-text-fill-color: #07304a !important;
     }
     .stApp [data-testid="stSelectbox"] [data-baseweb="select"] > div,
     .stApp [data-testid="stMultiSelect"] [data-baseweb="select"] > div,
@@ -3883,11 +3904,29 @@ elif page == "Analyse PDF":
             except (ValueError, RuntimeError) as exc:
                 st.error(str(exc))
     with st.expander("PDF → images PNG ou JPG"):
-        analysis_source_pdf = st.file_uploader("Choisir un PDF à convertir", type=["pdf"], key="analysis_pdf_to_images_file")
+        st.caption("Sélectionnez un PDF : le nom du document doit rester visible avant de lancer la conversion.")
+        analysis_source_pdf = st.file_uploader(
+            "Choisir un PDF à convertir",
+            type=None,
+            accept_multiple_files=False,
+            key="analysis_pdf_to_images_file",
+            help="PDF uniquement · 30 Mo maximum · 30 pages maximum.",
+        )
         analysis_image_format = st.selectbox("Format des images", ["PNG", "JPG"], key="analysis_pdf_image_format")
+        if analysis_source_pdf is not None:
+            analysis_pdf_name = str(getattr(analysis_source_pdf, "name", "") or "document.pdf")
+            analysis_pdf_bytes = analysis_source_pdf.getvalue()
+            st.caption(f"Document sélectionné : {analysis_pdf_name} · {len(analysis_pdf_bytes) / 1048576:.2f} Mo")
+        else:
+            analysis_pdf_name = ""
+            analysis_pdf_bytes = b""
         if st.button("Convertir le PDF en images", key="analysis_convert_pdf_images", disabled=analysis_source_pdf is None):
             try:
-                images_zip = pdf_to_images_zip(analysis_source_pdf.getvalue(), image_format=analysis_image_format)
+                if not analysis_pdf_name.lower().endswith(".pdf") or not analysis_pdf_bytes.startswith(b"%PDF-"):
+                    raise ValueError("Le fichier choisi n’est pas un PDF valide.")
+                if len(analysis_pdf_bytes) > 30 * 1024 * 1024:
+                    raise ValueError("Le PDF ne doit pas dépasser 30 Mo.")
+                images_zip = pdf_to_images_zip(analysis_pdf_bytes, image_format=analysis_image_format)
                 st.success("Conversion terminée. Chaque page est disponible dans l’archive ZIP.")
                 st.download_button("Télécharger les images (ZIP)", images_zip, file_name="sowia_pages_en_images.zip", mime="application/zip", key="analysis_download_pdf_images")
             except (ValueError, RuntimeError) as exc:
