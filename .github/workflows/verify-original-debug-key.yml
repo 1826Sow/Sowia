@@ -27,7 +27,7 @@ jobs:
           if not encoded.strip():
               print("RESULT: SECRET_EMPTY")
               sys.exit(2)
-          value = re.sub(r"\\s+", "", encoded.strip())
+          value = "".join(encoded.split())
           if value.startswith("data:") and "," in value:
               value = value.split(",", 1)[1]
           value = value.replace("-", "+").replace("_", "/")
