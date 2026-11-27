@@ -34,8 +34,13 @@ def _translate_html_headings(value, language, translate):
     patterns = (
         re.compile(r"(?P<opening><h[1-6]\b[^>]*>)(?P<inner>.*?)(?P<closing></h[1-6]\s*>)", re.IGNORECASE),
         re.compile(
-            r"(?P<opening><(?:div|span)\b[^>]*class=['\"][^'\"]*(?:title|heading|kicker)[^'\"]*['\"][^>]*>)"
-            r"(?P<inner>.*?)(?P<closing></(?:div|span)\s*>)",
+            r"(?P<opening><div\b[^>]*class=['\"][^'\"]*(?:title|heading|kicker)[^'\"]*['\"][^>]*>)"
+            r"(?P<inner>.*?)(?P<closing></div\s*>)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"(?P<opening><span\b[^>]*class=['\"][^'\"]*(?:title|heading|kicker)[^'\"]*['\"][^>]*>)"
+            r"(?P<inner>.*?)(?P<closing></span\s*>)",
             re.IGNORECASE,
         ),
     )
