@@ -3920,22 +3920,37 @@ elif page == "Analyse PDF":
                 st.error(str(exc))
     with st.expander("PDF → images PNG ou JPG"):
         st.caption("Sélectionnez un PDF : le nom du document doit rester visible avant de lancer la conversion.")
+        def capture_analysis_pdf_to_images_selection():
+            selected_pdf = st.session_state.get("analysis_pdf_to_images_file")
+            if selected_pdf is not None:
+                st.session_state["analysis_pdf_to_images_captured"] = {
+                    "name": str(getattr(selected_pdf, "name", "") or "document.pdf"),
+                    "bytes": selected_pdf.getvalue(),
+                }
+
         analysis_source_pdf = st.file_uploader(
             "Choisir un PDF à convertir",
             type=None,
             accept_multiple_files=False,
             key="analysis_pdf_to_images_file",
+            on_change=capture_analysis_pdf_to_images_selection,
             help="PDF uniquement · 30 Mo maximum · 30 pages maximum.",
         )
         analysis_image_format = st.selectbox("Format des images", ["PNG", "JPG"], key="analysis_pdf_image_format")
+        captured_analysis_pdf = st.session_state.get("analysis_pdf_to_images_captured") or {}
         if analysis_source_pdf is not None:
             analysis_pdf_name = str(getattr(analysis_source_pdf, "name", "") or "document.pdf")
             analysis_pdf_bytes = analysis_source_pdf.getvalue()
-            st.caption(f"Document sélectionné : {analysis_pdf_name} · {len(analysis_pdf_bytes) / 1048576:.2f} Mo")
+            st.session_state["analysis_pdf_to_images_captured"] = {
+                "name": analysis_pdf_name,
+                "bytes": analysis_pdf_bytes,
+            }
         else:
-            analysis_pdf_name = ""
-            analysis_pdf_bytes = b""
-        if st.button("Convertir le PDF en images", key="analysis_convert_pdf_images", disabled=analysis_source_pdf is None):
+            analysis_pdf_name = str(captured_analysis_pdf.get("name") or "")
+            analysis_pdf_bytes = captured_analysis_pdf.get("bytes") or b""
+        if analysis_pdf_bytes:
+            st.caption(f"Document sélectionné : {analysis_pdf_name} · {len(analysis_pdf_bytes) / 1048576:.2f} Mo")
+        if st.button("Convertir le PDF en images", key="analysis_convert_pdf_images", disabled=not analysis_pdf_bytes):
             try:
                 if not analysis_pdf_name.lower().endswith(".pdf") or not analysis_pdf_bytes.startswith(b"%PDF-"):
                     raise ValueError("Le fichier choisi n’est pas un PDF valide.")
