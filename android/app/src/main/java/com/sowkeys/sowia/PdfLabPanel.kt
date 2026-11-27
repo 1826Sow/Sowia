@@ -77,8 +77,14 @@ private class PdfStorageClient(private val context: Context) {
     suspend fun upload(uri: Uri, session: SowiaSession, workspace: String): String =
         withContext(Dispatchers.IO) {
             require(workspace == "personal" || workspace == "professional")
-            val mime = context.contentResolver.getType(uri)
-            require(mime == null || mime == "application/pdf") { "Sélectionnez un fichier PDF." }
+            // Android document providers often label genuine PDF files as
+            // application/octet-stream (or return no MIME type at all).
+            // Do not reject a PDF based on provider metadata: validate its
+            // actual file signature after reading the bounded payload.
+            val displayName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+            }?.takeIf { it.isNotBlank() } ?: "document.pdf"
             val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
                 val output = java.io.ByteArrayOutputStream()
                 val buffer = ByteArray(8192)
@@ -92,14 +98,12 @@ private class PdfStorageClient(private val context: Context) {
                 }
                 output.toByteArray()
             } ?: error("Impossible de lire le fichier sélectionné.")
-            require(bytes.size >= 5 && String(bytes, 0, 5, Charsets.US_ASCII) == "%PDF-") {
+            val header = String(bytes, 0, minOf(bytes.size, 1024), Charsets.ISO_8859_1)
+            require(bytes.isNotEmpty() && header.contains("%PDF-")) {
                 "Le fichier sélectionné n'est pas un PDF valide."
             }
-            val displayName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
-            } ?: "document.pdf"
-            val safeName = displayName.replace(Regex("[^A-Za-z0-9._-]"), "_").take(100).ifBlank { "document.pdf" }
+            val pdfName = if (displayName.endsWith(".pdf", ignoreCase = true)) displayName else "$displayName.pdf"
+            val safeName = pdfName.replace(Regex("[^A-Za-z0-9._-]"), "_").take(100).ifBlank { "document.pdf" }
             val storedName = UUID.randomUUID().toString() + "_" + safeName
             val relativePath = session.userId + "/" + workspace + "/" + storedName
             val request = connection(
@@ -314,7 +318,7 @@ fun PdfLabPanel(onOpenAccount: () -> Unit) {
                 ) { Text("Ouvrir Compte & paramètres") }
             } else {
                 Button(
-                    onClick = { picker.launch(arrayOf("application/pdf")) },
+                    onClick = { picker.launch(arrayOf("*/*")) },
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = PdfCyan, contentColor = PdfNavy),
