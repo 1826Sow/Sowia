@@ -81,7 +81,7 @@ class FakeUser:
 def test_selection_callback_persists_file_before_page_rerun(monkeypatch):
     payload = b"%PDF-1.7\\nselected in browser"
     fake_st = FakeStreamlit()
-    fake_st.session_state["test_upload_file"] = FakeUpload(payload=payload)
+    fake_st.session_state["test_upload_captured_file"] = {"name": "document.pdf", "payload": payload}
     monkeypatch.setattr(uploader, "st", fake_st)
 
     uploader._capture_uploaded_pdf("test_upload_file", "test_upload_captured_file")
