@@ -9,6 +9,21 @@ from document_storage import BUCKET_NAME, _workspace, _user_prefix
 MAX_PDF_BYTES = 10 * 1024 * 1024
 
 
+def _capture_uploaded_pdf(widget_key, captured_key):
+    """Persist the selected browser file before Streamlit reruns the page."""
+    selected = st.session_state.get(widget_key)
+    if selected is None:
+        return
+    try:
+        payload = selected.getvalue()
+    except Exception:
+        return
+    st.session_state[captured_key] = {
+        "name": str(getattr(selected, "name", "") or "document.pdf"),
+        "payload": payload,
+    }
+
+
 def create_signed_pdf_upload(client, user, workspace_id="personal"):
     """Create a private, one-time upload token for the authenticated user."""
     prefix = _user_prefix(user)
@@ -24,14 +39,16 @@ def create_signed_pdf_upload(client, user, workspace_id="personal"):
 def render_direct_pdf_upload(
     client, user, workspace_id="personal", *, key="sowia_pdf_upload"
 ):
-    """Receive the browser upload first, then create and use its signed token."""
+    """Capture the browser selection first, then transfer it through Supabase."""
     widget_key = key + "_file"
     captured_key = key + "_captured_file"
     selected = st.file_uploader(
-        "Choisir un fichier PDF depuis votre téléphone",
+        "Importer un PDF dans le Laboratoire PDF",
         type=None,
         accept_multiple_files=False,
         key=widget_key,
+        on_change=_capture_uploaded_pdf,
+        args=(widget_key, captured_key),
         help="PDF uniquement · 10 Mo maximum.",
         max_upload_size=10,
     )
@@ -45,7 +62,7 @@ def render_direct_pdf_upload(
     else:
         captured = st.session_state.get(captured_key)
         if not isinstance(captured, dict) or not isinstance(captured.get("payload"), bytes):
-            st.caption("Aucun fichier reçu par SOW IA. Sélectionnez un PDF pour démarrer le transfert sécurisé.")
+            st.caption("Aucun PDF sélectionné pour le transfert vers le Laboratoire PDF.")
             return SimpleNamespace(uploaded=False, file_name=None, file_size=None, file_path=None, upload_error=None)
         filename = str(captured.get("name") or "document.pdf")
         payload = captured["payload"]
