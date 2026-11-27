@@ -127,7 +127,7 @@ def test_non_pdf_extension_is_rejected_before_network_upload(monkeypatch):
     result = uploader.render_direct_pdf_upload("https://storage.example/upload")
 
     assert result.uploaded is False
-    assert "non PDF" in result.upload_error
+    assert "Seuls les fichiers PDF" in result.upload_error
 
 
 def test_invalid_pdf_signature_is_rejected_before_network_upload(monkeypatch):
