@@ -5,13 +5,19 @@ import direct_pdf_upload as uploader
 
 
 class FakeStreamlit:
-    def __init__(self, selected=None):
+    def __init__(self, selected=None, *, clear_widget_after_callback=False):
         self.selected = selected
+        self.clear_widget_after_callback = clear_widget_after_callback
         self.session_state = {}
         self.messages = []
 
     def file_uploader(self, *args, **kwargs):
         assert kwargs["type"] is None
+        callback = kwargs.get("on_change")
+        if callback:
+            callback()
+        if self.clear_widget_after_callback:
+            self.session_state.pop(kwargs["key"], None)
         return self.selected
 
     def caption(self, message):
@@ -106,6 +112,22 @@ def test_file_in_session_state_is_used_when_widget_return_is_empty(monkeypatch):
 
     assert result.uploaded is True
     assert client.storage.bucket.calls[0][2] == payload
+
+
+def test_upload_callback_preserves_pdf_when_widget_value_disappears(monkeypatch):
+    payload = b"%PDF-1.7\\nselected in uploader callback"
+    fake_st = FakeStreamlit(clear_widget_after_callback=True)
+    fake_st.session_state["test_upload_file"] = FakeUpload(payload=payload)
+    client = FakeClient()
+    monkeypatch.setattr(uploader, "st", fake_st)
+
+    result = uploader.render_direct_pdf_upload(
+        client, FakeUser(), "personal", key="test_upload"
+    )
+
+    assert result.uploaded is True
+    assert client.storage.bucket.calls[0][2] == payload
+    assert "test_upload_captured_file" not in fake_st.session_state
 
 
 def test_captured_file_survives_widget_rerun(monkeypatch):
