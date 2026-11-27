@@ -43,7 +43,7 @@ class FakeBucket:
 
     def create_signed_upload_url(self, path):
         self.path = path
-        return {"signed_url": "https://storage.example/upload?token=short-lived"}
+        return {"signed_url": "short-lived", "token": "short-lived"}
 
     def upload_to_signed_url(self, path, token, payload, file_options=None):
         self.calls.append((path, token, payload, file_options))
@@ -72,11 +72,11 @@ class FakeUser:
 
 def test_create_signed_pdf_upload_creates_user_and_workspace_scoped_path():
     client = FakeClient()
-    path, url = uploader.create_signed_pdf_upload(client, FakeUser(), "professional")
+    path, token = uploader.create_signed_pdf_upload(client, FakeUser(), "professional")
 
     assert path.startswith("user-123/professional/analyse_")
     assert path.endswith(".pdf")
-    assert url == "https://storage.example/upload?token=short-lived"
+    assert token == "short-lived"
     assert client.storage.bucket.path == path
 
 
@@ -87,7 +87,7 @@ def test_valid_pdf_uses_supabase_sdk_signed_upload(monkeypatch):
     monkeypatch.setattr(uploader, "st", fake_st)
 
     result = uploader.render_direct_pdf_upload(
-        "https://storage.example/upload?token=short-lived",
+        "short-lived",
         key="test_upload",
         client=client,
         path="user-123/personal/document.pdf",
@@ -117,7 +117,7 @@ def test_captured_android_selection_survives_widget_rerun(monkeypatch):
     monkeypatch.setattr(uploader, "st", fake_st)
 
     result = uploader.render_direct_pdf_upload(
-        "https://storage.example/upload?token=short-lived",
+        "short-lived",
         key="test_upload",
         client=client,
         path="user-123/personal/document.pdf",
@@ -134,7 +134,7 @@ def test_no_selection_does_not_attempt_upload(monkeypatch):
     fake_st = FakeStreamlit()
     monkeypatch.setattr(uploader, "st", fake_st)
 
-    result = uploader.render_direct_pdf_upload("https://storage.example/upload")
+    result = uploader.render_direct_pdf_upload("not-a-token")
 
     assert result.uploaded is False
     assert result.file_name is None
@@ -145,7 +145,7 @@ def test_non_pdf_extension_is_rejected_before_upload(monkeypatch):
     fake_st = FakeStreamlit(FakeUpload(name="notes.txt"))
     monkeypatch.setattr(uploader, "st", fake_st)
 
-    result = uploader.render_direct_pdf_upload("https://storage.example/upload")
+    result = uploader.render_direct_pdf_upload("not-a-token")
 
     assert result.uploaded is False
     assert "Format non PDF" in result.upload_error
@@ -155,7 +155,7 @@ def test_invalid_pdf_signature_is_rejected_before_upload(monkeypatch):
     fake_st = FakeStreamlit(FakeUpload(payload=b"not a PDF"))
     monkeypatch.setattr(uploader, "st", fake_st)
 
-    result = uploader.render_direct_pdf_upload("https://storage.example/upload")
+    result = uploader.render_direct_pdf_upload("not-a-token")
 
     assert result.uploaded is False
     assert "Signature PDF invalide" in result.upload_error
@@ -165,7 +165,7 @@ def test_pdf_over_10_mb_is_rejected_before_upload(monkeypatch):
     fake_st = FakeStreamlit(FakeUpload(payload=b"%PDF-" + b"x" * uploader.MAX_PDF_BYTES))
     monkeypatch.setattr(uploader, "st", fake_st)
 
-    result = uploader.render_direct_pdf_upload("https://storage.example/upload")
+    result = uploader.render_direct_pdf_upload("not-a-token")
 
     assert result.uploaded is False
     assert "Taille PDF invalide" in result.upload_error
@@ -175,7 +175,7 @@ def test_signed_upload_requires_token_client_and_path(monkeypatch):
     fake_st = FakeStreamlit(FakeUpload())
     monkeypatch.setattr(uploader, "st", fake_st)
 
-    result = uploader.render_direct_pdf_upload("https://storage.example/upload")
+    result = uploader.render_direct_pdf_upload("not-a-token")
 
     assert result.uploaded is False
     assert "Autorisation temporaire Supabase incomplète" in result.upload_error
@@ -188,7 +188,7 @@ def test_supabase_sdk_error_is_not_marked_uploaded(monkeypatch):
     monkeypatch.setattr(uploader, "st", fake_st)
 
     result = uploader.render_direct_pdf_upload(
-        "https://storage.example/upload?token=short-lived",
+        "short-lived",
         key="test_upload",
         client=client,
         path="user-123/personal/document.pdf",
