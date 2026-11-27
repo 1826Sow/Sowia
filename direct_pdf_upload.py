@@ -6,7 +6,6 @@ No service-role key is exposed.
 """
 from types import SimpleNamespace
 from uuid import uuid4
-from urllib.parse import parse_qs, urlsplit
 import hashlib
 
 import streamlit as st
@@ -23,20 +22,16 @@ def create_signed_pdf_upload(client, user, workspace_id="personal"):
     path = f"{prefix}/{workspace}/analyse_{uuid4().hex}.pdf"
     response = client.storage.from_(BUCKET_NAME).create_signed_upload_url(path)
     if isinstance(response, dict):
-        signed_url = response.get("signed_url") or response.get("signedUrl") or response.get("signedURL")
+        token = response.get("token")
     else:
-        signed_url = (
-            getattr(response, "signed_url", None)
-            or getattr(response, "signedUrl", None)
-            or getattr(response, "signedURL", None)
-        )
-    if not isinstance(signed_url, str) or not signed_url.startswith("https://"):
-        raise RuntimeError("Autorisation temporaire Supabase invalide.")
-    return path, signed_url
+        token = getattr(response, "token", None)
+    if not isinstance(token, str) or not token.strip():
+        raise RuntimeError("Jeton temporaire Supabase invalide.")
+    return path, token
 
 
 def render_direct_pdf_upload(
-    signed_url, api_key=None, key="sowia_pdf_upload", *, client=None, path=None
+    upload_token, api_key=None, key="sowia_pdf_upload", *, client=None, path=None
 ):
     """Render a native Android-friendly picker and upload through Supabase Storage.
 
@@ -88,10 +83,7 @@ def render_direct_pdf_upload(
         st.session_state.pop(captured_key, None)
         return SimpleNamespace(uploaded=True, file_name=filename, file_size=len(payload), upload_error=None)
 
-    parsed_url = urlsplit(signed_url) if isinstance(signed_url, str) else None
-    token_values = parse_qs(parsed_url.query).get("token", []) if parsed_url and parsed_url.scheme == "https" else []
-    token = token_values[0] if len(token_values) == 1 else None
-    if not token or client is None or not isinstance(path, str) or not path:
+    if not isinstance(upload_token, str) or not upload_token.strip() or client is None or not isinstance(path, str) or not path:
         error = "Autorisation temporaire Supabase incomplète. Préparez un nouvel envoi."
         st.error(error)
         return SimpleNamespace(uploaded=False, file_name=filename, file_size=len(payload), upload_error=error)
@@ -100,7 +92,7 @@ def render_direct_pdf_upload(
         with st.spinner("Transfert sécurisé du PDF vers Supabase…"):
             client.storage.from_(BUCKET_NAME).upload_to_signed_url(
                 path,
-                token,
+                upload_token,
                 payload,
                 file_options={
                     "content-type": "application/pdf",
