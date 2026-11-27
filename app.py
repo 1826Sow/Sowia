@@ -67,11 +67,13 @@ st.markdown(
     /* Keep Streamlit's native viewport and scroll container behavior intact. */
     .stApp { position: relative !important; }
     header[data-testid="stHeader"] {
-      position: absolute !important;
-      top: 0 !important;
+      /* Keep Android header in document flow below the status-bar safe area. */
+      position: relative !important;
+      top: auto !important;
       left: 0 !important;
       right: 0 !important;
       width: 100% !important;
+      padding-top: max(env(safe-area-inset-top, 0px), 12px) !important;
       background: linear-gradient(180deg, #071426 0%, #0a1b31 100%) !important;
       border-bottom: 1px solid rgba(0,220,235,.18) !important;
       box-shadow: none !important;
