@@ -42,21 +42,13 @@ def render_direct_pdf_upload(
 
     Streamlit's native uploader handles Android document-provider intents more
     consistently than a custom JavaScript file input embedded in a component.
-    The upload uses Supabase Python's upload_to_signed_url implementation so
-    the multipart body, headers and signed-token handling match the SDK contract.
+    The selected UploadedFile is captured directly after the widget returns;
+    no on_change callback is needed, avoiding callback/state timing issues on
+    mobile Streamlit sessions.
     """
     del api_key  # The authenticated SDK client and one-time signed token authorize the upload.
     widget_key = key + "_file"
     captured_key = key + "_captured_file"
-
-    def capture_selected_file():
-        # Preserve the selected bytes before any page rerun or navigation redraw.
-        current = st.session_state.get(widget_key)
-        if current is not None:
-            st.session_state[captured_key] = {
-                "name": str(getattr(current, "name", "") or "document.pdf"),
-                "payload": current.getvalue(),
-            }
 
     selected = st.file_uploader(
         "Choisir un fichier PDF depuis votre téléphone",
@@ -66,7 +58,6 @@ def render_direct_pdf_upload(
         accept_multiple_files=False,
         key=widget_key,
         help="PDF uniquement · 10 Mo maximum.",
-        on_change=capture_selected_file,
     )
     if selected is not None:
         filename = str(getattr(selected, "name", "") or "document.pdf")
