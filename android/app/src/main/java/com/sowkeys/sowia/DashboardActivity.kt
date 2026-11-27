@@ -42,20 +42,37 @@ class DashboardActivity : ComponentActivity() {
             val callback = pendingFileChooser
             pendingFileChooser = null
             val resultIntent = result.data
-            val uri = if (result.resultCode == RESULT_OK) resultIntent?.data else null
+            // Some Android/MIUI document providers return the selected URI in
+            // ClipData instead of Intent.data. Read both forms before notifying
+            // Chromium; otherwise WebView receives null and Streamlit sees no file.
+            val selectedUris = if (result.resultCode == RESULT_OK && resultIntent != null) {
+                buildList {
+                    resultIntent.data?.let(::add)
+                    val clip = resultIntent.clipData
+                    if (clip != null) {
+                        for (index in 0 until clip.itemCount) {
+                            clip.getItemAt(index).uri?.let(::add)
+                        }
+                    }
+                }.distinct()
+            } else {
+                emptyList()
+            }
 
-            if (uri != null && resultIntent != null) {
+            if (resultIntent != null) {
                 val grantedFlags = resultIntent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION
                 if (grantedFlags != 0) {
-                    try {
-                        contentResolver.takePersistableUriPermission(uri, grantedFlags)
-                    } catch (_: SecurityException) {
-                        // Some document providers grant only temporary read access.
-                        // Preserve the URI callback; WebView can still try that grant.
+                    selectedUris.forEach { uri ->
+                        try {
+                            contentResolver.takePersistableUriPermission(uri, grantedFlags)
+                        } catch (_: SecurityException) {
+                            // Some document providers grant only temporary read access.
+                            // Preserve the URI callback; WebView can still try that grant.
+                        }
                     }
                 }
             }
-            callback?.onReceiveValue(uri?.let { arrayOf(it) })
+            callback?.onReceiveValue(selectedUris.firstOrNull()?.let { arrayOf(it) })
         }
 
         val container = FrameLayout(this)
