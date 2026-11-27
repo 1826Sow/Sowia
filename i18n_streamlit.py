@@ -28,21 +28,38 @@ def _translate_markdown_phrase(value, language, translate, *, allow_fallback=Fal
 
 
 def _translate_html_headings(value, language, translate):
-    """Translate visible HTML heading nodes without touching paragraphs, CSS or attributes."""
-    heading_pattern = re.compile(
-        r"(?P<opening><(?:h[1-6]|(?:div|span)\b[^>]*class=['\"][^'\"]*(?:title|heading|kicker)[^'\"]*['\"][^>]*)>)"
-        r"(?P<text>[^<>]{1,180})"
-        r"(?P<closing></(?:h[1-6]|div|span)\s*>)",
-        re.IGNORECASE,
+    """Translate visible HTML title nodes, including titles with nested inline tags."""
+    from html import escape, unescape
+
+    patterns = (
+        re.compile(r"(?P<opening><h[1-6]\b[^>]*>)(?P<inner>.*?)(?P<closing></h[1-6]\s*>)", re.IGNORECASE),
+        re.compile(
+            r"(?P<opening><div\b[^>]*class=['\"][^'\"]*(?:title|heading|kicker)[^'\"]*['\"][^>]*>)"
+            r"(?P<inner>.*?)(?P<closing></div\s*>)",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"(?P<opening><span\b[^>]*class=['\"][^'\"]*(?:title|heading|kicker)[^'\"]*['\"][^>]*>)"
+            r"(?P<inner>.*?)(?P<closing></span\s*>)",
+            re.IGNORECASE,
+        ),
     )
+
     def replace_heading(match):
-        visible = match.group("text")
+        inner = match.group("inner")
+        # Translate the visible phrase even when designers wrap it in inline tags.
+        # Keep the outer title element and its CSS classes unchanged.
+        visible = unescape(re.sub(r"<[^>]*>", "", inner)).strip()
+        if not visible or len(visible) > 180:
+            return match.group(0)
         translated = _translate_markdown_phrase(
             visible, language, translate, allow_fallback=True
         )
-        return match.group("opening") + translated + match.group("closing")
+        return match.group("opening") + escape(translated, quote=False) + match.group("closing")
 
-    return heading_pattern.sub(replace_heading, value)
+    for pattern in patterns:
+        value = pattern.sub(replace_heading, value)
+    return value
 
 
 def _translate_markdown_text(value, language, translate):
