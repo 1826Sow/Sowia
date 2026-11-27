@@ -99,6 +99,33 @@ def test_valid_pdf_is_sent_to_supabase_signed_upload_url(monkeypatch):
     assert fake_st.session_state["test_upload_uploaded_fingerprint"]
 
 
+def test_captured_android_selection_survives_widget_rerun(monkeypatch):
+    payload = b"%PDF-1.7\\nselected before rerun"
+    fake_st = FakeStreamlit()
+    fake_st.session_state["test_upload_captured_file"] = {
+        "name": "document.pdf",
+        "payload": payload,
+    }
+    monkeypatch.setattr(uploader, "st", fake_st)
+    calls = []
+
+    def fake_put(url, **kwargs):
+        calls.append((url, kwargs))
+        return FakeResponse()
+
+    monkeypatch.setattr(uploader.requests, "put", fake_put)
+    result = uploader.render_direct_pdf_upload(
+        "https://storage.example/upload?token=short-lived",
+        key="test_upload",
+    )
+
+    assert result.uploaded is True
+    assert result.file_name == "document.pdf"
+    assert result.file_size == len(payload)
+    assert calls[0][1]["data"] == payload
+    assert "test_upload_captured_file" not in fake_st.session_state
+
+
 def test_no_selection_does_not_attempt_upload(monkeypatch):
     fake_st = FakeStreamlit()
     monkeypatch.setattr(uploader, "st", fake_st)
