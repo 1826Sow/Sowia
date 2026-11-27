@@ -49,7 +49,7 @@ def queue_chat_submission():
 
 def reset_signed_pdf_upload(prefix):
     """Discard a failed one-time upload URL and reset the native file picker."""
-    for suffix in ("_signed_upload_path", "_signed_upload_url"):
+    for suffix in ("_signed_upload_path", "_signed_upload_token", "_signed_upload_url"):
         st.session_state.pop(prefix + suffix, None)
     st.session_state[prefix + "_pdf_upload_nonce"] = str(uuid.uuid4())
 
@@ -3988,16 +3988,16 @@ elif page == "Analyse PDF":
         st.warning("Connectez-vous à votre espace sécurisé pour envoyer un PDF.")
     else:
         upload_path = st.session_state.get("analysis_signed_upload_path")
-        signed_url = st.session_state.get("analysis_signed_upload_url")
-        if not upload_path or not signed_url:
+        upload_token = st.session_state.get("analysis_signed_upload_token")
+        if not upload_path or not upload_token:
             try:
-                upload_path, signed_url = create_signed_pdf_upload(
+                upload_path, upload_token = create_signed_pdf_upload(
                     supabase_client,
                     current_user,
                     st.session_state.get("workspace_id", "personal"),
                 )
                 st.session_state["analysis_signed_upload_path"] = upload_path
-                st.session_state["analysis_signed_upload_url"] = signed_url
+                st.session_state["analysis_signed_upload_token"] = upload_token
                 st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
                 st.rerun()
             except Exception as exc:
@@ -4005,7 +4005,7 @@ elif page == "Analyse PDF":
                 st.caption("Diagnostic : " + type(exc).__name__)
         else:
             upload_result = render_direct_pdf_upload(
-                signed_url,
+                upload_token,
                 get_setting("SUPABASE_ANON_KEY"),
                 key="analysis_direct_pdf_upload_" + st.session_state.get("analysis_pdf_upload_nonce", "session"),
                 client=supabase_client,
@@ -4042,6 +4042,7 @@ elif page == "Analyse PDF":
                         st.session_state.get("workspace_id", "personal"),
                     )
                     st.session_state.pop("analysis_signed_upload_path", None)
+                    st.session_state.pop("analysis_signed_upload_token", None)
                     st.session_state.pop("analysis_signed_upload_url", None)
                     st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
                     st.rerun()
@@ -4060,6 +4061,7 @@ elif page == "Analyse PDF":
                         cleanup_error = True
 
                     st.session_state.pop("analysis_signed_upload_path", None)
+                    st.session_state.pop("analysis_signed_upload_token", None)
                     st.session_state.pop("analysis_signed_upload_url", None)
                     st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
                     st.error("Le PDF a été transmis, mais sa vérification ou sa lecture a échoué. Préparez un nouvel envoi et réessayez.")
@@ -4070,7 +4072,8 @@ elif page == "Analyse PDF":
                         )
             if st.button("Préparer un nouvel envoi PDF", key="reset_analysis_pdf_upload"):
                 st.session_state.pop("analysis_signed_upload_path", None)
-                st.session_state.pop("analysis_signed_upload_url", None)
+                st.session_state.pop("analysis_signed_upload_token", None)
+                    st.session_state.pop("analysis_signed_upload_url", None)
                 st.session_state.pop("analysis_pdf_bytes", None)
                 st.session_state.pop("analysis_pdf_size", None)
                 st.session_state.pop("analysis_pdf_name", None)
