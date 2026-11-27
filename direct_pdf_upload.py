@@ -37,21 +37,39 @@ def render_direct_pdf_upload(signed_url, api_key=None, key="sowia_pdf_upload"):
     consistently than a custom JavaScript file input embedded in a component.
     """
     del api_key  # A signed upload URL is itself the temporary authorization.
+    widget_key = key + "_file"
+    captured_key = key + "_captured_file"
+
+    def capture_selected_file():
+        # Preserve the selected bytes before any page rerun or navigation redraw.
+        current = st.session_state.get(widget_key)
+        if current is not None:
+            st.session_state[captured_key] = {
+                "name": str(getattr(current, "name", "") or "document.pdf"),
+                "payload": current.getvalue(),
+            }
+
     selected = st.file_uploader(
         "Choisir un fichier PDF depuis votre téléphone",
         # Do not let browser/Android MIME filtering disable PDF rows in the picker.
         # The server below strictly validates extension, size, and PDF signature.
         type=None,
         accept_multiple_files=False,
-        key=key + "_file",
+        key=widget_key,
         help="PDF uniquement · 10 Mo maximum.",
+        on_change=capture_selected_file,
     )
-    if selected is None:
-        st.caption("Choisissez un PDF : le transfert sécurisé démarre automatiquement.")
-        return SimpleNamespace(uploaded=False, file_name=None, file_size=None, upload_error=None)
-
-    filename = str(getattr(selected, "name", "") or "document.pdf")
-    payload = selected.getvalue()
+    if selected is not None:
+        filename = str(getattr(selected, "name", "") or "document.pdf")
+        payload = selected.getvalue()
+        st.session_state[captured_key] = {"name": filename, "payload": payload}
+    else:
+        captured = st.session_state.get(captured_key)
+        if not isinstance(captured, dict) or not isinstance(captured.get("payload"), bytes):
+            st.caption("Aucun fichier reçu par SOW IA. Sélectionnez un PDF pour démarrer le transfert sécurisé.")
+            return SimpleNamespace(uploaded=False, file_name=None, file_size=None, upload_error=None)
+        filename = str(captured.get("name") or "document.pdf")
+        payload = captured["payload"]
     if not filename.lower().endswith(".pdf"):
         st.error("Seuls les fichiers PDF sont acceptés.")
         return SimpleNamespace(uploaded=False, file_name=filename, file_size=len(payload), upload_error="Format non PDF.")
@@ -66,6 +84,7 @@ def render_direct_pdf_upload(signed_url, api_key=None, key="sowia_pdf_upload"):
     fingerprint = hashlib.sha256(filename.encode("utf-8") + bytes([0]) + payload).hexdigest()
     uploaded_fingerprint_key = key + "_uploaded_fingerprint"
     if st.session_state.get(uploaded_fingerprint_key) == fingerprint:
+        st.session_state.pop(captured_key, None)
         return SimpleNamespace(uploaded=True, file_name=filename, file_size=len(payload), upload_error=None)
 
     if not isinstance(signed_url, str) or not signed_url.startswith("https://"):
@@ -87,6 +106,7 @@ def render_direct_pdf_upload(signed_url, api_key=None, key="sowia_pdf_upload"):
             )
             response.raise_for_status()
         st.session_state[uploaded_fingerprint_key] = fingerprint
+        st.session_state.pop(captured_key, None)
         st.success("PDF transmis. Vérification et lecture par SOW IA…")
         return SimpleNamespace(uploaded=True, file_name=filename, file_size=len(payload), upload_error=None)
     except requests.RequestException as exc:
