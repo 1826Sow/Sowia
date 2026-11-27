@@ -115,6 +115,21 @@ def test_valid_pdf_creates_signed_token_after_browser_selection(monkeypatch):
     assert fake_st.session_state["test_upload_uploaded_fingerprint"]
 
 
+def test_form_submission_uses_uploader_value_from_session_state(monkeypatch):
+    payload = b"%PDF-1.7\\nreceived in submitted widget state"
+    fake_st = FakeStreamlit(submitted=True)
+    fake_st.session_state["test_upload_file"] = FakeUpload(payload=payload)
+    client = FakeClient()
+    monkeypatch.setattr(uploader, "st", fake_st)
+
+    result = uploader.render_direct_pdf_upload(
+        client, FakeUser(), "personal", key="test_upload"
+    )
+
+    assert result.uploaded is True
+    assert client.storage.bucket.calls[0][2] == payload
+
+
 def test_file_in_session_state_is_used_when_widget_return_is_empty(monkeypatch):
     payload = b"%PDF-1.7\\nreceived in widget state"
     fake_st = FakeStreamlit()

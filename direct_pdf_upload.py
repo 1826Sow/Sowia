@@ -59,6 +59,12 @@ def render_direct_pdf_upload(
             use_container_width=True,
         )
 
+    # Streamlit forms normally return the submitted uploader value directly.
+    # On some browser/session reruns the widget state is populated while the
+    # local return value is empty; use that submitted state as a safe fallback.
+    if submitted and selected is None:
+        selected = st.session_state.get(widget_key)
+
     if not submitted:
         if selected is not None:
             st.caption("PDF prêt. Appuyez sur « Transférer vers le Laboratoire PDF » pour lancer l’envoi sécurisé.")
