@@ -3903,6 +3903,78 @@ elif page == "Recherche Web":
 
 elif page == "Analyse PDF":
     st.subheader(translate_ui("📄 Analyse PDF", language))
+    st.markdown("### 📥 Importer un PDF dans le Laboratoire PDF")
+    st.caption("Commencez ici pour charger votre document. Ce champ effectue le transfert privé vers votre espace Laboratoire ; il est distinct du convertisseur PDF en images situé plus bas.")
+    st.caption("Import privé vers Supabase · PDF uniquement · 10 Mo maximum.")
+
+    if not cloud_mode or current_user is None:
+        st.warning("Connectez-vous à votre espace sécurisé pour envoyer un PDF.")
+    else:
+        upload_result = render_direct_pdf_upload(
+            supabase_client,
+            current_user,
+            st.session_state.get("workspace_id", "personal"),
+            key="analysis_direct_pdf_upload_" + st.session_state.get("analysis_pdf_upload_nonce", "session"),
+        )
+        upload_error = getattr(upload_result, "upload_error", None)
+        if upload_error:
+            st.error("Échec du transfert PDF : " + str(upload_error)[:240])
+            st.button(
+                "Réessayer l'import PDF",
+                key="analysis_pdf_upload_retry",
+                on_click=reset_signed_pdf_upload,
+                args=("analysis",),
+                use_container_width=True,
+            )
+        if getattr(upload_result, "uploaded", False):
+            temporary_path = getattr(upload_result, "file_path", None)
+            try:
+                if not temporary_path:
+                    raise RuntimeError("Chemin temporaire du PDF absent.")
+                verified_bytes = download_document(
+                    supabase_client,
+                    current_user,
+                    temporary_path,
+                    st.session_state.get("workspace_id", "personal"),
+                )
+                st.session_state["analysis_pdf_bytes"] = verified_bytes
+                st.session_state["analysis_pdf_size"] = len(verified_bytes)
+                st.session_state.pdf_text = extract_pdf_text(BytesIO(verified_bytes))
+                st.session_state["analysis_pdf_name"] = getattr(upload_result, "file_name", None) or "document.pdf"
+                st.success("PDF transmis et conservé dans le Laboratoire PDF.")
+                delete_document(
+                    supabase_client,
+                    current_user,
+                    temporary_path,
+                    st.session_state.get("workspace_id", "personal"),
+                )
+                st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
+                st.rerun()
+            except Exception as exc:
+                cleanup_error = None
+                if temporary_path:
+                    try:
+                        delete_document(
+                            supabase_client, current_user, temporary_path,
+                            st.session_state.get("workspace_id", "personal"),
+                        )
+                    except Exception:
+                        cleanup_error = True
+                st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
+                st.error("Le PDF a été transmis, mais sa vérification ou sa lecture a échoué. Code : " + type(exc).__name__)
+                if cleanup_error:
+                    st.warning("Le fichier temporaire n'a pas pu être supprimé automatiquement.")
+        if st.button("Préparer un nouvel envoi PDF", key="reset_analysis_pdf_upload"):
+            st.session_state.pop("analysis_pdf_bytes", None)
+            st.session_state.pop("analysis_pdf_size", None)
+            st.session_state.pop("analysis_pdf_name", None)
+            st.session_state.pop("analysis_direct_pdf_upload_uploaded_fingerprint", None)
+            st.session_state.pop("analysis_direct_pdf_upload_uploaded_path", None)
+            st.session_state.pdf_text = ""
+            st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
+            st.rerun()
+
+
     st.markdown("### 🖼️ Conversion d’images et de PDF")
     st.caption("Convertissez des images en PDF ou exportez les pages d’un PDF en images. Les conversions sont réalisées sur le serveur SOW IA, sans envoi vers un service tiers.")
     with st.expander("Images numériques → un seul PDF", expanded=True):
@@ -3981,76 +4053,6 @@ elif page == "Analyse PDF":
                     )
                 except (ValueError, RuntimeError) as exc:
                     st.error(str(exc))
-    st.divider()
-    st.caption("Sélectionnez un PDF depuis votre téléphone. Transfert privé vers Supabase, 10 Mo maximum.")
-
-    if not cloud_mode or current_user is None:
-        st.warning("Connectez-vous à votre espace sécurisé pour envoyer un PDF.")
-    else:
-        upload_result = render_direct_pdf_upload(
-            supabase_client,
-            current_user,
-            st.session_state.get("workspace_id", "personal"),
-            key="analysis_direct_pdf_upload_" + st.session_state.get("analysis_pdf_upload_nonce", "session"),
-        )
-        upload_error = getattr(upload_result, "upload_error", None)
-        if upload_error:
-            st.error("Échec du transfert PDF : " + str(upload_error)[:240])
-            st.button(
-                "Réessayer l'import PDF",
-                key="analysis_pdf_upload_retry",
-                on_click=reset_signed_pdf_upload,
-                args=("analysis",),
-                use_container_width=True,
-            )
-        if getattr(upload_result, "uploaded", False):
-            temporary_path = getattr(upload_result, "file_path", None)
-            try:
-                if not temporary_path:
-                    raise RuntimeError("Chemin temporaire du PDF absent.")
-                verified_bytes = download_document(
-                    supabase_client,
-                    current_user,
-                    temporary_path,
-                    st.session_state.get("workspace_id", "personal"),
-                )
-                st.session_state["analysis_pdf_bytes"] = verified_bytes
-                st.session_state["analysis_pdf_size"] = len(verified_bytes)
-                st.session_state.pdf_text = extract_pdf_text(BytesIO(verified_bytes))
-                st.session_state["analysis_pdf_name"] = getattr(upload_result, "file_name", None) or "document.pdf"
-                st.success("PDF transmis et conservé dans le Laboratoire PDF.")
-                delete_document(
-                    supabase_client,
-                    current_user,
-                    temporary_path,
-                    st.session_state.get("workspace_id", "personal"),
-                )
-                st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
-                st.rerun()
-            except Exception as exc:
-                cleanup_error = None
-                if temporary_path:
-                    try:
-                        delete_document(
-                            supabase_client, current_user, temporary_path,
-                            st.session_state.get("workspace_id", "personal"),
-                        )
-                    except Exception:
-                        cleanup_error = True
-                st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
-                st.error("Le PDF a été transmis, mais sa vérification ou sa lecture a échoué. Code : " + type(exc).__name__)
-                if cleanup_error:
-                    st.warning("Le fichier temporaire n'a pas pu être supprimé automatiquement.")
-        if st.button("Préparer un nouvel envoi PDF", key="reset_analysis_pdf_upload"):
-            st.session_state.pop("analysis_pdf_bytes", None)
-            st.session_state.pop("analysis_pdf_size", None)
-            st.session_state.pop("analysis_pdf_name", None)
-            st.session_state.pop("analysis_direct_pdf_upload_uploaded_fingerprint", None)
-            st.session_state.pop("analysis_direct_pdf_upload_uploaded_path", None)
-            st.session_state.pdf_text = ""
-            st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
-            st.rerun()
-
     if st.session_state.get("analysis_pdf_bytes"):
         with st.container(border=True):
             st.markdown("**PDF importé dans le Laboratoire PDF**")
