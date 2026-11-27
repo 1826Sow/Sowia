@@ -27,15 +27,35 @@ jobs:
           if not encoded.strip():
               print("RESULT: SECRET_EMPTY")
               sys.exit(2)
-          value = "".join(encoded.split())
-          if value.startswith("data:") and "," in value:
-              value = value.split(",", 1)[1]
-          value = value.replace("-", "+").replace("_", "/")
-          value += "=" * (-len(value) % 4)
-          try:
-              raw = base64.b64decode(value, validate=True)
-          except Exception:
-              print("RESULT: SECRET_NOT_VALID_BASE64")
+          candidates = []
+          compact = "".join(encoded.split())
+          candidates.append(compact)
+          lines = []
+          for line in encoded.splitlines():
+              line = line.strip()
+              if not line or "ANDROID_DEBUG_KEYSTORE_BASE64" in line or line.startswith("-----"):
+                  continue
+              if re.fullmatch(r"[A-Za-z0-9+/=_-]+", line):
+                  lines.append(line)
+          if lines:
+              candidates.append("".join(lines))
+          for run in re.findall(r"[A-Za-z0-9+/=_-]{100,}", encoded):
+              candidates.append(run)
+
+          raw = None
+          for candidate in dict.fromkeys(candidates):
+              candidate = candidate.replace("-", "+").replace("_", "/")
+              candidate = candidate.rstrip("=")
+              candidate += "=" * (-len(candidate) % 4)
+              try:
+                  decoded = base64.b64decode(candidate, validate=True)
+              except Exception:
+                  continue
+              if decoded.startswith(bytes.fromhex("feedfeed")):
+                  raw = decoded
+                  break
+          if raw is None:
+              print("RESULT: SECRET_CONTENT_NOT_RECOGNIZED_AS_JKS_BASE64")
               sys.exit(2)
 
           def read_u2(b, p): return struct.unpack_from(">H", b, p)[0], p + 2
