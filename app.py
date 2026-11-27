@@ -268,9 +268,24 @@ st.markdown(
       min-height: 44px !important;
       opacity: 1 !important;
     }
-    .stApp [data-testid="stFileUploader"] button * {
+    .stApp [data-testid="stFileUploader"] button {
+      font-size: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      min-width: 7.5rem !important;
+    }
+    .stApp [data-testid="stFileUploader"] button::after {
+      content: "UPLOAD";
       color: #07304a !important;
       -webkit-text-fill-color: #07304a !important;
+      font-size: .95rem !important;
+      font-weight: 850 !important;
+      letter-spacing: .06em !important;
+      visibility: visible !important;
+    }
+    .stApp [data-testid="stFileUploader"] button * {
+      visibility: hidden !important;
     }
     .stApp [data-testid="stSelectbox"] [data-baseweb="select"] > div,
     .stApp [data-testid="stMultiSelect"] [data-baseweb="select"] > div,
@@ -3931,6 +3946,24 @@ elif page == "Analyse PDF":
                 st.download_button("Télécharger les images (ZIP)", images_zip, file_name="sowia_pages_en_images.zip", mime="application/zip", key="analysis_download_pdf_images")
             except (ValueError, RuntimeError) as exc:
                 st.error(str(exc))
+
+        retained_pdf = st.session_state.get("analysis_pdf_bytes")
+        if retained_pdf:
+            retained_name = st.session_state.get("analysis_pdf_name") or "document.pdf"
+            st.caption(f"PDF déjà importé dans le Laboratoire : {retained_name}")
+            if st.button("Convertir le PDF importé en images", key="analysis_convert_retained_pdf"):
+                try:
+                    retained_zip = pdf_to_images_zip(retained_pdf, image_format=analysis_image_format)
+                    st.success("Conversion du PDF importé terminée.")
+                    st.download_button(
+                        "Télécharger les images (ZIP)",
+                        retained_zip,
+                        file_name="sowia_pages_en_images.zip",
+                        mime="application/zip",
+                        key="analysis_download_retained_pdf_images",
+                    )
+                except (ValueError, RuntimeError) as exc:
+                    st.error(str(exc))
     st.divider()
     st.caption("Sélectionnez un PDF depuis votre téléphone. Transfert privé vers Supabase, 10 Mo maximum.")
 
@@ -3978,9 +4011,11 @@ elif page == "Analyse PDF":
                         temporary_path,
                         st.session_state.get("workspace_id", "personal"),
                     )
+                    st.session_state["analysis_pdf_bytes"] = verified_bytes
+                    st.session_state["analysis_pdf_size"] = len(verified_bytes)
                     st.session_state.pdf_text = extract_pdf_text(BytesIO(verified_bytes))
                     st.session_state["analysis_pdf_name"] = getattr(upload_result, "file_name", None) or "document.pdf"
-                    st.success("PDF transmis et texte extrait avec succès.")
+                    st.success("PDF transmis et conservé dans le Laboratoire PDF.")
                     delete_document(
                         supabase_client,
                         current_user,
@@ -4017,9 +4052,23 @@ elif page == "Analyse PDF":
             if st.button("Préparer un nouvel envoi PDF", key="reset_analysis_pdf_upload"):
                 st.session_state.pop("analysis_signed_upload_path", None)
                 st.session_state.pop("analysis_signed_upload_url", None)
+                st.session_state.pop("analysis_pdf_bytes", None)
+                st.session_state.pop("analysis_pdf_size", None)
+                st.session_state.pop("analysis_pdf_name", None)
+                st.session_state.pdf_text = ""
                 st.session_state["analysis_pdf_upload_nonce"] = str(uuid.uuid4())
                 st.rerun()
 
+    if st.session_state.get("analysis_pdf_bytes"):
+        with st.container(border=True):
+            st.markdown("**PDF importé dans le Laboratoire PDF**")
+            st.write(st.session_state.get("analysis_pdf_name") or "document.pdf")
+            st.caption(
+                f"{st.session_state.get('analysis_pdf_size', len(st.session_state['analysis_pdf_bytes'])) / 1048576:.2f} Mo · "
+                "Document conservé pour les conversions de cette session."
+            )
+            if not st.session_state.pdf_text:
+                st.info("Le PDF est bien importé, mais aucun texte sélectionnable n’a été détecté. La conversion en images reste disponible.")
     if st.session_state.pdf_text:
         pdf_text = st.session_state.pdf_text
         pdf_page_numbers = [
