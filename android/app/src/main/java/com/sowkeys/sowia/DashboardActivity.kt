@@ -80,7 +80,7 @@ class DashboardActivity : ComponentActivity() {
                 }
 
                 override fun onShowFileChooser(
-                    view: WebView?, 
+                    view: WebView?,
                     filePathCallback: ValueCallback<Array<Uri>>?,
                     fileChooserParams: FileChooserParams?,
                 ): Boolean {
