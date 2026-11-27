@@ -285,7 +285,9 @@ st.markdown(
     .sowia-command-center p { color:#c3d9eb !important; margin:0; line-height:1.55; }
     .sowia-status-legend { display:flex; flex-wrap:wrap; gap:.45rem; margin-top:1rem; }
     .sowia-status-legend span { border:1px solid rgba(120,210,230,.28); background:rgba(255,255,255,.06); color:#dff8ff; border-radius:999px; padding:.34rem .65rem; font-size:.75rem; font-weight:700; }
-    [data-testid="stFileUploader"], [data-testid="stFileUploader"] * { pointer-events: auto !important; }
+    /* Keep Streamlit/Chromium in control of the uploader hit-testing. A blanket
+       pointer-events override on every descendant can make the transparent
+       dropzone overlay intercept taps on Android document rows. */
     [data-testid="stFileUploader"] button { min-height: 44px !important; touch-action: manipulation !important; }
     @media (max-width: 760px) {
       /* Leave clear space below Streamlit's floating Menu control on phones. */
