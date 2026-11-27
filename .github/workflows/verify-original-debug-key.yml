@@ -1,0 +1,84 @@
+name: Verify original SOW IA debug signing key
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/verify-original-debug-key.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare configured debug keystore certificate without exposing secrets
+        env:
+          ANDROID_DEBUG_KEYSTORE_BASE64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, hashlib, os, re, struct, sys
+
+          expected = "D49E3AA72F2576C82E2AC9C0DFDB6360A8C52ED17ABB9DD51220CC870423DD58"
+          encoded = os.environ.get("ANDROID_DEBUG_KEYSTORE_BASE64", "")
+          if not encoded.strip():
+              print("RESULT: SECRET_EMPTY")
+              sys.exit(2)
+          value = re.sub(r"\\s+", "", encoded.strip())
+          if value.startswith("data:") and "," in value:
+              value = value.split(",", 1)[1]
+          value = value.replace("-", "+").replace("_", "/")
+          value += "=" * (-len(value) % 4)
+          try:
+              raw = base64.b64decode(value, validate=True)
+          except Exception:
+              print("RESULT: SECRET_NOT_VALID_BASE64")
+              sys.exit(2)
+
+          def read_u2(b, p): return struct.unpack_from(">H", b, p)[0], p + 2
+          def read_u4(b, p): return struct.unpack_from(">I", b, p)[0], p + 4
+          def read_u8(b, p): return struct.unpack_from(">Q", b, p)[0], p + 8
+          def read_utf(b, p):
+              n, p = read_u2(b, p)
+              return b[p:p+n].decode("utf-8", "replace"), p+n
+
+          try:
+              if raw[:4] != bytes.fromhex("feedfeed"):
+                  print("RESULT: KEYSTORE_FORMAT_NOT_JKS")
+                  sys.exit(3)
+              version, pos = read_u4(raw, 4)
+              count, pos = read_u4(raw, pos)
+              fingerprints = []
+              for _ in range(count):
+                  tag, pos = read_u4(raw, pos)
+                  _, pos = read_utf(raw, pos)
+                  _, pos = read_u8(raw, pos)
+                  if tag == 1:
+                      n, pos = read_u4(raw, pos)
+                      pos += n
+                      chain, pos = read_u4(raw, pos)
+                      for __ in range(chain):
+                          _, pos = read_utf(raw, pos)
+                          n, pos = read_u4(raw, pos)
+                          cert = raw[pos:pos+n]
+                          pos += n
+                          fingerprints.append(hashlib.sha256(cert).hexdigest().upper())
+                  elif tag == 2:
+                      _, pos = read_utf(raw, pos)
+                      n, pos = read_u4(raw, pos)
+                      cert = raw[pos:pos+n]
+                      pos += n
+                      fingerprints.append(hashlib.sha256(cert).hexdigest().upper())
+                  else:
+                      raise ValueError("unknown JKS entry")
+              if expected in fingerprints:
+                  print("RESULT: MATCH_ORIGINAL_63_49MB_APK_CERTIFICATE")
+              else:
+                  print("RESULT: CERTIFICATE_DOES_NOT_MATCH_ORIGINAL_APK")
+          except Exception:
+              print("RESULT: KEYSTORE_COULD_NOT_BE_READ")
+              sys.exit(3)
+          PY
