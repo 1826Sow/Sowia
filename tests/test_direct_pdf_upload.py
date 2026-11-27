@@ -5,14 +5,21 @@ import direct_pdf_upload as uploader
 
 
 class FakeStreamlit:
-    def __init__(self, selected=None):
+    def __init__(self, selected=None, submitted=True):
         self.selected = selected
+        self.submitted = submitted
         self.session_state = {}
         self.messages = []
 
+    def form(self, *args, **kwargs):
+        return nullcontext()
+
+    def form_submit_button(self, *args, **kwargs):
+        return self.submitted
+
     def file_uploader(self, *args, **kwargs):
-        assert kwargs["type"] is None
-        assert kwargs["on_change"] is uploader._capture_uploaded_pdf
+        assert kwargs["type"] == ["pdf"]
+        assert "on_change" not in kwargs
         return self.selected
 
     def caption(self, message):
@@ -111,7 +118,9 @@ def test_valid_pdf_creates_signed_token_after_browser_selection(monkeypatch):
 def test_file_in_session_state_is_used_when_widget_return_is_empty(monkeypatch):
     payload = b"%PDF-1.7\\nreceived in widget state"
     fake_st = FakeStreamlit()
-    fake_st.session_state["test_upload_file"] = FakeUpload(payload=payload)
+    fake_st.session_state["test_upload_captured_file"] = {
+        "name": "document.pdf", "payload": payload,
+    }
     client = FakeClient()
     monkeypatch.setattr(uploader, "st", fake_st)
 
@@ -143,7 +152,7 @@ def test_captured_file_survives_widget_rerun(monkeypatch):
 
 
 def test_no_selection_does_not_attempt_upload(monkeypatch):
-    fake_st = FakeStreamlit()
+    fake_st = FakeStreamlit(submitted=False)
     monkeypatch.setattr(uploader, "st", fake_st)
     result = uploader.render_direct_pdf_upload(FakeClient(), FakeUser())
     assert result.uploaded is False
@@ -183,3 +192,17 @@ def test_supabase_sdk_error_is_not_marked_uploaded(monkeypatch):
     assert result.uploaded is False
     assert "Transfert Supabase refusé" in result.upload_error
     assert "sowia_pdf_upload_uploaded_fingerprint" not in fake_st.session_state
+
+
+def test_selection_waits_for_explicit_form_submission(monkeypatch):
+    fake_st = FakeStreamlit(FakeUpload(), submitted=False)
+    client = FakeClient()
+    monkeypatch.setattr(uploader, "st", fake_st)
+
+    result = uploader.render_direct_pdf_upload(
+        client, FakeUser(), "personal", key="test_upload"
+    )
+
+    assert result.uploaded is False
+    assert client.storage.bucket.calls == []
+    assert any("PDF prêt" in message for kind, message in fake_st.messages if kind == "caption")

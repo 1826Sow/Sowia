@@ -42,18 +42,29 @@ def render_direct_pdf_upload(
     """Capture the browser selection first, then transfer it through Supabase."""
     widget_key = key + "_file"
     captured_key = key + "_captured_file"
-    selected = st.file_uploader(
-        "Importer un PDF dans le Laboratoire PDF",
-        type=None,
-        accept_multiple_files=False,
-        key=widget_key,
-        on_change=_capture_uploaded_pdf,
-        args=(widget_key, captured_key),
-        help="PDF uniquement · 10 Mo maximum.",
-        max_upload_size=10,
-    )
-    if selected is None:
-        selected = st.session_state.get(widget_key)
+    # A form prevents processing an incomplete browser selection during an
+    # intermediate uploader rerun. Transfer begins only after explicit submit.
+    with st.form(key=key + "_form", clear_on_submit=False):
+        selected = st.file_uploader(
+            "Choisir le PDF à transférer",
+            type=["pdf"],
+            accept_multiple_files=False,
+            key=widget_key,
+            help="PDF uniquement · 10 Mo maximum.",
+            max_upload_size=10,
+        )
+        submitted = st.form_submit_button(
+            "Transférer vers le Laboratoire PDF",
+            type="primary",
+            use_container_width=True,
+        )
+
+    if not submitted:
+        if selected is not None:
+            st.caption("PDF prêt. Appuyez sur « Transférer vers le Laboratoire PDF » pour lancer l’envoi sécurisé.")
+        else:
+            st.caption("Choisissez un PDF, puis appuyez sur « Transférer vers le Laboratoire PDF ».")
+        return SimpleNamespace(uploaded=False, file_name=None, file_size=None, file_path=None, upload_error=None)
 
     if selected is not None:
         filename = str(getattr(selected, "name", "") or "document.pdf")
@@ -62,8 +73,8 @@ def render_direct_pdf_upload(
     else:
         captured = st.session_state.get(captured_key)
         if not isinstance(captured, dict) or not isinstance(captured.get("payload"), bytes):
-            st.caption("Aucun PDF sélectionné pour le transfert vers le Laboratoire PDF.")
-            return SimpleNamespace(uploaded=False, file_name=None, file_size=None, file_path=None, upload_error=None)
+            st.error("Le navigateur n’a pas transmis le PDF au serveur. Sélectionnez-le à nouveau puis relancez le transfert.")
+            return SimpleNamespace(uploaded=False, file_name=None, file_size=None, file_path=None, upload_error="Fichier non reçu par le serveur.")
         filename = str(captured.get("name") or "document.pdf")
         payload = captured["payload"]
 

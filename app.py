@@ -307,6 +307,25 @@ st.markdown(
       }
     }
     [data-testid="stExpander"] { border: 1px solid rgba(0,210,230,.20); border-radius: 14px; background: rgba(12,31,53,.92); }
+    /* Sidebar categories are navigation, not content cards: remove their blue frames. */
+    section[data-testid="stSidebar"] [data-testid="stExpander"],
+    section[data-testid="stSidebar"] [data-testid="stExpander"] details {
+      border: 0 !important;
+      outline: 0 !important;
+      box-shadow: none !important;
+      background: transparent !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary {
+      border: 0 !important;
+      border-bottom: 1px solid rgba(135,175,210,.13) !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary:focus,
+    section[data-testid="stSidebar"] [data-testid="stExpander"] summary:focus-visible {
+      outline: none !important;
+      box-shadow: none !important;
+    }
     [data-testid="stDataFrame"] { border: 1px solid rgba(0,210,230,.20); border-radius: 13px; overflow: hidden; }
     [data-testid="stChatMessage"] { background: #102943 !important; border: 1px solid rgba(0,210,230,.20) !important; border-radius: 16px !important; padding: 1rem !important; box-shadow: 0 3px 12px rgba(0,0,0,.16); color: #e8f3ff !important; }
     [data-testid="stChatMessage"] [data-testid="stMarkdownContainer"], [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] li { color: #e8f3ff !important; }
